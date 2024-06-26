@@ -1,0 +1,3 @@
+sample:
+  description: Sample demonstrating adding NS-callable functions
+  name: NSC hello world

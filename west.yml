@@ -1,0 +1,32 @@
+manifest:
+  version: "0.10"
+  remotes:
+    - name: atm
+      url-base: git@github.com:Atmosic
+  defaults:
+    remote: atm
+  projects:
+    - name: hal_atmosic
+      revision: main
+      path: modules/hal/atmosic
+    - name: hal_atmosic_lib
+      revision: main
+      path: modules/hal/atmosic_lib
+    - name: mcuboot
+      revision: atm/main
+      path: bootloader/mcuboot
+    - name: micro-ecc
+      revision: atm/master
+      path: modules/crypto/micro-ecc
+    - name: zephyr
+      revision: atm/main
+      import:
+        name-allowlist:
+          - cmsis
+          - mbedtls
+          - tinycrypt
+          - littlefs
+          - zcbor
+  self:
+    path: apps
+    import: submanifests

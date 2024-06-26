@@ -1,0 +1,13 @@
+/*
+ * Copyright (c) 2024 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+&uart0 {
+    status = "okay";
+};
+
+&uart1 {
+    // This is Pin 9 on the 50 pin header
+    rx-pin = <17>;
+};
