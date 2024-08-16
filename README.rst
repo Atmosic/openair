@@ -10,10 +10,8 @@ This is the top-level repository for the Atmosic SDK.  It contains the west mani
 Supported Platforms
 *******************
 
-* ATMx2xx_
 * ATM33xx_
 
-.. _ATMx2xx: https://github.com/Atmosic/zephyr/blob/HEAD/boards/arm/atmevk-02/doc/index.rst
 .. _ATM33xx: https://github.com/Atmosic/zephyr/blob/HEAD/boards/arm/atm33evk/doc/index.rst
 
 Creating a Workspace
