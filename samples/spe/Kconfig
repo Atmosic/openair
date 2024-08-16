@@ -1,0 +1,18 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+source "Kconfig.zephyr"
+
+config ATM_SPE_DISABLE_SAU
+	bool "Disable SAU"
+	default n
+
+config ATM_SPE_DISABLE_SHUB
+	bool "Disable Sensor Hub"
+	default y
+
+config ATM_ENABLE_NSC_EXAMPLE
+	bool "Enable NSC example function for extending SPE"
+	default n
+

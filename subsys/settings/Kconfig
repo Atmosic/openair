@@ -1,0 +1,15 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_SETTINGS
+	bool "Proprietary settings subsystem library"
+	depends on SETTINGS
+
+if ATM_SETTINGS
+
+module = ATM_SETTINGS
+module-str = atm_settings
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ATM_SETTINGS

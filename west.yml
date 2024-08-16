@@ -9,6 +9,7 @@ manifest:
     - name: hal_atmosic
       revision: main
       path: modules/hal/atmosic
+      west-commands: west/west-commands.yml
     - name: hal_atmosic_lib
       revision: main
       path: modules/hal/atmosic_lib

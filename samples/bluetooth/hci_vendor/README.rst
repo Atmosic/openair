@@ -74,17 +74,17 @@ Shell environment setup::
   APP=apps/hci_vendor
   BOARD=<chip>
   JLINK_SN=<"serial number">
-  SPE=modules/hal/atmosic/ATM33xx-5/examples/spe
+  SPE=apps/samples/spe
   WEST_TOPDIR=$PWD
 
 Build commands:
   west build -p -s ${SPE} -b ${BOARD} -d build/${BOARD}/${SPE}
-  west build -p -s ${HCI_UART} -b ${BOARD}_ns \
-  -d build/${BOARD}_ns/${HCI_UART} \
+  west build -p -s ${APP} -b ${BOARD}_ns \
+  -d build/${BOARD}_ns/${APP} \
   -- -DCONFIG_SPE_PATH=\"build/${BOARD}/${SPE}\"
 
 Program commands:
   west flash --skip-rebuild --verify --device=${JLINK_SN} --jlink \
   -d build/${BOARD}/${SPE} --noreset
   west flash --skip-rebuild --verify --device=${JLINK_SN} --jlink \
-  -d build/${BOARD}_ns/${HCI_UART}
+  -d build/${BOARD}_ns/${APP}

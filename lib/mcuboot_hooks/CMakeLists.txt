@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+zephyr_sources_ifdef(CONFIG_ATM_MCUBOOT_HOOKS mcuboot_hooks.c)
+zephyr_compile_definitions_ifdef(CONFIG_ATM_MCUBOOT_LOCK_PRIMARY_SLOT MCUBOOT_LOCK_PRIMARY_SLOT)
+zephyr_compile_definitions_ifdef(CONFIG_ATM_MCUBOOT_SKIP_PRIMARY_VALIDATE_HIBER MCUBOOT_SKIP_PRIMARY_VALIDATE_HIBER)

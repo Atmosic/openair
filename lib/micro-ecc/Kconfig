@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_UECC
+	bool "Optimized ECC library"
+	depends on MBEDTLS_ECDSA_C

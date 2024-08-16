@@ -1,0 +1,29 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_MCUBOOT_HOOKS
+	bool
+	depends on MCUBOOT
+	# enable Zephyr mcuboot action hooks
+	select MCUBOOT_ACTION_HOOKS
+	# enable standard mcuboot hooks
+	select BOOT_IMAGE_ACCESS_HOOKS
+
+config ATM_MCUBOOT_LOCK_PRIMARY_SLOT
+	bool
+	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	select ATM_MCUBOOT_HOOKS
+	# enable extension use in hooks to lock the slot
+	select ATM_MCUBOOT_EXT
+
+config ATM_MCUBOOT_PROTECT_PRIMARY_SLOT
+	bool "Protect primary image slot"
+	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	select ATM_MCUBOOT_LOCK_PRIMARY_SLOT
+
+config ATM_MCUBOOT_SKIP_PRIMARY_VALIDATE_HIBER
+	bool "Skip primary slot validation on resume from hibernate"
+	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	# requires locking the primary slot with hooks+extensions
+	select ATM_MCUBOOT_LOCK_PRIMARY_SLOT
