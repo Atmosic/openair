@@ -1,0 +1,23 @@
+manifest:
+  version: "0.10"
+  remotes:
+    - name: atm
+      url-base: git@github.com:Atmosic
+  defaults:
+    remote: atm
+  projects:
+    - name: hal_atmosic
+      revision: rc_24.09.0
+      path: modules/hal/atmosic
+    - name: hal_atmosic_lib
+      revision: rc_24.09.0
+      path: modules/hal/atmosic_lib
+    - name: zephyr
+      revision: rc_24.09.0
+      import:
+        name-allowlist:
+          - cmsis
+          - mbedtls
+          - tinycrypt
+          - littlefs
+          - zcbor
