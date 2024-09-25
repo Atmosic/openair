@@ -1,0 +1,11 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config BATT_MODEL_HSC_LIION
+	bool "Lithium-Ion Battery support"
+	depends on ADC
+	select BATT_MODEL
+
+config BATT_MODEL_HSC
+	bool "Hybrid Supercap support"

@@ -114,32 +114,6 @@ int mbedtls_ecdsa_genkey(mbedtls_ecdsa_context *ctx, mbedtls_ecp_group_id gid,
 #endif
 
 #ifdef MBEDTLS_ECDSA_SIGN_ALT
-int mbedtls_ecdsa_can_do(mbedtls_ecp_group_id gid)
-{
-    switch (gid) {
-#ifdef MBEDTLS_ECP_DP_SECP192R1_ENABLED
-	case MBEDTLS_ECP_DP_SECP192R1:
-	    return 1;
-#endif
-#ifdef MBEDTLS_ECP_DP_SECP224R1_ENABLED
-	case MBEDTLS_ECP_DP_SECP224R1:
-	    return 1;
-#endif
-#ifdef MBEDTLS_ECP_DP_SECP256R1_ENABLED
-	case MBEDTLS_ECP_DP_SECP256R1:
-	    return 1;
-#endif
-#ifdef MBEDTLS_ECP_DP_SECP256K1_ENABLED
-	case MBEDTLS_ECP_DP_SECP256K1:
-	    return 1;
-#endif
-	default:
-	    break;
-    }
-
-    return 0;
-}
-
 int mbedtls_ecdsa_sign(mbedtls_ecp_group *grp, mbedtls_mpi *r, mbedtls_mpi *s,
     const mbedtls_mpi *d, const unsigned char *buf, size_t blen,
     int (*f_rng)(void *, unsigned char *, size_t), void *p_rng)

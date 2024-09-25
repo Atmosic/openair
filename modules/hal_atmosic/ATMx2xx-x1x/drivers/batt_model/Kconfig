@@ -1,0 +1,14 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config BATT_MODEL
+	bool "Atmosic Battery Model module"
+
+if BATT_MODEL
+
+module = BATT_MODEL
+module-str = Atmosic Battery Model
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # BATT_MODEL

@@ -1,0 +1,17 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_PMU
+	bool "Atmosic Power Management Unit module"
+	default y if ADC
+	default y if BT
+	default y if ENTROPY_ATM_TRNG
+	default y if PM
+
+config PMU_WDOG_TIMEOUT
+	int "PMU watchdog timeout"
+	default 0
+	help
+	   A value of 0 implies 1 sec.
+	   A value of 1 implies 32 sec.

@@ -20,52 +20,6 @@
 #define LOG_MODULE_NAME atm_settings
 LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_ATM_SETTINGS_LOG_LEVEL);
 
-static int factory_data_handle_set(char const *name, size_t len,
-    settings_read_cb read_cb, void *cb_arg)
-{
-    char const *next;
-
-    if (settings_name_steq(name, KEY_NAME(COMPANY_ID), &next) && !next) {
-	uint16_t company_id;
-	if (len != sizeof(company_id)) {
-	    return -EINVAL;
-	}
-	read_cb(cb_arg, &company_id, sizeof(company_id));
-	LOG_INF("%s/%s = %#x", MAIN_KEY(FACTORY), name, company_id);
-	return 0;
-    }
-
-    if (settings_name_steq(name, KEY_NAME(SERIAL_NUMBER), &next) && !next) {
-	uint32_t serial_number;
-	if (len != sizeof(serial_number)) {
-	    return -EINVAL;
-	}
-	read_cb(cb_arg, &serial_number, sizeof(serial_number));
-	LOG_INF("%s/%s = %#x", MAIN_KEY(FACTORY), name, serial_number);
-	return 0;
-    }
-
-    return -ENOENT;
-}
-
-static int settings_storage_handle_set(char const *name, size_t len,
-    settings_read_cb read_cb, void *cb_arg)
-{
-    char const *next;
-
-    if (settings_name_steq(name, KEY_NAME(VERSION), &next) && !next) {
-	uint16_t version;
-	if (len != sizeof(version)) {
-	    return -EINVAL;
-	}
-	read_cb(cb_arg, &version, sizeof(version));
-	LOG_INF("%s/%s = %d", MAIN_KEY(SETTINGS), name, version);
-	return 0;
-    }
-
-    return -ENOENT;
-}
-
 int atm_settings_init(void)
 {
     int rc = settings_subsys_init();
@@ -95,10 +49,3 @@ int atm_settings_init(void)
 
     return 0;
 }
-
-/* static subtree handler */
-SETTINGS_STATIC_HANDLER_DEFINE(factory_data, MAIN_KEY(FACTORY), NULL,
-    factory_data_handle_set, NULL, NULL);
-
-SETTINGS_STATIC_HANDLER_DEFINE(settings_storage, MAIN_KEY(SETTINGS), NULL,
-    settings_storage_handle_set, NULL, NULL);

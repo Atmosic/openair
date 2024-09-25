@@ -1,0 +1,24 @@
+# Copyright (c) 2023-2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+if BT || ENTROPY_ATM_TRNG
+
+config EXT_WAKEUP_ENABLE
+	int "EXT WAKEUP ENABLE"
+	default 1
+
+config ATM_BLE_DRIVER_SLEEP
+	bool "Atmosic BLE driver sleep"
+	default y
+
+config ATM_SLEEP_ENABLE
+	int "Sleep enable value"
+	default 2 if ATM_BLE_DRIVER_SLEEP
+	default 0
+
+config ATM_SLEEP_ADJ
+	int "Sleep adjustment value"
+	default 10
+
+endif

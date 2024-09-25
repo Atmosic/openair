@@ -1,0 +1,16 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_SHA2
+	bool "Atmosic SHA2 module"
+	default y if ATM_SHA2_HW || ATM_SHA2_HW_BOOTUTIL
+
+config ATM_SHA2_HW
+	bool "Hardware accelerator for SHA256 hash"
+	depends on MBEDTLS_SHA256
+	depends on !USERSPACE
+	select MBEDTLS_USER_CONFIG_ENABLE
+
+config ATM_SHA2_HW_BOOTUTIL
+	bool "Hardware accelerator for SHA256 hash supporting bootutil API (only used by MCUBOOT)"

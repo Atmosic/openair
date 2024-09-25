@@ -131,10 +131,20 @@ static void sau_cfg(void)
     at_tz_sau_enable();
 
     uint8_t sau_region = 0;
+    at_tz_sau_ret_t ret;
+
+#if DT_NODE_EXISTS(DT_NODELABEL(lc_partition))
+    uint32_t phys_lc_baddr = GET_PHYS_ADDR(DT_REG_ADDR(DT_NODELABEL(rom0))) +
+	DT_REG_ADDR(DT_NODELABEL(lc_partition));
+    uint32_t phys_lc_laddr = phys_lc_baddr +
+	DT_REG_SIZE(DT_NODELABEL(lc_partition)) - 1;
+    ret = at_tz_sau_enable_region(sau_region++,
+	AT_TZ_SAU_BADDR_MASK(phys_lc_baddr),
+	AT_TZ_SAU_LADDR_MASK(phys_lc_laddr), AT_TZ_SAU_NS);
+#endif
 
     // Allocate RRAM, RRAM regs, prrf, and ext_flash as NS to save on SAU regions
     // Relies on NS region immediately following SPE.
-    at_tz_sau_ret_t ret;
     uint32_t rram_ns_start = PART_SPE_NSPE_ADDR(spe_partition) +
 	DT_REG_SIZE(DT_NODELABEL(spe_partition));
     uint32_t rram_flash_baddr = GET_PHYS_ADDR(rram_ns_start);
@@ -279,7 +289,7 @@ FUNC_NORETURN void spe_main(void)
     for (irq = NSECUREWDOG_RESETREQ_IRQn; irq <= DUALTIMER_IRQn; irq++) {
 	irq_target_state_set(irq, IRQ_TARGET_STATE_NON_SECURE);
     }
-    for (irq = UARTRX0_IRQn; irq <= PORT1_15_IRQn; irq++) {
+    for (irq = RESERVED_14_IRQn; irq <= PORT1_15_IRQn; irq++) {
 	irq_target_state_set(irq, IRQ_TARGET_STATE_NON_SECURE);
     }
     // configure PPC to set peripherals to NS space.

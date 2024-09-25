@@ -104,10 +104,10 @@ MCUBoot using ``west build`` and ``west flash`` directly.
 
 Shell environment setup::
 
-  APP=apps/hci_vendor
+  APP=openair/hci_vendor
   BOARD=<chip>
   JLINK_SN=<"serial number">
-  SPE=apps/samples/spe
+  SPE=openair/samples/spe
 
 Build commands:
   west build -p -s ${SPE} -b ${BOARD} -d build/${BOARD}/${SPE}

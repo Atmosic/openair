@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config BATT_MODEL_COIN
+	bool "Coin Cell Battery support"
+	depends on ADC
+	select BATT_MODEL

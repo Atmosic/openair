@@ -10,8 +10,10 @@ This is the top-level repository for the Atmosic SDK.  It contains the west mani
 Supported Platforms
 *******************
 
+* ATMx2xx_
 * ATM33xx_
 
+.. _ATMx2xx: https://github.com/Atmosic/zephyr/blob/HEAD/boards/arm/atmevk-02/doc/index.rst
 .. _ATM33xx: https://github.com/Atmosic/zephyr/blob/HEAD/boards/arm/atm33evk/doc/index.rst
 
 Creating a Workspace
@@ -19,7 +21,7 @@ Creating a Workspace
 
 To create an Atmosic SDK workspace, first follow the instructions_ from the official Zephyr documentation on setting up the tooling for your host operating system.  Then use ``west init`` and ``west update`` as follows::
 
-  west init -m git@github.com:Atmosic/apps zephyrproject
+  west init -m git@github.com:Atmosic/openair zephyrproject
   cd zephyrproject
   west update
 

@@ -1,0 +1,10 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+rsource "*/Kconfig"
+
+config ATM_PLF_DEBUG
+	bool "Debugging for low level platform drivers"
+	default y
+	depends on PRINTK

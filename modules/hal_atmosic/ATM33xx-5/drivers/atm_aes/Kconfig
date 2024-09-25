@@ -1,0 +1,13 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_AES
+	bool "Atmosic AES module"
+	default y if ATM_AES_HW
+
+config ATM_AES_HW
+	bool "Hardware accelerator for AES"
+	default y
+	depends on MBEDTLS_CIPHER_AES_ENABLED && !USERSPACE
+	select MBEDTLS_USER_CONFIG_ENABLE
