@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_SEC_DEBUG_AUTH
+	bool "Atmosic Secure Debug Authentication"
+	depends on TRUSTED_EXECUTION_SECURE && MCUBOOT
+

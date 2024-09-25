@@ -1,0 +1,16 @@
+west-commands:
+  - file: west/sec_jrnl_west_extension.py
+    commands:
+      - name: secjrnl
+        class: SecJrnlCommand
+        help: Atmosic tools for secure journal management.
+  - file: west/atm_otp_west_extension.py
+    commands:
+      - name: atmotp
+        class: AtmOtpCommand
+        help: Atmosic tools for OTP management.
+  - file: west/atm_arch_extension.py
+    commands:
+      - name: atm_arch
+        class: AtmArchCommand
+        help: Atmosic ISP file generate, show and program with bin files

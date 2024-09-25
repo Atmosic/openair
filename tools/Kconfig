@@ -1,0 +1,15 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config GEN_PARTITION_INFO
+	bool "Generate partition info"
+	default y
+
+config GEN_PARTITION_INFO_SCRIPT
+	string "Generate partition info script path"
+	default "${ZEPHYR_BASE}/../openair/tools/scripts/gen_atm_partition_info.py"
+
+config GEN_TAG_DATA_BIN_FILE_SCRIPT
+	string "Generate tag data bin file script path"
+	default "${ZEPHYR_BASE}/../openair/tools/scripts/gen_tag_data_bin_file.py"

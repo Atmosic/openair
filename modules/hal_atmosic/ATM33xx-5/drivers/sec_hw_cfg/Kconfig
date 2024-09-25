@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_SEC_HW_CFG
+	bool "Atmosic Secure Hardware Configuration module"
+	default y if TRUSTED_EXECUTION_SECURE && !BOOTLOADER_MCUBOOT

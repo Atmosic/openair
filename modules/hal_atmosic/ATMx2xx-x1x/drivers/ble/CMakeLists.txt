@@ -1,0 +1,9 @@
+zephyr_include_directories(
+    ../../include/ble
+    ../../include/reg_ble
+)
+zephyr_sources(
+    src/ble_driver.c
+    src/fake_flash.c
+    rom/ROM_errata_14.c
+)

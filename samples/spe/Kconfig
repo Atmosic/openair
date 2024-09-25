@@ -6,7 +6,6 @@ source "Kconfig.zephyr"
 
 config ATM_SPE_DISABLE_SAU
 	bool "Disable SAU"
-	default n
 
 config ATM_SPE_DISABLE_SHUB
 	bool "Disable Sensor Hub"
@@ -14,5 +13,3 @@ config ATM_SPE_DISABLE_SHUB
 
 config ATM_ENABLE_NSC_EXAMPLE
 	bool "Enable NSC example function for extending SPE"
-	default n
-

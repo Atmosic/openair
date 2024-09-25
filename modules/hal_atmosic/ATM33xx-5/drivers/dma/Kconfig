@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_DMA
+	bool "Atmosic DMA module"
+	default y if BT || ENTROPY_ATM_TRNG

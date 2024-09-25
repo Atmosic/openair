@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_RRAM_ROM_PROT
+	bool "Atmosic RRAM ROM Protect module"
+	default y if TRUSTED_EXECUTION_SECURE
+	default y if SOC_FLASH_ATM_RRAM

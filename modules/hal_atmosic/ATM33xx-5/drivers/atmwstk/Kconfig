@@ -1,0 +1,20 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+if BT || ENTROPY_ATM_TRNG
+
+config USE_ATMWSTK
+	bool "Use fixed BLE stack image"
+
+config ATMWSTK
+	string "Fixed BLE stack image flavor"
+	default "LL"
+	depends on USE_ATMWSTK
+
+config ATMWSTKLIB
+	string "BLE link layer library flavor"
+	default "PD50"
+	depends on !USE_ATMWSTK
+
+endif
