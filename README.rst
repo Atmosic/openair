@@ -12,7 +12,7 @@ Supported Platforms
 
 * ATM33xx_
 
-.. _ATM33xx: https://github.com/Atmosic/zephyr/blob/HEAD/boards/arm/atm33evk/doc/index.rst
+.. _ATM33xx: https://github.com/Atmosic/zephyr/blob/HEAD/boards/atmosic/atm33evk/doc/index.rst
 
 Creating a Workspace
 ********************
@@ -25,4 +25,4 @@ To create an Atmosic SDK workspace, first follow the instructions_ from the offi
 
 .. _instructions: https://docs.zephyrproject.org/latest/develop/getting_started/index.html
 
-Refer to the `Supported Platforms`_ documentation for details on how to build and program an application.  For example, see the section on `programming and debugging an ATM33xx <https://github.com/Atmosic/zephyr/blob/HEAD/boards/arm/atm33evk/doc/index.rst#programming-and-debugging>`_ EVK.
+Refer to the `Supported Platforms`_ documentation for details on how to build and program an application.  For example, see the section on `programming and debugging an ATM33xx <https://github.com/Atmosic/zephyr/blob/HEAD/boards/atmosic/atm33evk/doc/index.rst#programming-and-debugging>`_ EVK.

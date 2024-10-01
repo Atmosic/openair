@@ -97,7 +97,7 @@ atm33evk
 A convenient support script is provided in the Zephyr repository to build and
 program this application. Please refer to::
 
-   zephyr/boards/arm/atm33evk/doc/index.rst
+   zephyr/boards/atmosic/atm33evk/doc/index.rst
 
 Below are the steps for building and programming this application without
 MCUBoot using ``west build`` and ``west flash`` directly.
