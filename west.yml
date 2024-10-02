@@ -2,7 +2,7 @@ manifest:
   version: "0.10"
   remotes:
     - name: atm
-      url-base: git@github.com:Atmosic
+      url-base: https://github.com/Atmosic
   defaults:
     remote: atm
   projects:
