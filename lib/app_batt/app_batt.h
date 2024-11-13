@@ -67,7 +67,7 @@ typedef struct {
     /// Stop application.
     void (*app_stop)(void (*done)(void));
     /// Update battery level.
-    void (*level_update)(uint8_t);
+    void (*level_update)(uint16_t, int32_t);
 #ifdef CFG_CABLE_CHARGE
     /// Cable status report
     bool (*cable)(bool, uint8_t);

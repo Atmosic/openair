@@ -67,7 +67,9 @@ static int atmwstk_init(void)
 
 	.dma_memcpy = dma_memcpy,
 	.dma_memset = dma_memset,
+#if CFG_DMA_COPY
 	.dma_copy = dma_copy,
+#endif
     };
 
     atmwstk_main(&libc_iface);
@@ -106,7 +108,9 @@ static void atmwstk_init_constructor(void)
 
 	.dma_memcpy = dma_memcpy,
 	.dma_memset = dma_memset,
+#if CFG_DMA_COPY
 	.dma_copy = dma_copy,
+#endif
     };
 
     atmwstk_main(&libc_iface);

@@ -1,0 +1,13 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache 2.0
+
+config BROWNOUT
+	bool "Enable brownout support"
+	select ATM_PMU
+	depends on PM
+
+config BROWNOUT_WAKE_DURATION
+	int "Brownout Sleep Duration in ticks"
+	default 612
+	depends on BROWNOUT

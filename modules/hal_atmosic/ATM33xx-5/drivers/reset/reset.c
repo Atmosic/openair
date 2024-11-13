@@ -5,7 +5,7 @@
  *
  * @brief Reset Driver
  *
- * Copyright (C) Atmosic 2022-2023
+ * Copyright (C) Atmosic 2022-2024
  *
  ******************************************************************************
  */
@@ -77,7 +77,13 @@ boot_status_t boot_status(void)
 	if (!pmu_wkup_det) {
 	    ASSERT_ERR(reset_syndrome &
 		SYS_CTRL_REG_SSE200_RESET_SYNDROME_PoR_Msk);
-	    return BOOT_STATUS_POWER_ON;
+	    status = BOOT_STATUS_POWER_ON;
+#ifdef __PMU_PMU_WDOG_CTRL_MACRO__
+	    if (pmu_get_pmu_wdog_reset()) {
+		status |= BOOT_STATUS_RESET_PMU_WDOG;
+	    }
+#endif
+	    return status;
 	}
 	if (pmu_wkup_det & PMU_WKUP_PIN) {
 	    status |= BOOT_STATUS_SOCOFF_WKUP_PIN;
@@ -98,12 +104,16 @@ boot_status_t boot_status(void)
 	if (pseq_boot_status & PSEQ_STATUS__GPIO_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_GPIO;
 	}
+#ifdef PSEQ_STATUS__WURX0_TRIGGERED__MASK
 	if (pseq_boot_status & PSEQ_STATUS__WURX0_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_WURX0;
 	}
+#endif
+#ifdef PSEQ_STATUS__WURX1_TRIGGERED__MASK
 	if (pseq_boot_status & PSEQ_STATUS__WURX1_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_WURX1;
 	}
+#endif
 	if (pseq_boot_status & PSEQ_STATUS__QDEC_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_QDEC;
 	}
@@ -113,9 +123,11 @@ boot_status_t boot_status(void)
 	if (pseq_boot_status & PSEQ_STATUS__DBG_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_DBG;
 	}
+#ifdef PSEQ_STATUS__SHUB_TRIGGERED__MASK
 	if (pseq_boot_status & PSEQ_STATUS__SHUB_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_SHUB;
 	}
+#endif
 	if (pseq_boot_status & PSEQ_STATUS__SPI_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_SPI;
 	}
@@ -140,12 +152,14 @@ boot_status_t boot_status(void)
 	if (pseq_boot_status & PSEQ_STATUS__BROWNOUT_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_BROWNOUT;
 	}
+#ifdef PSEQ_STATUS__WURX_TRIGGERED__MASK
 	if (pseq_boot_status & PSEQ_STATUS__WURX_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_WURX;
 	}
+#endif
     }
 
-    ASSERT_ERR(status);
+    ASSERT_INFO(status, reset_syndrome, pseq_boot_status);
 
     return status;
 }
@@ -177,6 +191,10 @@ static void reset_print(void)
 	    " Software Reset Request");
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_RESET_EXT),
 	    " External Reset Request");
+#ifdef __PMU_PMU_WDOG_CTRL_MACRO__
+	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_RESET_PMU_WDOG),
+	    " PMU WDOG Reset");
+#endif
     }
     if (is_boot_type(TYPE_HIB)) {
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_HIB_WKUP_TIMER), "timer");

@@ -15,13 +15,33 @@
 #include <errno.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/storage/flash_map.h>
 #include "atm_settings.h"
+#include "rram_rom_prot.h"
 
 #define LOG_MODULE_NAME atm_settings
 LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_ATM_SETTINGS_LOG_LEVEL);
 
+#define PART_ADDR(label) ( \
+    DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(label))) + \
+    DT_REG_ADDR(DT_NODELABEL(label)) \
+)
+
 int atm_settings_init(void)
 {
+#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
+    LOG_INF("Factory data range: [0x%08x - 0x%08x]",
+	(unsigned int)PART_ADDR(factory_partition),
+	(unsigned int)PART_ADDR(factory_partition) +
+	    (unsigned int)DT_REG_SIZE(DT_NODELABEL(factory_partition)) - 1);
+#endif
+#if DT_NODE_EXISTS(DT_NODELABEL(storage_partition))
+    LOG_INF("Settings storage range: [0x%08x - 0x%08x]",
+	(unsigned int)PART_ADDR(storage_partition),
+	(unsigned int)PART_ADDR(storage_partition) +
+	    (unsigned int)DT_REG_SIZE(DT_NODELABEL(storage_partition)) - 1);
+#endif
+
     int rc = settings_subsys_init();
     if (rc) {
 	LOG_INF("settings subsys initialization: fail (err %d)", rc);
@@ -46,6 +66,16 @@ int atm_settings_init(void)
 	return rc;
     }
     LOG_INF("settings factory initialization: OK.");
+
+    uint32_t factory_offset = factory_config.part_info.part_offset;
+    uint32_t factory_size = factory_config.part_info.part_size;
+    bool sec_s = rram_prot_sticky_write_disable(factory_offset, factory_size);
+    if (!sec_s) {
+	LOG_INF("settings factory data WP: fail (0x%" PRIx32 ", 0x%" PRIx32 ")",
+	    factory_offset, factory_size);
+	return -EINVAL;
+    }
+    LOG_INF("settings factory data WP: OK.");
 
     return 0;
 }

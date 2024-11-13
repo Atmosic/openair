@@ -3,18 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 add_subdirectory(atm_aes)
-add_subdirectory(atm_bp_clock)
 add_subdirectory(atm_otp)
 add_subdirectory(atm_sha2)
 add_subdirectory(atmwstk)
 add_subdirectory(at_tz_mpc)
 add_subdirectory(at_tz_ppc)
 add_subdirectory(at_tz_sau)
-add_subdirectory(batt_model)
-add_subdirectory(batt_model_coin)
 add_subdirectory(batt_model_hsc_liion)
 add_subdirectory(brwnout)
-add_subdirectory(dma)
 add_subdirectory(hw_cfg)
 add_subdirectory(lpc)
 add_subdirectory(pmu)
@@ -42,6 +38,12 @@ if (CONFIG_ATM_PLF_DEBUG)
     )
     zephyr_sources(
 	user_debug.c
+    )
+endif ()
+
+if (CONFIG_ATM_UECC)
+    zephyr_include_directories(
+	${ZEPHYR_BASE}/../modules/crypto/micro-ecc
     )
 endif ()
 

@@ -5,3 +5,12 @@
 config ATM_MCUBOOT_EXT
 	bool
 	depends on MCUBOOT
+
+config ATM_MCUBOOT_UART_DEBUG_AUTH
+	bool "Enable Secure UART debug authentication"
+	depends on MCUBOOT && ATM_MCUBOOT_EXT
+
+config ATM_MCUBOOT_UART_DEBUG_AUTH_TIMEOUT_MS
+        int "Debug Auth serial wait duration"
+        depends on ATM_MCUBOOT_UART_DEBUG_AUTH
+        default 500

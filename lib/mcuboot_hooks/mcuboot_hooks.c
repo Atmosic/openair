@@ -18,6 +18,15 @@
 #include "bootutil/mcuboot_status.h"
 #include "atm_mcuboot_ext.h"
 #include "rram_rom_prot.h"
+#include "bootutil/bootutil_log.h"
+
+#ifdef CONFIG_ATM_MCUBOOT_SECURE_DEBUG
+#include "atm_debug_auth.h"
+#include "atm_mcuboot_ext_uart_auth.h"
+#include "serial_adapter/serial_adapter.h"
+#endif
+
+BOOT_LOG_MODULE_REGISTER(mcuboot_hooks);
 
 #ifdef MCUBOOT_IMAGE_ACCESS_HOOKS
 int boot_read_image_header_hook(int img_index, int slot,
@@ -88,7 +97,7 @@ int boot_img_install_stat_hook(int image_index, int slot, int *img_install_stat)
 #define IMG_TRAILER_RSVD_SZ (SLOT0_END_OFFSET - NSPE_END_OFFSET)
 
 STATIC_ASSERT(IMG_TRAILER_RSVD_SZ > 0,
-    "Slot locking requires a reserved trailer, please set DTSI config: ATM_IMG_TRAILER_RSVD_SIZE");
+    "Slot locking requires a reserved trailer, please check SLOT0 trailer reservation");
 STATIC_ASSERT((IMG_TRAILER_RSVD_SZ % RRAM_ROM_PROT_BLOCK_SIZE) == 0,
     "Trailer reservation must be aligned");
 #endif // MCUBOOT_OVERWRITE_ONLY
@@ -104,6 +113,30 @@ static void lock_primary_slot(void)
 }
 #endif // CONFIG_ATM_MCUBOOT_LOCK_PRIMARY_SLOT
 
+#ifdef CONFIG_ATM_MCUBOOT_SECURE_DEBUG
+static bool debug_auth_uart_init(void)
+{
+    return (boot_console_init() >= 0);
+}
+
+static void debug_auth_uart_write(char const *ptr, size_t length)
+{
+    console_write(ptr, length);
+}
+
+static int debug_auth_uart_read(char *ptr, size_t length, bool *newline)
+{
+    // console_read appends a null character.
+    return console_read(ptr, length, (int *)newline);
+}
+
+static void debug_auth_uart_close(void)
+{
+    return;
+}
+
+#endif // CONFIG_ATM_MCUBOOT_SECURE_DEBUG
+
 // Zephyr mcuboot status change hook
 void mcuboot_status_change(mcuboot_status_type_t status)
 {
@@ -111,6 +144,15 @@ void mcuboot_status_change(mcuboot_status_type_t status)
 	case MCUBOOT_STATUS_STARTUP:
 #ifdef CONFIG_ATM_MCUBOOT_EXT
 	    atm_mcuboot_ext_startup();
+#endif
+#ifdef CONFIG_ATM_MCUBOOT_SECURE_DEBUG
+	    static const struct uart_debug_auth_intf uart_auth_funcs = {
+		.init = debug_auth_uart_init,
+		.close = debug_auth_uart_close,
+		.read = debug_auth_uart_read,
+		.write = debug_auth_uart_write,
+	    };
+	    uart_debug_auth(&uart_auth_funcs);
 #endif
 	    break;
 	case MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND:

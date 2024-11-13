@@ -103,7 +103,7 @@ enum {
 };
 
 static batt_cbs const *fns;
-static void (*lvl_cb)(uint8_t);
+static void (*lvl_cb)(uint16_t, int32_t);
 static bool batt_gadc_sampling;
 
 #ifdef CONFIG_SOC_FAMILY_ATM
@@ -149,22 +149,19 @@ static void batt_boost_vbat_check(float vbat)
 }
 #endif
 
-static uint8_t batt_capacity(float result)
+static uint16_t batt_capacity(float result)
 {
 #ifdef BATT_MODEL_HSC
-    uint8_t bat_lvl;
+    uint16_t bat_lvl; // 'basis points' for increased accuracy
 
     if (result <= VOLT_MIN) {
 	bat_lvl = 0;
     } else if (result > VOLT_MAX) {
-	bat_lvl = 100;
+	bat_lvl = 10000;
     } else {
-	bat_lvl = (((result * result) - (VOLT_MIN * VOLT_MIN)) * 100) /
+	bat_lvl = (((result * result) - (VOLT_MIN * VOLT_MIN)) * 10000) /
 	    ((VOLT_MAX * VOLT_MAX) - (VOLT_MIN * VOLT_MIN));
     }
-
-    __UNUSED int result_mv = result * 1000;
-    DEBUG_TRACE("volt %dmV, Capacity %u%%", result_mv, bat_lvl);
 #else
     // VBAT_OV > V > VBAT_T:
     // capacity (%) = (100-CAPA_T)/(VBAT_OV-VBAT_T) * (V-VBAT_OV) + 100
@@ -179,11 +176,13 @@ static uint8_t batt_capacity(float result)
 	capacity = (powf(10.0f, 4.0f * result / VBAT_UV) - powf(10.0f, 4.0f)) /
 	    (powf(10.0f, 4.0f * VBAT_T / VBAT_UV) - powf(10.0f, 4.0f)) * CAPA_T;
     }
+    capacity *= 100.0f; // convert to basis points
 
-    uint8_t bat_lvl = lrintf(capacity);
-    __UNUSED int result_mv = result * 1000;
-    DEBUG_TRACE("Li-ion result %dmV, capacity %u%%", result_mv, bat_lvl);
+    uint16_t bat_lvl = lrintf(capacity);
 #endif
+
+    __UNUSED int result_mv = result * 1000;
+    DEBUG_TRACE("Voltage: %d mV, capacity %u basis points", result_mv, bat_lvl);
     return bat_lvl;
 }
 
@@ -194,12 +193,12 @@ static void batt_process_vbat(float result, struct gadc_fifo_s raw_fifo,
 static void batt_process_vbat(float result)
 #endif
 {
-    __UNUSED int result_mv = result * 1000;
-    DEBUG_TRACE("%s(begin): vbatli=%dmV, vbat_max=%d, vbat_boost=%d", __func__,
-	result_mv, vbat_mem[VBAT_MAX_IDX], vbat_mem[VBAT_BOOST_IDX]);
+    int32_t result_mv = result * 1000;
+    DEBUG_TRACE("%s(begin): vbatli=%" PRId32 "mV, vbat_max=%d, vbat_boost=%d",
+	__func__, result_mv, vbat_mem[VBAT_MAX_IDX], vbat_mem[VBAT_BOOST_IDX]);
 
     // Calculate the battery capacity based on the voltage level from gadc
-    uint8_t bat_lvl = batt_capacity(result);
+    uint16_t bat_lvl = batt_capacity(result);
 
     batt_max_vbat_check(result);
 #if defined(BOOST_FROM_VHARV_INDUCTOR) || defined(BOOST_FROM_VHARV_TWO_DIODE)
@@ -240,14 +239,14 @@ static void batt_process_vbat(float result)
     }
 
     if (lvl_cb) {
-	lvl_cb(bat_lvl);
+	lvl_cb(bat_lvl, result_mv);
 	lvl_cb = NULL;
     }
 
     batt_gadc_sampling = false;
 }
 
-static bool batt_gadc_sample(void (*cb)(uint8_t))
+static bool batt_gadc_sample(void (*cb)(uint16_t, int32_t))
 {
     if (batt_gadc_sampling) {
 	return false;

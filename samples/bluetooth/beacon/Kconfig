@@ -1,0 +1,80 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+
+source "Kconfig.zephyr"
+
+choice
+	prompt "Select beacon"
+	default REFBCN_POWER_PROFILE
+
+#
+# power_profile
+#
+# Send one scannable legacy Eddystone beacon each second until 30 are sent.
+# Between beacons, use the retain w/ voltage drop power mode.
+# Then hibernate for 30 seconds, and repeat.
+#
+# This is a good example for measuring the device's low power performance.
+#
+config REFBCN_POWER_PROFILE
+	bool "power profile"
+	help
+	  Select this option to enable power profile.
+
+endchoice
+
+#
+# Invisible Kconfig symbols
+#
+
+# for Create
+config ADV_INTV
+	hex
+	range 0x20 0x640
+	default 0x640 if REFBCN_POWER_PROFILE # 1s
+	default 0x20
+
+config ADV_OPTS
+	hex
+	range 0 0xFFFFF
+	default 0x204 if REFBCN_POWER_PROFILE # nc_s_
+	default 0
+
+config ADV_DISC
+	hex
+	range 0 0x7
+	default 0x6 if REFBCN_POWER_PROFILE # Generic
+	default 0 # non-disc
+
+# for Start
+config ADV_TOUT
+	int
+	default 0
+
+config ADV_MAX_EVT
+	int
+	default 30 if REFBCN_POWER_PROFILE # 30_adv (30 * 1s)
+	default 0
+
+config ADV_RSTRT_DUR
+	int
+	default 30 if REFBCN_POWER_PROFILE # 30s
+	default 0
+
+# for Data
+config ADV_DATA_BCN201
+	bool
+	default y if REFBCN_POWER_PROFILE # beacon_201.tds
+
+config SCAN_RESP_DATA_BCN201
+	bool
+	default y if REFBCN_POWER_PROFILE # beacon_201.tds
+
+# for Low power
+config SOFT_OFF
+    bool
+	depends on PM
+	select EXT_WAKEUP_ENABLE_INDEFINITE
+	default y if REFBCN_POWER_PROFILE # hib.tds

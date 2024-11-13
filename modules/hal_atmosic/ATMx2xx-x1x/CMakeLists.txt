@@ -16,3 +16,6 @@ add_subdirectory(src)
 zephyr_include_directories(
     include
 )
+
+zephyr_linker_sources(NOINIT noinit.ld)
+zephyr_linker_sources(RAMFUNC_SECTION ramfunc-section.ld)

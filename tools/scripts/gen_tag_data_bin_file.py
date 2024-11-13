@@ -67,6 +67,8 @@ def parse_args(args=None):
                         help="nvs yaml file path")
     parser.add_argument("-b", "--bin_file", required=True, default=None,
                         help="nvs bin file path")
+    parser.add_argument("-o", "--objcopy_file", required=True, default=None,
+                        help="objcopy exe file path")
     return parser.parse_args(args)
 
 def main(args=None):
@@ -76,6 +78,9 @@ def main(args=None):
         sys.exit(1)
     if not os.path.exists(args.yaml_file):
         print(f"{args.yaml_file} not exist")
+        sys.exit(1)
+    if not os.path.exists(args.objcopy_file):
+        print(f"{args.objcopy_file} not exist")
         sys.exit(1)
 
     settings_info = parse_settings_info(args.partition_file)
@@ -124,9 +129,9 @@ def main(args=None):
 
     # Convert .bin file to .hex file
     des_dir = os.path.dirname(args.bin_file)
-    hex_name = f"{args.file_type}.hex"
-    cmd = f"objcopy --change-addresses {part_start} -I binary -O ihex" \
-          f" {args.bin_file} {des_dir}/{hex_name}"
+    hex_name = f"zephyr_{args.file_type}.hex"
+    cmd = f"{args.objcopy_file} --change-addresses {part_start} -I binary" \
+          f" -O ihex {args.bin_file} {des_dir}/{hex_name}"
     rc = run_with_timeout(cmd)
     if rc != 0:
         print("Execute convert .hex file command failed")

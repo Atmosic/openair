@@ -14,7 +14,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "arch.h"
-#include "uart_polling.h"
 
 /**
  * @defgroup DEBUG_AUTH Secure debug authentication
@@ -41,17 +40,27 @@ typedef enum {
 } atm_debug_auth_result_t;
 
 typedef void (*debug_write_t)(char const *, size_t);
+#ifndef DEBUG_AUTH_STATIC_CHALLENGE
+typedef uint32_t (*debug_trng_get_t)(void);
+#endif
 
 /**
  * @brief Initialize the authentication library
  *
  * @param[in] key Uncompressed ECDSA P256 public key
  * @param[in] write_cb Write callback for responses
+ * @param[in] trng_get_cb TRNG get entropy callback
+ *
+ * @note if NOT using static challenge, function assumes trng is initialized.
  *
  * @return
  */
 __NONNULL_ALL
-void atm_debug_auth_init(uint8_t const *key, debug_write_t write_cb);
+void atm_debug_auth_init(uint8_t const *key, debug_write_t write_cb
+#ifndef DEBUG_AUTH_STATIC_CHALLENGE
+    , debug_trng_get_t trng_get_cb
+#endif
+);
 
 /**
  * @brief Parse an authentication message

@@ -18,6 +18,10 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #include "arch.h"
 #include "timer.h"
 #include "at_wrpr.h"
+#ifdef CONFIG_BT
+#include "reg_ipcore.h"
+#include "rwip.h"
+#endif
 
 #define PSEQ_INTERNAL_DIRECT_INCLUDE_GUARD
 #include "pseq_internal.h"
@@ -106,7 +110,8 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t int_set)
 	pseq_core_enter_soc_off();
 }
 
-__ramfunc static void atm_power_pseq_control(void (*mode)(uint32_t idle, uint32_t int_set))
+__ramfunc static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t int_set),
+					   uint32_t idle)
 {
 	/* Make certain that no interrupt will disturb sleep */
 	uint32_t ise = NVIC->ISER[0];
@@ -115,7 +120,7 @@ __ramfunc static void atm_power_pseq_control(void (*mode)(uint32_t idle, uint32_
 	}
 
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
-		mode(_kernel.idle, ise);
+		mode(idle, ise);
 	} WRPR_CTRL_POP();
 
 	SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
@@ -133,6 +138,11 @@ __ramfunc static void atm_power_pseq_control(void (*mode)(uint32_t idle, uint32_
 
 	/* Restore interrupt enables */
 	NVIC->ISER[0] = ise;
+}
+
+static void atm_power_pseq_control(void (*mode)(uint32_t idle, uint32_t int_set))
+{
+	atm_power_pseq_setup(mode, _kernel.idle);
 }
 
 /* Invoke Low Power/System Off specific Tasks */
@@ -195,6 +205,22 @@ __ramfunc void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 	 * when OS started idling code.
 	 */
 	irq_unlock(0);
+}
+
+void atm_pseq_soc_off(uint32_t ticks)
+{
+	atm_power_pseq_setup(atm_power_mode_soc_off, ticks);
+}
+
+void atm_pseq_hibernate(uint32_t ticks)
+{
+#ifdef CONFIG_BT
+	// Force BLE to sleep
+	ip_deepslwkup_set(0);
+	rwip_rf.sleep();
+#endif
+
+	atm_power_pseq_setup(atm_power_mode_hibernate, ticks);
 }
 
 #endif /* CONFIG_PM */

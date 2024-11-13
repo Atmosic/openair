@@ -36,15 +36,38 @@ extern irq_target_state_t irq_target_state_set(unsigned int irq,
 
 #define PART_OFFSET(label) (DT_REG_ADDR(DT_NODELABEL(label)))
 
-#ifdef CONFIG_BOOTLOADER_MCUBOOT
-// the merged SPE/NSPE slot needs the physical base address of the parent of
-// slot0_partition
-#define PART_SPE_NSPE_ADDR(label) \
-    (DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(slot0_partition))) + \
+// helper to get the address of a nested partition in a slot
+#define PART_IN_SLOT_ADDR(slot_label, label) \
+    (DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(slot_label))) + \
 	DT_REG_ADDR(DT_NODELABEL(label)))
-#else
-#define PART_SPE_NSPE_ADDR(label) PART_ADDR(label)
+
+#ifndef CONFIG_BOOTLOADER_MCUBOOT
+#define PART_SPE_ADDR() PART_ADDR(spe_partition)
+#define PART_NSPE_ADDR() PART_ADDR(nspe_partition)
+#define PART_FAST_CODE_ADDR() PART_ADDR(fast_code_partition)
+#elif DT_NODE_EXISTS(DT_NODELABEL(slot2_partition)) && \
+    DT_NODE_EXISTS(DT_NODELABEL(slot3_partition))
+// This is an implicit MCUBOOT configuration
+// the NSPE is now in slot2 with the OTA area in slot3
+// for a signed image the start is after the image header
+#define NSPE_APP_START_OFFSET CONFIG_ROM_START_OFFSET
+#define PART_SPE_ADDR() PART_IN_SLOT_ADDR(slot0_partition, spe_partition)
+#define PART_NSPE_ADDR() PART_IN_SLOT_ADDR(slot2_partition, nspe_partition)
+// fast code is in slot 0
+#define PART_FAST_CODE_ADDR() \
+    PART_IN_SLOT_ADDR(slot0_partition, fast_code_partition)
+#else // CONFIG_BOOTLOADER_MCUBOOT
+#define PART_SPE_ADDR() PART_IN_SLOT_ADDR(slot0_partition, spe_partition)
+#define PART_NSPE_ADDR() PART_IN_SLOT_ADDR(slot0_partition, nspe_partition)
+#endif // CONFIG_BOOTLOADER_MCUBOOT
+
+#ifndef NSPE_APP_START_OFFSET
+#define NSPE_APP_START_OFFSET 0
 #endif
+
+#define PART_SPE_SIZE() DT_REG_SIZE(DT_NODELABEL(spe_partition))
+#define PART_NSPE_SIZE() DT_REG_SIZE(DT_NODELABEL(nspe_partition))
+#define PART_FAST_CODE_SIZE() DT_REG_SIZE(DT_NODELABEL(fast_code_partition))
 
 #define PROG_MPC_PARTITION(part, base_partition) do { \
 	uint32_t part_baddr = \
@@ -84,7 +107,7 @@ static void mpc_cfg(void)
 #error CONFIG_ROM_START_OFFSET must be aligned to 2k boundary
 #endif
     // Allow mcumgr to read image header.
-    uint32_t boot_hdr_baddr = PART_SPE_NSPE_ADDR(spe_partition);
+    uint32_t boot_hdr_baddr = PART_SPE_ADDR();
     uint32_t boot_hdr_laddr = boot_hdr_baddr + CONFIG_ROM_START_OFFSET - 1;
     at_tz_mpc_config_region(boot_hdr_baddr, boot_hdr_laddr,
 	AT_TZ_MPC_ATTR_NONSECURE);
@@ -145,8 +168,8 @@ static void sau_cfg(void)
 
     // Allocate RRAM, RRAM regs, prrf, and ext_flash as NS to save on SAU regions
     // Relies on NS region immediately following SPE.
-    uint32_t rram_ns_start = PART_SPE_NSPE_ADDR(spe_partition) +
-	DT_REG_SIZE(DT_NODELABEL(spe_partition));
+    uint32_t rram_ns_start =
+	PART_SPE_ADDR() + DT_REG_SIZE(DT_NODELABEL(spe_partition));
     uint32_t rram_flash_baddr = GET_PHYS_ADDR(rram_ns_start);
     uint32_t rram_flash_laddr =
 	GET_PHYS_ADDR(DT_REG_ADDR(DT_NODELABEL(flash_controller))) +
@@ -180,7 +203,7 @@ static void sau_cfg(void)
 
 #ifdef CONFIG_BOOTLOADER_MCUBOOT
     // Allow mcumgr to read image header.
-    uint32_t boot_hdr_baddr = GET_PHYS_ADDR(PART_SPE_NSPE_ADDR(spe_partition));
+    uint32_t boot_hdr_baddr = GET_PHYS_ADDR(PART_SPE_ADDR());
     uint32_t boot_hdr_laddr = boot_hdr_baddr + CONFIG_ROM_START_OFFSET - 1;
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK(boot_hdr_baddr),
@@ -192,6 +215,46 @@ static void sau_cfg(void)
     // SAU programming done early enough that only secure code has executed.
     // No need to invalidate the caches.
 }
+
+#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
+#if !DT_SAME_NODE(DT_GPARENT(DT_NODELABEL(factory_partition)), \
+    DT_NODELABEL(rram0))
+#error "Factory partition is not in RRAM"
+#endif
+
+#define NVS_ALLOC_ENTRY_SIZE 8
+
+static bool nvs_sector_is_not_empty(uint32_t nvs_addr, uint32_t nvs_size)
+{
+    // pointing to the first ate write location in a sector
+    const uint8_t *ptr = (const uint8_t *)(nvs_addr + nvs_size -
+	(2 * NVS_ALLOC_ENTRY_SIZE));
+
+    for (uint32_t i = 0; i < NVS_ALLOC_ENTRY_SIZE; i++) {
+	if (*(ptr + i) != 0xFF) {
+	    return true;
+	}
+    }
+
+    return false;
+}
+
+static bool factory_part_valid(void)
+{
+    uint32_t factory_addr = GET_PHYS_ADDR(PART_ADDR(factory_partition));
+    uint32_t factory_size = DT_REG_SIZE(DT_NODELABEL(factory_partition));
+    uint32_t sector_size = DT_PROP(DT_NODELABEL(rram0), erase_block_size);
+
+    for (uint32_t sector_addr = factory_addr; sector_addr <
+	(factory_addr + factory_size); sector_addr += sector_size) {
+	if (nvs_sector_is_not_empty(sector_addr, sector_size)) {
+	    return true;
+	}
+    }
+
+    return false;
+}
+#endif // factory_partition
 
 // security lockdowns before the SAU is enabled
 // At this stage all peripherals can be accessed by
@@ -232,7 +295,19 @@ static void pre_sau_security_lockdown(void)
     SEC_ASSERT(sec_s);
 #endif
 
-#if DT_NODE_EXISTS(DT_NODELABEL(slot2_partition))
+#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
+    if (factory_part_valid()) {
+	// write protect factory data partition
+	uint32_t factory_offset = PART_OFFSET(factory_partition);
+	uint32_t factory_size = DT_REG_SIZE(DT_NODELABEL(factory_partition));
+	printk("factory data WP: 0x%x, 0x%x \n", factory_offset, factory_size);
+	sec_s = rram_prot_sticky_write_disable(factory_offset, factory_size);
+	SEC_ASSERT(sec_s);
+    }
+#endif
+
+#if DT_NODE_EXISTS(DT_NODELABEL(slot2_partition)) && \
+    !DT_NODE_EXISTS(DT_NODELABEL(slot3_partition))
     // sticky lock atmwstk
     uint32_t atmwstk_offset = PART_OFFSET(slot2_partition);
     uint32_t atmwstk_size = DT_REG_SIZE(DT_NODELABEL(slot2_partition));
@@ -256,14 +331,19 @@ FUNC_NORETURN void spe_main(void)
     ICACHE->ICCTRL = ICACHE_ICCTRL_CACHEEN_Msk;
 
     printk("*** Zephyr SPE ***\n");
-    printk("* SPE range: [0x%08x - 0x%08x]\n",
-	(unsigned int)PART_SPE_NSPE_ADDR(spe_partition),
-	(unsigned int)PART_SPE_NSPE_ADDR(spe_partition) +
-	    (unsigned int)DT_REG_SIZE(DT_NODELABEL(spe_partition)));
-    printk("* NSPE range: [0x%08x - 0x%08x]\n",
-	(unsigned int)PART_SPE_NSPE_ADDR(nspe_partition),
-	(unsigned int)PART_SPE_NSPE_ADDR(nspe_partition) +
-	    (unsigned int)DT_REG_SIZE(DT_NODELABEL(nspe_partition)));
+    printk("* SPE range: [0x%08x - 0x%08x]\n", (unsigned int)PART_SPE_ADDR(),
+	(unsigned int)PART_SPE_ADDR() + (unsigned int)PART_SPE_SIZE() - 1);
+#if DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
+    printk("* NSPE Fast Code range: [0x%08x - 0x%08x]\n",
+	(unsigned int)PART_FAST_CODE_ADDR(),
+	(unsigned int)PART_FAST_CODE_ADDR() +
+	    (unsigned int)PART_FAST_CODE_SIZE() - 1);
+#endif
+    printk("* NSPE range: [0x%08x - 0x%08x]\n", (unsigned int)PART_NSPE_ADDR(),
+	(unsigned int)PART_NSPE_ADDR() + (unsigned int)PART_NSPE_SIZE() - 1);
+    uint32_t *application_addr = (uint32_t *)((
+	(PART_NSPE_ADDR() + NSPE_APP_START_OFFSET) & ~0x10000000));
+    printk("* NSPE non-sec start addr: %p \n", application_addr);
     printk("***\n");
 
     // Enables BusFault, MemFault, UsageFault and SecureFault
@@ -297,8 +377,6 @@ FUNC_NORETURN void spe_main(void)
 
     post_sau_security_lockdown();
 
-    uint32_t *application_addr =
-	(uint32_t *)(PART_SPE_NSPE_ADDR(nspe_partition) & ~0x10000000);
     // // jump to application image.
     SCB_NS->VTOR = (uint32_t)application_addr;
     __TZ_set_MSP_NS(application_addr[0]);

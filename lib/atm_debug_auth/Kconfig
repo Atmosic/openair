@@ -6,3 +6,8 @@ config ATM_SEC_DEBUG_AUTH
 	bool "Atmosic Secure Debug Authentication"
 	depends on TRUSTED_EXECUTION_SECURE && MCUBOOT
 
+config ATM_SEC_DEBUG_AUTH_SIGNATURE_KEY_FILE
+        string "Secure Boot key file"
+        depends on ATM_SEC_DEBUG_AUTH
+        default "root-debug-ec-p256.pem"
+

@@ -4,9 +4,17 @@
 
 if BT || ENTROPY_ATM_TRNG
 
+config EXT_WAKEUP_ENABLE_INDEFINITE
+	bool "Set EXT_WAKEUP_EANBLE to 0x02"
+
 config EXT_WAKEUP_ENABLE
 	int "EXT WAKEUP ENABLE"
+	default 2 if EXT_WAKEUP_ENABLE_INDEFINITE
 	default 1
+	help
+	   0x00: Timer and software wakeup only
+	   0x01: External (from PSEQ) wakeup enabled with limited timeout
+	   0x02: External wakeup enabled with no maximum sleep duration
 
 config ATM_BLE_DRIVER_SLEEP
 	bool "Atmosic BLE driver sleep"
