@@ -115,7 +115,7 @@ class AtmIsp:
             region_size = self.partInfo.FACTORY_DATA_SIZE
             extra_info = 'FACTORY_DATA'
         elif load_type == TYPE_SPE:
-            if hasattr(self.partInfo, 'ATM_SPLIT_IMG'):
+            if hasattr(self.partInfo, 'ATM_SPLIT_IMG') and hasattr(self.partInfo, 'USE_MCUBOOT'):
                 if not self.partInfo.PRIMARY_IMG_START or \
                     not self.partInfo.PRIMARY_IMG_SIZE:
                     print(f"Cannot find PRIMARY_IMG_START and PRIMARY_IMG_SIZE info")
