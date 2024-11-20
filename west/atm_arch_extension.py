@@ -27,7 +27,7 @@ TYPE_EXTRA_FILE = 5
 TYPE_FACTORY_DATA = 6
 
 ARCH_USAGE = ''' \
-west atmarch [-h] [-i {input file name} | --append] [-s] [-d]
+west atm_arch [-h] [-i {input file name} | --append] [-s] [-d]
            [-o {output file name}]
            [-p {partition_info map file}]
            [--atm_isp_path {atm_isp exe file}]
