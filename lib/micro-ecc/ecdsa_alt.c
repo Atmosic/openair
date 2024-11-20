@@ -28,7 +28,11 @@ static int default_RNG(uint8_t *dest, unsigned size)
 #include "mbedtls/ecdsa.h"
 
 #define uECC_OPTIMIZATION_LEVEL 4
+
+#ifndef uECC_SUPPORTS_secp160r1
 #define uECC_SUPPORTS_secp160r1 0
+#endif
+
 #ifndef MBEDTLS_ECP_DP_SECP192R1_ENABLED
 #define uECC_SUPPORTS_secp192r1 0
 #endif

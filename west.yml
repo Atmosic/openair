@@ -1,33 +1,56 @@
 manifest:
-  version: "0.10"
-  remotes:
-    - name: atm
-      url-base: https://github.com/Atmosic
-  defaults:
-    remote: atm
+  group-filter:
+  - -babblesim
+  - -optional
   projects:
-    - name: hal_atmosic
-      revision: main
-      path: modules/hal/atmosic
-    - name: hal_atmosic_lib
-      revision: main
-      path: modules/hal/atmosic_lib
-    - name: mcuboot
-      revision: atm/main
-      path: bootloader/mcuboot
-    - name: micro-ecc
-      revision: atm/master
-      path: modules/crypto/micro-ecc
-    - name: zephyr
-      revision: atm/main
-      import:
-        name-allowlist:
-          - cmsis
-          - mbedtls
-          - tinycrypt
-          - littlefs
-          - zcbor
+  - name: hal_atmosic
+    url: https://github.com/Atmosic/hal_atmosic
+    revision: 51262bec39cbbcc72f0ae35e5aa8ea89f0302677
+    path: modules/hal/atmosic
+  - name: hal_atmosic_lib
+    url: https://github.com/Atmosic/hal_atmosic_lib
+    revision: 87f909cc61daa68fff3734290a39b57bdc5a6aff
+    path: modules/hal/atmosic_lib
+  - name: mcuboot
+    url: https://github.com/Atmosic/mcuboot
+    revision: 328459ebce7447e5f92ab177833c636da8ce68fb
+    path: bootloader/mcuboot
+  - name: micro-ecc
+    url: https://github.com/Atmosic/micro-ecc
+    revision: d470cfa986a169bd3701b3be8451e741ac075ec5
+    path: modules/crypto/micro-ecc
+  - name: zephyr
+    url: https://github.com/Atmosic/zephyr
+    revision: 7181ea80efac20476269873c060487d4009ee292
+    west-commands: scripts/west-commands.yml
+  - name: cmsis
+    url: https://github.com/zephyrproject-rtos/cmsis
+    revision: 4b96cbb174678dcd3ca86e11e1f24bc5f8726da0
+    path: modules/hal/cmsis
+    groups:
+    - hal
+  - name: littlefs
+    url: https://github.com/zephyrproject-rtos/littlefs
+    revision: 408c16a909dd6cf128874a76f21c793798c9e423
+    path: modules/fs/littlefs
+    groups:
+    - fs
+  - name: mbedtls
+    url: https://github.com/zephyrproject-rtos/mbedtls
+    revision: 2f24831ee13d399ce019c4632b0bcd440a713f7c
+    path: modules/crypto/mbedtls
+    groups:
+    - crypto
+  - name: tinycrypt
+    url: https://github.com/zephyrproject-rtos/tinycrypt
+    revision: 1012a3ebee18c15ede5efc8332ee2fc37817670f
+    path: modules/crypto/tinycrypt
+    groups:
+    - crypto
+  - name: zcbor
+    url: https://github.com/zephyrproject-rtos/zcbor
+    revision: 75d088037eb237b18e7ec1f47c9ce494b9b95aab
+    path: modules/lib/zcbor
   self:
     path: openair
     west-commands: west/west-commands.yml
-    import: submanifests

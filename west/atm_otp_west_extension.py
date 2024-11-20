@@ -161,7 +161,8 @@ class AtmOtpCommand(WestCommand):
         self.board = args.board
 
         plat_dir = atm_openocd.get_atm_plat_dir_from_board(self.board)
-        if (plat_dir == "ATM33xx-5"):
+        plat = os.path.basename(os.path.normpath(plat_dir))
+        if (plat == "ATM33xx-5"):
             self.OTParray = Atmx3_OTPArray
         elif ("ATM34xx" in self.atm_plat):
             self.OTParray = Atm34_OTPArray

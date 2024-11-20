@@ -1,0 +1,9 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_BP_CLOCK
+	bool "Atmosic Backplane Clock module"
+	depends on !SOC_SERIES_ATMX2
+	default y if TRUSTED_EXECUTION_NONSECURE && (SOC_FLASH_ATM || BT || ATM_ATLC || DTOP_BYPASS || ENTROPY_ATM_TRNG || PM || ADC || ATM_SPI)
+	default y if TRUSTED_EXECUTION_SECURE && !BOOTLOADER_MCUBOOT

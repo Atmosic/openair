@@ -9,19 +9,20 @@
  *
  *******************************************************************************
  */
-
+#include "arch.h"
+#ifdef CONFIG_SOC_FAMILY_ATM
+#include <zephyr/kernel.h>
+#include <zephyr/sys/base64.h>
+#else
+#include "atm_base64.h"
+#include "timer.h"
+#endif
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "arch.h"
-#include "atm_base64.h"
 #include "atm_sha2.h"
 #include "atm_debug_auth.h"
 #include "sec_assert.h"
-#include "timer.h"
-#ifndef DEBUG_AUTH_STATIC_CHALLENGE
-#include "trng_pio.h"
-#endif
 #include "uECC.h"
 
 #ifdef DEBUG_AUTH_STATIC_CHALLENGE
@@ -34,11 +35,11 @@
 
 #define CHALLENGE_WORDS 16
 #define ENCODED_CHALLENGE_LEN \
-    atm_base64_encode_len(CHALLENGE_WORDS * sizeof(uint32_t))
+    atm_debug_auth_b64_encode_len(CHALLENGE_WORDS * sizeof(uint32_t))
 #define ECC_BYTES 32
 #define ECC_SIG_SIZE (ECC_BYTES * 2)
 #define ECC_KEY_SIZE (ECC_BYTES * 2)
-#define ENCODED_SIG_LEN atm_base64_encode_len(ECC_BYTES * 2)
+#define ENCODED_SIG_LEN atm_debug_auth_b64_encode_len(ECC_BYTES * 2)
 #define OUT_BUF_SIZE 150
 
 #define INITIAL_ENTROPY_WORDS (SHA256_DIG_WORDS * 3 / 2)
@@ -73,6 +74,7 @@ static debug_write_t uart_write_cb;
 static uint8_t static_challenge[SHA256_DIG_LEN];
 static bool static_challenge_valid;
 #else
+static debug_trng_get_t trng_get_entropy_cb;
 static uint8_t hmac_key[HMAC_KEY_LEN];
 static uint8_t hmac_value[SHA256_DIG_LEN];
 static size_t output_left;
@@ -80,6 +82,64 @@ static size_t reseed;
 static uint32_t challenge[CHALLENGE_WORDS];
 static bool challenge_valid;
 #endif
+
+static inline int atm_debug_auth_b64_encode_len(size_t len)
+{
+#ifdef CONFIG_SOC_FAMILY_ATM
+    int encode_len;
+    base64_encode(NULL, 0, &encode_len, NULL, len);
+    return encode_len;
+#else
+    return atm_base64_encode_len(len);
+#endif
+}
+
+/**
+ * @brief Encode data in base64 format
+ * @param[in] input pointer to input buffer
+ * @param[in] input_len size of input
+ * @param[out] output pointer to output base64 buffer
+ * @param[in] output_len size of output base64 buffer, including null terminator
+ * @return number of bytes encoded, or negative on error
+ */
+static inline int atm_debug_auth_b64_encode(const void *input,
+    const size_t input_len, char *output, const size_t output_len)
+{
+#ifdef CONFIG_SOC_FAMILY_ATM
+    size_t olen;
+    int ret = base64_encode(output, output_len, &olen, input, input_len);
+    // base64_encode returns 0 on success
+    if (ret < 0) {
+	return ret;
+    }
+    return olen;
+#else
+    return atm_base64_encode(input, input_len, output, output_len);
+#endif
+}
+
+/**
+ * @brief Decode data in base64 format
+ * @param[in] input pointer to input buffer
+ * @param[in] input_len size of input
+ * @param[out] output pointer to output base64 buffer
+ * @param[in] output_len size of output base64 buffer, including null terminator
+ * @return number of bytes decoded, or negative on error
+ */
+static inline int atm_debug_auth_b64_decode(const void *input,
+    const size_t input_len, char *output, const size_t output_len)
+{
+#ifdef CONFIG_SOC_FAMILY_ATM
+    size_t olen;
+    int ret = base64_decode(output, output_len, &olen, input, input_len);
+    if (ret < 0) {
+	return ret;
+    }
+    return olen;
+#else
+    return atm_base64_decode(input, input_len, output, output_len);
+#endif
+}
 
 #ifndef DEBUG_AUTH_STATIC_CHALLENGE
 static void hmac_drbg_update(uint8_t const *seed, size_t const seed_len)
@@ -134,7 +194,7 @@ static void hmac_drbg_reseed(void)
 {
     uint32_t entropy[INITIAL_ENTROPY_WORDS];
     for (size_t i = 0; i < INITIAL_ENTROPY_WORDS; i++) {
-	entropy[i] = trng_pio_get_entropy();
+	entropy[i] = trng_get_entropy_cb();
     }
     hmac_drbg_update((uint8_t *)entropy,
 	INITIAL_ENTROPY_WORDS * sizeof(uint32_t));
@@ -238,9 +298,9 @@ static atm_debug_auth_result_t request_handler(__UNUSED char const *args,
 	output_response("Internal failure\n");
 	return ATM_DEBUG_AUTH_RESULT_INTERNAL_FAILURE;
     }
-    char b64_challenge[atm_base64_encode_len(
+    char b64_challenge[atm_debug_auth_b64_encode_len(
 	CHALLENGE_WORDS * sizeof(uint32_t))];
-    atm_base64_encode(challenge, CHALLENGE_WORDS * sizeof(uint32_t),
+    atm_debug_auth_b64_encode(challenge, CHALLENGE_WORDS * sizeof(uint32_t),
 	b64_challenge, ENCODED_CHALLENGE_LEN);
     output_response("Challenge: %s\n", b64_challenge);
     return ATM_DEBUG_AUTH_RESULT_OK;
@@ -290,9 +350,9 @@ static atm_debug_auth_result_t static_request_handler(__UNUSED char const *args,
 	generate_static_challenge();
     }
     if (static_challenge_valid) {
-	char b64_challenge[atm_base64_encode_len(SHA256_DIG_LEN)];
-	atm_base64_encode(static_challenge, SHA256_DIG_LEN, b64_challenge,
-	    atm_base64_encode_len(SHA256_DIG_LEN));
+	char b64_challenge[atm_debug_auth_b64_encode_len(SHA256_DIG_LEN)];
+	atm_debug_auth_b64_encode(static_challenge, SHA256_DIG_LEN,
+	    b64_challenge, atm_debug_auth_b64_encode_len(SHA256_DIG_LEN));
 	output_response("Static Challenge: %s\n", b64_challenge);
 	return ATM_DEBUG_AUTH_RESULT_OK;
     } else {
@@ -306,8 +366,8 @@ static atm_debug_auth_result_t static_response_handler(char const *arguments,
 {
     uint8_t signature[ECC_SIG_SIZE];
     size_t sig_len = strcspn(arguments, " \r\n");
-    int decoded_len =
-	atm_base64_decode(arguments, sig_len, signature, ECC_SIG_SIZE);
+    int decoded_len = atm_debug_auth_b64_decode(arguments, sig_len,
+	(char *)signature, ECC_SIG_SIZE);
     if (decoded_len != ECC_SIG_SIZE) {
 	output_response("Signature decode bad\n");
 	return ATM_DEBUG_AUTH_RESULT_FAILURE;
@@ -335,8 +395,8 @@ static atm_debug_auth_result_t response_handler(char const *arguments,
 {
     uint8_t signature[ECC_SIG_SIZE];
     size_t sig_len = strcspn(arguments, " \r\n");
-    int decoded_len =
-	atm_base64_decode(arguments, sig_len, signature, ECC_SIG_SIZE);
+    int decoded_len = atm_debug_auth_b64_decode(arguments, sig_len,
+	(char *)signature, ECC_SIG_SIZE);
     if (decoded_len != ECC_SIG_SIZE) {
 	output_response("Signature decode bad\n");
 	return ATM_DEBUG_AUTH_RESULT_FAILURE;
@@ -366,11 +426,16 @@ static const handler_entry_t handlers[] = {
 #endif
 };
 
-void atm_debug_auth_init(uint8_t const *key, debug_write_t write_cb)
+void atm_debug_auth_init(uint8_t const *key, debug_write_t write_cb
+#ifndef DEBUG_AUTH_STATIC_CHALLENGE
+    , debug_trng_get_t trng_get_cb
+#endif
+)
 {
     public_key = key;
     uart_write_cb = write_cb;
 #ifndef DEBUG_AUTH_STATIC_CHALLENGE
+    trng_get_entropy_cb = trng_get_cb;
     hmac_drbg_init();
 #endif
 }

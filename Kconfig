@@ -2,7 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+rsource "drivers/Kconfig"
 rsource "lib/Kconfig"
 rsource "modules/hal_atmosic/Kconfig"
 rsource "tools/Kconfig"
 rsource "subsys/Kconfig"
+
+config UU_TEST_OPENAIR
+	string "Add files in openair for code coverage"
+	depends on AUTO_TEST && COVERAGE && !NATIVE_BUILD
+	help
+	  Target "app" is automatically added coverage in compile options
+	  Set files for example:
+	    "app_batt.c;atm_settings.c"

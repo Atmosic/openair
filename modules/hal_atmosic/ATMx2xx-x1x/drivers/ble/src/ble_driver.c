@@ -5,7 +5,7 @@
  *
  * @brief Atmosic BLE link layer - HCI driver
  *
- * Copyright (C) Atmosic 2018-2023
+ * Copyright (C) Atmosic 2018-2024
  *
  *******************************************************************************
  */
@@ -23,7 +23,7 @@
 #include <zephyr/sys_clock.h>
 
 #include <zephyr/sys/byteorder.h>
-
+#include <zephyr/random/random.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/drivers/bluetooth.h>
@@ -277,6 +277,21 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
     return 0;
 }
 
+#ifndef CONFIG_CTR_DRBG_CSPRNG_GENERATOR
+#error CTR_DRBG must be enabled for controller
+#endif
+
+static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
+{
+    int ret = sys_csrand_get(value, sizeof(*value));
+    if (ret) {
+	__ASSERT(0, "csrand failed: %d", ret);
+	// fall back to default handler
+	return (RV_NEXT);
+    }
+    return (RV_DONE);
+}
+
 static int
 ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
 {
@@ -285,6 +300,7 @@ ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
     struct hci_data *hci = dev->data;
     hci->recv = recv;
 
+    RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
     rep_vec_add_last(&rv_appm_init, &ble_rv_appm_last_init);
     plf_rwip_eif_get = ble_rwip_eif_get;
 

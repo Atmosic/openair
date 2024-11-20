@@ -5,12 +5,15 @@
  *
  * @brief Power Management Unit internal APIs
  *
- * Copyright (C) Atmosic 2023
+ * Copyright (C) Atmosic 2023-2024
  *
  ******************************************************************************
  */
 
 #pragma once
+
+#include <stdbool.h>
+#include <stdint.h>
 
 #ifndef PMU_INTERNAL_GUARD
 #error "pmu_internal.h should only be included in pmu source files"
@@ -41,6 +44,8 @@ void pmu_nonharv(void);
 void pmu_install_hib_repvec(void);
 void pmu_core_init(nonrf_vrange_t range, vbat_level_t level,
     uint32_t vstore_lwm_mv);
+bool pmu_read_no_energy4tx(void);
+void pmu_configure_brwnout(void);
 
 #ifdef __cplusplus
 }

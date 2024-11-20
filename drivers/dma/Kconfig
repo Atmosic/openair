@@ -1,0 +1,14 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_DMA
+	bool "Atmosic DMA module"
+	depends on !SOC_SERIES_ATMX2
+	default y if TRUSTED_EXECUTION_NONSECURE || MCUBOOT
+
+config ATM_DMA_MINIMAL
+	bool
+	depends on ATM_DMA
+	default y if MCUBOOT
+	default y if !BT && !ATM_ATLC && !ENTROPY_ATM_TRNG

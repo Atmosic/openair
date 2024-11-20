@@ -16,6 +16,8 @@
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
 #endif
+#include "arch.h"
+#include <inttypes.h>
 #include "app_batt.h"
 #include "at_wrpr.h"
 #include "pmu.h"
@@ -198,16 +200,16 @@ static void app_batt_state_set(dev_state_t sts)
 }
 
 #if (CFG_APP_BATT_FEATURE & APP_BATT_AUTO_TIMER_BIT)
-static void app_batt_sample_cb_1st(uint8_t lvl)
+static void app_batt_sample_cb_1st(uint16_t lvl, int32_t mvolt)
 {
-    ATM_LOG(V, "1st %d%%", lvl);
+    ATM_LOG(V, "1st - lvl: %d%%, mvolt: %" PRId32, lvl / 100, mvolt);
 }
 #endif
 
-static void app_batt_sample_cb(uint8_t lvl)
+static void app_batt_sample_cb(uint16_t lvl, int32_t mvolt)
 {
     if (batt_state == DEV_ACTV) {
-	param->level_update(lvl);
+	param->level_update(lvl, mvolt);
 #if (CFG_APP_BATT_FEATURE & APP_BATT_AUTO_TIMER_BIT)
 #ifndef CONFIG_SOC_FAMILY_ATM
 	sw_timer_set(tid_batt, (lvl > APP_BATT_LOW_BATTERY_PERCENTAGE ) ?

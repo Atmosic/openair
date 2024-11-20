@@ -15,8 +15,11 @@ import subprocess
 def get_atm_plat_dir_from_board(board):
     """Generates the partial platform path from a specific board
 
+    Note: the path is relative to $ZEPHYR_BASE
+
     Returns:
         str: partial platform path
+        None: if path cannot be found
     """
     try:
         # if a revision is passed, strip it before continuing
@@ -24,14 +27,12 @@ def get_atm_plat_dir_from_board(board):
     except:
         board = board
     # if a ns board is passed, strip before continuing
-    if board.endswith('_ns'):
-        board = board[:-3]
+    if board.endswith('ns'):
+        board = board.split("/", 1)[0]
     if "ATMEVK-33" in board:
-        return "ATM33xx-5"
-    if "ATMEVK-34" in board:
-        plat = "ATM34xx"
-        rev = board.split("-")[-1]
-        return f"{plat}/rev-{rev}"
+        openocd_dir_path = os.path.join('openair', 'modules', 'hal_atmosic')
+        return os.path.join(openocd_dir_path, "ATM33xx-5")
+    return None
 
 
 
@@ -85,13 +86,11 @@ def get_atm_openocd_cfg(board):
     Returns:
         str: path to openocd.cfg
     """
-    # Unfortunately the env var ZEPHYR_MODULES is only defined during
-    # Zephyr CMake builds... so we have to derive that from ZEPHYR_BASE
-    zephyr_modules = os.path.join(os.path.dirname(
-        os.path.abspath(os.environ['ZEPHYR_BASE'])),  'modules')
-    
+    zephyr_top = os.path.dirname(
+        os.path.abspath(os.environ['ZEPHYR_BASE']))
+
     atm_plat_dir = get_atm_plat_dir_from_board(board)
-    def_path = os.path.join(zephyr_modules, 'hal', 'atmosic_lib', atm_plat_dir, 'openocd', '*openocd.cfg')
+    def_path = os.path.join(zephyr_top, atm_plat_dir, 'openocd', '*openocd.cfg')
     try:
         default = glob.glob(def_path, recursive=True)[0]
         # even if glob succeeds, sanity check file exists
@@ -125,10 +124,12 @@ class AtmOpenOCD():
 
         if not openocd_cfg:
             self.openocd_cfg = get_atm_openocd_cfg(board)
+            if self.openocd_cfg is None:
+                raise RuntimeError("Could not find Openocd config file. Please pass config file via: `--openocd_config`")
         else:
             self.openocd_cfg = openocd_cfg
 
-        if self.openocd_cfg is None:
+        if (self.openocd_cfg is None) or (not os.path.exists(self.openocd_cfg)):
             raise RuntimeError("Could not find openocd.cfg file")
 
         self.device = device

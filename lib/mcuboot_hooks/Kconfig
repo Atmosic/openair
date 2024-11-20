@@ -27,3 +27,19 @@ config ATM_MCUBOOT_SKIP_PRIMARY_VALIDATE_HIBER
 	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
 	# requires locking the primary slot with hooks+extensions
 	select ATM_MCUBOOT_LOCK_PRIMARY_SLOT
+
+config ATM_MCUBOOT_SECURE_DEBUG
+	bool "Enable secure debug authentication"
+	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	select ATM_MCUBOOT_HOOKS
+	# enable extension use in hooks to lock the slot
+	select ATM_MCUBOOT_EXT
+	select ATM_MCUBOOT_UART_DEBUG_AUTH
+	# exposes SERIAL adapter configs
+	select MCUBOOT_SERIAL_INTF
+	select ATM_SEC_COUNTER
+	select ATM_SEC_DEBUG
+	select ATM_SEC_DEBUG_AUTH
+	select BASE64
+	select SERIAL
+

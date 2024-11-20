@@ -82,8 +82,8 @@ def parse_args():
     gen_parser.add_argument("-use_mcuboot", "--use_mcuboot",
                             action='store_true',
                             help="USE_MCUBOOT enabled, default false")
-    gen_parser.add_argument("-atm_no_spe", "--atm_no_spe", action='store_true',
-                            help="ATM_NO_SPE enabled, default false")
+    gen_parser.add_argument("-merge_spe_nspe", "--merge_spe_nspe", action='store_true',
+                            help="MERGE_SPE_NSPE enabled, default false")
     gen_parser.add_argument("-use_mcuboot_overwrite", "--use_mcuboot_overwrite",
                             action='store_true',
                             help="USE_MCUBOOT_OVERWRITE enabled, default false")
@@ -112,6 +112,11 @@ def parse_args():
                               help="input partition_info file path to be merge")
     merge_parser.add_argument("-o", "--output_file", required=True, default=None,
                               help="output partition_info file path")
+    gen_parser.add_argument("-revision", "--revision", required=False,
+                            default=None, help="revision of ATM34xx")
+    gen_parser.add_argument("-split_img", "--split_img", required=False,
+                            default=None,
+                            help="Image split across multiple memory regions")
     args = parser.parse_args()
 
 
@@ -120,29 +125,41 @@ class AtmPartInfo:
         ROM_ADDR = None
         ROM_SIZE = None
         PRIMARY_IMG_START = None
+        PRIMARY_IMG_OFFSET = None
         PRIMARY_IMG_SIZE = None
         SPE_START = None
+        SPE_OFFSET = None
         SPE_SIZE = None
         NS_APP_START = None
+        NS_APP_OFFSET = None
         NS_APP_SIZE = None
         OTA_STAGING_START = None
+        OTA_STAGING_OFFSET = None
         OTA_STAGING_SIZE = None
         # For tool compatibility, this is named NVDS instead of NVS.
         NVDS_START = None
+        NVDS_OFFSET = None
         NVDS_SIZE = None
         FACTORY_DATA_START = None
+        FACTORY_DATA_OFFSET = None
         FACTORY_DATA_SIZE = None
         USER_DATA_START = None
+        USER_DATA_OFFSET = None
         USER_DATA_SIZE = None
         SEC_JRNL_START = None
+        SEC_JRNL_OFFSET = None
         SEC_JRNL_SIZE = None
         SEC_CNTRS_KEYS_START = None
+        SEC_CNTRS_KEYS_OFFSET = None
         SEC_CNTRS_KEYS_SIZE = None
         MCUBOOT_START = None
+        MCUBOOT_OFFSET = None
         MCUBOOT_SIZE = None
         MCUBOOT_SCRATCH_START = None
+        MCUBOOT_SCRATCH_OFFSET = None
         MCUBOOT_SCRATCH_SIZE = None
         ATMWSTK_START = None
+        ATMWSTK_OFFSET = None
         ATMWSTK_SIZE = None
         TOTAL_RRAM_START = None
         RRAM_START = None
@@ -150,12 +167,18 @@ class AtmPartInfo:
         USE_MCUBOOT = None
         USE_MCUBOOT_OVERWRITE = None
         MCUBOOT_MAX_IMG_SECTORS = None
+        ATM_NO_SPE = None
         EXT_FLASH_START = None
         EXT_FLASH_SIZE = None
         EXT_FLASH_MCUBOOT_SCRATCH_START = None
+        EXT_FLASH_MCUBOOT_SCRATCH_OFFSET = None
         EXT_FLASH_MCUBOOT_SCRATCH_SIZE = None
         EXT_FLASH_OTA_STAGING_START = None
+        EXT_FLASH_OTA_STAGING_OFFSET = None
         EXT_FLASH_OTA_STAGING_SIZE = None
+        EXT_FLASH_NSPE_STAGING_START = None
+        EXT_FLASH_NSPE_STAGING_OFFSET = None
+        EXT_FLASH_NSPE_STAGING_SIZE = None
         EXT_FLASH_UNUSED_START = None
         EXT_FLASH_UNUSED_SIZE = None
         EXT_FLASH_USER_DATA_START = None
@@ -163,6 +186,8 @@ class AtmPartInfo:
         PLATFORM_NAME = None
         PLATFORM_FAMILY = None
         ERASE_BLOCK_SIZE = None
+        REV_PFX = None
+        ATM_SPLIT_IMG = None
 
 
 class PartInfoMerge:
@@ -225,7 +250,7 @@ class DevStreeParser:
         self.use_mcuboot = args.use_mcuboot
         self.use_mcuboot_overwrite = args.use_mcuboot_overwrite
         self.mcuboot_secondary_ext_flash = args.mcuboot_secondary_ext_flash
-        self.atm_no_spe = args.atm_no_spe
+        self.merge_spe_nspe = args.merge_spe_nspe
         self.part_info = None
         self.max_sector_size = None
         self.rom_start = None
@@ -236,6 +261,9 @@ class DevStreeParser:
         self.sec_jrnl_size = None
         self.sec_cntrs_keys_offset = None
         self.sec_cntrs_keys_size = None
+        self.revision = None
+        self.split_img = None
+
         if args.max_sector_size:
             self.max_sector_size = args.max_sector_size
         if args.rom_start:
@@ -250,6 +278,10 @@ class DevStreeParser:
             self.user_data_offset = int(args.user_data_offset, 16)
         if args.user_data_size:
             self.user_data_size = int(args.user_data_size, 16)
+        if args.revision:
+            self.revision = args.revision
+        if args.split_img:
+            self.split_img = args.split_img
 
     def init(self):
         dt = dtlib.DT(self.dts_file)
@@ -274,6 +306,12 @@ class DevStreeParser:
                 self.part_info.ROM_ADDR = hex(self.rom_start)
             if self.rom_size:
                 self.part_info.ROM_SIZE = hex(self.rom_size)
+        if self.merge_spe_nspe:
+            self.part_info.ATM_NO_SPE = 1
+        if self.revision:
+            self.part_info.REV_PFX = self.revision
+        if self.split_img:
+            self.part_info.ATM_SPLIT_IMG = self.split_img
 
     def debug_print(self, msg):
         if self.debug:
@@ -301,38 +339,56 @@ class DevStreeParser:
     def parsing_not_use_mcuboot(self, rram0, rram_start, rram_size):
         # PRIMARY image as RRAM
         self.part_info.PRIMARY_IMG_START = hex(rram_start)
+        self.part_info.PRIMARY_IMG_OFFSET = hex(rram_start - rram_start)
         self.part_info.PRIMARY_IMG_SIZE = hex(rram_size)
-        if not self.atm_no_spe:
-            spe_partition = utils_get_node_by_lable(rram0, "spe_partition")
-            if spe_partition:
-                ret, spe_start, spe_size = \
-                        utils_get_node_property_reg(spe_partition)
-                if ret == ST_PASS:
-                    self.debug_print(f"spe_start = {hex(spe_start)}, "
-                                    f"spe_size = {hex(spe_size)}")
+        spe_partition = utils_get_node_by_lable(rram0, "spe_partition")
+        if spe_partition:
+            ret_spe, spe_start, spe_size = \
+                utils_get_node_property_reg(spe_partition)
+            if ret_spe == ST_PASS:
+                self.debug_print(f"spe_start = {hex(spe_start)}, "
+                                 f"spe_size = {hex(spe_size)}")
+                if not self.merge_spe_nspe:
                     self.part_info.SPE_START = hex(spe_start + rram_start)
+                    self.part_info.SPE_OFFSET = hex(spe_start)
                     self.part_info.SPE_SIZE = hex(spe_size)
-            nspe_partition = utils_get_node_by_lable(rram0, "nspe_partition")
-            if nspe_partition:
-                ret, nspe_start, nspe_size = \
-                        utils_get_node_property_reg(nspe_partition)
-                if ret == ST_PASS:
-                    self.debug_print(f"nspe_start = {hex(nspe_start)}, "
-                                    f"nspe_size = {hex(nspe_size)}")
+        nspe_partition = utils_get_node_by_lable(rram0, "nspe_partition")
+        if nspe_partition:
+            ret_nspe, nspe_start, nspe_size = \
+                utils_get_node_property_reg(nspe_partition)
+            if ret_nspe == ST_PASS:
+                self.debug_print(f"nspe_start = {hex(nspe_start)}, "
+                                 f"nspe_size = {hex(nspe_size)}")
+                if not self.merge_spe_nspe:
                     self.part_info.NS_APP_START = hex(nspe_start + rram_start)
+                    self.part_info.NS_APP_OFFSET = hex(nspe_start)
                     self.part_info.NS_APP_SIZE = hex(nspe_size)
+        if not self.merge_spe_nspe:
             # ATMWSTK from fast_code_partition
-            fast_code_partition = utils_get_node_by_lable(rram0, "fast_code_partition")
+            fast_code_partition = utils_get_node_by_lable(rram0,
+                "fast_code_partition")
+            ret = ST_ERROR
             if fast_code_partition:
                 ret, atmwstk_start, atmwstk_size = \
                         utils_get_node_property_reg(fast_code_partition)
-                if ret == ST_PASS:
-                    self.debug_print(f"atmwstk_start = {hex(atmwstk_start)}, "
-                                    f"atmwstk_size = {hex(atmwstk_size)}")
-                    self.part_info.ATMWSTK_START = hex(atmwstk_start + rram_start)
-                    self.part_info.ATMWSTK_SIZE = hex(atmwstk_size)
+            else:
+                # ATMWSTK from slot2_partition
+                slot2_partition = utils_get_node_by_lable(rram0,
+                    "slot2_partition")
+                if slot2_partition:
+                    ret, atmwstk_start, atmwstk_size = \
+                        utils_get_node_property_reg(slot2_partition)
+            if ret == ST_PASS:
+                self.debug_print(f"atmwstk_start = {hex(atmwstk_start)}, "
+                    f"atmwstk_size = {hex(atmwstk_size)}")
+                self.part_info.ATMWSTK_START = hex(atmwstk_start + rram_start)
+                self.part_info.ATMWSTK_OFFSET = hex(atmwstk_start)
+                self.part_info.ATMWSTK_SIZE = hex(atmwstk_size)
         else:
-            print("to do")
+            # No MCUBOOT and Merge SPE NSPE
+            if ret_spe == ST_PASS and ret_nspe == ST_PASS:
+                self.part_info.APP_START = hex(spe_start + rram_start)
+                self.part_info.APP_SIZE = hex(spe_size + nspe_size)
 
     def parsing_use_mcuboot(self, rram0, rram_start, rram_size):
         # MCUBOOT from boot_partition
@@ -344,6 +400,7 @@ class DevStreeParser:
                 self.debug_print(f"mcuboot_start = {hex(mcuboot_start)}, "
                                 f"mcuboot_size = {hex(mcuboot_size)}")
                 self.part_info.MCUBOOT_START = hex(mcuboot_start + rram_start)
+                self.part_info.MCUBOOT_OFFSET = hex(mcuboot_start)
                 self.part_info.MCUBOOT_SIZE = hex(mcuboot_size)
         # MCUBOOT_SCRASH from scratch_partition
         scratch_partition = utils_get_node_by_lable(rram0, "scratch_partition")
@@ -355,6 +412,7 @@ class DevStreeParser:
                                 f"scratch_size = {hex(scratch_size)}")
                 self.part_info.MCUBOOT_SCRATCH_START = \
                         hex(scratch_start + rram_start)
+                self.part_info.MCUBOOT_SCRATCH_OFFSET = hex(scratch_start)
                 self.part_info.MCUBOOT_SCRATCH_SIZE = hex(scratch_size)
         # PRIMARY image from slot0_partition
         slot0_partition = utils_get_node_by_lable(rram0, "slot0_partition")
@@ -366,8 +424,9 @@ class DevStreeParser:
             self.debug_print(f"primary_start = {hex(primary_start)}, "
                             f"primary_size = {hex(primary_size)}")
             self.part_info.PRIMARY_IMG_START = hex(primary_start + rram_start)
+            self.part_info.PRIMARY_IMG_OFFSET = hex(primary_start)
             self.part_info.PRIMARY_IMG_SIZE = hex(primary_size)
-        if not self.atm_no_spe:
+        if not self.merge_spe_nspe:
             spe_partition = utils_get_node_by_lable(rram0, "spe_partition")
             if spe_partition:
                 ret, spe_start, spe_size = \
@@ -376,6 +435,7 @@ class DevStreeParser:
                     self.debug_print(f"spe_start = {hex(spe_start)}, "
                                     f"spe_size = {hex(spe_size)}")
                     self.part_info.SPE_START = hex(spe_start + rram_start)
+                    self.part_info.SPE_OFFSET = hex(spe_start)
                     self.part_info.SPE_SIZE = hex(spe_size)
             nspe_partition = utils_get_node_by_lable(rram0, "nspe_partition")
             if nspe_partition:
@@ -385,9 +445,8 @@ class DevStreeParser:
                     self.debug_print(f"nspe_start = {hex(nspe_start)}, "
                                     f"nspe_size = {hex(nspe_size)}")
                     self.part_info.NS_APP_START = hex(nspe_start + rram_start)
+                    self.part_info.NS_APP_OFFSET = hex(nspe_start)
                     self.part_info.NS_APP_SIZE = hex(nspe_size)
-        else:
-            print("to do")
         # OTA_STAGING from slot1_partition
         slot1_partition = utils_get_node_by_lable(rram0, "slot1_partition")
         if slot1_partition:
@@ -398,6 +457,7 @@ class DevStreeParser:
                                 f"ota_staging_size = {hex(ota_staging_size)}")
                 self.part_info.OTA_STAGING_START = \
                         hex(ota_staging_start + rram_start)
+                self.part_info.OTA_STAGING_OFFSET = hex(ota_staging_start)
                 self.part_info.OTA_STAGING_SIZE = hex(ota_staging_size)
         # ATMWSTK from slot2_partition
         slot2_partition = utils_get_node_by_lable(rram0, "slot2_partition")
@@ -408,6 +468,7 @@ class DevStreeParser:
                 self.debug_print(f"atmwstk_start = {hex(atmwstk_start)}, "
                                 f"atmwstk_size = {hex(atmwstk_size)}")
                 self.part_info.ATMWSTK_START = hex(atmwstk_start + rram_start)
+                self.part_info.ATMWSTK_OFFSET = hex(atmwstk_start)
                 self.part_info.ATMWSTK_SIZE = hex(atmwstk_size)
 
     def parsing_rram(self):
@@ -415,7 +476,6 @@ class DevStreeParser:
         ret, rram0_start, rram0_size = \
                 utils_get_node_property_reg(rram_controller)
         if ret == ST_ERROR:
-            print("Parsing rram_controller failed")
             return
         self.debug_print(f"rram0_start = {hex(rram0_start)}, "
                          f"rram0_size = {hex(rram0_size)}")
@@ -442,6 +502,7 @@ class DevStreeParser:
             self.debug_print(f"nvds_start = {hex(nvds_start)}, "
                              f"nvds_size = {hex(nvds_size)}")
             self.part_info.NVDS_START = hex(nvds_start + rram0_start)
+            self.part_info.NVDS_OFFSET = hex(nvds_start)
             self.part_info.NVDS_SIZE = hex(nvds_size)
         # factory data from factory_partition
         factory_data_partition = utils_get_node_by_lable(rram0, "factory_partition")
@@ -453,7 +514,9 @@ class DevStreeParser:
                 return
             self.debug_print(f"factory_data_start = {hex(factory_data_start)}, "
                              f"factory_data_size = {hex(factory_data_size)}")
-            self.part_info.FACTORY_DATA_START = hex(factory_data_start + rram0_start)
+            self.part_info.FACTORY_DATA_START = \
+                hex(factory_data_start + rram0_start)
+            self.part_info.FACTORY_DATA_OFFSET = hex(factory_data_start)
             self.part_info.FACTORY_DATA_SIZE = hex(factory_data_size)
         # erase block size from erase-block-size
         erase_block_size = rram0.props.get('erase-block-size', 'Not found')
@@ -463,6 +526,7 @@ class DevStreeParser:
         if self.user_data_offset:
             self.part_info.USER_DATA_START = \
                     hex(self.user_data_offset + rram0_start)
+            self.part_info.USER_DATA_OFFSET = hex(self.user_data_offset)
         if self.user_data_size:
             self.part_info.USER_DATA_SIZE = hex(self.user_data_size)
 
@@ -472,7 +536,6 @@ class DevStreeParser:
             ret, flash0_start, flash0_size = \
                     utils_get_node_property_reg(flash_controller)
             if ret == ST_ERROR:
-                print("Parsing flash_controller failed")
                 return
             self.debug_print(f"flash0_start = {hex(flash0_start)}, "
                          f"flash0_size = {hex(flash0_size)}")
@@ -494,6 +557,8 @@ class DevStreeParser:
                              f"scratch_size = {hex(scratch_size)}")
                 self.part_info.EXT_FLASH_MCUBOOT_SCRATCH_START = \
                     hex(scratch_start + flash0_start)
+                self.part_info.EXT_FLASH_MCUBOOT_SCRATCH_OFFSET = \
+                    hex(scratch_start)
                 self.part_info.EXT_FLASH_MCUBOOT_SCRATCH_SIZE = hex(scratch_size)
         # OTA_STAGING from slot1_partition
         slot1_partition = utils_get_node_by_lable(flash0, "slot1_partition")
@@ -505,8 +570,44 @@ class DevStreeParser:
                              f"ota_staging_size = {hex(ota_staging_size)}")
                 self.part_info.EXT_FLASH_OTA_STAGING_START = \
                     hex(ota_staging_start + flash0_start)
+                self.part_info.EXT_FLASH_OTA_STAGING_OFFSET = \
+                    hex(ota_staging_start)
                 self.part_info.EXT_FLASH_OTA_STAGING_SIZE = hex(ota_staging_size)
-        if not self.atm_no_spe:
+        # NSPE from slot2_partition
+        slot2_partition = utils_get_node_by_lable(flash0, "slot2_partition")
+        if slot2_partition:
+            ret, nspe_start, nspe_size = \
+                utils_get_node_property_reg(slot2_partition)
+            if ret == ST_PASS:
+                self.debug_print(f"nspe_start = {hex(nspe_start)}, "
+                                f"nspe_size = {hex(nspe_size)}")
+                self.part_info.NS_APP_START = hex(nspe_start + flash0_start)
+                self.part_info.NS_APP_OFFSET = hex(nspe_start)
+                self.part_info.NS_APP_SIZE = hex(nspe_size)
+        # NSPE_STAGING from slot3_partition
+        slot3_partition = utils_get_node_by_lable(flash0, "slot3_partition")
+        if slot3_partition:
+            ret, nspe_staging_start, nspe_staging_size = \
+                    utils_get_node_property_reg(slot3_partition)
+            if ret == ST_PASS:
+                self.debug_print(f"nspe_staging_start = {hex(nspe_staging_start)}, "
+                             f"nspe_staging_size = {hex(nspe_staging_size)}")
+                self.part_info.EXT_FLASH_NSPE_STAGING_START = \
+                    hex(nspe_staging_start + flash0_start)
+                self.part_info.EXT_FLASH_NSPE_STAGING_OFFSET = \
+                    hex(nspe_staging_start)
+                self.part_info.EXT_FLASH_NSPE_STAGING_SIZE = hex(nspe_staging_size)
+        if not self.merge_spe_nspe and not self.split_img:
+            spe_partition = utils_get_node_by_lable(flash0, "spe_partition")
+            if spe_partition:
+                ret, spe_start, spe_size = \
+                        utils_get_node_property_reg(spe_partition)
+                if ret == ST_PASS:
+                    self.debug_print(f"spe_start = {hex(spe_start)}, "
+                                    f"spe_size = {hex(spe_size)}")
+                    self.part_info.SPE_START = hex(spe_start + flash0_start)
+                    self.part_info.SPE_OFFSET = hex(spe_start)
+                    self.part_info.SPE_SIZE = hex(spe_size)
             nspe_partition = utils_get_node_by_lable(flash0, "nspe_partition")
             if nspe_partition:
                 ret, nspe_start, nspe_size = \
@@ -515,9 +616,33 @@ class DevStreeParser:
                     self.debug_print(f"nspe_start = {hex(nspe_start)}, "
                                  f"nspe_size = {hex(nspe_size)}")
                     self.part_info.NS_APP_START = hex(nspe_start + flash0_start)
+                    self.part_info.NS_APP_OFFSET = hex(nspe_start)
                     self.part_info.NS_APP_SIZE = hex(nspe_size)
-        else:
-            print("to do")
+        # settings data from storage_partition
+        storage_partition = utils_get_node_by_lable(flash0, "storage_partition")
+        if storage_partition:
+            ret, nvds_start, nvds_size = \
+                    utils_get_node_property_reg(storage_partition)
+            if ret == ST_ERROR:
+                return
+            self.debug_print(f"nvds_start = {hex(nvds_start)}, "
+                             f"nvds_size = {hex(nvds_size)}")
+            self.part_info.NVDS_START = hex(nvds_start + flash0_start)
+            self.part_info.NVDS_OFFSET = hex(nvds_start)
+            self.part_info.NVDS_SIZE = hex(nvds_size)
+        # factory data from factory_partition
+        factory_data_partition = utils_get_node_by_lable(flash0, "factory_partition")
+        if factory_data_partition:
+            ret, factory_data_start, factory_data_size = \
+                    utils_get_node_property_reg(factory_data_partition)
+            if ret == ST_ERROR:
+                return
+            self.debug_print(f"factory_data_start = {hex(factory_data_start)}, "
+                             f"factory_data_size = {hex(factory_data_size)}")
+            self.part_info.FACTORY_DATA_START = \
+                hex(factory_data_start + flash0_start)
+            self.part_info.FACTORY_DATA_OFFSET = hex(factory_data_start)
+            self.part_info.FACTORY_DATA_SIZE = hex(factory_data_size)
 
     def parsing_ext_flash(self):
         flash_controller = utils_get_node_by_lable(self.dt, "flash_controller")
@@ -546,6 +671,7 @@ class DevStreeParser:
                 self.debug_print(f"mcuboot_start = {hex(mcuboot_start)}, "
                                 f"mcuboot_size = {hex(mcuboot_size)}")
                 self.part_info.MCUBOOT_START = hex(mcuboot_start + flash0_start)
+                self.part_info.MCUBOOT_OFFSET = hex(mcuboot_start)
                 self.part_info.MCUBOOT_SIZE = hex(mcuboot_size)
         # MCUBOOT_SCRASH from scratch_partition
         scratch_partition = utils_get_node_by_lable(flash0, "scratch_partition")
@@ -557,6 +683,7 @@ class DevStreeParser:
                                 f"scratch_size = {hex(scratch_size)}")
                 self.part_info.MCUBOOT_SCRATCH_START = \
                         hex(scratch_start + flash0_start)
+                self.part_info.MCUBOOT_SCRATCH_OFFSET = hex(scratch_start)
                 self.part_info.MCUBOOT_SCRATCH_SIZE = hex(scratch_size)
         # PRIMARY image from slot0_partition
         slot0_partition = utils_get_node_by_lable(flash0, "slot0_partition")
@@ -568,6 +695,7 @@ class DevStreeParser:
             self.debug_print(f"primary_start = {hex(primary_start)}, "
                             f"primary_size = {hex(primary_size)}")
             self.part_info.PRIMARY_IMG_START = hex(primary_start + flash0_start)
+            self.part_info.PRIMARY_IMG_OFFSET = hex(primary_start)
             self.part_info.PRIMARY_IMG_SIZE = hex(primary_size)
         # OTA_STAGING from slot1_partition
         slot1_partition = utils_get_node_by_lable(flash0, "slot1_partition")
@@ -579,6 +707,7 @@ class DevStreeParser:
                                 f"ota_staging_size = {hex(ota_staging_size)}")
                 self.part_info.OTA_STAGING_START = \
                         hex(ota_staging_start + flash0_start)
+                self.part_info.OTA_STAGING_OFFSET = hex(ota_staging_start)
                 self.part_info.OTA_STAGING_SIZE = hex(ota_staging_size)
         # settings data from storage_partition
         storage_partition = utils_get_node_by_lable(flash0, "storage_partition")
@@ -591,6 +720,7 @@ class DevStreeParser:
             self.debug_print(f"nvds_start = {hex(nvds_start)}, "
                              f"nvds_size = {hex(nvds_size)}")
             self.part_info.NVDS_START = hex(nvds_start + flash0_start)
+            self.part_info.NVDS_OFFSET = hex(nvds_start)
             self.part_info.NVDS_SIZE = hex(nvds_size)
         # factory data from factory_partition
         factory_data_partition = utils_get_node_by_lable(flash0, "factory_partition")
@@ -602,7 +732,9 @@ class DevStreeParser:
                 return
             self.debug_print(f"factory_data_start = {hex(factory_data_start)}, "
                              f"factory_data_size = {hex(factory_data_size)}")
-            self.part_info.FACTORY_DATA_START = hex(factory_data_start + flash0_start)
+            self.part_info.FACTORY_DATA_START = \
+                hex(factory_data_start + flash0_start)
+            self.part_info.FACTORY_DATA_OFFSET = hex(factory_data_start)
             self.part_info.FACTORY_DATA_SIZE = hex(factory_data_size)
         # erase block size from erase-block-size
         erase_block_size = flash0.props.get('erase-block-size', 'Not found')
@@ -617,9 +749,8 @@ class DevStreeParser:
             if ret == ST_PASS:
                 self.debug_print(f"sec_jrnl_start = {hex(sec_jrnl_start)}, "
                          f"sec_jrnl_size = {hex(sec_jrnl_size)}")
-                if sec_jrnl_start > SEC_BASE_ADDR:
-                    sec_jrnl_start = sec_jrnl_start - SEC_BASE_ADDR
             self.part_info.SEC_JRNL_START = hex(sec_jrnl_start)
+            self.part_info.SEC_JRNL_OFFSET = hex(sec_jrnl_start - SEC_BASE_ADDR)
             self.part_info.SEC_JRNL_SIZE = hex(sec_jrnl_size)
 
         sec_cntr_keys = utils_get_node_by_lable(self.dt, "sec_cntr_keys")
@@ -630,9 +761,9 @@ class DevStreeParser:
                 self.debug_print(
                         f"sec_cntr_keys_start = {hex(sec_cntr_keys_start)}, "
                         f"sec_cntr_keys_size = {hex(sec_cntr_keys_size)}")
-                if sec_cntr_keys_start > SEC_BASE_ADDR:
-                    sec_cntr_keys_start = sec_cntr_keys_start - SEC_BASE_ADDR
             self.part_info.SEC_CNTRS_KEYS_START = hex(sec_cntr_keys_start)
+            self.part_info.SEC_CNTRS_KEYS_OFFSET = \
+                hex(sec_cntr_keys_start - SEC_BASE_ADDR)
             self.part_info.SEC_CNTRS_KEYS_SIZE = hex(sec_cntr_keys_size)
 
     def summary(self):

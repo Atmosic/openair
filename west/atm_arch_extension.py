@@ -27,7 +27,7 @@ TYPE_EXTRA_FILE = 5
 TYPE_FACTORY_DATA = 6
 
 ARCH_USAGE = ''' \
-west atmarch [-h] [-i {input file name} | --append] [-s] [-d]
+west atm_arch [-h] [-i {input file name} | --append] [-s] [-d]
            [-o {output file name}]
            [-p {partition_info map file}]
            [--atm_isp_path {atm_isp exe file}]
@@ -115,31 +115,65 @@ class AtmIsp:
             region_size = self.partInfo.FACTORY_DATA_SIZE
             extra_info = 'FACTORY_DATA'
         elif load_type == TYPE_SPE:
-            if not self.partInfo.SPE_START or \
-                    not self.partInfo.SPE_SIZE:
-                print(f"Cannot find SPE_START and SPE_SIZE info")
-                sys.exit(1)
-            region_start = self.partInfo.SPE_START
-            region_size = self.partInfo.SPE_SIZE
-            extra_info = 'BOOTLOADER'
-        elif load_type == TYPE_APP:
-            if not hasattr(self.partInfo, 'USE_MCUBOOT'):
-                extra_info = 'APP'
-                if not self.partInfo.NS_APP_START or \
-                        not self.partInfo.NS_APP_SIZE:
-                    print(f"Cannot find NS_APP_START and NS_APP_SIZE info")
-                    sys.exit(1)
-                region_start = self.partInfo.NS_APP_START
-                region_size = self.partInfo.NS_APP_SIZE
-            else:
-                extra_info = 'SIGNED_APP'
+            if hasattr(self.partInfo, 'ATM_SPLIT_IMG') and hasattr(self.partInfo, 'USE_MCUBOOT'):
                 if not self.partInfo.PRIMARY_IMG_START or \
-                        not self.partInfo.PRIMARY_IMG_SIZE:
-                    print(f"Cannot find PRIMARY_IMG_START and "
-                          "PRIMARY_IMG_SIZE info")
+                    not self.partInfo.PRIMARY_IMG_SIZE:
+                    print(f"Cannot find PRIMARY_IMG_START and PRIMARY_IMG_SIZE info")
                     sys.exit(1)
                 region_start = self.partInfo.PRIMARY_IMG_START
                 region_size = self.partInfo.PRIMARY_IMG_SIZE
+                extra_info = 'SIGNED_SPE_FASTCODE'
+            else:
+                if not self.partInfo.SPE_START or \
+                    not self.partInfo.SPE_SIZE:
+                    print(f"Cannot find SPE_START and SPE_SIZE info")
+                    sys.exit(1)
+                region_start = self.partInfo.SPE_START
+                region_size = self.partInfo.SPE_SIZE
+                extra_info = 'BOOTLOADER'
+        elif load_type == TYPE_APP:
+            if not hasattr(self.partInfo, 'USE_MCUBOOT'):
+                extra_info = 'APP'
+                if hasattr(self.partInfo, 'ATM_NO_SPE'):
+                    if not self.partInfo.APP_START or \
+                            not self.partInfo.APP_SIZE:
+                        print(f"Cannot find APP_START and APP_SIZE info")
+                        sys.exit(1)
+                    region_start = self.partInfo.APP_START
+                    region_size = self.partInfo.APP_SIZE
+                else:
+                    if hasattr(self.partInfo, 'NS_APP_START') and \
+                        hasattr(self.partInfo, 'NS_APP_SIZE'):
+                        region_start = self.partInfo.NS_APP_START
+                        region_size = self.partInfo.NS_APP_SIZE
+                    elif hasattr(self.partInfo, 'PRIMARY_IMG_START') and \
+                            hasattr(self.partInfo, 'PRIMARY_IMG_SIZE'):
+                        # atmx2 build app only without use_mcuboot
+                        region_start = self.partInfo.PRIMARY_IMG_START
+                        region_size = self.partInfo.PRIMARY_IMG_SIZE
+                    else:
+                        print(f"Cannot find NS_APP_START or PRIMARY_IMG_START "
+                              "info")
+                        sys.exit(1)
+            else:
+                if hasattr(self.partInfo, 'ATM_SPLIT_IMG'):
+                    extra_info = 'APP'
+                    if not self.partInfo.NS_APP_START or \
+                        not self.partInfo.NS_APP_SIZE:
+                        print(f"Cannot find NS_APP_START and "
+                          "NS_APP_SIZE info")
+                        sys.exit(1)
+                    region_start = self.partInfo.NS_APP_START
+                    region_size = self.partInfo.NS_APP_SIZE
+                else:
+                    extra_info = 'SIGNED_APP'
+                    if not self.partInfo.PRIMARY_IMG_START or \
+                        not self.partInfo.PRIMARY_IMG_SIZE:
+                        print(f"Cannot find PRIMARY_IMG_START and "
+                          "PRIMARY_IMG_SIZE info")
+                        sys.exit(1)
+                    region_start = self.partInfo.PRIMARY_IMG_START
+                    region_size = self.partInfo.PRIMARY_IMG_SIZE
         elif load_type == TYPE_MCUBOOT:
             if not self.partInfo.MCUBOOT_START or \
                     not self.partInfo.MCUBOOT_SIZE:

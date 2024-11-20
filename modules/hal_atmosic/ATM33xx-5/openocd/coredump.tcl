@@ -304,13 +304,4 @@ proc get_coredump { {CoreDumpFile "Coredump"} } {
     puts " Dump saved to file: $CoreDumpFile"
     puts "##########################################################"
     puts ""
-    puts "##########################################################"
-    puts " In order to do offline Coredump analysis, please use gdb "
-    puts " from toolchain version                                   "
-    puts " gcc-arm-11.2-2022.02-x86_64-arm-none-eabi or later       "
-    puts " https://developer.arm.com/tools-and-software/            "
-    puts " open-source-software/developer-tools/gnu-toolchain/      "
-    puts " downloads                                                "
-    puts "##########################################################"
-    puts ""
 }

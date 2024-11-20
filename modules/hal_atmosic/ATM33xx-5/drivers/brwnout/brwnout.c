@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include "brwnout.h"
+#include "at_wrpr.h"
 #include "rep_vec.h"
 #include "pmu_cfg.h"
 #include "pmu.h"
@@ -105,13 +106,13 @@ static void brwnout_plf_off(void)
 #endif // BOOST_FROM_VHARV_INDUCTOR || BOOST_FROM_VHARV_TWO_DIODE
 #else
     pmu_set_good2start_thr_vstore(GOODTOSTART_THR_BRWNOUT);
+#endif // (BATT_TYPE == BATT_TYPE_LI_ION)
 
     uint32_t pmu_status;
     WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
 	pmu_status = CMSDK_PSEQ->PMU_STATUS;
     } WRPR_CTRL_POP();
     DEBUG_TRACE("pmu stat: %#" PRIx32, pmu_status);
-#endif // (BATT_TYPE == BATT_TYPE_LI_ION)
     pmu_set_socoff_energy_wakeup(true);
 
     // Any non-zero duration should be fine since all we need is for the
