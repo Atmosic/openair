@@ -5,7 +5,7 @@
  *
  * @brief SPI driver
  *
- * Copyright (C) Atmosic 2018-2023
+ * Copyright (C) Atmosic 2018-2024
  *
  *******************************************************************************
  */
@@ -227,11 +227,19 @@ void spi_pmuradio_write_word(const spi_dev_t *spi, uint8_t block, uint8_t addr, 
     SPR_VERIFY(__d, __m, __reg, tmp_val); \
 } while (0)
 
+#define SPR_WRITE_NO_VERIFY(__d, __m, __reg, __val) do { \
+    uint32_t tmp_val = (__val); \
+    spi_pmuradio_write_word(__d, __m ## __REG_BLADDR, __m ## __ ## __reg, \
+	tmp_val); \
+} while (0)
+
 #define PMU_READ(__m, __reg) SPR_READ(&spi_pmu, PMU_ ## __m, __reg)
 #define PMU_VERIFY(__m, __reg, __val) \
     SPR_VERIFY(&spi_pmu, PMU_ ## __m, __reg, __val)
 #define PMU_WRITE(__m, __reg, __val) \
     SPR_WRITE(&spi_pmu, PMU_ ## __m, __reg, __val)
+#define PMU_WRITE_NO_VERIFY(__m, __reg, __val) \
+    SPR_WRITE_NO_VERIFY(&spi_pmu, PMU_ ## __m, __reg, __val)
 
 #define SWREG_READ(__m, __reg) SPR_READ(&spi_pmu, SWREG_ ## __m, __reg)
 #define SWREG_WRITE(__m, __reg, __val) \
@@ -245,6 +253,7 @@ void spi_pmuradio_write_word(const spi_dev_t *spi, uint8_t block, uint8_t addr, 
 
 #define PMU_TOP_READ(__reg) PMU_READ(TOP, __reg)
 #define PMU_TOP_WRITE(__reg, __val) PMU_WRITE(TOP, __reg, __val)
+#define PMU_TOP_WRITE_NO_VERIFY(__reg, __val) PMU_WRITE_NO_VERIFY(TOP, __reg, __val)
 
 #define PMU_WURX_READ(__reg) PMU_READ(WURX, __reg)
 #define PMU_WURX_WRITE(__reg, __val) PMU_WRITE(WURX, __reg, __val)

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 add_subdirectory(app_batt)
+add_subdirectory(app_work_q)
 add_subdirectory(atm_asm)
 add_subdirectory(atm_debug_auth)
 add_subdirectory(atm_mcuboot_ext)

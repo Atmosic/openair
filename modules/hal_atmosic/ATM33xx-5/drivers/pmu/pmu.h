@@ -44,6 +44,7 @@ extern "C" {
 
 #define VDDPA_SRC_VDDIOP 0
 #define VDDPA_SRC_VSTORE 1
+#define VDDPA_SRC_NONE 2
 
 #define VHARV_RANGE_0P4V_0P45V 0
 #define VHARV_RANGE_0P45V_0P5V 1
@@ -327,6 +328,11 @@ void pmu_set_vddiop_with_extio_sleep(bool enable);
  * @param[in] enable  Flag to enable/disable
  */
 void pmu_set_harv_indicator(bool enable);
+
+/**
+ * @brief Force PMU and SOC reset
+ */
+__NORETURN void pmu_reset(void);
 
 #ifdef __cplusplus
 }

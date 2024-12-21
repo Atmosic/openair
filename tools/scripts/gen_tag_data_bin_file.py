@@ -14,8 +14,8 @@ import os
 import subprocess
 
 class AtmSettingsInfo:
-    NVDS_START = None
-    NVDS_SIZE = None
+    STORAGE_DATA_START = None
+    STORAGE_DATA_SIZE = None
     FACTORY_DATA_START = None
     FACTORY_DATA_SIZE = None
     ERASE_BLOCK_SIZE = None
@@ -28,10 +28,10 @@ def parse_settings_info(filename):
     for line in lines:
         if "=" in line:
             key, value = line.strip().split("=")
-            if key == "NVDS_START":
-                info.NVDS_START = value
-            elif key == "NVDS_SIZE":
-                info.NVDS_SIZE = value
+            if key == "STORAGE_DATA_START":
+                info.STORAGE_DATA_START = value
+            elif key == "STORAGE_DATA_SIZE":
+                info.STORAGE_DATA_SIZE = value
             elif key == "FACTORY_DATA_START":
                 info.FACTORY_DATA_START = value
             elif key == "FACTORY_DATA_SIZE":
@@ -64,9 +64,9 @@ def parse_args(args=None):
     parser.add_argument("-p", "--partition_file", required=True,
                         default=None, help="partition_info.map file path")
     parser.add_argument("-y", "--yaml_file", required=True, default=None,
-                        help="nvs yaml file path")
+                        help="tag data yaml file path")
     parser.add_argument("-b", "--bin_file", required=True, default=None,
-                        help="nvs bin file path")
+                        help="tag datab in file path")
     parser.add_argument("-o", "--objcopy_file", required=True, default=None,
                         help="objcopy exe file path")
     return parser.parse_args(args)
@@ -103,8 +103,8 @@ def main(args=None):
     part_size = 0
     part_sector_size = int(settings_info.ERASE_BLOCK_SIZE, 16)
     if args.file_type == "settings":
-        part_start = settings_info.NVDS_START
-        part_size = int(settings_info.NVDS_SIZE, 16)
+        part_start = settings_info.STORAGE_DATA_START
+        part_size = int(settings_info.STORAGE_DATA_SIZE, 16)
     elif args.file_type == "factory":
         part_start = settings_info.FACTORY_DATA_START
         part_size = int(settings_info.FACTORY_DATA_SIZE, 16)

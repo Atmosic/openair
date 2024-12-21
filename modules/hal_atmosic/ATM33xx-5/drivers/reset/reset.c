@@ -77,13 +77,15 @@ boot_status_t boot_status(void)
 	if (!pmu_wkup_det) {
 	    ASSERT_ERR(reset_syndrome &
 		SYS_CTRL_REG_SSE200_RESET_SYNDROME_PoR_Msk);
-	    status = BOOT_STATUS_POWER_ON;
+	    if (pmu_get_soc_wdog_reset()) {
+		return BOOT_STATUS_SOC_RESET_PSEQ_WDOG;
+	    }
 #ifdef __PMU_PMU_WDOG_CTRL_MACRO__
 	    if (pmu_get_pmu_wdog_reset()) {
-		status |= BOOT_STATUS_RESET_PMU_WDOG;
+		return BOOT_STATUS_SOC_RESET_PMU_WDOG;
 	    }
 #endif
-	    return status;
+	    return BOOT_STATUS_POWER_ON;
 	}
 	if (pmu_wkup_det & PMU_WKUP_PIN) {
 	    status |= BOOT_STATUS_SOCOFF_WKUP_PIN;
@@ -93,9 +95,6 @@ boot_status_t boot_status(void)
 	}
 	if (pmu_wkup_det & PMU_WKUP_TIMER) {
 	    status |= BOOT_STATUS_SOCOFF_WKUP_TIMER;
-	}
-	if (pmu_get_soc_wdog_reset()) {
-	    status |= BOOT_STATUS_SOCOFF_WDOG_RESET;
 	}
     } else {
 	if (pseq_boot_status & PSEQ_STATUS__TIMER_TRIGGERED__MASK) {
@@ -177,8 +176,17 @@ static void reset_print(void)
 	DEBUG_TRACE("Cold boot");
 	DEBUG_TRACE_COND(is_boot_type(TYPE_POWER_ON), " Power on Reset");
     }
+    if (is_boot_type(TYPE_SOC_RESET)) {
+	DEBUG_TRACE("SOC reset");
+	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_SOC_RESET_PSEQ_WDOG),
+	    " PSEQ WDOG");
+#ifdef __PMU_PMU_WDOG_CTRL_MACRO__
+	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_SOC_RESET_PMU_WDOG),
+	    " PMU WDOG");
+#endif
+    }
     if (is_boot_type(TYPE_RESET)) {
-	DEBUG_TRACE("System reset");
+	DEBUG_TRACE("CPU reset");
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_RESET_LOCKUP),
 	    " CPU Lock-up Status");
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_RESET_WDOG),
@@ -191,10 +199,6 @@ static void reset_print(void)
 	    " Software Reset Request");
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_RESET_EXT),
 	    " External Reset Request");
-#ifdef __PMU_PMU_WDOG_CTRL_MACRO__
-	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_RESET_PMU_WDOG),
-	    " PMU WDOG Reset");
-#endif
     }
     if (is_boot_type(TYPE_HIB)) {
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_HIB_WKUP_TIMER), "timer");
@@ -229,8 +233,6 @@ static void reset_print(void)
 	    " lpcomp triggered");
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_SOCOFF_WKUP_TIMER),
 	    " timer triggered");
-	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_SOCOFF_WDOG_RESET),
-	    " wdog forced");
 	DEBUG_TRACE("SOC off wakeup");
     }
 }

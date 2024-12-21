@@ -23,6 +23,12 @@
 extern "C" {
 #endif
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+#if DT_NODE_HAS_PROP(DT_PATH(zephyr_user), usb_detec_gpios)
+#define CFG_CABLE_CHARGE
+#endif
+#endif // CONFIG_SOC_FAMILY_ATM
+
 /// Device abstract state for battery model
 typedef enum {
     /// Invalid state. Use to report error when get state.

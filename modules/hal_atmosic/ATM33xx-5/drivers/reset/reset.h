@@ -5,7 +5,7 @@
  *
  * @brief Reset driver
  *
- * Copyright (C) Atmosic 2022-2023
+ * Copyright (C) Atmosic 2022-2024
  *
  ******************************************************************************
  */
@@ -27,12 +27,14 @@ extern "C" {
 typedef enum {
     /// Power on.
     TYPE_POWER_ON,
-    /// Reset.
-    TYPE_RESET,
+    /// SOC Reset.
+    TYPE_SOC_RESET,
     /// Wake from SOC off.
     TYPE_SOCOFF,
     /// Wake from Hibernation.
     TYPE_HIB,
+    /// CPU Reset.
+    TYPE_RESET,
 } boot_type_t;
 
 /// Reset reason
@@ -97,9 +99,15 @@ typedef enum {
     SOCOFF_LPCOMP,
     /// Wake up from SOC off by timer.
     SOCOFF_TIMER,
-    /// SOC off forced by watchdog.
-    SOCOFF_WDOG,
 } boot_socoff_reason_t;
+
+/// SOC reset reason
+typedef enum {
+    /// SOC reset by PSEQ watchdog
+    SOC_RESET_PSEQ_WDOG,
+    /// SOC reset by PMU watchdog
+    SOC_RESET_PMU_WDOG,
+} boot_soc_reset_reason_t;
 
 /// Generate reason mask
 #define BOOT_MASK(reason) ((1 << (reason)) & 0xffffff)
@@ -108,10 +116,16 @@ typedef enum {
 #define BOOT_STATUS(type, mask) ((1 << (24 + (type))) + (mask))
 
 /// Boot status: highest 8 bit is mask of boot_type_t and lowest 24 bit is mask
-/// of boot_reset_reason_t, boot_hib_reason_t or boot_socoff_reason_t.
+/// of boot_*_reason_t.
 typedef enum {
     /// Reset was cold
     BOOT_STATUS_POWER_ON = BOOT_STATUS(TYPE_POWER_ON, 0),
+    /// SOC reset by PSEQ watchdog
+    BOOT_STATUS_SOC_RESET_PSEQ_WDOG = BOOT_STATUS(TYPE_SOC_RESET,
+	BOOT_MASK(SOC_RESET_PSEQ_WDOG)),
+    /// SOC reset by PMU watchdog
+    BOOT_STATUS_SOC_RESET_PMU_WDOG = BOOT_STATUS(TYPE_SOC_RESET,
+	BOOT_MASK(SOC_RESET_PMU_WDOG)),
     /// System reset.
     BOOT_STATUS_RESET_SYS = BOOT_STATUS(TYPE_RESET, BOOT_MASK(RESET_SYS)),
     /// Reset by watchdog.
@@ -133,9 +147,6 @@ typedef enum {
     /// Wake up from SOC off by timer.
     BOOT_STATUS_SOCOFF_WKUP_TIMER = BOOT_STATUS(TYPE_SOCOFF,
 	BOOT_MASK(SOCOFF_TIMER)),
-    /// SOC off forced by watchdog.
-    BOOT_STATUS_SOCOFF_WDOG_RESET = BOOT_STATUS(TYPE_SOCOFF,
-	BOOT_MASK(SOCOFF_WDOG)),
     /// Wake up from hibernation by timer.
     BOOT_STATUS_HIB_WKUP_TIMER = BOOT_STATUS(TYPE_HIB, BOOT_MASK(HIB_TIMER)),
     /// Wake up from hibernation by GPIO.

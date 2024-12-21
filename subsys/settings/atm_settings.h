@@ -23,16 +23,6 @@ extern "C" {
 #define FACTORY_DATA_KEY(subkey) MAIN_KEY(FACTORY) "/" KEY_NAME(subkey)
 #define SETTINGS_STORAGE_KEY(subkey) MAIN_KEY(SETTINGS) "/" KEY_NAME(subkey)
 
-/**
- * @brief Initialize the settings subsystem
- *
- * Initialize the settings subsystem based on the settings storage partition
- * and factory data partition defined in the device tree.
- *
- * @return 0 on success
- */
-int atm_settings_init(void);
-
 #ifdef __cplusplus
 }
 #endif

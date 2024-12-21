@@ -34,7 +34,6 @@ typedef struct {
     uint8_t batt_level;
     uint8_t vddpa_src;
     uint8_t dig_test_sel;
-    bool ext_vddio_with_vddiop_enabled;
 } pmu_core_param;
 
 bool pmu_core_init(pmu_core_param const *param);

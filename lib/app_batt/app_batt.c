@@ -67,19 +67,8 @@ static K_WORK_DELAYABLE_DEFINE(batt_timer_work, batt_timer_expire);
 
 #if defined(CONFIG_SOC_FAMILY_ATM) && \
     (CFG_APP_BATT_FEATURE & APP_BATT_HIB_RESTART_BIT)
-static uint32_t hib_restart_duration;
 #ifdef CONFIG_PM
-static void app_batt_notify_pm_state_enter(enum pm_state state)
-{
-    if (state == PM_STATE_SOFT_OFF) {
-	atm_pseq_hibernate(k_ms_to_ticks_ceil32(hib_restart_duration/10));
-    }
-}
-
-static struct pm_notifier notifier = {
-    .state_entry = app_batt_notify_pm_state_enter,
-    .state_exit = NULL,
-};
+K_TIMER_DEFINE(my_timer, NULL, NULL);
 #endif // CONFIG_PM
 #endif // CFG_APP_BATT_FEATURE & APP_BATT_HIB_RESTART_BIT
 
@@ -104,6 +93,7 @@ static void app_done(void)
 	    atm_pm_unlock(lock_hib);
 #elif defined(CONFIG_PM)
 	    pm_policy_state_lock_put(PM_STATE_SOFT_OFF, 0);
+	    k_timer_start(&my_timer, K_MSEC(APP_BATT_HIB_TIME_CS * 10), K_NO_WAIT);
 #endif // CONFIG_SOC_FAMILY_ATM
 #endif // CFG_APP_BATT_FEATURE & APP_BATT_AUTO_TIMER_BIT
 	} break;
@@ -173,8 +163,6 @@ static void app_batt_state_set(dev_state_t sts)
 #if (CFG_APP_BATT_FEATURE & APP_BATT_HIB_RESTART_BIT)
 #ifndef CONFIG_SOC_FAMILY_ATM
 	    atm_pm_set_hib_restart_time(APP_BATT_HIB_TIME_CS);
-#else
-	    hib_restart_duration = APP_BATT_HIB_TIME_CS;
 #endif // CONFIG_SOC_FAMILY_ATM
 #endif // CFG_APP_BATT_FEATURE & APP_BATT_HIB_RESTART_BIT
 	} // no break here.
@@ -319,11 +307,6 @@ void app_batt_start(app_batt_cbs_t const *init)
     tid_batt = sw_timer_alloc(batt_timer_msg_ind, NULL);
     lock_hib = atm_pm_alloc(PM_LOCK_HIBERNATE);
     atm_pm_lock(lock_hib);
-#else
-#ifdef CONFIG_PM
-    pm_notifier_register(&notifier);
-    pm_policy_state_lock_get(PM_STATE_SOFT_OFF, 0);
-#endif // CONFIG_PM
 #endif // CONFIG_SOC_FAMILY_ATM
     batt_model()->sample(app_batt_sample_cb_1st);
 #endif // CFG_APP_BATT_FEATURE & APP_BATT_AUTO_TIMER_BIT
@@ -340,8 +323,6 @@ void app_batt_stop(void)
 #if (CFG_APP_BATT_FEATURE & APP_BATT_HIB_RESTART_BIT)
 #ifndef CONFIG_SOC_FAMILY_ATM
     atm_pm_set_hib_restart_time(APP_BATT_HIB_TIME_CS);
-#else
-    hib_restart_duration = APP_BATT_HIB_TIME_CS;
 #endif // CONFIG_SOC_FAMILY_ATM
 #endif // CFG_APP_BATT_FEATURE & APP_BATT_HIB_RESTART_BIT
 #ifndef CONFIG_SOC_FAMILY_ATM
@@ -351,6 +332,7 @@ void app_batt_stop(void)
     k_work_cancel_delayable(&batt_timer_work);
 #ifdef CONFIG_PM
     pm_policy_state_lock_put(PM_STATE_SOFT_OFF, 0);
+    k_timer_start(&my_timer, K_MSEC(APP_BATT_HIB_TIME_CS * 10), K_NO_WAIT);
 #endif // CONFIG_PM
 #endif // CONFIG_SOC_FAMILY_ATM
 }

@@ -8,10 +8,10 @@
 #include <zephyr/init.h>
 #include <soc.h>
 
-#ifdef CONFIG_PLATFORM_SPECIFIC_INIT
+#ifdef CONFIG_SOC_RESET_HOOK
 #include "sec_hw_cfg.h"
 
-void z_arm_platform_init(void)
+void soc_reset_hook(void)
 {
 	sec_hw_cfg_init();
 }

@@ -244,12 +244,6 @@ static void pmu_init(void)
 #else
 	    0,
 #endif
-	.ext_vddio_with_vddiop_enabled =
-#ifdef EXTERNAL_VDDIO_WITH_VDDIOP_ENABLED 
-	    true,
-#else
-	    false,
-#endif
 	.inductance =
 #ifdef CFG_HARV_METER
 	    INDUCTOR_NHENRY,

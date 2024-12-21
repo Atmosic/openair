@@ -1,0 +1,1016 @@
+#! /usr/bin/env python3
+
+# The Atmosic In-System Programming Tool (ISP) is for bundling all
+# three types of binaries -- OTP NVDS, flash NVDS, and flash -- into a
+# single binary archive.  The ISP tool can then be used to unpack the
+# components of the archive and download them on a device.  This is
+# particularly useful for separatating the separation of firmware
+# development and firmware downloading -- a developer will use the
+# Atmosic SDK to build the flash/OTP content and archive it and then
+# hands it off to a non-SDK user who only has access to this ISP tool
+# to program devices.
+#
+# Executing this atm_isp script with the -h option shows the available
+# subcommands.  Each subcommand also has a help menu that can be shown
+# by add -h after the subcommand name.
+
+from pathlib import Path
+import argparse
+import atm_isp_python.atm_isp_pb2 as ISP
+import os
+import os.path
+import platform
+import pprint
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+def auto_int(x):
+    return int(x, 0)
+
+def parse_args(args=None, namespace=None):
+    output_base_parser = argparse.ArgumentParser(add_help=False)
+    output_base_parser\
+        .add_argument('-o', '--output',
+                      dest='output_path',
+                      metavar='NEW_ARCHIVE',
+                      help='Output archive file (default: stdout)')
+
+    base_parser = argparse.ArgumentParser(add_help=False)
+    base_parser\
+        .add_argument('-i', '--input',
+                      dest='input_path',
+                      metavar='ARCHIVE',
+                      default=os.devnull, help='Input archive file')
+
+    verbose_parser = argparse.ArgumentParser(add_help=False)
+    verbose_parser.add_argument('-v', '--verbose', dest='verbose', action="store_true", help="increase output verbosity")
+
+    openocd_load_base_parser = argparse.ArgumentParser(add_help=False, parents=[base_parser, output_base_parser, verbose_parser])
+    openocd_load_base_parser.add_argument('image', type=argparse.FileType('rb'), help='Path to image')
+
+    openocd_load_flash_base_parser = argparse.ArgumentParser(
+        add_help=False,
+        parents=[openocd_load_base_parser]
+    )
+    openocd_load_flash_base_parser.add_argument('region_start', type=auto_int, nargs='?', help='Start address of flash region to erase')
+    openocd_load_flash_base_parser.add_argument('region_size', type=auto_int, nargs='?', help='Size of flash region to erase')
+
+    openocd_erase_base_parser = argparse.ArgumentParser(add_help=False, parents=[base_parser, output_base_parser, verbose_parser])
+    openocd_erase_rram_base_parser = argparse.ArgumentParser(
+        add_help=False,
+        parents=[openocd_erase_base_parser]
+    )
+    openocd_erase_rram_base_parser.add_argument('region_start', type=auto_int, nargs='?', help='Start address of flash region to erase')
+    openocd_erase_rram_base_parser.add_argument('region_size', type=auto_int, nargs='?', help='Size of flash region to erase')
+    openocd_erase_rram_base_parser.add_argument('base_address', type=auto_int, nargs='?', help='Base address of rram')
+
+    openocd_erase_flash_base_parser = argparse.ArgumentParser(
+        add_help=False,
+        parents=[openocd_erase_base_parser]
+    )
+    openocd_erase_flash_base_parser.add_argument('region_size', type=auto_int, nargs='?', help='Size of flash region to erase')
+    openocd_erase_flash_base_parser.add_argument('address', type=auto_int, nargs='?', help='Address where image should be loaded')
+    openocd_erase_flash_base_parser.add_argument('base_address', type=auto_int, nargs='?', help='Base address of flash')
+
+    parser = argparse.ArgumentParser(description='Atmosic ISP Tool')
+    subparsers = parser.add_subparsers(dest='opcode')
+
+    init_parser = subparsers.add_parser('init', parents=[output_base_parser])
+    init_parser.add_argument('family', help='Platform family (e.g. atm2)')
+    init_parser.add_argument('name', help='Full platform name (e.g. ATM2xxx-x0x)')
+    init_parser.add_argument('board', help='Full board name (e.g. M2221, 3330e_QN, 3325_LQK)')
+    init_parser.add_argument("-r", "--revision", dest='revision', metavar='revision', required=False,  help='Platform revision (e.g. rev-2, rev-5)')
+    init_parser.add_argument("-t", "--ota", action="store_true", default=False, help="Support OTA")
+    init_parser.add_argument("-s", "--sec_dbg", action="store_true", default=False, help="Secure Debug Enable")
+    init_parser.add_argument('-sec_dbg_key_checksum', '--sec_dbg_key_checksum', dest='sec_dbg_key_checksum', metavar='sec_dbg_key_checksum', required=False,  help='Checksum of Secure Debug Key')
+    init_parser.add_argument("-b", "--sec_boot", action="store_true", default=False, help="Secure Boot Enable")
+    init_parser.add_argument('-sec_boot_key_checksum', '--sec_boot_key_checksum', dest='sec_boot_key_checksum', metavar='sec_boot_key_checksum', required=False,  help='Checksum of Secure Boot Key')
+    init_parser.add_argument('-sec_dbg_static_unlock', '--sec_dbg_static_unlock',action="store_true", default=False, help="Secure Debug Static Unlock")
+    init_parser.add_argument("-z", "--zephyr", action="store_true", default=False, help="With Zephyr SDK")
+
+    openocd_load_flash_parser = subparsers.add_parser(
+        'loadFlash',
+        parents=[openocd_load_flash_base_parser]
+    )
+
+    openocd_load_flash_parser.add_argument('address', type=auto_int, nargs='?',
+        help='Address where image should be loaded')
+    openocd_load_flash_parser.add_argument('-extrainfo', '--extrainfo', help='extra infomation', required=False)
+    openocd_load_flash_parser.add_argument('-mpr_start', '--mpr_start',
+        dest='mpr_start', metavar='MPR_START', type=auto_int, required=False,  help='MPR_START')
+    openocd_load_flash_parser.add_argument('-mpr_size', '--mpr_size',
+        dest='mpr_size', metavar='MPR_SIZE', type=auto_int, required=False, help='MPR_SIZE')
+    openocd_load_flash_parser.add_argument('-mpr_lock_size', '--mpr_lock_size',
+        dest='mpr_lock_size', metavar='MPR_LOCK_SIZE', type=auto_int, required=False, help='MPR_LOCK_SIZE')
+
+    openocd_load_flash_nvds_parser = subparsers.add_parser(
+        'loadFlashNvds',
+        parents=[openocd_load_flash_base_parser]
+    )
+    openocd_load_flash_nvds_parser.add_argument('-extrainfo', '--extrainfo', help='extra infomation', required=False)
+
+    openocd_load_otp_nvds_parser = subparsers.add_parser(
+        'loadOtpNvds',
+        parents=[openocd_load_base_parser]
+    )
+
+    openocd_load_rram_flash_parser = subparsers.add_parser(
+        'loadRram',
+        parents=[openocd_load_flash_base_parser]
+    )
+
+    openocd_erase_rram_flash_parser = subparsers.add_parser(
+        'eraseRram',
+        parents=[openocd_erase_rram_base_parser]
+    )
+
+    openocd_erase_rram_flash_parser = subparsers.add_parser(
+        'eraseFlash',
+        parents=[openocd_erase_flash_base_parser]
+    )
+
+    openocd_load_rram_flash_parser.add_argument('address', type=auto_int, nargs='?',
+        help='Address where image should be loaded')
+    openocd_load_rram_flash_parser.add_argument('-mpr_start', '--mpr_start',
+        dest='mpr_start', metavar='MPR_START', type=auto_int, required=False,  help='MPR_START')
+    openocd_load_rram_flash_parser.add_argument('-mpr_size', '--mpr_size',
+        dest='mpr_size', metavar='MPR_SIZE', type=auto_int, required=False, help='MPR_SIZE')
+    openocd_load_rram_flash_parser.add_argument('-mpr_lock_size', '--mpr_lock_size',
+        dest='mpr_lock_size', metavar='MPR_LOCK_SIZE', type=auto_int, required=False, help='MPR_LOCK_SIZE')
+    openocd_load_rram_flash_parser.add_argument('-extrainfo', '--extrainfo', help='extra infomation', required=False)
+
+    extend_parser = argparse.ArgumentParser(add_help=False, parents=[base_parser, output_base_parser, verbose_parser])
+    extend_parser.add_argument('image', type=argparse.FileType('rb'), help='Path to image')
+    cmd_extend_parser = subparsers.add_parser(
+        'cmdExtend',
+        parents=[extend_parser]
+    )
+    cmd_extend_parser.add_argument('type', type=auto_int, nargs='?', help='Image Type: 0:txt, 1:script, 2:binary')
+    cmd_extend_parser.add_argument('-extrainfo', '--extrainfo', help='extra infomation', required=False)
+
+    decode_parser = subparsers.add_parser('decode', parents=[base_parser])
+
+    burn_parser = subparsers.add_parser('burn', parents=[base_parser])
+    burn_parser.add_argument('-r', '--openocd_pkg_root', help='Path to directory where openocd and its scripts are found')
+    burn_parser.add_argument('-E', '--openocd_script_only', action='store_true', help='Stop after preparing OpenOCD script')
+    burn_parser.add_argument('-e', '--erase_workarounds', action='store_true', help='Erase workaround tags in OTP before loading OTP')
+    burn_parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
+    burn_parser.add_argument('-c', '--check_image', action='store_true', help='Verify OTP/flash image after burning/loading')
+    burn_parser.add_argument('-t', '--tcl_script', help='Path to output Jim Tcl script for use by OpenOCD (generates Jim Tcl script only; delays all operations post-unpacking of archive to Tcl/OpenOCD); implies -E')
+    burn_parser.add_argument('-d', '--dst_dir', help='Use this directory to dump openocd script in; implies -E')
+    burn_parser.add_argument('-p', '--program_only', action='store_true', help='Program the device only (no reset hard on exit)')
+    burn_parser.add_argument('-n', '--no_reset_target', action='store_true', help='Program without reset target')
+    burn_parser.add_argument('-s', '--basename_subst', action='append', help='Substitution for image basenames (delimiter is =), e.g. NVDS=flash_nvds.bin', default=['NVDS=flash_nvds.bin'])
+    burn_parser.add_argument('-f', '--fast_load', action='store_true', help='Fast load support')
+    burn_parser.add_argument('-b', '--fl_bin_path', help='fast load bin file path implies -f ', required=False)
+    burn_parser.add_argument("-z", "--zephyr", action="store_true", default=False, help="With Zephyr SDK")
+    return parser.parse_args(args, namespace)
+
+def strattr(a, attr=None, fmt=str, treat_0_as_undef=False):
+    if type(a) == int:
+        if a == 0 and treat_0_as_undef:
+            return ''
+    if type(a) == str:
+        fmt_str = a
+    else:
+        fmt_str = fmt(a)
+    if attr is None:
+        return fmt_str
+    return '%s=%s'%(attr, fmt_str)
+
+def imgstr(image):
+    maxBytes = 8
+    if len(image) > maxBytes:
+        return pprint.pformat(image[0:maxBytes]) + '...'
+    else:
+        return pprint.pformat(image)
+
+def imgsz(img):
+    return '(size=%u,content=%s)'%(len(img), imgstr(img))
+
+class ExtenCmdType:
+    TYPE_TXT = 0
+    TYPE_SCRIPT = 1
+    TYPE_BINARY = 2
+    DICT_TYPE = {
+        TYPE_TXT: "txt",
+        TYPE_SCRIPT: "script",
+        TYPE_BINARY: "binary",
+    }
+
+# Lists the contents of the archive
+class PrintArchive:
+    def __init__(self, out):
+        self.out = out
+    def print_cmd(self, opcode, image, op_specific_arg_names, op_specific_arg_values):
+        tokens = [opcode]
+        if image:
+            tokens.append(strattr(image, 'image', imgsz))
+        arg_names_rev = op_specific_arg_names
+        arg_names_rev.reverse()
+        tokens_op_spec_rev = []
+        for i, arg_name in enumerate(arg_names_rev):
+            if arg_name == 'type':
+                tokens.append(f"{arg_name}={ExtenCmdType.DICT_TYPE[op_specific_arg_values[-1 - i]]}")
+            else:
+                token = strattr(op_specific_arg_values[-1 - i], arg_name, hex, not tokens_op_spec_rev)
+            if token:
+                tokens_op_spec_rev.append(token)
+        tokens_op_spec_rev.reverse()
+        tokens.extend(tokens_op_spec_rev)
+        self.out.write(' '.join(filter(None, tokens)))
+        self.out.write('\n')
+    def EraseFlash(self, region_size, address, base_address):
+        self.print_cmd('EraseFlash', None, ['region_size', 'address', 'base_address'], [region_size, address, base_address])
+    def EraseRram(self, region_start, region_size, base_address):
+        self.print_cmd('EraseRram', None, ['region_start', 'region_size', 'base_address'], [region_start, region_size, base_address])
+    def LoadRram(self, image, region_start, region_size, address, extrainfo):
+        self.print_cmd('LoadRram', image, ['region_start', 'region_size', 'address','extrainfo'], [region_start, region_size, address, extrainfo])
+    def LoadOtpNvds(self, image):
+        self.print_cmd('LoadOtpNvds', image)
+    def LoadFlashNvds(self, image, region_start, region_size, extrainfo):
+        # old atm2 gen loadFlashNvds does not provide extrainfo
+        if extrainfo:
+            self.print_cmd('LoadFlashNvds', image, ['region_start', 'region_size', 'extrainfo'], [region_start, region_size, extrainfo])
+        else:
+            self.print_cmd('LoadFlashNvds', image, ['region_start', 'region_size'], [region_start, region_size])
+    def LoadFlash(self, image, region_start, region_size, address, extrainfo):
+        # atm2 gen loadFlash does not provide extrainfo
+        if extrainfo:
+            self.print_cmd('LoadFlash', image, ['region_start', 'region_size', 'address', 'extrainfo'], [region_start, region_size, address, extrainfo])
+        else:
+            self.print_cmd('LoadFlash', image, ['region_start', 'region_size', 'address'], [region_start, region_size, address])
+    def CmdExtend(self, image, type, extrainfo):
+        self.print_cmd('CmdExtend', image, ['type', 'extrainfo'], [type, extrainfo])
+    def Platform(self, family, name, board=None, revision=None):
+        if revision:
+            self.out.write('Platform: {} ({} family, {})\n'.format(name, family, revision))
+        else:
+            self.out.write('Platform: {} ({} family)\n'.format(name, family))
+        if board:
+            self.out.write('Board: {}\n'.format(board))
+
+# Executes a loadFlash* command from the archive
+def iter_archive_aux_flash(cmdName, cmd, handler):
+    if cmdName.startswith('loadRram'):
+        image = cmd.commonLoadRram.commonLoad.image
+        region_start = cmd.commonLoadRram.region_start
+        region_size = cmd.commonLoadRram.region_size
+    elif cmdName.startswith('eraseRram'):
+        region_start = cmd.commonEraseRram.region_start
+        region_size = cmd.commonEraseRram.region_size
+    elif cmdName.startswith('eraseFlash'):
+        region_size = cmd.commonEraseFlash.region_size
+        address = cmd.commonEraseFlash.address
+    elif cmdName.startswith('cmdExtend'):
+        image = cmd.commonLoad.image
+        ext_type = cmd.type
+        extrainfo = cmd.extrainfo
+    else:
+        image = cmd.commonLoadFlash.commonLoad.image
+        region_start = cmd.commonLoadFlash.region_start
+        region_size = cmd.commonLoadFlash.region_size
+    if cmdName.startswith('load'):
+        if hasattr(cmd, 'address'):
+            address = cmd.address
+        else:
+            address = None
+        if hasattr(cmd, 'extrainfo'):
+            extrainfo = cmd.extrainfo
+        else:
+            extrainfo = None
+    if cmdName.startswith('erase'):
+        if hasattr(cmd, 'base_address'):
+            base_address = cmd.base_address
+        else:
+            base_address = None
+    if cmdName == 'loadFlashNvds':
+        handler.LoadFlashNvds(image, region_start, region_size, extrainfo)
+    elif cmdName == 'loadFlash':
+        handler.LoadFlash(image, region_start, region_size, address, extrainfo)
+    elif cmdName == 'loadRram':
+        handler.LoadRram(image, region_start, region_size, address, extrainfo)
+    elif cmdName == 'eraseRram':
+        handler.EraseRram(region_start, region_size, base_address)
+    elif cmdName == 'eraseFlash':
+        handler.EraseFlash(region_size, address, base_address)
+    elif cmdName == 'cmdExtend':
+        handler.CmdExtend(image, ext_type, extrainfo)
+    else:
+        return False
+    return True
+
+# Executes a command from the archive
+def iter_archive_aux(cmdName, cmd, handler):
+    if cmdName == 'loadOtpNvds':
+        handler.LoadOtpNvds(cmd.commonLoad.image)
+    elif iter_archive_aux_flash(cmdName, cmd, handler):
+        pass
+    else:
+        return False
+    return True
+
+# Executes all commands in the archive
+def iter_archive(archive, handler):
+    platform = archive.meta.platform
+    board = None
+    revision = None
+    if hasattr(platform, 'board'):
+        board =  platform.board
+    if hasattr(platform, 'revision'):
+        revision =  platform.revision
+    handler.Platform(platform.family, platform.name, board, revision)
+    for cmdUnion in archive.script:
+        cmdName = cmdUnion.WhichOneof("cmdUnion")
+        cmd = getattr(cmdUnion, cmdName)
+        if not iter_archive_aux(cmdName, cmd, handler):
+            raise Exception('[iter_archive] Unknown command name: %s'%cmdName)
+
+def serialize_archive(archive, output_path=None):
+    serialized_archive = archive.SerializeToString()
+    if not output_path:
+        sys.stdout.buffer.write(serialized_archive)
+    else:
+        with open(output_path, 'wb') as output:
+            output.write(serialized_archive)
+
+def remove_image_if_exists(imagepath):
+    if os.path.exists(imagepath):
+        os.remove(imagepath)
+
+def this_file():
+    if hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
+        return sys.executable
+    return __file__
+
+# Utilities for locating and interacting with tools -- nvds_tool and openocd
+class Tools:
+    openocd_pkg_root = os.path.abspath(os.path.join(os.path.dirname(this_file()), '..'))
+    platform_family = 'plat_family'
+    platform_name = 'plat_name'
+    zephyr = False
+    @staticmethod
+    def pfx(system = platform.system()):
+        if system == 'Linux':
+            return 'Linux'
+        if system == 'Darwin':
+            return os.path.join('Darwin', platform.machine())
+        if system == 'Windows' or \
+           system.startswith('MSYS') or \
+           system.startswith('MINGW'):
+            return 'Windows_NT'
+        raise Exception("Unknown platform '%s'"%system)
+    @staticmethod
+    def nvds_tool():
+        return os.path.join(Tools.platform_dir(), 'tools', 'bin', Tools.pfx(), 'nvds_tool')
+    @staticmethod
+    def set_openocd(openocd):
+        Tools.openocd = openocd
+    @staticmethod
+    def set_openocd_pkg_root(root):
+        Tools.openocd_pkg_root = root
+    @staticmethod
+    def set_platform(platform_name, platform_family, revision):
+        Tools.platform_name = platform_name
+        Tools.platform_family = platform_family
+        Tools.revision = revision
+    @staticmethod
+    def set_zephry(zephyr):
+        Tools.zephyr = zephyr
+    @staticmethod
+    def openocd_dir():
+        if Tools.zephyr:
+            openocd_pkg_root = os.path.join(Tools.zephyr_base(), '..', 'modules', 'hal', 'atmosic_lib')
+        else:
+            openocd_pkg_root = Tools.openocd_pkg_root
+        return os.path.join(openocd_pkg_root, 'tools', 'openocd')
+    @staticmethod
+    def platform_dir():
+        if Tools.zephyr:
+            openocd_pkg_root = Tools.openocd_pkg_root
+            if Tools.platform_family == 'atm3':
+                # bare metal atm3/ATM32xx-x1x to zephry ATMx2xx-x1x
+                platform_name = Tools.platform_name.replace('ATM32','ATMx2')
+            elif Tools.platform_family == 'atm34' and \
+                    '-' in Tools.platform_name:
+                # bare metal atm34/ATM34xx-2 to zephry ATM34xx
+                platform_name = Tools.platform_name.split('-')[0]
+            else:
+                platform_name = Tools.platform_name
+            return os.path.join(openocd_pkg_root, platform_name)
+        else:
+            openocd_pkg_root = Tools.openocd_pkg_root
+            if Tools.platform_family == 'atmx2':
+                # zephry ATMx2xx-x1x to bare metal atm2/ATM22xx-x1x
+                platform_family = 'atm2'
+                platform_name = 'ATM22xx-x1x'
+            elif Tools.platform_family == 'atm34' and \
+                '-' not in Tools.platform_name:
+                # zephry ATM34xx to bare metal atm34/ATM34xx-2
+                platform_family = Tools.platform_family
+                platform_name = f"{Tools.platform_name}-2"
+            else:
+                platform_family = Tools.platform_family
+                platform_name = Tools.platform_name
+            platforms_dir = os.path.join(openocd_pkg_root, 'platform')
+            return os.path.join(platforms_dir, platform_family, platform_name)
+    @staticmethod
+    def openocd_flags():
+        platform_family = Tools.platform_family
+        # family name of sydney on bare metal is atm2 or atm3 and atmx2 on
+        # zehpyr
+        if "atm2" == Tools.platform_family or "atm3" == Tools.platform_family \
+                or "atmx2" == Tools.platform_family:
+            platform_family = "atm2x_openocd.cfg"
+        else:
+            platform_family = 'atmx3_openocd.cfg'
+        openocd_dir = Tools.openocd_dir()
+        if "atm34" in Tools.platform_family:
+            if Tools.revision:
+                revision = Tools.revision
+            else:
+                # compatible with old atm file, use default for atm34
+                revision = 'rev-2'
+            openocd_cfg_dir = os.path.join(Tools.platform_dir(), revision,
+                                           'openocd')
+        else:
+            openocd_cfg_dir = os.path.join(Tools.platform_dir(), 'openocd')
+        flags = [
+            '-s', os.path.join(openocd_dir, 'tcl'),
+            '-s', openocd_cfg_dir,
+            '-f', '{}'.format(platform_family),
+        ]
+        return flags
+    @staticmethod
+    def openocd():
+        openocd_dir = Tools.openocd_dir()
+        return os.path.join(openocd_dir, 'bin', Tools.pfx(), 'openocd')
+    @staticmethod
+    def zephyr_base():
+        ZEPHYR_BASE = os.getenv("ZEPHYR_BASE")
+        if not ZEPHYR_BASE:
+            # set ZEPHYR_BASE.
+            ZEPHYR_BASE = os.path.join(str(Path(__file__).resolve().parents[3]),
+                'zephyr')
+            # Propagate this decision to child processes.
+            os.environ['ZEPHYR_BASE'] = ZEPHYR_BASE
+        return ZEPHYR_BASE
+
+    @staticmethod
+    def sdk_version(zephyr=False):
+        version =  "unknown"
+        if zephyr:
+            ZEPHYR_BASE = Tools.zephyr_base()
+            cur_dir = os.getcwd()
+            os.chdir(ZEPHYR_BASE)
+            version = Tools.get_zephyr_ver(version)
+            os.chdir(cur_dir)
+        else:
+            ver_file = os.path.join(Tools.openocd_pkg_root, "version.h")
+            if os.path.exists(ver_file):
+                with open(ver_file, "r") as f:
+                    for line in f.readlines():
+                        if len(line) and line.find("SDK_VERSION"):
+                            #define SDK_VERSION "5.3.0"
+                            words = line.strip().split(" ")
+                            if len(words) == 3 and len(words[2]) > 4:
+                                word = words[2]
+                                version = word[1:len(word)-1]
+        return version
+    @staticmethod
+    def get_zephyr_ver(version):
+        # git tag => github_atmosic/24.04.0 or 24.04.0
+        git_cmd = "git for-each-ref --sort=creatordate --format='%(refname)'"
+        pattern = r'refs/tags/(?:github_atmosic/)(\d+)\.(\d+)\.(\d+)'
+        try:
+            process = subprocess.Popen(git_cmd, shell=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate(timeout=10)
+            if stdout and not process.returncode:
+                stdout_lines = stdout.decode('utf-8').split('\n')
+                for stdout_line in stdout_lines[::-1]:
+                    match = re.search(pattern,stdout_line.strip())
+                    if match is not None:
+                        try:
+                            ver_arr = match.group().split('/')
+                            if ver_arr and len(ver_arr):
+                                version = ver_arr[len(ver_arr)-1]
+                                break
+                        except:
+                            print(f"{stdout_line[0].strip()} split except")
+                return version
+            else:
+                print(f"command returncode {process.returncode} "
+                      f"error: {stderr} ")
+        except:
+            print(f"command {git_cmd} exception")
+        return version
+
+
+# Constructs nvds_tool commands
+class NvdsTool:
+    def __init__(self, in_nvds_path, out_nvds_path, new_nvds_paths = [], inverted = True):
+        self.in_nvds_path = in_nvds_path
+        self.out_nvds_path = out_nvds_path
+        self.new_nvds_paths = new_nvds_paths
+        self.inverted = inverted
+
+    def merge_cmd(self, erase_workarounds=False):
+        args = [Tools.nvds_tool()]
+        if self.inverted:
+            args.append('-i')
+        args.extend(['-r', self.in_nvds_path])
+        if erase_workarounds:
+            args.extend(['-E', 'all'])
+        for p in self.new_nvds_paths:
+            args.extend(['-r', p])
+        args.extend(['-b', '-o', self.out_nvds_path])
+        return ' '.join(args)
+
+# Constructs OpenOCD scripts for executing the commands in the archive
+class WriteOpenOcdScript:
+    otp_nvds = 'otp_nvds.nvm'
+    old_otp_nvds = 'old_' + otp_nvds
+    sydney_burn_nvm = 'sydney_burn_nvm'
+    sydney_dump_nvm = 'sydney_dump_nvm'
+    sydney_verify_nvm = 'sydney_verify_nvm'
+    exit_code_failure_base = 0x10
+    exit_code_failure_nvds_tool = exit_code_failure_base
+    fl_op_wr = 0x01
+    fl_op_er = 0x02
+    fl_op_erwr = 0x03
+    def __init__(self, dirpath, must_be_empty=True, verbose=True, check_image=True, tcl_script=None, program_only=False, is_atmx2=False, basename_subst=[], fast_load=False, fl_bin_path=None):
+        self.dirpath = dirpath
+        self.verbose = verbose
+        self.check_image = check_image
+        self.tcl_script = tcl_script
+        self.program_only = program_only
+        self.is_atmx2 = is_atmx2
+        self.fast_load = fast_load
+        self.fl_bin_path = fl_bin_path
+        if not os.path.exists(dirpath):
+            os.makedirs(dirpath)
+        elif os.path.isfile(dirpath):
+            raise Exception('"%s" is not a directory')
+        elif not os.access(dirpath, os.W_OK):
+            raise Exception('"%s" is not writable')
+        elif must_be_empty and os.listdir(dirpath):
+            raise Exception('"%s" is not empty')
+        elif fast_load:
+            if not fl_bin_path :
+                raise Exception(f"fast_load required fl_bin_path file path")
+            if not os.path.exists(fl_bin_path):
+                raise Exception(f"fl_bin_path file {fl_bin_path} not exist")
+            if check_image:
+                print("fast_load ignore check_image")
+        if tcl_script:
+            script_path = tcl_script
+        else:
+            script_path = self.path('atm.tcl')
+        self.script = open(script_path, 'w')
+        if not tcl_script:
+            self.script.write('init\n')
+            self.script.write('verify_rom_version\n')
+            if fast_load:
+                self.script.write('set ::env(FAST_LOAD) 1\n')
+                if not is_atmx2:
+                    self.script.write('atmx3_load_ram_image {%s}\n'%self.fl_bin_path)
+                else:
+                    self.script.write('set ::env(ERASE_WHOLE) 1\n')
+                    self.script.write('sydney_erase_flash 0x04\n')
+                    self.script.write('atm2x_load_ram_image {%s}\n'%self.fl_bin_path)
+            else:
+                if is_atmx2:
+                    self.script.write('set ::env(ERASE_UPGRADE_DATA) 1\n')# Make this opt'l?
+        self.image_counts = {
+            'atm_extend': 0,
+        }
+        self.basename_subst = basename_subst
+
+    def finalize_script(self, erase_workarounds = False):
+        if self.sydney_burn_nvm in self.image_counts:
+            self.read_n_modify_otp(erase_workarounds)
+            self.print_cmd(self.sydney_burn_nvm, self.path(self.otp_nvds))
+            if self.check_image:
+                self.print_cmd(self.sydney_verify_nvm, self.path(self.otp_nvds))
+        if not self.tcl_script:
+            if not self.program_only:
+                self.script.write('set _RESET_HARD_ON_EXIT 1\n')
+            self.script.write('exit\n')
+        self.script.close()
+
+    def path(self, f):
+        return os.path.join(self.dirpath, f)
+
+    def trace(self, msg):
+        if self.verbose:
+            sys.stderr.write(msg + '\n')
+
+    def openocd_cmd(self, args):
+        openocd = Tools.openocd()
+        openocd_args = [openocd]
+        openocd_args.extend(Tools.openocd_flags())
+        openocd_args.extend(args)
+        return openocd_args
+
+    def exec_openocd(self, args, env_override=''):
+        openocd_cmd_args = self.openocd_cmd(args)
+        openocd_cmd = ' '.join(openocd_cmd_args)
+        self.trace('Executing "%s"'%openocd_cmd)
+        exit_code = os.system(env_override + ' ' + openocd_cmd if env_override else openocd_cmd)
+        if exit_code != 0:
+            msg1 = '%s command returned %u status'%(openocd_cmd_args[0], exit_code)
+            msg2 = 'Command was "%s"'%openocd_cmd
+            raise Exception(msg1, msg2)
+
+    def exec_openocd_cmd(self, cmd, env_override=''):
+        env_override_rev = env_override.split()
+        for override in env_override_rev:
+            env = override.split('=')
+            os.environ[env[0]] = env[1]
+        self.exec_openocd(['-c', cmd])
+        for override in env_override_rev:
+            env = override.split('=')
+            os.unsetenv(env[0])
+
+    def exec_openocd_script(self, script):
+        if self.fast_load:
+            os.environ['FAST_LOAD'] = '1'
+            if self.is_atmx2:
+                os.environ['ERASE_WHOLE'] = '1'
+        self.exec_openocd(['-f', script])
+        if self.fast_load:
+            os.unsetenv('FAST_LOAD')
+            if self.is_atmx2:
+                os.unsetenv('ERASE_WHOLE')
+
+    def reset_target(self):
+        try:
+            self.exec_openocd_cmd("\"init; release_reset; sleep 100; set_normal_boot; exit\"", "FTDI_BENIGN_BOOT=1 FTDI_HARD_RESET=1")
+        except Exception as e:
+            self.trace(str(e));
+            time.sleep(1)
+            try:
+                self.exec_openocd_cmd("\"init; release_reset; sleep 100; set_normal_boot; exit\"", "FTDI_BENIGN_BOOT=1 FTDI_HARD_RESET=1")
+            except Exception as e:
+                self.trace(str(e));
+
+    def exec_script(self, reset_target=True):
+        if reset_target:
+            self.reset_target()
+        self.exec_openocd_script(self.script.name)
+
+    def read_n_modify_otp_aux(self, old_otp_nvds_path, erase_workarounds):
+        # Read
+        if self.tcl_script:
+            cmd = self.sydney_dump_nvm
+            self.script.write('%s {%s}\n'%(cmd, old_otp_nvds_path))
+        else:
+            self.exec_openocd_cmd("'init; %s {%s}; exit'"%(self.sydney_dump_nvm, old_otp_nvds_path))
+        # Modify
+        otp_paths = []
+        self.iter_images(self.sydney_burn_nvm, lambda p: otp_paths.append(p))
+        nvds_tool = NvdsTool(old_otp_nvds_path, self.path(self.otp_nvds), otp_paths)
+        nvds_tool_cmd = nvds_tool.merge_cmd(erase_workarounds)
+        if self.tcl_script:
+            self.script_trace(nvds_tool_cmd)
+            self.script.write("""if {{ [catch {{exec {0}}} msg] }} {{
+    puts stderr "nvds_tool merge failed: $msg"
+    puts stderr "Command was '{0}'"
+}}\n""".format(nvds_tool_cmd))
+            return
+        self.trace('Executing "%s"'%nvds_tool_cmd)
+        exit_code = os.system(nvds_tool_cmd)
+        if exit_code != 0:
+            msgs = [
+                'nvds_tool merge returned %u status'%exit_code,
+                'Command was %s'%nvds_tool_cmd
+            ]
+            raise Exception('\n'.join(msgs))
+
+    def read_n_modify_otp(self, erase_workarounds, keep_old_otp_nvds=False):
+        if self.tcl_script:
+            self.read_n_modify_otp_aux(self.path(self.old_otp_nvds), erase_workarounds)
+            return
+        pulled_otp, old_otp_nvds = tempfile.mkstemp()
+        self.read_n_modify_otp_aux(old_otp_nvds, erase_workarounds)
+        os.close(pulled_otp)
+        if not keep_old_otp_nvds:
+            os.unlink(old_otp_nvds)
+
+    def script_trace(self, cmd):
+        if self.verbose:
+            self.script.write('puts {Executing \'%s\'}\n'%cmd)
+
+    def print_cmd(self, openocd_fcn, imagepath, *op_specific_data):
+        tokens = [openocd_fcn]
+        if imagepath:
+            tokens.append('{%s}'%imagepath)
+        if self.fast_load and openocd_fcn == 'atm_fast_load':
+            tokens.append(f"0x{self.fl_op_wr}")
+        op_specific_data_rev = list(op_specific_data)
+        op_specific_data_rev.reverse()
+        tokens_op_spec_rev = []
+        for v in op_specific_data_rev:
+            if self.fast_load:
+                token = strattr(v, None, hex)
+            else:
+                token = strattr(v, None, str, not tokens_op_spec_rev)
+            if token:
+                tokens_op_spec_rev.append(token)
+        tokens_op_spec_rev.reverse()
+        tokens.extend(tokens_op_spec_rev)
+        cmd = ' '.join(tokens)
+        self.script_trace(cmd)
+        self.script.write(cmd + '\n')
+
+    def iter_images(self, basename, callback, num_images=None):
+        if num_images is None:
+            num_images = self.image_counts.get(basename)
+        for i in range(0, num_images):
+            callback(self.path(WriteOpenOcdScript.imgname(basename, i)))
+
+    def iter_images_all(self, callback):
+        for basename, count in self.image_counts.items():
+            self.iter_images(basename, callback, count)
+
+    def clean(self):
+        self.iter_images_all(remove_image_if_exists)
+        remove_image_if_exists(self.path(self.script.name))
+        if self.sydney_burn_nvm in self.image_counts:
+            remove_image_if_exists(self.path(self.otp_nvds))
+
+    @staticmethod
+    def imgname(basename, count):
+        if count == 0:
+            return basename
+        return '%s.%d'%(basename, count)
+    def save_image(self, openocd_fcn, image, extrainfo=None):
+        if not extrainfo:
+            basename = openocd_fcn
+        else:
+            basename = extrainfo
+        if basename in self.basename_subst:
+            basename = self.basename_subst.get(basename)
+        image_count = self.image_counts.get(basename, 0)
+        imagename = WriteOpenOcdScript.imgname(basename, image_count)
+        self.image_counts[basename] = image_count + 1
+        imagepath = self.path(imagename)
+        with open(imagepath, 'wb') as imagefile:
+            imagefile.write(image)
+        return imagepath
+    def save_extend_image(self, ext_fcn, image, type):
+        imagename = WriteOpenOcdScript.imgname(ext_fcn, self.image_counts[ext_fcn])
+        self.image_counts[ext_fcn] += 1
+        imagepath = self.path(imagename)
+        if type == ExtenCmdType.TYPE_BINARY:
+            with open(imagepath, 'wb') as imagefile:
+                imagefile.write(image)
+        else:
+            with open(imagepath, 'w') as imagefile:
+                imagefile.write(image.decode("utf-8"))
+        return imagepath
+
+    def save_img_n_print_cmd(self, openocd_fcn, image, do_check_image, extrainfo, *op_specific_data):
+        imagepath = None
+        if image:
+            imagepath = self.save_image(openocd_fcn, image, extrainfo)
+        self.print_cmd(openocd_fcn, imagepath, *op_specific_data)
+        if self.check_image and do_check_image:
+            openocd_fcn_verify = openocd_fcn.replace('load', 'verify')
+            if len(op_specific_data) > 1:
+                addr = op_specific_data[2]
+            else:
+                addr = op_specific_data[0]
+            if addr:
+                self.print_cmd(openocd_fcn_verify, imagepath, addr)
+            else:
+                self.print_cmd(openocd_fcn_verify, imagepath)
+    def LoadOtpNvds(self, image):
+        self.save_image('sydney_burn_nvm', image)
+    def LoadFlashNvds(self, image, region_start, region_size, extrainfo):
+        if self.fast_load:
+            self.save_img_n_print_cmd('atm_fast_load', image, False, extrainfo, region_start)
+        else:
+            if not self.is_atmx2:
+                self.save_img_n_print_cmd('atm_load_flash_nvds', image, False, extrainfo, region_start, region_size)
+            else:
+                self.save_img_n_print_cmd('sydney_load_nvds', image, False, extrainfo, region_start, region_size)
+    def LoadFlash(self, image, region_start, region_size, address, extrainfo):
+        if self.fast_load:
+            self.save_img_n_print_cmd('atm_fast_load', image, False, extrainfo, region_start)
+        else:
+            if not self.is_atmx2:
+                self.save_img_n_print_cmd('atm_load_flash', image, True, extrainfo, region_start, region_size, address)
+            else:
+                self.save_img_n_print_cmd('sydney_load_flash', image, True, extrainfo, region_start, region_size, address)
+    def LoadRram(self, image, region_start, region_size, address, extrainfo):
+        # currently atm_load_rram parameter need region_start only
+        assert extrainfo is not None
+        if self.fast_load:
+            self.save_img_n_print_cmd('atm_fast_load', image, False, extrainfo, region_start)
+        else:
+            self.save_img_n_print_cmd('atm_load_rram', image, True, extrainfo, region_start)
+    def EraseRram(self, region_start, region_size, base_address):
+        self.save_img_n_print_cmd('atm_erase_rram', None, False, None, region_start, region_size)
+    def EraseFlash(self, region_size, address, base_address):
+        self.save_img_n_print_cmd('atm_erase_flash', None, False, None, region_size, address)
+    def CmdExtend(self, image, type, extrainfo) :
+        self.save_extend_image('atm_extend', image, type)
+    def Platform(self, family, name, board, revision):
+        Tools.set_platform(name, family, revision)
+
+def burn_archive(archive, openocd_opts, verbose=False, check_image=False, tcl_script=None, dst_dir=None, program_only=False, basename_subst=[]):
+    atmx2_family = False
+    fast_load = False
+    fl_bin_path = None
+    platform = archive.meta.platform
+    if hasattr(platform, 'family') and hasattr(platform, 'name'):
+        # family name of sydney on bare metal is atm2 or atm3 and atmx2 on
+        # zehpyr
+        if platform.family == 'atm2' or platform.family == 'atm3' or \
+                platform.family == 'atmx2':
+            atmx2_family = True
+    if openocd_opts.fast_load:
+        fast_load = openocd_opts.fast_load
+    if openocd_opts.fl_bin_path:
+        fl_bin_path = openocd_opts.fl_bin_path
+    if openocd_opts.openocd_pkg_root is not None:
+        Tools.set_openocd_pkg_root(openocd_opts.openocd_pkg_root)
+    if openocd_opts.zephyr:
+        if openocd_opts.openocd_pkg_root is None:
+            print("Zephyr requilred --openocd_pkg_root arguments")
+            return
+        else:
+            Tools.set_zephry(openocd_opts.zephyr)
+    should_exec_oocd_script_and_cleanup = not (openocd_opts.openocd_script_only or tcl_script or dst_dir)
+    d = dst_dir if dst_dir else tempfile.mkdtemp(None, 'burn_arch_', Tools.openocd_pkg_root)
+    w = WriteOpenOcdScript(d, should_exec_oocd_script_and_cleanup, verbose, check_image, tcl_script, program_only, atmx2_family, basename_subst, fast_load, fl_bin_path)
+    iter_archive(archive, w)
+    w.finalize_script(openocd_opts.erase_workarounds)
+    if should_exec_oocd_script_and_cleanup:
+        w.exec_script(reset_target=(not openocd_opts.no_reset_target))
+        w.clean()
+        shutil.rmtree(d, ignore_errors=True)
+    elif not dst_dir:
+        print(d)
+
+def ext_and_serialize_archive(archive, opcode, op_specific_data):
+    image = None
+    if hasattr(op_specific_data, 'image'):
+        image = op_specific_data.image
+    if extend_archive(archive, opcode, image, op_specific_data):
+        serialize_archive(archive, op_specific_data.output_path)
+        return True
+    return False
+
+def exec_cli_op(archive, opcode, op_specific_data):
+    if opcode == 'decode':
+        decode_mpr_meta_info(archive)
+        iter_archive(archive, PrintArchive(sys.stdout))
+    elif opcode == 'burn':
+        burn_archive(archive, op_specific_data, op_specific_data.verbose, op_specific_data.check_image, op_specific_data.tcl_script, op_specific_data.dst_dir, op_specific_data.program_only, dict(map(lambda subst: tuple(subst.split('=', 1)), op_specific_data.basename_subst)))
+    elif ext_and_serialize_archive(archive, opcode, op_specific_data):
+        pass
+    else:
+        raise Exception('Unknown openocd "%s"'%opcode)
+
+
+def decode_mpr_meta_info(archive):
+    sys.stdout.write('MPR start: {}, size: {}, lock_size: {}\n'.format(
+        archive.meta.mpr_start, archive.meta.mpr_size, archive.meta.mpr_lock_size))
+    if hasattr(archive.meta, 'ota'):
+        sys.stdout.write('OTA support: {}\n'.format(archive.meta.ota))
+    if hasattr(archive.meta, 'sec_dbg'):
+        sys.stdout.write('Secure debug enabled: {}\n'.format(archive.meta.sec_dbg))
+        if archive.meta.sec_dbg == 1:
+            if hasattr(archive.meta, 'sec_dbg_key_checksum'):
+                sys.stdout.write('Secure debug key checksum: {}\n'.format(archive.meta.sec_dbg_key_checksum))
+            if hasattr(archive.meta, 'sec_dbg_static_unlock'):
+                sys.stdout.write('Secure debug static unlock: {}\n'.format(archive.meta.sec_dbg_static_unlock))
+    if hasattr(archive.meta, 'sec_boot'):
+        sys.stdout.write('Secure boot enabled: {}\n'.format(archive.meta.sec_boot))
+        if archive.meta.sec_boot == 1 and \
+                hasattr(archive.meta, 'sec_boot_key_checksum'):
+            sys.stdout.write('Secure boot key checksum: {}\n'.format(archive.meta.sec_boot_key_checksum))
+    if hasattr(archive.meta, 'sdk_ver'):
+        sys.stdout.write('SDK version: {}\n'.format(archive.meta.sdk_ver))
+
+def extend_archive(archive, opcode, image, op_specific_data):
+    field = ISP.Archive.Command.DESCRIPTOR.fields_by_name[opcode]
+    cmdTy = field.message_type
+    cmdUnion = ISP.Archive.Command()
+    cmdAttr = getattr(cmdUnion, opcode)
+    cmd = getattr(ISP.Archive, cmdTy.name)()
+    if opcode == 'loadOtpNvds':
+        commonLoad = cmd.commonLoad
+    elif opcode.startswith('loadFlash'):
+        commonLoad = cmd.commonLoadFlash.commonLoad
+        for attrName in ['region_start', 'region_size']:
+            attr = getattr(op_specific_data, attrName)
+            if attr is not None:
+                setattr(cmd.commonLoadFlash, attrName, attr)
+    elif opcode.startswith('loadRram'):
+        commonLoad = cmd.commonLoadRram.commonLoad
+        for attrName in ['region_start', 'region_size']:
+            attr = getattr(op_specific_data, attrName)
+            if attr is not None:
+                setattr(cmd.commonLoadRram, attrName, attr)
+    elif opcode.startswith('eraseRram'):
+        commonLoad = cmd.commonEraseRram
+        for attrName in ['region_start', 'region_size']:
+            attr = getattr(op_specific_data, attrName)
+            if attr is not None:
+                setattr(cmd.commonEraseRram, attrName, attr)
+    elif opcode.startswith('eraseFlash'):
+        commonLoad = cmd.commonEraseFlash
+        for attrName in ['region_size', 'address']:
+            attr = getattr(op_specific_data, attrName)
+            if attr is not None:
+                setattr(cmd.commonEraseFlash, attrName, attr)
+    elif opcode.startswith('cmdExtend'):
+        commonLoad = cmd.commonLoad
+        for attrName in ['type', 'extrainfo']:
+            attr = getattr(op_specific_data, attrName)
+            if attr is not None and hasattr(cmd, attrName):
+                setattr(cmd, attrName, attr)
+    if image:
+        commonLoad.image = image.read()
+    if opcode == 'loadFlash' or \
+        opcode == 'loadRram' or \
+        opcode == 'loadFlashNvds':
+        if hasattr(cmd, 'address') and \
+                op_specific_data.address is not None:
+            cmd.address = op_specific_data.address
+            for attrName in ['mpr_start', 'mpr_size', 'mpr_lock_size']:
+                attr = getattr(op_specific_data, attrName)
+                if attr is not None:
+                    if op_specific_data.verbose:
+                        print('store meta {}={} '.format(attrName, attr))
+                    setattr(archive.meta, attrName, attr)
+        if hasattr(cmd, 'extrainfo') and \
+            op_specific_data.extrainfo is not None:
+            cmd.extrainfo = op_specific_data.extrainfo
+    if opcode == 'eraseRram' or \
+        opcode == 'eraseFlash':
+        if op_specific_data.base_address is not None:
+            cmd.base_address = op_specific_data.base_address
+    cmdAttr.CopyFrom(cmd)
+    archive.script.append(cmdUnion)
+    return archive
+
+def main(args=None, namespace=None):
+    args = parse_args(args, namespace)
+    archive = ISP.Archive()
+    if args.opcode == 'init':
+        archive.meta.platform.family = args.family
+        archive.meta.platform.name = args.name
+        if args.board:
+            archive.meta.platform.board = args.board
+        if args.revision and hasattr(archive.meta.platform, 'revision'):
+            archive.meta.platform.revision = args.revision
+        if args.ota and hasattr(archive.meta, 'ota'):
+            archive.meta.ota = 1
+        if args.sec_dbg and hasattr(archive.meta, 'sec_dbg'):
+            archive.meta.sec_dbg = 1
+            if hasattr(archive.meta, 'sec_dbg_key_checksum'):
+                if not args.sec_dbg_key_checksum:
+                    print("Requried sec_dbg_key_checksum when sec_dbg enabled")
+                    sys.exit(1)
+                archive.meta.sec_dbg_key_checksum = args.sec_dbg_key_checksum
+            if args.sec_dbg_static_unlock and \
+                    hasattr(archive.meta, 'sec_dbg_static_unlock'):
+                archive.meta.sec_dbg_static_unlock = args.sec_dbg_static_unlock
+        if args.sec_boot and hasattr(archive.meta, 'sec_boot'):
+            archive.meta.sec_boot = 1
+            if hasattr(archive.meta, 'sec_boot_key_checksum'):
+                if not args.sec_boot_key_checksum:
+                    print("Requried sec_boot_key_checksum when sec_boot enabled")
+                    sys.exit(1)
+                archive.meta.sec_boot_key_checksum = args.sec_boot_key_checksum
+        if hasattr(archive.meta, 'sdk_ver'):
+            archive.meta.sdk_ver = Tools.sdk_version(args.zephyr)
+        serialize_archive(archive, args.output_path)
+        return
+    if args.input_path == '-':
+        input_archive = sys.stdin.buffer.read()
+    else:
+        with open(args.input_path, 'rb') as input_archive_file:
+            input_archive = input_archive_file.read()
+    archive.ParseFromString(input_archive)
+    platform = archive.meta.platform
+    if platform.family and platform.name:
+        exec_cli_op(archive, args.opcode, args)
+    else:
+        sys.stderr.write('Uninitialized archive "{}"\n'.format(args.input_path))
+        sys.exit(1)
+
+if __name__ == '__main__':
+    if sys.version_info[0] < 3:
+        sys.stderr.write('%s requires Python 3\n'%__file__)
+        sys.exit(2)
+    main()

@@ -5,7 +5,7 @@
  *
  * @brief Pin mappings that are identical across all the boards for a given chip
  *
- * Copyright (C) Atmosic 2022
+ * Copyright (C) Atmosic 2022-2024
  *
  *******************************************************************************
  */
@@ -29,16 +29,34 @@ extern "C" {
 #endif
 
 /* GPIO to pin mapping common across the released boards */
+#define PIN_GPIO_0 0
+#define PIN_GPIO_1 1
+#define PIN_GPIO_2 2
+#define PIN_GPIO_3 3
+#define PIN_GPIO_4 4
+#define PIN_GPIO_5 5
+#define PIN_GPIO_6 6
+#define PIN_GPIO_7 7
+#define PIN_GPIO_8 8
 #define PIN_GPIO_9 9
 #define PIN_GPIO_10 10
 #define PIN_GPIO_11 11
+#define PIN_GPIO_12 12
 #define PIN_GPIO_13 13
+#define PIN_GPIO_14 18
+#define PIN_GPIO_15 19
 #define PIN_GPIO_16 20
+#define PIN_GPIO_17 21
 #define PIN_GPIO_18 22
 #define PIN_GPIO_19 23
 #define PIN_GPIO_20 24
 #define PIN_GPIO_21 25
+#define PIN_GPIO_22 26
+#define PIN_GPIO_23 27
+#define PIN_GPIO_24 28
+#define PIN_GPIO_25 29
 #define PIN_GPIO_26 30
+#define PIN_GPIO_27 31
 #define PIN_GPIO_28 32
 #define PIN_GPIO_29 33
 
@@ -81,20 +99,38 @@ extern "C" {
  * Pin to GPIO bit mapping commong across the released boards
  */
 #define INVALID_GPIO 255
+#define P0_GPIO 0
+#define P1_GPIO 1
+#define P2_GPIO 2
+#define P3_GPIO 3
+#define P4_GPIO 4
+#define P5_GPIO 5
+#define P6_GPIO 6
+#define P7_GPIO 7
+#define P8_GPIO 8
 #define P9_GPIO 9
 #define P10_GPIO 10
 #define P11_GPIO 11
+#define P12_GPIO 12
 #define P13_GPIO 13
 #define P14_GPIO INVALID_GPIO
 #define P15_GPIO INVALID_GPIO
 #define P16_GPIO INVALID_GPIO
 #define P17_GPIO INVALID_GPIO
+#define P18_GPIO 14
+#define P19_GPIO 15
 #define P20_GPIO 16
+#define P21_GPIO 17
 #define P22_GPIO 18
 #define P23_GPIO 19
 #define P24_GPIO 20
 #define P25_GPIO 21
+#define P26_GPIO 22
+#define P27_GPIO 23
+#define P28_GPIO 24
+#define P29_GPIO 25
 #define P30_GPIO 26
+#define P31_GPIO 27
 #define P32_GPIO 28
 #define P33_GPIO 29
 

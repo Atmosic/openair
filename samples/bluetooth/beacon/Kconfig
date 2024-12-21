@@ -22,6 +22,16 @@ config REFBCN_POWER_PROFILE
 	bool "power profile"
 	help
 	  Select this option to enable power profile.
+#
+# socoff_beacon_demo
+#
+# Sends scannable beacon for 30s and goes to soc_off.
+# Then socoff for 30 seconds, and repeat.
+#
+config REFBCN_SOCOFF_BEACON
+	bool "socoff beacon demo"
+	help
+	  Select this option to see the soc off
 
 endchoice
 
@@ -33,13 +43,13 @@ endchoice
 config ADV_INTV
 	hex
 	range 0x20 0x640
-	default 0x640 if REFBCN_POWER_PROFILE # 1s
+	default 0x640 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 1s
 	default 0x20
 
 config ADV_OPTS
 	hex
 	range 0 0xFFFFF
-	default 0x204 if REFBCN_POWER_PROFILE # nc_s_
+	default 0x204 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON  # nc_s_
 	default 0
 
 config ADV_DISC
@@ -55,12 +65,12 @@ config ADV_TOUT
 
 config ADV_MAX_EVT
 	int
-	default 30 if REFBCN_POWER_PROFILE # 30_adv (30 * 1s)
+	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s_adv (30 * 1s)
 	default 0
 
 config ADV_RSTRT_DUR
 	int
-	default 30 if REFBCN_POWER_PROFILE # 30s
+	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s
 	default 0
 
 # for Data
@@ -72,9 +82,23 @@ config SCAN_RESP_DATA_BCN201
 	bool
 	default y if REFBCN_POWER_PROFILE # beacon_201.tds
 
+config ADV_DATA_SIMPLE_BCN
+	bool
+	default y if REFBCN_SOCOFF_BEACON # simple_beacon.tds
+
+config SCAN_RESP_DATA_SIMPLE_BCN
+	bool
+	default y if REFBCN_SOCOFF_BEACON # simple_beacon.tds
+
 # for Low power
 config SOFT_OFF
     bool
 	depends on PM
 	select EXT_WAKEUP_ENABLE_INDEFINITE
-	default y if REFBCN_POWER_PROFILE # hib.tds
+	default y if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON
+
+# for hibnernation
+config SOFT_OFF_SUBID
+	int
+	depends on SOFT_OFF && REFBCN_POWER_PROFILE
+	default 0 # hib.tds

@@ -80,9 +80,9 @@ def atm_arch_append_extra_args():
     assert os.environ.get('OUTPUT_ATM_FILE') is not None
     extra_args.append('--output_atm_file')
     extra_args.append(os.environ.get('OUTPUT_ATM_FILE'))
-    if os.environ.get('NVDS_FILE') is not None:
-        extra_args.append('--nvds_file')
-        extra_args.append(os.environ.get('NVDS_FILE'))
+    if os.environ.get('STORAGE_DATA_FILE') is not None:
+        extra_args.append('--storage_data_file')
+        extra_args.append(os.environ.get('STORAGE_DATA_FILE'))
     if os.environ.get('FACTORY_DATA_FILE') is not None:
         extra_args.append('--factory_data_file')
         extra_args.append(os.environ.get('FACTORY_DATA_FILE'))

@@ -27,7 +27,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_ATM_SETTINGS_LOG_LEVEL);
     DT_REG_ADDR(DT_NODELABEL(label)) \
 )
 
-int atm_settings_init(void)
+static int atm_settings_init(void)
 {
 #if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
     LOG_INF("Factory data range: [0x%08x - 0x%08x]",
@@ -79,3 +79,8 @@ int atm_settings_init(void)
 
     return 0;
 }
+
+// The atm_settings_init initialization process must be later than
+// flash_atm_rram_init initialization, and earlier than the first function using
+// the settings subsystem api (such as ble_driver_init initialization)
+SYS_INIT(atm_settings_init, POST_KERNEL, CONFIG_ATM_SETTINGS_INIT_PRIORITY);

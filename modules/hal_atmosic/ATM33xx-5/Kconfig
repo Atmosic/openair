@@ -8,7 +8,7 @@ rsource "drivers/Kconfig"
 
 if TRUSTED_EXECUTION_SECURE
 
-config PLATFORM_SPECIFIC_INIT
+config SOC_RESET_HOOK
 	# if bootloader is set and the SPE, leave bp_init to MCUBOOT
 	default n if BOOTLOADER_MCUBOOT && ARM_FIRMWARE_HAS_SECURE_ENTRY_FUNCS
 	default y

@@ -1,0 +1,18 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config APP_WORK_Q
+	bool "App work queue support"
+
+if APP_WORK_Q
+
+config APP_WORK_Q_STACK_SIZE
+	int "App work queue thread stack size"
+	default 2560
+
+config APP_WORK_Q_PRIORITY
+	int "App work queue thread priority"
+	default 0
+
+endif # APP_WORK_Q

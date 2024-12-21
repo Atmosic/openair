@@ -15,14 +15,21 @@
 #include "power.h"
 #endif
 
+#if CONFIG_ADV_DATA_BCN201
+#define SHORT_NAME    "A0000c9"
+#elif CONFIG_ADV_DATA_SIMPLE_BCN
+#define SHORT_NAME    "Atmosic"
+#endif
+
 #if CONFIG_SCAN_RESP_DATA_BCN201
 #define COMPLETE_NAME "ATMxxxx Lowest - Power"
-#define SHORT_NAME    "A0000c9"
+#elif CONFIG_SCAN_RESP_DATA_SIMPLE_BCN
+#define COMPLETE_NAME "Atmosic Beacon"
 #endif
 
 static struct bt_data const ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, CONFIG_ADV_DISC),
-#if CONFIG_SCAN_RESP_DATA_BCN201
+#if CONFIG_ADV_DATA_BCN201 || CONFIG_ADV_DATA_SIMPLE_BCN
 	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
 	BT_DATA_BYTES(BT_DATA_SVC_DATA16, 0xaa, 0xfe,     /* Eddystone ID */
 		0x10,                                     /* Frame type: URL */
@@ -33,11 +40,11 @@ static struct bt_data const ad[] = {
 #endif
 };
 
-#if CONFIG_SCAN_RESP_DATA_BCN201
 static struct bt_data const sd[] = {
+#if CONFIG_SCAN_RESP_DATA_BCN201 || CONFIG_SCAN_RESP_DATA_SIMPLE_BCN
 	BT_DATA(BT_DATA_NAME_COMPLETE, COMPLETE_NAME, sizeof(COMPLETE_NAME) - 1),
-};
 #endif
+};
 
 struct bt_le_ext_adv_start_param const ext_adv_start_param = {
 	.timeout = CONFIG_ADV_TOUT,
@@ -58,8 +65,11 @@ static void adv_sent_cb(struct bt_le_ext_adv *adv, struct bt_le_ext_adv_sent_inf
 {
 
 #if CONFIG_SOFT_OFF
-	if (pm_policy_state_lock_is_active(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES)) {
-		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+#ifndef CONFIG_SOFT_OFF_SUBID
+#define CONFIG_SOFT_OFF_SUBID PM_ALL_SUBSTATES
+#endif
+	if (pm_policy_state_lock_is_active(PM_STATE_SOFT_OFF, CONFIG_SOFT_OFF_SUBID)) {
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, CONFIG_SOFT_OFF_SUBID);
 	}
 #endif
 	if (CONFIG_ADV_RSTRT_DUR) {

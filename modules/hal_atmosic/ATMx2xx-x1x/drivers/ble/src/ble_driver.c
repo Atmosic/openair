@@ -277,7 +277,7 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
     return 0;
 }
 
-#ifndef CONFIG_CTR_DRBG_CSPRNG_GENERATOR
+#if !defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
 #error CTR_DRBG must be enabled for controller
 #endif
 

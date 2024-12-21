@@ -136,10 +136,9 @@ class AtmPartInfo:
         OTA_STAGING_START = None
         OTA_STAGING_OFFSET = None
         OTA_STAGING_SIZE = None
-        # For tool compatibility, this is named NVDS instead of NVS.
-        NVDS_START = None
-        NVDS_OFFSET = None
-        NVDS_SIZE = None
+        STORAGE_DATA_START = None
+        STORAGE_DATA_OFFSET = None
+        STORAGE_DATA_SIZE = None
         FACTORY_DATA_START = None
         FACTORY_DATA_OFFSET = None
         FACTORY_DATA_SIZE = None
@@ -494,18 +493,20 @@ class DevStreeParser:
         # settings data from storage_partition
         storage_partition = utils_get_node_by_lable(rram0, "storage_partition")
         if storage_partition:
-            ret, nvds_start, nvds_size = \
+            ret, storage_data_start, storage_data_size = \
                     utils_get_node_property_reg(storage_partition)
             if ret == ST_ERROR:
                 print("Parsing rram storage failed")
                 return
-            self.debug_print(f"nvds_start = {hex(nvds_start)}, "
-                             f"nvds_size = {hex(nvds_size)}")
-            self.part_info.NVDS_START = hex(nvds_start + rram0_start)
-            self.part_info.NVDS_OFFSET = hex(nvds_start)
-            self.part_info.NVDS_SIZE = hex(nvds_size)
+            self.debug_print(f"storage_data_start = {hex(storage_data_start)}, "
+                             f"storage_data_size = {hex(storage_data_size)}")
+            self.part_info.STORAGE_DATA_START = \
+                hex(storage_data_start + rram0_start)
+            self.part_info.STORAGE_DATA_OFFSET = hex(storage_data_start)
+            self.part_info.STORAGE_DATA_SIZE = hex(storage_data_size)
         # factory data from factory_partition
-        factory_data_partition = utils_get_node_by_lable(rram0, "factory_partition")
+        factory_data_partition = utils_get_node_by_lable(rram0,
+                                                         "factory_partition")
         if factory_data_partition:
             ret, factory_data_start, factory_data_size = \
                     utils_get_node_property_reg(factory_data_partition)
@@ -621,17 +622,19 @@ class DevStreeParser:
         # settings data from storage_partition
         storage_partition = utils_get_node_by_lable(flash0, "storage_partition")
         if storage_partition:
-            ret, nvds_start, nvds_size = \
+            ret, storage_data_start, storage_data_size = \
                     utils_get_node_property_reg(storage_partition)
             if ret == ST_ERROR:
                 return
-            self.debug_print(f"nvds_start = {hex(nvds_start)}, "
-                             f"nvds_size = {hex(nvds_size)}")
-            self.part_info.NVDS_START = hex(nvds_start + flash0_start)
-            self.part_info.NVDS_OFFSET = hex(nvds_start)
-            self.part_info.NVDS_SIZE = hex(nvds_size)
+            self.debug_print(f"storage_data_start = {hex(storage_data_start)}, "
+                             f"storage_data_size = {hex(storage_data_size)}")
+            self.part_info.STORAGE_DATA_START = \
+                hex(storage_data_start + flash0_start)
+            self.part_info.STORAGE_DATA_OFFSET = hex(storage_data_start)
+            self.part_info.STORAGE_DATA_SIZE = hex(storage_data_size)
         # factory data from factory_partition
-        factory_data_partition = utils_get_node_by_lable(flash0, "factory_partition")
+        factory_data_partition = utils_get_node_by_lable(flash0,
+                                                         "factory_partition")
         if factory_data_partition:
             ret, factory_data_start, factory_data_size = \
                     utils_get_node_property_reg(factory_data_partition)
@@ -712,18 +715,20 @@ class DevStreeParser:
         # settings data from storage_partition
         storage_partition = utils_get_node_by_lable(flash0, "storage_partition")
         if storage_partition:
-            ret, nvds_start, nvds_size = \
+            ret, storage_data_start, storage_data_size = \
                     utils_get_node_property_reg(storage_partition)
             if ret == ST_ERROR:
                 print("Parsing rram storage failed")
                 return
-            self.debug_print(f"nvds_start = {hex(nvds_start)}, "
-                             f"nvds_size = {hex(nvds_size)}")
-            self.part_info.NVDS_START = hex(nvds_start + flash0_start)
-            self.part_info.NVDS_OFFSET = hex(nvds_start)
-            self.part_info.NVDS_SIZE = hex(nvds_size)
+            self.debug_print(f"storage_data_start = {hex(storage_data_start)}, "
+                             f"storage_data_size = {hex(storage_data_size)}")
+            self.part_info.STORAGE_DATA_START = \
+                hex(storage_data_start + flash0_start)
+            self.part_info.STORAGE_DATA_OFFSET = hex(storage_data_start)
+            self.part_info.STORAGE_DATA_SIZE = hex(storage_data_size)
         # factory data from factory_partition
-        factory_data_partition = utils_get_node_by_lable(flash0, "factory_partition")
+        factory_data_partition = utils_get_node_by_lable(flash0,
+                                                         "factory_partition")
         if factory_data_partition:
             ret, factory_data_start, factory_data_size = \
                     utils_get_node_property_reg(factory_data_partition)

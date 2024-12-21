@@ -1,0 +1,3 @@
+	&cpu0 {
+		cpu-power-states = <&idle &sleep &retain &hibernate &soc_off>;
+	};

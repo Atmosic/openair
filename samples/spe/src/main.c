@@ -26,6 +26,11 @@
 #include "sec_dev_lockout.h"
 #include "sec_assert.h"
 
+#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
+#include "calibration.h"
+#include "sec_jrnl.h"
+#endif
+
 extern irq_target_state_t irq_target_state_set(unsigned int irq,
     irq_target_state_t target_state);
 
@@ -222,34 +227,14 @@ static void sau_cfg(void)
 #error "Factory partition is not in RRAM"
 #endif
 
-#define NVS_ALLOC_ENTRY_SIZE 8
-
-static bool nvs_sector_is_not_empty(uint32_t nvs_addr, uint32_t nvs_size)
+static bool check_factory_part_lock(void)
 {
-    // pointing to the first ate write location in a sector
-    const uint8_t *ptr = (const uint8_t *)(nvs_addr + nvs_size -
-	(2 * NVS_ALLOC_ENTRY_SIZE));
+    uint8_t lock;
+    sec_jrnl_tag_len_t lock_len = sizeof(lock);
 
-    for (uint32_t i = 0; i < NVS_ALLOC_ENTRY_SIZE; i++) {
-	if (*(ptr + i) != 0xFF) {
-	    return true;
-	}
-    }
-
-    return false;
-}
-
-static bool factory_part_valid(void)
-{
-    uint32_t factory_addr = GET_PHYS_ADDR(PART_ADDR(factory_partition));
-    uint32_t factory_size = DT_REG_SIZE(DT_NODELABEL(factory_partition));
-    uint32_t sector_size = DT_PROP(DT_NODELABEL(rram0), erase_block_size);
-
-    for (uint32_t sector_addr = factory_addr; sector_addr <
-	(factory_addr + factory_size); sector_addr += sector_size) {
-	if (nvs_sector_is_not_empty(sector_addr, sector_size)) {
-	    return true;
-	}
+    if ((sec_jrnl_get(ATM_TAG_LOCK_FACTORY_DATA, &lock_len, &lock) ==
+	SEC_JRNL_OK) && lock) {
+	return true;
     }
 
     return false;
@@ -296,7 +281,7 @@ static void pre_sau_security_lockdown(void)
 #endif
 
 #if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
-    if (factory_part_valid()) {
+    if (check_factory_part_lock()) {
 	// write protect factory data partition
 	uint32_t factory_offset = PART_OFFSET(factory_partition);
 	uint32_t factory_size = DT_REG_SIZE(DT_NODELABEL(factory_partition));

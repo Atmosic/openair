@@ -8,6 +8,10 @@ config ATM_SETTINGS
 
 if ATM_SETTINGS
 
+config ATM_SETTINGS_INIT_PRIORITY
+	int "ATM_SETTINGS initialization priority"
+	default 45
+
 module = ATM_SETTINGS
 module-str = atm_settings
 source "subsys/logging/Kconfig.template.log_config"

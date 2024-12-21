@@ -46,11 +46,6 @@ void secure_irq_unlock(unsigned int key);
 #define IDLE_FOREVER INT_MAX
 #endif
 
-#ifdef FIXME_UART_GLITCH
-static uint8_t save_uart0tx_psel;
-static uint8_t save_uart1tx_psel;
-#endif
-
 static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 {
 	uint32_t duration;
@@ -71,19 +66,6 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 	// Retain all RAM
 	uint32_t block_sysram = ~0;
 	pseq_core_config_retain(duration, block_sysram, (uintptr_t)ssrs_block, false, false);
-
-#ifdef FIXME_UART_GLITCH
-#define PIN_UART0_TX_REG CMSDK_WRPR0_NONSECURE->PIN2REG(PIN_UART0_TX)
-#define PIN_UART1_TX_REG CMSDK_WRPR0_NONSECURE->PIN2REG(PIN_UART1_TX)
-	save_uart0tx_psel = PIN_SEL(PIN_UART0_TX, READ)(PIN_UART0_TX_REG);
-	save_uart1tx_psel = PIN_SEL(PIN_UART1_TX, READ)(PIN_UART1_TX_REG);
-	if (save_uart0tx_psel == PINMUX_UART0_TX) {
-		PIN_SELECT_GPIO_PULLUP(PIN_UART0_TX);
-	}
-	if (save_uart1tx_psel == PINMUX_UART1_TX) {
-		PIN_SELECT_GPIO_PULLUP(PIN_UART1_TX);
-	}
-#endif
 
 	pseq_core_enter_retain(false, false);
 }
@@ -235,15 +217,6 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	ICACHE_ENABLE();
 
 	SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-
-#ifdef FIXME_UART_GLITCH
-	if (save_uart1tx_psel == PINMUX_UART1_TX) {
-		PIN_SELECT(PIN_UART1_TX, UART1_TX);
-	}
-	if (save_uart0tx_psel == PINMUX_UART0_TX) {
-		PIN_SELECT(PIN_UART0_TX, UART0_TX);
-	}
-#endif
 
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{

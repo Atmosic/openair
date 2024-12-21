@@ -21,21 +21,31 @@
 #include "at_wrpr.h"
 #include "pmu_cfg.h"
 #include "pmu.h"
-#ifndef CONFIG_SOC_FAMILY_ATM
-#include "gadc.h"
-#else
+
+#ifdef CONFIG_SOC_FAMILY_ATM
 #include <zephyr/drivers/adc.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(batt_model_hsc_liion, CONFIG_BATT_MODEL_LOG_LEVEL);
 #undef DEBUG_TRACE
 #define DEBUG_TRACE(fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
+#else
+#include "gadc.h"
 #endif
+
 #include "batt_model.h"
+
 #ifdef CFG_CABLE_CHARGE
+#ifdef CONFIG_SOC_FAMILY_ATM
+#include <zephyr/drivers/gpio.h>
+static struct gpio_dt_spec usb_detec_gpio =
+    GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), usb_detec_gpios);
+static struct gpio_callback usb_detec_gpio_cb;
+#else
 #include "atm_gpio.h"
 #include "pinmux.h"
 #include "interrupt.h"
 #endif
+#endif // CFG_CABLE_CHARGE
 
 #ifdef BATT_MODEL_HSC
 #ifndef VOLT_MAX
@@ -229,11 +239,15 @@ static void batt_process_vbat(float result)
     fns->flag.set(VBAT_MAX_IDX, vbat_mem[VBAT_MAX_IDX]);
     fns->flag.set(VBAT_BOOST_IDX, vbat_mem[VBAT_BOOST_IDX]);
 #ifdef CFG_CABLE_CHARGE
-    if (fns->cable &&
-	fns->cable(atm_gpio_read_gpio(PIN_CHARGE_DET_IO), bat_lvl)) {
+#ifdef CONFIG_SOC_FAMILY_ATM
+    bool in = gpio_pin_get_dt(&usb_detec_gpio);
+#else
+    bool in = atm_gpio_read_gpio(PIN_CHARGE_DET_IO);
+#endif
+    if (fns->cable && fns->cable(in, bat_lvl / 100)) {
 	fns->state.set(DEV_HIB);
     } else
-#endif
+#endif // CFG_CABLE_CHARGE
     if (fns->state.get() != DEV_ACTV) {
 	fns->state.set(DEV_ACTV);
     }
@@ -282,12 +296,27 @@ static bool batt_gadc_sample(void (*cb)(uint16_t, int32_t))
 }
 
 #ifdef CFG_CABLE_CHARGE
+#ifdef CONFIG_SOC_FAMILY_ATM
+static void usb_det_handler(struct k_work *work)
+{
+    batt_gadc_sample(NULL);
+}
+
+K_WORK_DEFINE(usb_det_work, usb_det_handler);
+
+static void usb_det_intr(const struct device *unused1,
+    struct gpio_callback *unused2, uint32_t unused3)
+{
+    k_work_submit(&usb_det_work);
+}
+#else
 static void usb_det_intr(uint32_t mask)
 {
     atm_gpio_clear_int_status(PIN_CHARGE_DET_IO);
     batt_gadc_sample(NULL);
 }
 #endif
+#endif // CFG_CABLE_CHARGE
 
 static void batt_init(batt_cbs const *init)
 {
@@ -298,13 +327,21 @@ static void batt_init(batt_cbs const *init)
     }
 
 #ifdef CONFIG_SOC_FAMILY_ATM
-    ASSERT_ERR(hsc_liion != NULL);
+    ASSERT_ERR(hsc_liion);
 
     int ret = adc_channel_setup(hsc_liion, &channel_cfg);
-    ASSERT_INFO(ret == 0, ret, 0);
+    ASSERT_INFO(!ret, ret, 0);
 #endif
 
 #ifdef CFG_CABLE_CHARGE
+#ifdef CONFIG_SOC_FAMILY_ATM
+    gpio_pin_configure_dt(&usb_detec_gpio, GPIO_INPUT);
+    gpio_init_callback(&usb_detec_gpio_cb, usb_det_intr,
+	BIT(usb_detec_gpio.pin));
+    ret = gpio_add_callback(usb_detec_gpio.port, &usb_detec_gpio_cb);
+    ASSERT_INFO(!ret, ret, 0);
+    gpio_pin_interrupt_configure_dt(&usb_detec_gpio, GPIO_INT_EDGE_BOTH);
+#else
     atm_gpio_setup(PIN_CHARGE_DET_IO);
     atm_gpio_set_input(PIN_CHARGE_DET_IO);
     atm_gpio_int_set_falling(PIN_CHARGE_DET_IO);
@@ -312,6 +349,7 @@ static void batt_init(batt_cbs const *init)
     interrupt_install_gpio(PIN_CHARGE_DET_IO, IRQ_PRI_UI, usb_det_intr);
     atm_gpio_set_int_enable(PIN_CHARGE_DET_IO);
 #endif
+#endif // CFG_CABLE_CHARGE
 }
 
 batt_fns const *batt_model(void)

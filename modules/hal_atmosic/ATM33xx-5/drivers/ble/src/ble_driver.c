@@ -399,8 +399,8 @@ ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
 
     // provide secure rand for the controller
     RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
-#ifndef CONFIG_CTR_DRBG_CSPRNG_GENERATOR
-    #error CTR_DRBG must be enabled for controller
+#if !defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
+#error CTR_DRBG must be enabled for controller
 #endif
 
     p_itf = rwtl_itf_get();

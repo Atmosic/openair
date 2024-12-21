@@ -18,7 +18,7 @@ ROOT_DIR = Path(os.path.dirname(os.path.realpath(__file__)))
 
 BASE_ADDR = 0x10000000
 
-TYPE_NVDS = 0
+TYPE_STORAGE_DATA = 0
 TYPE_SPE = 1
 TYPE_APP = 2
 TYPE_MCUBOOT = 3
@@ -31,7 +31,7 @@ west atm_arch [-h] [-i {input file name} | --append] [-s] [-d]
            [-o {output file name}]
            [-p {partition_info map file}]
            [--atm_isp_path {atm_isp exe file}]
-           [--nvds_file {nvds file}]
+           [--storage_data_file {storage data file}]
            [--factory_data_file {factory data file}]
            [--spe_file {spe file}]
            [--app_file {app file}]
@@ -63,13 +63,13 @@ class AtmIsp:
 
     def decode_atm(self, input_file):
         # atm_isp decode [-h] [-i ARCHIVE]
-        cmd_arg = [self.atm_isp_exe_path, 'decode', '-i', input_file]
+        cmd_arg = ['python', self.atm_isp_exe_path, 'decode', '-i', input_file]
         return self.exe_cmd(cmd_arg)
 
     def burn_atm(self, input_file, openocd_pkg_root, device=None, dst_dir=None,
                  openocd_script_only=False):
         # atm_isp decode [-h] [-i ARCHIVE]
-        cmd_arg = [self.atm_isp_exe_path, 'burn', '-i', input_file, '-z',
+        cmd_arg = ['python', self.atm_isp_exe_path, 'burn', '-i', input_file, '-z',
                    '--openocd_pkg_root', openocd_pkg_root]
         if dst_dir:
             cmd_arg.append('-d')
@@ -91,20 +91,22 @@ class AtmIsp:
         # atm_isp init [-o NEW_ARCHIVE] [-t] [-s] \
         #              [-sec_dbg_key_checksum sec_dbg_key_checksum] \
         #              [-b] family name board
-        cmd_arg = [self.atm_isp_exe_path, 'init', '-o', output_file, '-z']
+        cmd_arg = ['python', self.atm_isp_exe_path, 'init', '-o', output_file, '-z']
         cmd_arg.append(self.partInfo.PLATFORM_FAMILY)
         cmd_arg.append(self.partInfo.PLATFORM_NAME)
         cmd_arg.append(self.partInfo.BOARD)
         return self.exe_cmd(cmd_arg)
 
     def append(self, load_type, filepath, input_file, output_file):
-        if load_type == TYPE_NVDS:
-            if not self.partInfo.NVDS_START or not self.partInfo.NVDS_SIZE:
-                print(f"Cannot find NVDS_START and NVDS_SIZE info")
+        if load_type == TYPE_STORAGE_DATA:
+            if not self.partInfo.STORAGE_DATA_START or \
+                not self.partInfo.STORAGE_DATA_SIZE:
+                print(f"Cannot find STORAGE_DATA_START and STORAGE_DATA_SIZE"
+                       " info")
                 sys.exit(1)
-            region_start = self.partInfo.NVDS_START
-            region_size = self.partInfo.NVDS_SIZE
-            extra_info = 'NVDS'
+            region_start = self.partInfo.STORAGE_DATA_START
+            region_size = self.partInfo.STORAGE_DATA_SIZE
+            extra_info = 'STORAGE_DATA'
         elif load_type == TYPE_FACTORY_DATA:
             if not self.partInfo.FACTORY_DATA_START or \
                 not self.partInfo.FACTORY_DATA_SIZE:
@@ -190,6 +192,10 @@ class AtmIsp:
             region_start = self.partInfo.ATMWSTK_START
             region_size = self.partInfo.ATMWSTK_SIZE
             extra_info = 'ATMWSTK'
+            if filepath.endswith(".elf"):
+                binfile = filepath.replace(".elf", ".bin")
+                self.do_objcopy(filepath, binfile)
+                filepath = binfile
         else:
             print(f"Unknown type {load_type}")
             sys.exit(1)
@@ -209,7 +215,7 @@ class AtmIsp:
             #                 [-mpr_start MPR_START] [-mpr_size MPR_SIZE]
             #                 [-mpr_lock_size MPR_LOCK_SIZE] [-extrainfo EXTRAINFO]
             #                 image [region_start] [region_size] [address]
-            cmd_arg = [self.atm_isp_exe_path, 'loadRram', '-i', input_file,
+            cmd_arg = ['python', self.atm_isp_exe_path, 'loadRram', '-i', input_file,
                        '-o', output_file, '-extrainfo', extra_info]
             cmd_arg.append(filepath)
             cmd_arg.append(region_start)
@@ -226,7 +232,7 @@ class AtmIsp:
             #                 [-mpr_start MPR_START] [-mpr_size MPR_SIZE]
             #                 [-mpr_lock_size MPR_LOCK_SIZE] [-extrainfo EXTRAINFO]
             #                 image [region_start] [region_size] [address]
-            cmd_arg = [self.atm_isp_exe_path, 'loadFlashNvds', '-i', input_file,
+            cmd_arg = ['python', self.atm_isp_exe_path, 'loadFlashNvds', '-i', input_file,
                        '-o', output_file, '-extrainfo', extra_info]
             cmd_arg.append(filepath)
             cmd_arg.append(region_start)
@@ -237,10 +243,19 @@ class AtmIsp:
         img_type = 0
         # atm_isp cmdExtend [-h] [-i ARCHIVE] [-o NEW_ARCHIVE] [-v]
         #                   [-extrainfo EXTRAINFO] image [type]
-        cmd_arg = [self.atm_isp_exe_path, 'cmdExtend', '-i', input_file,
+        cmd_arg = ['python', self.atm_isp_exe_path, 'cmdExtend', '-i', input_file,
                    '-o', output_file, '-extrainfo', 'LAYOUT_MAP']
         cmd_arg.append(filepath)
         cmd_arg.append(f"{img_type}")
+        return self.exe_cmd(cmd_arg)
+
+    def do_objcopy(self, elffile, binfile):
+        ZEPHYR_SDK_INSTALL_DIR = os.getenv("ZEPHYR_SDK_INSTALL_DIR")
+        CMAKE_OBJCOPY = os.path.join(ZEPHYR_SDK_INSTALL_DIR, "arm-zephyr-eabi",
+            "bin", "arm-zephyr-eabi-objcopy")
+        cmd_arg = [CMAKE_OBJCOPY, "-O", "binary"]
+        cmd_arg.append(elffile)
+        cmd_arg.append(binfile)
         return self.exe_cmd(cmd_arg)
 
     def exe_cmd(self, cmd_arg):
@@ -269,9 +284,6 @@ class AtmArchCommand(WestCommand):
             description=self.description,
             usage=ARCH_USAGE)
         group = parser.add_argument_group('atm isp archive tool')
-        group.add_argument("-atm_isp_path", "--atm_isp_path",
-                        required=True, default=None,
-                        help="specify atm_isp exe path path")
         group.add_argument("-d", "--debug", action='store_true',
                         help="debug enabled, default false")
         group.add_argument("-s", "--show", action='store_true',
@@ -289,24 +301,24 @@ class AtmArchCommand(WestCommand):
         group.add_argument("-p", "--partition_info_file",
                         required=False, default=None,
                         help="partition info file path")
-        group.add_argument("-nvds_file", "--nvds_file",
+        group.add_argument("-storage_data_file", "--storage_data_file",
                         required=False, default=None,
-                        help="nvds file path")
+                        help="storage data file path, binary format only")
         group.add_argument("-factory_data_file", "--factory_data_file",
                         required=False, default=None,
-                        help="factory data file path")
+                        help="factory data file path, binary format only")
         group.add_argument("-spe_file", "--spe_file",
                         required=False, default=None,
-                        help="spe file path")
+                        help="spe file path, binary format only")
         group.add_argument("-app_file", "--app_file",
                         required=False, default=None,
-                        help="application file path")
+                        help="application file path, binary format only")
         group.add_argument("-mcuboot_file", "--mcuboot_file",
                         required=False, default=None,
-                        help="mcuboot file path")
+                        help="mcuboot file path, binary format only")
         group.add_argument("-atmwstk_file", "--atmwstk_file",
                         required=False, default=None,
-                        help="atmwstk file path")
+                        help="atmwstk file path, binary or elf format only")
         group.add_argument("-openocd_pkg_root", "--openocd_pkg_root",
                         required=False, default=None,
                         help="Path to directory where openocd and its "
@@ -320,10 +332,12 @@ class AtmArchCommand(WestCommand):
 
 
     def do_run(self, args, remainder):
-        if not os.path.exists(args.atm_isp_path):
-                print(f"{args.atm_isp_path} not exist")
+        atm_isp_path = os.path.join(str(Path(__file__).resolve().parents[1]),
+            'tools', 'scripts', 'atm_isp')
+        if not os.path.exists(atm_isp_path):
+                print(f"{atm_isp_path} not exist")
                 sys.exit(1)
-        atmisp = AtmIsp(args.atm_isp_path, args.debug)
+        atmisp = AtmIsp(atm_isp_path, args.debug)
         if args.show:
             if not args.input_atm_file:
                 print(f"Required input_atm_file")
@@ -374,12 +388,12 @@ class AtmArchCommand(WestCommand):
         atmisp.update_partInfo(partInfo)
         if not args.append:
             atmisp.init_atm(args.output_atm_file)
-        if args.nvds_file:
-            if not os.path.exists(args.nvds_file):
-                print(f"{args.nvds_file} not exist")
+        if args.storage_data_file:
+            if not os.path.exists(args.storage_data_file):
+                print(f"{args.storage_data_file} not exist")
                 sys.exit(1)
 
-            atmisp.append(TYPE_NVDS, args.nvds_file, input_file,
+            atmisp.append(TYPE_STORAGE_DATA, args.storage_data_file, input_file,
                             args.output_atm_file)
         if args.factory_data_file:
             if not os.path.exists(args.factory_data_file):
@@ -409,6 +423,13 @@ class AtmArchCommand(WestCommand):
             if not os.path.exists(args.atmwstk_file):
                 print(f"{args.atmwstk_file} not exist")
                 sys.exit(1)
+            if not args.atmwstk_file.endswith(".bin"):
+                if not os.getenv("ZEPHYR_SDK_INSTALL_DIR"):
+                    print(f"ZEPHYR_SDK_INSTALL_DIR not set cannot transfer"
+                          f"{args.atmwstk_file} to binary. Please transfer elf "
+                          f"to binary offline and then --atmswtk_file with the "
+                          f"transfered binary file")
+                    sys.exit(1)
             atmisp.append(TYPE_ATMWSTK, args.atmwstk_file, input_file,
                             args.output_atm_file)
         atmisp.add_extra(args.partition_info_file, input_file,

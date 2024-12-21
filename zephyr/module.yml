@@ -4,4 +4,6 @@
 
 build:
   cmake: .
+  sysbuild-cmake: sysbuild
+  sysbuild-kconfig: sysbuild/Kconfig.sysbuild
   kconfig: Kconfig
