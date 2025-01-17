@@ -4,10 +4,11 @@
 
 @Defines to generate/show/burn atm isp atm file
 
-Copyright (C) Atmosic 2024
+Copyright (C) Atmosic 2024-2025
 """
 
 import argparse
+import hashlib
 import os
 from pathlib import Path
 import sys
@@ -37,6 +38,11 @@ west atm_arch [-h] [-i {input file name} | --append] [-s] [-d]
            [--app_file {app file}]
            [--mcuboot_file {mcuboot file}]
            [--atmwstk_file {atmwstk file}]
+           [--sec_dbg_enable]
+           [--sec_dbg_key {sec_dbg_key file}]
+           [--sec_dbg_static_unlock]
+           [--sec_boot_enable]
+           [--sec_boot_key {sec_boot_key file}]
 '''
 
 class AtmPartInfo:
@@ -81,7 +87,7 @@ class AtmIsp:
     def update_partInfo(self, partInfo):
         self.partInfo = partInfo
 
-    def init_atm(self, output_file):
+    def init_atm(self, output_file, sd_key_cs, sb_key_cs, sd_static_unlock):
         if not self.partInfo.PLATFORM_FAMILY or \
             not self.partInfo.PLATFORM_NAME or \
             not self.partInfo.BOARD:
@@ -95,6 +101,16 @@ class AtmIsp:
         cmd_arg.append(self.partInfo.PLATFORM_FAMILY)
         cmd_arg.append(self.partInfo.PLATFORM_NAME)
         cmd_arg.append(self.partInfo.BOARD)
+        if sd_key_cs:
+            cmd_arg.append('--sec_dbg')
+            cmd_arg.append('--sec_dbg_key_checksum')
+            cmd_arg.append(sd_key_cs)
+            if sd_static_unlock:
+                cmd_arg.append('--sec_dbg_static_unlock')
+        if sb_key_cs:
+            cmd_arg.append('--sec_boot')
+            cmd_arg.append('--sec_boot_key_checksum')
+            cmd_arg.append(sb_key_cs)
         return self.exe_cmd(cmd_arg)
 
     def append(self, load_type, filepath, input_file, output_file):
@@ -319,6 +335,22 @@ class AtmArchCommand(WestCommand):
         group.add_argument("-atmwstk_file", "--atmwstk_file",
                         required=False, default=None,
                         help="atmwstk file path, binary or elf format only")
+        group.add_argument('-sd', '--sec_dbg_enable', action='store_true',
+                           help='secure debug eanble, specify secure debug key '
+                           'with --sec_dbg_key, default: zephyrproject/openair'
+                           '/lib/atm_debug_auth/root-debug-ec-p256.pem')
+        group.add_argument("-sec_dbg_key", "--sec_dbg_key",
+                        required=False, default=None,
+                        help="secure debug key file path")
+        group.add_argument('-sec_dbg_static_unlock', '--sec_dbg_static_unlock',
+                           action='store_true',
+                           help='secure debug static challenge enable')
+        group.add_argument('-sb', '--sec_boot_enable', action='store_true',
+                           help='secure boot eanble, specify secure boot key '
+                           'with --sec_boot_key')
+        group.add_argument("-sec_boot_key", "--sec_boot_key",
+                        required=False, default=None,
+                        help="secure boot key file path")
         group.add_argument("-openocd_pkg_root", "--openocd_pkg_root",
                         required=False, default=None,
                         help="Path to directory where openocd and its "
@@ -330,6 +362,32 @@ class AtmArchCommand(WestCommand):
                            help='Stop after preparing OpenOCD script')
         return parser
 
+    def check_sec_key_checksum(self, args):
+        sd_cs = None
+        sb_cs = None
+        sd_static_unlock = False
+        if args.sec_dbg_enable:
+            if args.sec_dbg_key:
+                sec_dbg_key = args.sec_dbg_key
+            else:
+                sec_dbg_key = os.path.join(str(Path(__file__).resolve().parents[1]), 'lib',
+                    'atm_debug_auth', 'root-debug-ec-p256.pem')
+            if not os.path.exists(sec_dbg_key):
+                print(f"{sec_dbg_key} not exist")
+                sys.exit(1)
+            sd_cs  = hashlib.md5(open(sec_dbg_key,'rb').read()).hexdigest()
+            if args.sec_dbg_static_unlock:
+                sd_static_unlock = True
+        if args.sec_boot_enable:
+            if not args.sec_boot_key:
+                print(f"using --sec_boot_key to specify secure boot key path")
+                sys.exit(1)
+            sec_boot_key = args.sec_boot_key
+            if not os.path.exists(sec_boot_key):
+                print(f"{sec_boot_key} not exist")
+                sys.exit(1)
+            sb_cs  = hashlib.md5(open(sec_boot_key,'rb').read()).hexdigest()
+        return sd_cs, sb_cs, sd_static_unlock
 
     def do_run(self, args, remainder):
         atm_isp_path = os.path.join(str(Path(__file__).resolve().parents[1]),
@@ -387,7 +445,10 @@ class AtmArchCommand(WestCommand):
         partInfo.parse_info(args.partition_info_file)
         atmisp.update_partInfo(partInfo)
         if not args.append:
-            atmisp.init_atm(args.output_atm_file)
+            sd_key_checksum, sb_key_checksum, sd_static_unlock = \
+                    self.check_sec_key_checksum(args)
+            atmisp.init_atm(args.output_atm_file, sd_key_checksum,
+                            sb_key_checksum, sd_static_unlock)
         if args.storage_data_file:
             if not os.path.exists(args.storage_data_file):
                 print(f"{args.storage_data_file} not exist")

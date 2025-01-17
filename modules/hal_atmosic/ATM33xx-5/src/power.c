@@ -52,7 +52,7 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 	if (idle != IDLE_FOREVER) {
 		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(retain), exit_latency_us, 0));
 		/* Convert ticks to lpcycles */
-		duration = z_tmcvt(idle, Z_HZ_ticks, 32768, true, true, false, false);
+		duration = atm_to_lpc(Z_HZ_ticks, idle);
 #ifdef PSEQ_TEST_TORTURE_RETAIN
 		if (duration > 0x100) {
 		    duration = 0x100;
@@ -77,7 +77,7 @@ static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(hibernate), exit_latency_us,
 							0));
 		/* Convert ticks to lpcycles */
-		duration = z_tmcvt(idle, Z_HZ_ticks, 32768, true, true, false, false);
+		duration = atm_to_lpc(Z_HZ_ticks, idle);
 	} else {
 		duration = 0;
 	}
@@ -115,7 +115,7 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 	if (idle != IDLE_FOREVER) {
 		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
 		/* Convert ticks to lpcycles */
-		duration = z_tmcvt(idle, Z_HZ_ticks, 32768, true, false, false, false);
+		duration = atm_to_lpc(Z_HZ_ticks, idle);
 	} else {
 		duration = 0;
 	}
@@ -265,7 +265,7 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 		uint32_t elapsed = atm_get_sys_time() - start;
 		SysTick->CTRL = systick_ctrl;
 		/* Convert lpcycles to hardware cycles */
-		sys_clock_correct(z_tmcvt(elapsed, 32768, Z_HZ_cyc, true, true, false, false));
+		sys_clock_correct(atm_lpc_to(Z_HZ_cyc, elapsed));
 		break;
 	}
 	case PM_STATE_SOFT_OFF:

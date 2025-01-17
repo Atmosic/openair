@@ -5,12 +5,12 @@
  *
  * @brief Generated header file for atmwstk integrity checking
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2025
  *
  *******************************************************************************
  */
 #pragma once
 
-#define ATMWSTK_SHA {0x2220c873, 0x9e1b0ff9, 0x961f8174, 0xb92d4597, 0x64a63c1d, 0xaa67f5ce, 0x27fd9c61, 0xb969d56a}
-#define ATMWSTK_SIZE 174608
+#define ATMWSTK_SHA {0x35edf6cc, 0x29b2c5b7, 0xeb8e9a66, 0xe5b7d864, 0xc231d582, 0x18af2363, 0x1c98bbcb, 0x28e397c6}
+#define ATMWSTK_SIZE 174812
 #define ATMWSTK_START 0x00064000

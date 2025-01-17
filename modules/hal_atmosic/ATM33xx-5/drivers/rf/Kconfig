@@ -6,3 +6,22 @@ config ATM_RF
 	bool "Atmosic RF module"
 	default y if BT
 	default y if ENTROPY_ATM_TRNG
+
+config MAX_TX_PWR
+	int "Maximum TX power"
+	depends on ATM_RF
+	range -20 10
+	default 0
+	help
+	    Configure the maximum transmit power (dBm) for both advertising and
+	    connection.
+
+config RF_TEST
+	bool "RF Test"
+
+config FORCE_TX_PWR
+	int "Force TX power"
+	depends on RF_TEST
+	default 0
+	help
+	    This is the highest-priority setting for rftest use only.

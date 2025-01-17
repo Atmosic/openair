@@ -32,6 +32,26 @@
  */
 int8_t rf_set_txpwr_maximum_val(int8_t txpwr_dbm);
 
+#ifndef CONFIG_SOC_FAMILY_ATM
+/**
+ *******************************************************************************
+ * @brief Set the advertising tx power.
+ * @param[in] txpwr_dbm Tx power in dbm.
+ * @return True on success.
+ *******************************************************************************
+ */
+bool rf_set_txpwr_advertising_val(int8_t txpwr_dbm);
+
+/**
+ *******************************************************************************
+ * @brief Get the advertising tx power.
+ *
+ * @return Tx power in dbm.
+ *******************************************************************************
+ */
+int rf_get_txpwr_advertising_val(void);
+#endif
+
 /**
  *******************************************************************************
  * @brief Override tx_power index value from LC.

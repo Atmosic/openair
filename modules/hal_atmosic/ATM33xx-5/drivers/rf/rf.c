@@ -38,9 +38,12 @@
 #define RSSI_LOW_THRHLD      -70
 #define RSSI_INTERF_THRHLD   -70
 
-// TX max power
+#ifndef CONFIG_SOC_FAMILY_ATM
+STATIC_ASSERT(CONFIG_MAX_TX_PWR >= CONFIG_ADV_TX_PWR, "ADV TX power exceeds");
+#endif
+
+// TX min power
 #define DEFAULT_RF_POWER_MIN RF_POWER_MINUS_20_DBM
-#define DEFAULT_RF_POWER_MAX RF_POWER_4_DBM
 
 // Power table
 static int8_t const RF_TX_PW_CONV_TBL[RF_POWER_LVL_NUM] = {
@@ -60,6 +63,9 @@ static int8_t const RF_TX_PW_CONV_TBL[RF_POWER_LVL_NUM] = {
 
 static int8_t tx_gain_offset;
 static uint8_t txpwr_max;
+#ifndef CONFIG_SOC_FAMILY_ATM
+static uint8_t txpwr_adv_dbm;
+#endif
 
 /**
  * @brief Read access
@@ -264,7 +270,11 @@ void rf_init(struct rwip_rf_api *api)
     api->reg_wr        = rf_reg_wr;
     api->txpwr_dbm_get = rf_txpwr_dbm_get;
     api->txpwr_min     = DEFAULT_RF_POWER_MIN;
-    txpwr_max = DEFAULT_RF_POWER_MAX;
+    txpwr_max = rf_txpwr_cs_get_in_range(CONFIG_MAX_TX_PWR, TXPWR_CS_LOWER, 0,
+	RF_POWER_LVL_NUM - 1);
+#ifndef CONFIG_SOC_FAMILY_ATM
+    txpwr_adv_dbm = CONFIG_ADV_TX_PWR;
+#endif
     api->txpwr_max_get = rf_txpwr_max_get;
     api->sleep         = rf_sleep;
     api->wake          = rf_wake;
@@ -454,6 +464,10 @@ void rf_init(struct rwip_rf_api *api)
     ble_dfcntl1_2us_pack(/*uint8_t rxsampstinst12us*/ 0x7,
 			 /*uint8_t rxswstinst12us*/   0x18,
 			 /*uint8_t txswstinst12us*/   0x19);
+
+#if defined(CONFIG_RF_TEST) || defined(CONFIG_FORCE_TX_PWR)
+    rf_set_txpwr_override(CONFIG_FORCE_TX_PWR);
+#endif
 }
 
 int8_t rf_set_txpwr_maximum_val(int8_t txpwr_dbm)
@@ -462,6 +476,24 @@ int8_t rf_set_txpwr_maximum_val(int8_t txpwr_dbm)
 	RF_POWER_LVL_NUM - 1);
     return rwip_rf.txpwr_dbm_get(txpwr_max);
 }
+
+#ifndef CONFIG_SOC_FAMILY_ATM
+bool rf_set_txpwr_advertising_val(int8_t txpwr_dbm)
+{
+    if (rf_txpwr_cs_get_in_range(txpwr_dbm, TXPWR_CS_LOWER, 0,
+	RF_POWER_LVL_NUM - 1) > txpwr_max) {
+	DEBUG_TRACE("Err:Exceed Max TxPwr");
+	return false;
+    }
+    txpwr_adv_dbm = txpwr_dbm;
+    return true;
+}
+
+int rf_get_txpwr_advertising_val(void)
+{
+    return txpwr_adv_dbm;
+}
+#endif
 
 void rf_set_txpwr_override(int8_t txpwr_dbm)
 {

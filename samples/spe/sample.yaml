@@ -5,3 +5,6 @@
 sample:
   description: ATM33xx SPE
   name: Secure Processing Env. sample
+tests:
+  sample.spe:
+    tags: introduction

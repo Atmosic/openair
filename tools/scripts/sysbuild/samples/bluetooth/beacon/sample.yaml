@@ -1,0 +1,69 @@
+tests:
+  samples.bluetooth.beacon.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Beacon started"
+    tags: bluetooth atm33 atm34
+    extra_args:
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
+  samples.bluetooth.beacon.atm.mcuboot:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Beacon started"
+    tags: bluetooth atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+  samples.bluetooth.beacon.atm.mcuboot.atmwstk.pd50ll.atm33:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Beacon started"
+    tags: bluetooth atm33
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    extra_configs:
+      - CONFIG_ATMWSTK="PD50LL"
+      - CONFIG_USE_ATMWSTK=y
+  samples.bluetooth.beacon.atm.mcuboot.atmwstklib.pd50:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Beacon started"
+    tags: bluetooth atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=PD50"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=PD50"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DUSE_ATMWSTKLIB;-DATMWSTKLIB=PD50"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB="PD50"

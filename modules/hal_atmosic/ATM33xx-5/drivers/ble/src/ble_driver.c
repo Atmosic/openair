@@ -58,6 +58,7 @@ LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 #include <zephyr/random/random.h>
 #endif
 #include "arch.h"
+#include "timer.h"
 #include "vectors.h"
 #include "co_error.h"
 #include "ke_event.h"
@@ -257,8 +258,7 @@ ble_to_deep_sleep(struct device const *dev, bool ble_asleep,
 	}
 
 	// Convert lpcycles to ticks
-	ticks = z_tmcvt(ble_sleep_duration, 32768, Z_HZ_ticks, true, false,
-	    false, false);
+	ticks = atm_lpc_to(Z_HZ_ticks, ble_sleep_duration);
 	// Let WATCH_BLE_OSC_ON signal wakeup for optimal power profile
 	ticks += k_ms_to_ticks_ceil32(2);
     }

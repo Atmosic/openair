@@ -1,3 +1,6 @@
 sample:
   description: UART0 to UART1 Passthrough
   name: UART Passthrough sample
+tests:
+  sample.drivers.uart.uart_passthrough:
+    tags: introduction

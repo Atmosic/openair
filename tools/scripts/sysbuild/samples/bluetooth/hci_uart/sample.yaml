@@ -1,0 +1,178 @@
+tests:
+  samples.bluetooth.hci_uart.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atm33 atm34
+    extra_args:
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
+  samples.bluetooth.hci_uart.atm.mcuboot:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.pd50ll.atm33:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atm33
+    platform_allow:
+      - ATMEVK-3325-LQK@mcuboot/ATM33xx-5/ns
+      - ATMEVK-3330-QN-5@mcuboot/ATM33xx-5/ns
+      - ATMEVK-3330e-QN-5@mcuboot/ATM33xx-5/ns
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    extra_configs:
+      - CONFIG_ATMWSTK="PD50LL"
+      - CONFIG_USE_ATMWSTK=y
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.ll.atm33:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atm33
+    platform_allow:
+      - ATMEVK-3325-LQK@mcuboot/ATM33xx-5/ns
+      - ATMEVK-3330-QN-5@mcuboot/ATM33xx-5/ns
+      - ATMEVK-3330e-QN-5@mcuboot/ATM33xx-5/ns
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    extra_configs:
+      - CONFIG_ATMWSTK="LL"
+      - CONFIG_USE_ATMWSTK=y
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.pd50:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atm33 atm34
+    platform_allow:
+      - ATMEVK-3325-LQK@mcuboot/ATM33xx-5/ns
+      - ATMEVK-3330-QN-5@mcuboot/ATM33xx-5/ns
+      - ATMEVK-3330e-QN-5@mcuboot/ATM33xx-5/ns
+      - ATMEVK-3405-PQK-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
+      - ATMEVK-3425-PQK-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3425-PQK-5@mcuboot/ATM34xx-5/ns
+      - ATMEVK-3430e-WQN-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3430e-WQN-5@mcuboot/ATM34xx-5/ns
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=PD50"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=PD50"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DUSE_ATMWSTKLIB;-DATMWSTKLIB=PD50"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB="PD50"
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.cpd200.atm34:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atm34
+    platform_allow:
+      - ATMEVK-3405-PQK-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
+      - ATMEVK-3425-PQK-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3425-PQK-5@mcuboot/ATM34xx-5/ns
+      - ATMEVK-3430e-WQN-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3430e-WQN-5@mcuboot/ATM34xx-5/ns
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=CPD200"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=CPD200"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DUSE_ATMWSTKLIB;-DATMWSTKLIB=CPD200"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB="CPD200"
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.full.atm34:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atm34
+    platform_allow:
+      - ATMEVK-3405-PQK-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
+      - ATMEVK-3425-PQK-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3425-PQK-5@mcuboot/ATM34xx-5/ns
+      - ATMEVK-3430e-WQN-2@mcuboot/ATM34xx-2/ns
+      - ATMEVK-3430e-WQN-5@mcuboot/ATM34xx-5/ns
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB="
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB="
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DUSE_ATMWSTKLIB;-DATMWSTKLIB="
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB=""
+  samples.bluetooth.hci_uart.atm.mcuboot.atmx2:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atmx2
+    platform_allow:
+      - ATMEVK-M2251-02/ATMx2xx-x1x
+      - ATMEVK-M3201-02/ATMx2xx-x1x
+      - ATMEVK-M3231-02/ATMx2xx-x1x
+    extra_args:
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y

@@ -35,6 +35,7 @@
 LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 
 #include "arch.h"
+#include "timer.h"
 #include "vectors.h"
 #include "co_error.h"
 #include "ke_event.h"
@@ -172,8 +173,7 @@ ble_to_deep_sleep(struct device const *dev, bool ble_asleep,
 	}
 
 	// Convert lpcycles to ticks
-	ticks = z_tmcvt(ble_sleep_duration, 32768, Z_HZ_ticks, true, false,
-	    false, false);
+	ticks = atm_lpc_to(Z_HZ_ticks, ble_sleep_duration);
     }
 
 #ifdef CONFIG_PM

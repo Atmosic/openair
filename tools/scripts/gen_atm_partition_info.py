@@ -4,7 +4,7 @@
 
 @Defines to parse dts file for generating the partition_info.map file with arguments
 
-Copyright (C) Atmosic 2024
+Copyright (C) Atmosic 2024-2025
 """
 
 import sys
@@ -236,6 +236,10 @@ class PartInfoMerge:
         for key, value in part_info.__dict__.items():
              print(f"key = {key} value = {value}")
 
+def log_and_exit(msg):
+    print(msg)
+    sys.exit(1)
+
 class DevStreeParser:
     def __init__(self, args):
         self.dts_file = args.input_file
@@ -287,8 +291,8 @@ class DevStreeParser:
         if dt:
             self.dt = dt
         else:
-            print(f"DeviceTree parsing {args.input_file} failed")
-            sys.exit(1)
+            log_and_exit(f"DeviceTree parsing {args.input_file} failed")
+
         if os.path.exists(self.outfile):
             os.remove(self.outfile)
         self.part_info = AtmPartInfo()
@@ -446,6 +450,20 @@ class DevStreeParser:
                     self.part_info.NS_APP_START = hex(nspe_start + rram_start)
                     self.part_info.NS_APP_OFFSET = hex(nspe_start)
                     self.part_info.NS_APP_SIZE = hex(nspe_size)
+        # slot0_trailer to provide information only
+        slot0_trailer = utils_get_node_by_lable(rram0, "slot0_trailer")
+        if slot0_trailer:
+            ret, slot0_trailer_start, slot0_trailer_size = \
+                utils_get_node_property_reg(slot0_trailer)
+            if ret == ST_ERROR:
+                log_and_exit("Parsing slot0_trailer addr, size failed")
+            self.debug_print(
+                f"slot0_trailer_start = {hex(slot0_trailer_start)}, "
+                f"slot0_trailer_size = {hex(slot0_trailer_size)}")
+            self.part_info.SLOT0_TRAILER_START = \
+                hex(slot0_trailer_start + rram_start)
+            self.part_info.SLOT0_TRAILER_OFFSET = hex(slot0_trailer_start)
+            self.part_info.SLOT0_TRAILER_SIZE = hex(slot0_trailer_size)
         # OTA_STAGING from slot1_partition
         slot1_partition = utils_get_node_by_lable(rram0, "slot1_partition")
         if slot1_partition:
@@ -472,10 +490,13 @@ class DevStreeParser:
 
     def parsing_rram(self):
         rram_controller = utils_get_node_by_lable(self.dt, "rram_controller")
+        if not rram_controller:
+            print("Parsing rram_controller failed")
+            return
         ret, rram0_start, rram0_size = \
                 utils_get_node_property_reg(rram_controller)
         if ret == ST_ERROR:
-            return
+            log_and_exit("Parsing rram_controller failed")
         self.debug_print(f"rram0_start = {hex(rram0_start)}, "
                          f"rram0_size = {hex(rram0_size)}")
         if rram0_start > SEC_BASE_ADDR:
@@ -496,8 +517,7 @@ class DevStreeParser:
             ret, storage_data_start, storage_data_size = \
                     utils_get_node_property_reg(storage_partition)
             if ret == ST_ERROR:
-                print("Parsing rram storage failed")
-                return
+                log_and_exit("Parsing rram storage failed")
             self.debug_print(f"storage_data_start = {hex(storage_data_start)}, "
                              f"storage_data_size = {hex(storage_data_size)}")
             self.part_info.STORAGE_DATA_START = \
@@ -511,8 +531,7 @@ class DevStreeParser:
             ret, factory_data_start, factory_data_size = \
                     utils_get_node_property_reg(factory_data_partition)
             if ret == ST_ERROR:
-                print("Parsing rram factory data failed")
-                return
+                log_and_exit("Parsing rram factory data failed")
             self.debug_print(f"factory_data_start = {hex(factory_data_start)}, "
                              f"factory_data_size = {hex(factory_data_size)}")
             self.part_info.FACTORY_DATA_START = \
@@ -533,21 +552,25 @@ class DevStreeParser:
 
     def parsing_flash(self):
         flash_controller = utils_get_node_by_lable(self.dt, "flash_controller")
-        if flash_controller:
-            ret, flash0_start, flash0_size = \
-                    utils_get_node_property_reg(flash_controller)
-            if ret == ST_ERROR:
-                return
-            self.debug_print(f"flash0_start = {hex(flash0_start)}, "
+        if not flash_controller:
+            print("Parsing flash_controller failed")
+            return
+        flash0 = utils_get_node_by_lable(flash_controller, "flash0")
+        if not flash0:
+            print("Parsing flash0 failed")
+            return
+        ret, flash0_start, _ = utils_get_node_property_reg(flash_controller)
+        if ret == ST_ERROR:
+            log_and_exit("Parsing flash0 start from flash_controller failed")
+        ret, _, flash0_size = utils_get_node_property_reg(flash0)
+        if ret == ST_ERROR:
+            log_and_exit("Parsing flash0 size from flash0 failed")
+        self.debug_print(f"flash0_start = {hex(flash0_start)}, "
                          f"flash0_size = {hex(flash0_size)}")
         if flash0_start > SEC_BASE_ADDR:
             flash0_start = flash0_start - SEC_BASE_ADDR
         self.part_info.EXT_FLASH_START = hex(flash0_start)
         self.part_info.EXT_FLASH_SIZE = hex(flash0_size)
-        flash0 = utils_get_node_by_lable(flash_controller, "flash0")
-        if not flash0:
-            print("Parsing flash0 failed")
-            return
         # MCUBOOT_SCRASH from scratch_partition
         scratch_partition = utils_get_node_by_lable(flash0, "scratch_partition")
         if scratch_partition:
@@ -625,7 +648,7 @@ class DevStreeParser:
             ret, storage_data_start, storage_data_size = \
                     utils_get_node_property_reg(storage_partition)
             if ret == ST_ERROR:
-                return
+                log_and_exit("Parsing storage_partition failed")
             self.debug_print(f"storage_data_start = {hex(storage_data_start)}, "
                              f"storage_data_size = {hex(storage_data_size)}")
             self.part_info.STORAGE_DATA_START = \
@@ -639,7 +662,7 @@ class DevStreeParser:
             ret, factory_data_start, factory_data_size = \
                     utils_get_node_property_reg(factory_data_partition)
             if ret == ST_ERROR:
-                return
+                log_and_exit("Parsing factory_partition failed")
             self.debug_print(f"factory_data_start = {hex(factory_data_start)}, "
                              f"factory_data_size = {hex(factory_data_size)}")
             self.part_info.FACTORY_DATA_START = \
@@ -658,8 +681,12 @@ class DevStreeParser:
             return
         ret, flash0_start, flash0_size = utils_get_node_property_reg(flash0)
         if ret == ST_ERROR:
-            print("Parsing flash_controller failed")
-            return
+            log_and_exit("Parsing flash0 start from flash_controller failed")
+        ret, _, flash0_size = utils_get_node_property_reg(flash0)
+        if ret == ST_ERROR:
+            log_and_exit("Parsing flash0 size from flash0 failed")
+        self.debug_print(f"flash0_start = {hex(flash0_start)}, "
+                         f"flash0_size = {hex(flash0_size)}")
         self.debug_print(f"flash0_start = {hex(flash0_start)}, "
                          f"flash0_size = {hex(flash0_size)}")
         self.part_info.FLASH_START = hex(flash0_start)
@@ -718,8 +745,7 @@ class DevStreeParser:
             ret, storage_data_start, storage_data_size = \
                     utils_get_node_property_reg(storage_partition)
             if ret == ST_ERROR:
-                print("Parsing rram storage failed")
-                return
+                log_and_exit("Parsing rram storage failed")
             self.debug_print(f"storage_data_start = {hex(storage_data_start)}, "
                              f"storage_data_size = {hex(storage_data_size)}")
             self.part_info.STORAGE_DATA_START = \
@@ -733,8 +759,7 @@ class DevStreeParser:
             ret, factory_data_start, factory_data_size = \
                     utils_get_node_property_reg(factory_data_partition)
             if ret == ST_ERROR:
-                print("Parsing flash factory data failed")
-                return
+                log_and_exit("Parsing flash factory data failed")
             self.debug_print(f"factory_data_start = {hex(factory_data_start)}, "
                              f"factory_data_size = {hex(factory_data_size)}")
             self.part_info.FACTORY_DATA_START = \
@@ -782,12 +807,12 @@ class DevStreeParser:
                     int(self.part_info.SEC_JRNL_SIZE, 16) + 
                     int(self.part_info.SEC_CNTRS_KEYS_SIZE, 16))
 
+
 def main():
     parse_args()
     if args.opcode == 'gen':
         if not os.path.exists(args.input_file):
-            print(f"{args.input_file} not exist")
-            sys.exit(1)
+            log_and_exit(f"{args.input_file} not exist")
         dtsParser = DevStreeParser(args)
         dtsParser.init()
         dtsParser.parsing_board()
@@ -801,19 +826,16 @@ def main():
         dtsParser.update_data()
     elif args.opcode == 'merge':
         if not os.path.exists(args.input_file1):
-            print(f"{args.input_file1} not exist")
-            sys.exit(1)
+            log_and_exit(f"{args.input_file1} not exist")
         if not os.path.exists(args.input_file2):
-            print(f"{args.input_file2} not exist")
-            sys.exit(1)
+            log_and_exit(f"{args.input_file2} not exist")
         partinfomerge = PartInfoMerge(
                 args.input_file1, args.input_file2, args.output_file)
         partinfomerge.init()
         partinfomerge.merge_info()
         partinfomerge.update_data()
     else:
-        print(f"opcode {args.opcode} not support")
-        sys.exit(1)
+        log_and_exit(f"opcode {args.opcode} not support")
 
 
 if __name__ == '__main__':

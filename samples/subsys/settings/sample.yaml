@@ -1,0 +1,6 @@
+sample:
+  description: Sample demonstrating saving/loading factory/settings partitions
+  name: Atmosic Settings Subsystem
+tests:
+  sample.subsys.settings:
+    tags: introduction

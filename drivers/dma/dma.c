@@ -5,7 +5,7 @@
  *
  * @brief DMA driver
  *
- * Copyright (C) Atmosic 2020-2024
+ * Copyright (C) Atmosic 2020-2025
  *
  *******************************************************************************
  */
@@ -16,9 +16,16 @@
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 #include <zephyr/kernel.h>
+#ifdef CONFIG_ATM_DMA_RELOC_SRAM
+#include <kernel_internal.h>
+#endif
 #include <soc.h>
 #include <zephyr/init.h>
+#ifdef CONFIG_PM
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
 #endif
+#endif // CONFIG_SOC_FAMILY_ATM
 
 #include "arch.h"
 #include <inttypes.h>
@@ -60,8 +67,8 @@
 #define DMA_SEC_CFG_RESTORE() do {} while (0)
 #endif
 
-void *
-dma_memcpy(void *d, const void *s, size_t n)
+__STATIC_FORCEINLINE
+void *dma_memcpy_inline(void *d, const void *s, size_t n)
 {
     ASSERT_INFO(n <= DMA_SIZE_LIMIT, n, DMA_SIZE_LIMIT);
 
@@ -110,14 +117,27 @@ dma_memcpy(void *d, const void *s, size_t n)
     return d;
 }
 
-#if !defined(CONFIG_USERSPACE)
+#ifdef CONFIG_ATM_DMA_RELOC_SRAM
+void z_early_memcpy(void *d, const void *s, size_t n)
+{
+    (void) dma_memcpy_inline(d, s, n);
+}
+
+__ramfunc
+#endif
+void *dma_memcpy(void *d, const void *s, size_t n)
+{
+    return dma_memcpy_inline(d, s, n);
+}
+
+#ifndef CONFIG_USERSPACE
 // Override libc memcpy()
 void *memcpy(void *d, const void *s, size_t n)
     __attribute__((alias("dma_memcpy")));
 #endif
 
-void *
-dma_memset(void *m, int c, size_t n)
+__STATIC_FORCEINLINE
+void *dma_memset_inline(void *m, int c, size_t n)
 {
     uintptr_t addr = (uintptr_t)m;
     unsigned int d = (unsigned char)c;
@@ -171,7 +191,20 @@ dma_memset(void *m, int c, size_t n)
     return m;
 }
 
-#if !defined(CONFIG_USERSPACE)
+#ifdef CONFIG_ATM_DMA_RELOC_SRAM
+void z_early_memset(void *m, int c, size_t n)
+{
+    (void) dma_memset_inline(m, c, n);
+}
+
+__ramfunc
+#endif
+void *dma_memset(void *m, int c, size_t n)
+{
+    return dma_memset_inline(m, c, n);
+}
+
+#ifndef CONFIG_USERSPACE
 // Override libc memset()
 void *memset(void *m, int c, size_t n)
     __attribute__((alias("dma_memset")));
@@ -190,6 +223,7 @@ static bool is_em_addr(void const *addr)
 }
 #endif
 
+#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
 static volatile dma_cb_t chan2_cb;
 static void const *chan2_ctx;
 
@@ -208,10 +242,14 @@ void DMA2_Handler(void)
     CMSDK_AT_DMA->CHAN2_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
     chan2_cb = NULL;
 }
+#endif
 
 static volatile dma_cb_t chan3_cb;
 static void const *chan3_ctx;
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+static K_SEM_DEFINE(dma_tx_sem, 1, 1);
+#endif
 void DMA3_Handler(void)
 {
     uint32_t int_stat = CMSDK_AT_DMA->CHAN3_INTERRUPT_STATUS;
@@ -223,15 +261,25 @@ void DMA3_Handler(void)
 
     ASSERT_INFO(!AT_DMA_CHAN3_INTERRUPT_STATUS__DMA_ERR__READ(int_stat),
 	int_stat, CMSDK_AT_DMA->CHAN3_ERR_STAT);
-    chan3_cb(chan3_ctx);
+    dma_cb_t cb = chan3_cb;
     CMSDK_AT_DMA->CHAN3_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
     chan3_cb = NULL;
+#ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_PM
+    pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+    k_sem_give(&dma_tx_sem);
+#endif // CONFIG_SOC_FAMILY_ATM
+    if (cb) {
+	cb(chan3_ctx);
+    }
 }
 
 static void dma_dummy_callback(void const *ctx)
 {
 }
 
+#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
 static struct {
     uint32_t src_addr;
     uint32_t src_ctrl;
@@ -316,6 +364,7 @@ void dma_fifo_rx_async(enum dma_fifo_rx_port port, void *dst, size_t len,
 
     CMSDK_AT_DMA->CHAN2_OPMODE = AT_DMA_OPMODE__GO__MASK;
 }
+#endif // !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
 
 static struct {
     uint32_t tar_addr;
@@ -336,7 +385,7 @@ static struct {
     },
     [DMA_FIFO_TX_I2S] = {
 	(uint32_t)&CMSDK_I2S_NONSECURE->I2S_PP0_WDATA,
-	AT_DMA_TAR_CTRL__TAR_BUS_SIZE__WRITE(4) |
+	AT_DMA_TAR_CTRL__TAR_BUS_SIZE__WRITE(2) |
 	    AT_DMA_TAR_CTRL__TAR_TYPE__WRITE(1),
 	(uint32_t)&CMSDK_I2S_NONSECURE->BUFFER_DEPTH
     },
@@ -372,8 +421,13 @@ void dma_fifo_tx_async(enum dma_fifo_tx_port port, const void *src, size_t len,
 	cb = dma_dummy_callback;
     }
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+    k_sem_take(&dma_tx_sem, K_FOREVER);
+    chan3_cb = cb;
+#else
     // Wait for any previous transaction and award exactly one winner
     WFI_COND(!chan3_cb && ((chan3_cb = cb), true));
+#endif
 
     chan3_ctx = ctx;
 #if CFG_DMA_COPY
@@ -391,6 +445,9 @@ void dma_fifo_tx_async(enum dma_fifo_tx_port port, const void *src, size_t len,
     CMSDK_AT_DMA->CHAN3_FIFO_PORT_SEL =
 	AT_DMA_FIFO_PORT_SEL__TAR_PORT_SEL__WRITE(port);
 
+#if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_PM)
+    pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
     CMSDK_AT_DMA->CHAN3_OPMODE = AT_DMA_OPMODE__GO__MASK;
 }
 
@@ -437,6 +494,10 @@ void dma_copy(uint8_t channel, void *p_dst_addr, const void *p_src_addr,
 }
 #endif // CFG_DMA_COPY
 
+#ifndef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_DMA_RELOC_SRAM
+__ramfunc
+#endif
 static rep_vec_err_t
 dma_prevent_retention(bool *prevent, int32_t *pseq_dur, int32_t ble_dur)
 {
@@ -444,7 +505,9 @@ dma_prevent_retention(bool *prevent, int32_t *pseq_dur, int32_t ble_dur)
 #if CFG_DMA_COPY
 	CMSDK_AT_DMA->CHAN1_STATUS ||
 #endif
+#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
 	AT_DMA_CHAN2_STATUS__RUNNING__READ(CMSDK_AT_DMA->CHAN2_STATUS) ||
+#endif
 	CMSDK_AT_DMA->CHAN3_STATUS) {
 	*prevent = true;
 	return (RV_DONE);
@@ -452,7 +515,9 @@ dma_prevent_retention(bool *prevent, int32_t *pseq_dur, int32_t ble_dur)
 
     return (RV_NEXT);
 }
+#endif // !defined(CONFIG_SOC_FAMILY_ATM)
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
 #if defined(WRPRPINS_PIPE_LINE_CTRL__PIPE_LINE_EN__READ) && \
     !defined(AT_DMA_OPMODE__BURST_MODE_N__MASK)
 static uint32_t dma_chan2_save_rem, dma_chan2_save_size;
@@ -493,7 +558,13 @@ dma_exit_retention(void)
     return RV_NEXT;
 }
 #endif
+#endif // !defined(CONFIG_SOC_FAMILY_ATM) ||
+       // !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
 
+#ifdef CONFIG_ATM_DMA_RELOC_SRAM
+__ramfunc
+#endif
+#ifdef CONFIG_PM
 static rep_vec_err_t dma_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 {
 #if CFG_DMA_COPY
@@ -503,11 +574,13 @@ static rep_vec_err_t dma_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 	}
     }
 #endif
+#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
     if (CMSDK_AT_DMA->CHAN2_STATUS) {
 	if (*min_freq < chan2_min_freq) {
 	    *min_freq = chan2_min_freq;
 	}
     }
+#endif
     if (CMSDK_AT_DMA->CHAN3_STATUS) {
 	if (*min_freq < chan3_min_freq) {
 	    *min_freq = chan3_min_freq;
@@ -516,6 +589,7 @@ static rep_vec_err_t dma_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 
     return (RV_NEXT);
 }
+#endif // CONFIG_PM
 
 #ifdef DEBUG_DMA
 static rep_vec_err_t dma_schedule(void)
@@ -571,13 +645,18 @@ static void dma_constructor(void)
     NVIC_EnableIRQ(DMA2_IRQn);
     NVIC_EnableIRQ(DMA3_IRQn);
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
     RV_PLF_PREVENT_RETENTION_ADD(dma_prevent_retention);
 #if defined(WRPRPINS_PIPE_LINE_CTRL__PIPE_LINE_EN__READ) && \
     !defined(AT_DMA_OPMODE__BURST_MODE_N__MASK)
     RV_PLF_RETAIN_ALL_ADD(dma_enter_retention);
     RV_PLF_BACK_FROM_RETAIN_ALL_ADD(dma_exit_retention);
 #endif
+#endif // !defined(CONFIG_SOC_FAMILY_ATM) ||
+       // !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
+#ifdef CONFIG_PM
     RV_PLF_BP_THROTTLE_ADD(dma_bp_throttle);
+#endif
 
 #ifdef DEBUG_DMA
     RV_PLF_SCHEDULE_ADD(dma_schedule);
@@ -587,7 +666,9 @@ static void dma_constructor(void)
 #ifdef CONFIG_SOC_FAMILY_ATM
 static int dma_sys_init(void)
 {
+#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
     Z_ISR_DECLARE(DMA2_IRQn, 0, DMA2_Handler, NULL);
+#endif
     Z_ISR_DECLARE(DMA3_IRQn, 0, DMA3_Handler, NULL);
     dma_constructor();
     return 0;

@@ -1,3 +1,6 @@
 sample:
   description: Atmosic beacon adv sample
   name: Atmosic beacon sample
+tests:
+  sample.bluetooth.beacon:
+    tags: introduction

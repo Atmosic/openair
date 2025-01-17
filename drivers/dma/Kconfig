@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,8 +7,22 @@ config ATM_DMA
 	depends on !SOC_SERIES_ATMX2
 	default y if TRUSTED_EXECUTION_NONSECURE || MCUBOOT
 
+if ATM_DMA
+
 config ATM_DMA_MINIMAL
 	bool
-	depends on ATM_DMA
 	default y if MCUBOOT
-	default y if !BT && !ATM_ATLC && !ENTROPY_ATM_TRNG
+	default y if !BT && !ATM_ATLC && !ENTROPY_ATM_TRNG && !I2S_ATM
+
+config ATM_DMA_RX_SUPPRESS
+	bool
+	depends on !ATM_DMA_MINIMAL
+	default y
+
+config ATM_DMA_RELOC_SRAM
+	bool
+	help
+	  Relocate performance and power critical functions to SRAM, while
+	  still satisfying early init requirements.
+
+endif # ATM_DMA

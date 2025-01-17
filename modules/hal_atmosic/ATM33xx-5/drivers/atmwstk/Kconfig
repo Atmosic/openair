@@ -17,4 +17,9 @@ config ATMWSTKLIB
 	default "PD50"
 	depends on !USE_ATMWSTK
 
+config ATMWSTK_PATH
+	string "path of BLE link stack image"
+	default "${ZEPHYR_BASE}/../openair/modules/hal_atmosic/ATM33xx-5/drivers/ble"
+	depends on USE_ATMWSTK
+
 endif

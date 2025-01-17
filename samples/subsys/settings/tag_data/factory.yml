@@ -1,0 +1,7 @@
+data:
+ data_1:
+   tag_name: FACTORY/COMPANY_ID
+   tag_value: 0x0A24
+ data_2:
+   tag_name: FACTORY/SERIAL_NUMBER
+   tag_value: 0x12345678
