@@ -1,0 +1,18 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_EUI
+	bool "Atmosic EUI module"
+	default y if BT || IEEE802154_ATM34
+
+if ATM_EUI
+
+config ATM_EUI_ALLOW_RANDOM
+	bool "Permit eui driver to initialize using a random value"
+
+config ATM_EUI48_ALLOW_BUILTIN
+	bool "Allow eui driver to return no value."
+	depends on ATM_EUI
+
+endif # ATM_EUI

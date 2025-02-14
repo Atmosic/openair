@@ -1414,6 +1414,8 @@ proc atm_dump_flash [list image [list len 0x78000] [list start_addr $::CMSDK_FLA
 
     atm_${flash}_enable_ahb_bridge
 
+    # Bring SWD back up to speed for dumping
+    adapter speed $::_SWD_KHZ
     dump_image $image $start_addr $len
 
     atm_${flash}_ahb_2_spi

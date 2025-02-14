@@ -5,7 +5,7 @@
  *
  * @brief Memory Protection Controller (MPC) driver
  *
- * Copyright (C) Atmosic 2022
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -31,12 +31,31 @@ extern "C" {
 #endif
 
 /// Block size of MPC_FLS
+#ifdef MPC_FLS_CFG_BLK_SIZE
+#define AT_TZ_MPC_FLS_BLK_SIZE MPC_FLS_CFG_BLK_SIZE
+#else
 #define AT_TZ_MPC_FLS_BLK_SIZE 2048
+#endif
 /// Block size of MPC_RAM[0-3]
+#ifdef MPC_RAM_CFG_BLK_SIZE
+#define AT_TZ_MPC_RAM_BLK_SIZE MPC_RAM_CFG_BLK_SIZE
+#else
 #define AT_TZ_MPC_RAM_BLK_SIZE 256
+#endif
 
+#ifdef MPC_EXT_FLASH_CFG_MPC_SIZE
+#define AT_TZ_MPC_EXT_FLASH_MPC_SIZE MPC_EXT_FLASH_CFG_MPC_SIZE
+#else
 // only 128K of ext flash is configurable via MPC
 #define AT_TZ_MPC_EXT_FLASH_MPC_SIZE 0x20000
+#endif
+
+#ifdef MPC_FLS_CFG_MAX_AVAIL_LUTS
+#define MAX_MPC_FLS_LUT_IDX MPC_FLS_CFG_MAX_AVAIL_LUTS
+#else
+// MPC_FLS->BLK_MAX is incorrect. correct value is 34 due to size constraints
+#define MAX_MPC_FLS_LUT_IDX 34
+#endif
 
 typedef enum {
     /// Success
@@ -199,7 +218,7 @@ at_tz_mpc_ret_t at_tz_mpc_config_region(uint32_t base, uint32_t limit,
 __STATIC_INLINE at_tz_mpc_ret_t at_tz_mpc_config_remaining_ext_flash(
     at_tz_mpc_attr_t attr)
 {
-    MPC_FLS->BLK_IDX = 34;
+    MPC_FLS->BLK_IDX = MAX_MPC_FLS_LUT_IDX;
     if (attr == AT_TZ_MPC_ATTR_NONSECURE) {
 	MPC_FLS->BLK_LUT = 0x1;
 	return AT_TZ_MPC_RET_OK;

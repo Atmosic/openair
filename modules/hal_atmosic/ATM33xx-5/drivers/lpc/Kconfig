@@ -5,3 +5,4 @@
 config ATM_LPC
 	bool "Atmosic Low Power Clock module"
 	default y if BT
+	depends on !ATM_FORCE_LPC_RCOS

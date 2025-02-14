@@ -5,7 +5,7 @@
  *
  * @brief Memory Protection Controller (MPC) driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -29,8 +29,6 @@
 #define NORMALIZE_ADDR(addr, type) ((addr) - \
     (((type) == AT_TZ_MPC_DEV_FLASH) ? PHYS_FLASH_BASE : PHYS_SRAM_BASE))
 
-// MPC_FLS->BLK_MAX is incorrect. correct value is 34 due to size constraints
-#define MAX_MPC_FLS_LUT_IDX 34
 #define BLOCKS_PER_MPC(type) (1 + \
     (((type) == AT_TZ_MPC_DEV_RAM) ? MPC_RAM0->BLK_MAX : MAX_MPC_FLS_LUT_IDX))
 

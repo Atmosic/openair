@@ -5,7 +5,7 @@
  *
  * @brief Atmosic app work queue
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  *******************************************************************************
  */
@@ -31,6 +31,23 @@ static int app_work_q_init(void)
 	K_THREAD_STACK_SIZEOF(app_work_q_stack), APP_WORK_Q_PRIORITY, &cfg);
 
     return 0;
+}
+
+int atm_work_submit_to_app_work_q(struct k_work *work)
+{
+    return k_work_submit_to_queue(&app_work_q, work);
+}
+
+int atm_work_schedule_for_app_work_q(struct k_work_delayable *dwork,
+    k_timeout_t delay)
+{
+    return k_work_schedule_for_queue(&app_work_q, dwork, delay);
+}
+
+int atm_work_reschedule_for_app_work_q(struct k_work_delayable *dwork,
+    k_timeout_t delay)
+{
+    return k_work_reschedule_for_queue(&app_work_q, dwork, delay);
 }
 
 SYS_INIT(app_work_q_init, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);

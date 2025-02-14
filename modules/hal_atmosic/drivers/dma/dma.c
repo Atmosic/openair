@@ -223,7 +223,7 @@ static bool is_em_addr(void const *addr)
 }
 #endif
 
-#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
+#ifdef CONFIG_ATM_DMA_FIFO_RX
 static volatile dma_cb_t chan2_cb;
 static void const *chan2_ctx;
 
@@ -279,7 +279,7 @@ static void dma_dummy_callback(void const *ctx)
 {
 }
 
-#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
+#ifdef CONFIG_ATM_DMA_FIFO_RX
 static struct {
     uint32_t src_addr;
     uint32_t src_ctrl;
@@ -364,7 +364,7 @@ void dma_fifo_rx_async(enum dma_fifo_rx_port port, void *dst, size_t len,
 
     CMSDK_AT_DMA->CHAN2_OPMODE = AT_DMA_OPMODE__GO__MASK;
 }
-#endif // !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
+#endif // CONFIG_ATM_DMA_FIFO_RX
 
 static struct {
     uint32_t tar_addr;
@@ -495,9 +495,6 @@ void dma_copy(uint8_t channel, void *p_dst_addr, const void *p_src_addr,
 #endif // CFG_DMA_COPY
 
 #ifndef CONFIG_SOC_FAMILY_ATM
-#ifdef CONFIG_ATM_DMA_RELOC_SRAM
-__ramfunc
-#endif
 static rep_vec_err_t
 dma_prevent_retention(bool *prevent, int32_t *pseq_dur, int32_t ble_dur)
 {
@@ -505,9 +502,7 @@ dma_prevent_retention(bool *prevent, int32_t *pseq_dur, int32_t ble_dur)
 #if CFG_DMA_COPY
 	CMSDK_AT_DMA->CHAN1_STATUS ||
 #endif
-#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
 	AT_DMA_CHAN2_STATUS__RUNNING__READ(CMSDK_AT_DMA->CHAN2_STATUS) ||
-#endif
 	CMSDK_AT_DMA->CHAN3_STATUS) {
 	*prevent = true;
 	return (RV_DONE);
@@ -515,9 +510,7 @@ dma_prevent_retention(bool *prevent, int32_t *pseq_dur, int32_t ble_dur)
 
     return (RV_NEXT);
 }
-#endif // !defined(CONFIG_SOC_FAMILY_ATM)
 
-#if !defined(CONFIG_SOC_FAMILY_ATM) || !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
 #if defined(WRPRPINS_PIPE_LINE_CTRL__PIPE_LINE_EN__READ) && \
     !defined(AT_DMA_OPMODE__BURST_MODE_N__MASK)
 static uint32_t dma_chan2_save_rem, dma_chan2_save_size;
@@ -558,13 +551,12 @@ dma_exit_retention(void)
     return RV_NEXT;
 }
 #endif
-#endif // !defined(CONFIG_SOC_FAMILY_ATM) ||
-       // !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
+#endif // !CONFIG_SOC_FAMILY_ATM
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_PM)
 #ifdef CONFIG_ATM_DMA_RELOC_SRAM
 __ramfunc
 #endif
-#ifdef CONFIG_PM
 static rep_vec_err_t dma_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 {
 #if CFG_DMA_COPY
@@ -574,7 +566,7 @@ static rep_vec_err_t dma_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 	}
     }
 #endif
-#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
+#ifdef CONFIG_ATM_DMA_FIFO_RX
     if (CMSDK_AT_DMA->CHAN2_STATUS) {
 	if (*min_freq < chan2_min_freq) {
 	    *min_freq = chan2_min_freq;
@@ -645,16 +637,16 @@ static void dma_constructor(void)
     NVIC_EnableIRQ(DMA2_IRQn);
     NVIC_EnableIRQ(DMA3_IRQn);
 
-#if !defined(CONFIG_SOC_FAMILY_ATM) || !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
+#ifndef CONFIG_SOC_FAMILY_ATM
     RV_PLF_PREVENT_RETENTION_ADD(dma_prevent_retention);
 #if defined(WRPRPINS_PIPE_LINE_CTRL__PIPE_LINE_EN__READ) && \
     !defined(AT_DMA_OPMODE__BURST_MODE_N__MASK)
     RV_PLF_RETAIN_ALL_ADD(dma_enter_retention);
     RV_PLF_BACK_FROM_RETAIN_ALL_ADD(dma_exit_retention);
 #endif
-#endif // !defined(CONFIG_SOC_FAMILY_ATM) ||
-       // !defined(CONFIG_ATM_DMA_RX_SUPPRESS)
-#ifdef CONFIG_PM
+#endif // !CONFIG_SOC_FAMILY_ATM
+
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_PM)
     RV_PLF_BP_THROTTLE_ADD(dma_bp_throttle);
 #endif
 
@@ -666,7 +658,7 @@ static void dma_constructor(void)
 #ifdef CONFIG_SOC_FAMILY_ATM
 static int dma_sys_init(void)
 {
-#ifndef CONFIG_ATM_DMA_RX_SUPPRESS
+#ifdef CONFIG_ATM_DMA_FIFO_RX
     Z_ISR_DECLARE(DMA2_IRQn, 0, DMA2_Handler, NULL);
 #endif
     Z_ISR_DECLARE(DMA3_IRQn, 0, DMA3_Handler, NULL);

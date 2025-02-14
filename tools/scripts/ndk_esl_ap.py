@@ -131,7 +131,47 @@ def main():
             ("esl_c pawr push_sync_buf 0 0000\n", "#SLOT:0,0x0434100200"),
             # display timed image
             ("esl_c pawr push_sync_buf 0 60000001F0480200\n", "#SLOT:0,0x0434110001"),
+            # delete pending display timed image cmd
+            ("esl_c pawr push_sync_buf 0 6000000000000000\n", "#SLOT:0,0x0434110000"),
+            # LED control led0 always ON
+            ("esl_c pawr push_sync_buf 0 B0000033000000000000000100\n", "#SLOT:0,0x03340100"),
+            # ping cmd -> basic state = sync bit | active LED
+            ("esl_c pawr push_sync_buf 0 0000\n", "#SLOT:0,0x0434100600"),
+            # LED control led0 OFF
+            ("esl_c pawr push_sync_buf 0 B0000033000000000000000000\n", "#SLOT:0,0x03340100"),
+            # ping cmd -> basic state = sync bit
+            ("esl_c pawr push_sync_buf 0 0000\n", "#SLOT:0,0x0434100200"),
+            # LED control led0 repeat 30 times
+            ("esl_c pawr push_sync_buf 0 B0000033AA00AA00AA02153200\n", "#SLOT:0,0x03340100"),
+            # ping cmd -> basic state = sync bit | active LED
+            ("esl_c pawr push_sync_buf 0 0000\n", "#SLOT:0,0x0434100600"),
+            # LED control led0 OFF
+            ("esl_c pawr push_sync_buf 0 B0000033000000000000000000\n", "#SLOT:0,0x03340100"),
+            # LED control led0 timed control w/ abs_time > max
+            ("esl_c pawr push_sync_buf 0 F0000033000000000000000100FFFFFFFF\n", "#SLOT:0,0x0334000c"),
+            # LED control led0 timed control
+            ("esl_c pawr push_sync_buf 0 F0000033000000000000000100400D0300\n", "#SLOT:0,0x03340100"),
+            # ping cmd -> basic state = sync bit | pending LED bit
+            ("esl_c pawr push_sync_buf 0 0000\n", "#SLOT:0,0x0434100a00"),
+            # LED control 2nd LED0 timed control cmd -> queue full
+            ("esl_c pawr push_sync_buf 0 F000003300000000000000010050340300\n", "#SLOT:0,0x0334000b"),
+            # LED control delete pending LED0 timed control cmd
+            ("esl_c pawr push_sync_buf 0 F000003300000000000000010000000000\n", "#SLOT:0,0x03340100"),
+            # ping cmd -> basic state = sync bit
+            ("esl_c pawr push_sync_buf 0 0000\n", "#SLOT:0,0x0434100200"),
         ]
+        exe_cmds(commands)
+        factory_reset_commands = [
+            # create acl connection
+            ("esl_c acl connect_esl 0 0\n", "#DISCOVERY"),
+            # factory reset
+            ("esl_c factory 0\n", "Disconnected"),
+        ]
+        exe_cmds(factory_reset_commands)
+        unbond()
+        reset_device()
+
+        discovery(False)
         exe_cmds(commands)
         reset_device()
 

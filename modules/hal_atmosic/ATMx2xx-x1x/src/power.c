@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Atmosic
+ * Copyright (c) 2021-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -25,6 +25,7 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 
 #define PSEQ_INTERNAL_DIRECT_INCLUDE_GUARD
 #include "pseq_internal.h"
+#include "at_apb_pseq_regs_core_macro.h"
 
 /* Debugs - to enable, change undef to define */
 #undef DEBUG_HIBERNATE
@@ -145,6 +146,23 @@ static void atm_power_pseq_control(void (*mode)(uint32_t idle, uint32_t int_set)
 	atm_power_pseq_setup(mode, _kernel.idle);
 }
 
+/**
+ * @brief Prevent reentering retention/hibernation after a wakeup
+ * triggered by a SWD debugger.
+ */
+static void atm_power_swd_dbg_lock(void)
+{
+	static bool swd_dbg_locked;
+
+	if (swd_dbg_locked) {
+		return;
+	}
+
+	swd_dbg_locked = true;
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+}
+
 /* Invoke Low Power/System Off specific Tasks */
 __ramfunc void pm_state_set(enum pm_state state, uint8_t substate_id)
 {
@@ -170,6 +188,13 @@ __ramfunc void pm_state_set(enum pm_state state, uint8_t substate_id)
 		SysTick->CTRL = systick_ctrl;
 		/* Convert lpcycles to hardware cycles */
 		sys_clock_correct(atm_lpc_to(Z_HZ_cyc, elapsed));
+		WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+		{
+			if (PSEQ_STATUS__DBG_TRIGGERED__READ(CMSDK_PSEQ->STATUS)) {
+				atm_power_swd_dbg_lock();
+			}
+		}
+		WRPR_CTRL_POP();
 		break;
 	}
 	case PM_STATE_SOFT_OFF:
@@ -227,12 +252,17 @@ void atm_pseq_hibernate(uint32_t ticks)
 
 static int atm_power_init(void)
 {
+	__UNUSED uint32_t status;
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
 		pseq_core_power_all_sysram();
 		pseq_core_xtal_init();
+		status = CMSDK_PSEQ->STATUS;
 	} WRPR_CTRL_POP();
 
 #ifdef CONFIG_PM
+	if (PSEQ_STATUS__DBG_TRIGGERED__READ(status)) {
+		atm_power_swd_dbg_lock();
+	}
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 #endif
 	return 0;

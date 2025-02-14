@@ -5,7 +5,7 @@
  *
  * @brief Radio related api
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -22,6 +22,8 @@
 #define RF_ADV_CH_38 0x2
 /// Set advertising channel 39 enable
 #define RF_ADV_CH_39 0x4
+
+#define INVALID_TX_POWER_VALUE 0xFF
 
 /**
  *******************************************************************************

@@ -2,7 +2,7 @@
 
 /*
  * Copyright (c) 2015-2016 Intel Corporation
- * Copyright (c) 2024 Atmosic
+ * Copyright (c) 2024-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -53,13 +53,11 @@ struct bt_le_ext_adv_start_param const ext_adv_start_param = {
 
 static struct bt_le_ext_adv *adv_set = NULL;
 
-static void restart_adv(struct k_timer *timer_id)
+static void restart_adv(struct k_work *work)
 {
 	/* only happen when SOFT_OFF is not enabled */
 	bt_le_ext_adv_start(adv_set, &ext_adv_start_param);
 }
-
-K_TIMER_DEFINE(my_timer, restart_adv, NULL);
 
 static void adv_sent_cb(struct bt_le_ext_adv *adv, struct bt_le_ext_adv_sent_info *info)
 {
@@ -73,7 +71,9 @@ static void adv_sent_cb(struct bt_le_ext_adv *adv, struct bt_le_ext_adv_sent_inf
 	}
 #endif
 	if (CONFIG_ADV_RSTRT_DUR) {
-		k_timer_start(&my_timer, K_SECONDS(CONFIG_ADV_RSTRT_DUR), K_NO_WAIT);
+		static struct k_work_delayable work;
+		k_work_init_delayable(&work, restart_adv);
+		k_work_schedule(&work, K_SECONDS(CONFIG_ADV_RSTRT_DUR));
 	}
 }
 

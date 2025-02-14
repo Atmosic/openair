@@ -4,7 +4,7 @@
 
 @brief Secure Debug Authentication tool
 
-Copyright (C) Atmosic 2023
+Copyright (C) Atmosic 2023-2025
 '''
 
 import serial
@@ -40,6 +40,8 @@ def verbose_print(*args, **kwargs):
 
 def send(ser, command):
     tries = 0
+    ser.reset_input_buffer()
+    ser.reset_output_buffer()
     verbose_print("Sending:", command)
     while tries < MAX_RETRIES:
         ser.write(command)

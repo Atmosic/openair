@@ -5,7 +5,7 @@
  *
  * @brief Atmosic BLE link layer - HCI driver
  *
- * Copyright (C) Atmosic 2018-2024
+ * Copyright (C) Atmosic 2018-2025
  *
  *******************************************************************************
  */
@@ -77,6 +77,7 @@ LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 static K_SEM_DEFINE(ble_sem, 0, 1);
 struct k_thread ble_thread_data;
 static K_KERNEL_STACK_DEFINE(ble_thread_stack, BLE_THREAD_STACK_SIZE);
+static bool is_open;
 
 static rep_vec_err_t
 ble_appm_last_init(void)
@@ -128,6 +129,15 @@ ble_write(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t),
     uint16_t len = size - HCI_TRANSPORT_HDR_LEN;
     struct net_buf *nbuf = NULL;
 
+    /*
+     * In case if the device is not open, drop the message.
+     * We still need to invoke the callback
+     */
+    if (!is_open) {
+	LOG_ERR("Device is not Open");
+	goto done;
+    }
+
     switch (type) {
 	case H4_EVT: {
 	    uint8_t evt = buf[0];
@@ -158,6 +168,7 @@ ble_write(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t),
 	LOG_DBG("nbuf == NULL");
     }
 
+done:
     callback(dummy, RWIP_EIF_STATUS_OK);
 }
 #define BT_HCI_EIF_WRITE_FUNC ble_write
@@ -217,7 +228,7 @@ ble_isr(void *arg)
 static int32_t plf_sleep_min = 0xa0;
 
 static void
-ble_to_deep_sleep(struct device const *dev, bool ble_asleep,
+ble_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
     int32_t ble_sleep_duration)
 {
     if (ble_asleep && ke_event_get_all()) {
@@ -232,17 +243,10 @@ ble_to_deep_sleep(struct device const *dev, bool ble_asleep,
 		PSEQ_OVERRIDES5__OVERRIDE_WREQ_VAL__MASK;
 	} WRPR_CTRL_POP();
 
-	k_sem_take(&ble_sem, K_FOREVER);
-
-	// Release WREQ signal
-	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
-	    PSEQ_OVERRIDES5__OVERRIDE_WREQ_VAL__CLR(CMSDK_PSEQ->OVERRIDES5);
-	} WRPR_CTRL_POP();
 	return;
     }
 
     if (sleep_enable < SLEEP_ENABLE_RETAIN) {
-	k_sem_take(&ble_sem, K_FOREVER);
 	return;
     }
 
@@ -253,7 +257,6 @@ ble_to_deep_sleep(struct device const *dev, bool ble_asleep,
 	// under power-states in the device tree - not here.
 	if (ble_sleep_duration < plf_sleep_min) {
 	    // Too short; don't involve PSEQ
-	    k_sem_take(&ble_sem, K_FOREVER);
 	    return;
 	}
 
@@ -270,6 +273,7 @@ ble_to_deep_sleep(struct device const *dev, bool ble_asleep,
 #ifdef CONFIG_PM
     pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 #endif
+    *pseq_sleep = true;
 }
 
 static void
@@ -279,8 +283,6 @@ ble_thread(void *p1, void *p2, void *p3)
     ARG_UNUSED(p2);
     ARG_UNUSED(p3);
 
-    struct device const *dev = DEVICE_DT_INST_GET(0);
-
     rwip_rtos_post_callback_set(ble_wake_thread);
 
 #ifdef CONFIG_PM
@@ -289,14 +291,28 @@ ble_thread(void *p1, void *p2, void *p3)
     for (;;) {
 	rwip_process();
 
+	rep_vec_invoke(rv_plf_schedule, NULL);
+
 	unsigned int key = irq_lock();
 
 	bool ble_asleep = false;
 	int32_t ble_sleep_duration = -1;
 	switch (rwip_sleep(&ble_asleep, &ble_sleep_duration)) {
-	    case RWIP_DEEP_SLEEP:
-		ble_to_deep_sleep(dev, ble_asleep, ble_sleep_duration);
-		break;
+	    case RWIP_DEEP_SLEEP: {
+		bool pseq_sleep = false;
+		rep_vec__bool_p__uint32_t_p__bool__int32_t__invoke(
+		    rv_plf_to_deep_sleep, ble_to_deep_sleep, &pseq_sleep, NULL,
+		    ble_asleep, ble_sleep_duration);
+		if (!pseq_sleep) {
+		    k_sem_take(&ble_sem, K_FOREVER);
+
+		    // Release WREQ signal
+		    WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
+			PSEQ_OVERRIDES5__OVERRIDE_WREQ_VAL__CLR(
+			    CMSDK_PSEQ->OVERRIDES5);
+		    } WRPR_CTRL_POP();
+		}
+	    } break;
 
 	    case RWIP_IDLE:
 		k_sem_take(&ble_sem, K_FOREVER);
@@ -321,6 +337,10 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 
     LOG_DBG("enter");
 
+    if (!is_open) {
+	LOG_ERR("Device is not open");
+	return -EINVAL;
+    }
     if (!buf->len) {
 	LOG_ERR("Empty HCI packet");
 	return -EINVAL;
@@ -389,29 +409,43 @@ static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
     return (RV_DONE);
 }
 
+static int ble_driver_close(struct device const *dev)
+{
+    LOG_DBG("ble close enter");
+    is_open = false;
+    LOG_DBG("ble close exit");
+    return 0;
+}
+
 static int
 ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
 {
+    static bool open_once;
     LOG_DBG("enter");
 
     struct hci_data *hci = dev->data;
     hci->recv = recv;
 
-    // provide secure rand for the controller
-    RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
+    if (!open_once) {
+	// provide secure rand for the controller
+	RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
 #if !defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
 #error CTR_DRBG must be enabled for controller
 #endif
 
-    p_itf = rwtl_itf_get();
+	p_itf = rwtl_itf_get();
+	open_once = true;
+    }
 
+    is_open = true;
     LOG_DBG("exit");
     return 0;
 }
 
 static struct bt_hci_driver_api const drv = {
-    .open	= ble_driver_open,
-    .send	= ble_driver_send,
+    .open = ble_driver_open,
+    .close = ble_driver_close,
+    .send = ble_driver_send,
 };
 
 static struct hci_data hci_data;
@@ -469,6 +503,12 @@ static uint8_t user_param_get(uint8_t param_id, uint8_t *lengthPtr,
 	    }
 	    copy_len = sizeof(default_addr);
 	} break;
+#ifdef CONFIG_ATM_LPC_RCOS
+	case PARAM_ID_MAX_SLEEP_DUR: {
+	    temp = LPC_RCOS_VALID;
+	    copy_len = sizeof(uint32_t);
+	} break;
+#endif
 	case PARAM_ID_SLEEP_ENABLE: {
 	    temp = CONFIG_ATM_SLEEP_ENABLE;
 	    copy_len = sizeof(uint8_t);

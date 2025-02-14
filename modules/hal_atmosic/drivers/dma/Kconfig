@@ -14,10 +14,8 @@ config ATM_DMA_MINIMAL
 	default y if MCUBOOT
 	default y if !BT && !ATM_ATLC && !ENTROPY_ATM_TRNG && !I2S_ATM
 
-config ATM_DMA_RX_SUPPRESS
-	bool
-	depends on !ATM_DMA_MINIMAL
-	default y
+config ATM_DMA_FIFO_RX
+	bool "Enable RX DMA"
 
 config ATM_DMA_RELOC_SRAM
 	bool

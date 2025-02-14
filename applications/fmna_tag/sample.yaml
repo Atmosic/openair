@@ -1,0 +1,73 @@
+sample:
+  description: Apple Find My Network Tag
+  name: Apple Find My Network Tag
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Advertising successfully started"
+tests:
+  applications.fmna_tag.atm.atmwstk.pd50ll:
+    tags: fmna_tag atm33
+    extra_args:
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL;-DATM_STORAGE_SIZE=0x1000"
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL;-DATM_STORAGE_SIZE=0x1000"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
+    extra_configs:
+      - CONFIG_SPE_PATH="build/spe"
+      - CONFIG_ATMWSTK="PD50LL"
+      - CONFIG_USE_ATMWSTK=y
+      - CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
+  applications.fmna_tag.atm.mcuboot.uarp.atmwstk.pd50ll:
+    tags: fmna_tag atm33
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL;-DATM_STORAGE_SIZE=0x1000;-DDFU_IN_FLASH"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL;-DATM_STORAGE_SIZE=0x1000;-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL;-DATM_STORAGE_SIZE=0x1000;-DDFU_IN_FLASH"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
+    extra_configs:
+      - CONFIG_ATMWSTK="PD50LL"
+      - CONFIG_USE_ATMWSTK=y
+      - CONFIG_USE_UARP=y
+      - CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
+  applications.fmna_tag.atm:
+    tags: fmna_tag atm33 atm34
+    extra_args:
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=PD50;-DATM_STORAGE_SIZE=0x1000"
+      - DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
+    extra_configs:
+      - CONFIG_SPE_PATH="build/spe"
+      - CONFIG_ATMWSTKLIB="PD50"
+      - CONFIG_USE_ATMWSTK=n
+      - CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
+  applications.fmna_tag.atm.mcuboot.uarp.atmwstklib.pd50:
+    tags: fmna_tag atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=PD50;-DATM_STORAGE_SIZE=0x1000;-DDFU_IN_FLASH"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTKLIB=PD50;-DATM_STORAGE_SIZE=0x1000;-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DDFU_IN_FLASH"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
+    extra_configs:
+      - CONFIG_ATMWSTKLIB="PD50"
+      - CONFIG_USE_ATMWSTK=n
+      - CONFIG_USE_UARP=y
+      - CONFIG_COMPILER_WARNINGS_AS_ERRORS=n

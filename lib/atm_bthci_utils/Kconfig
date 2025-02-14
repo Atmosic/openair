@@ -1,0 +1,9 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_BTHCI_UTILS
+	bool
+
+config ATM_BTHCI_UTILS_DUMP_PKTS
+	bool "Enable decoding and output of HCI traffic to the console"

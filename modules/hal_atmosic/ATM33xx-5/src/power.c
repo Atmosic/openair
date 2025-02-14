@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Atmosic
+ * Copyright (c) 2021-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -238,6 +238,23 @@ static void atm_power_pseq_control(void (*mode)(uint32_t idle, uint32_t *int_set
 	atm_power_pseq_setup(mode, _kernel.idle);
 }
 
+/**
+ * @brief Prevent reentering retention/hibernation after a wakeup
+ * triggered by a SWD debugger.
+ */
+static void atm_power_swd_dbg_lock(void)
+{
+	static bool swd_dbg_locked;
+
+	if (swd_dbg_locked) {
+		return;
+	}
+
+	swd_dbg_locked = true;
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+}
+
 /* Invoke Low Power/System Off specific Tasks */
 void pm_state_set(enum pm_state state, uint8_t substate_id)
 {
@@ -266,6 +283,13 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 		SysTick->CTRL = systick_ctrl;
 		/* Convert lpcycles to hardware cycles */
 		sys_clock_correct(atm_lpc_to(Z_HZ_cyc, elapsed));
+		WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+		{
+			if (PSEQ_STATUS__DBG_TRIGGERED__READ(CMSDK_PSEQ->STATUS)) {
+				atm_power_swd_dbg_lock();
+			}
+		}
+		WRPR_CTRL_POP();
 		break;
 	}
 	case PM_STATE_SOFT_OFF:
@@ -339,6 +363,9 @@ static int atm_power_init(void)
 #ifdef CONFIG_PM
 		uint32_t status = pseq_core_init();
 		printk("PSEQ STATUS=%#" PRIx32 "\n", status);
+		if (PSEQ_STATUS__DBG_TRIGGERED__READ(status)) {
+			atm_power_swd_dbg_lock();
+		}
 #endif /* CONFIG_PM */
 
 #ifndef CONFIG_MCUBOOT

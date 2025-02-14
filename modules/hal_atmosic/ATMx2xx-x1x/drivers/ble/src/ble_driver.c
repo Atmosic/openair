@@ -5,7 +5,7 @@
  *
  * @brief Atmosic BLE link layer - HCI driver
  *
- * Copyright (C) Atmosic 2018-2024
+ * Copyright (C) Atmosic 2018-2025
  *
  *******************************************************************************
  */
@@ -53,6 +53,7 @@ struct hci_data {
 static K_SEM_DEFINE(ble_sem, 0, 1);
 struct k_thread ble_thread_data;
 static K_KERNEL_STACK_DEFINE(ble_thread_stack, CONFIG_BT_RX_STACK_SIZE);
+static bool is_open;
 
 static rep_vec_err_t
 ble_appm_last_init(void)
@@ -81,6 +82,14 @@ ble_write(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t),
     uint16_t len = size - HCI_TRANSPORT_HDR_LEN;
     struct net_buf *nbuf = NULL;
 
+    /*
+     * In case if the device is not open, drop the message.
+     * We still need to invoke the callback
+     */
+    if (!is_open) {
+	LOG_ERR("Device is not Open");
+	goto done;
+    }
     if (type == H4_EVT) {
 	uint8_t evt = buf[0];
 	nbuf = bt_buf_get_evt(evt, false, K_FOREVER);
@@ -97,6 +106,7 @@ ble_write(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t),
     struct hci_data *hci = dev->data;
     hci->recv(dev, nbuf);
 
+done:
     callback(dummy, RWIP_EIF_STATUS_OK);
 }
 
@@ -232,6 +242,10 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 
     LOG_DBG("enter");
 
+    if (!is_open) {
+	LOG_ERR("Device is not open");
+	return -EINVAL;
+    }
     if (!buf->len) {
 	LOG_ERR("Empty HCI packet");
 	return -EINVAL;
@@ -292,39 +306,53 @@ static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
     return (RV_DONE);
 }
 
+static int ble_driver_close(struct device const *dev)
+{
+    LOG_DBG("ble close enter");
+    is_open = false;
+    LOG_DBG("ble close exit");
+    return 0;
+}
+
 static int
 ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
 {
+    static bool open_once;
     LOG_DBG("enter");
 
     struct hci_data *hci = dev->data;
     hci->recv = recv;
 
-    RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
-    rep_vec_add_last(&rv_appm_init, &ble_rv_appm_last_init);
-    plf_rwip_eif_get = ble_rwip_eif_get;
+    if (!open_once) {
+	RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
+	rep_vec_add_last(&rv_appm_init, &ble_rv_appm_last_init);
+	plf_rwip_eif_get = ble_rwip_eif_get;
 
-    rwip_init(RESET_NO_ERROR);
+	rwip_init(RESET_NO_ERROR);
 
-    IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority), ble_isr, NULL, 0);
-    irq_enable(DT_INST_IRQN(0));
+	IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority), ble_isr, NULL,
+	    0);
+	irq_enable(DT_INST_IRQN(0));
 
-    LOG_DBG("middle");
+	LOG_DBG("middle");
 
-    k_thread_create(&ble_thread_data, ble_thread_stack,
-		    K_KERNEL_STACK_SIZEOF(ble_thread_stack),
-		    ble_thread, NULL, NULL, NULL,
-		    K_PRIO_COOP(CONFIG_BT_DRIVER_RX_HIGH_PRIO), 0, K_NO_WAIT);
+	k_thread_create(&ble_thread_data, ble_thread_stack,
+	    K_KERNEL_STACK_SIZEOF(ble_thread_stack), ble_thread, NULL, NULL,
+	    NULL, K_PRIO_COOP(CONFIG_BT_DRIVER_RX_HIGH_PRIO), 0, K_NO_WAIT);
 
-    k_thread_name_set(&ble_thread_data, "Atmosic BLE");
+	k_thread_name_set(&ble_thread_data, "Atmosic BLE");
+	open_once = true;
+    }
 
+    is_open = true;
     LOG_DBG("exit");
     return 0;
 }
 
 static struct bt_hci_driver_api const drv = {
-    .open	= ble_driver_open,
-    .send	= ble_driver_send,
+    .open = ble_driver_open,
+    .close = ble_driver_close,
+    .send = ble_driver_send,
 };
 
 static struct hci_data hci_data;

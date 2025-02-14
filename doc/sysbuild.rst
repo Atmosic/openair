@@ -12,12 +12,16 @@ The Atmosic test items in sample.yaml of examples will be named as '<APP_TEST_IT
 
 - Item name with "mcuboot": supports mcuboot or not
 - Item name ends with "atmx2": supports atmevk-02 only
-- Item name ends with "atm33" or "atm34": supports atm33evk or atm34evk only
-- Item name ends without "atm33" or "atm34": supports both atm33evk or atm34evk
+
+When extra_configs includes CONFIG_ATM_SOC_ALLOW means the Atmosic SOC series supported. The value should be the value of SOC_SERIES, split with comma when multiplesoc support, ex: ATM33 or ATM33,ATM34. When CONFIG_ATM_SOC_ALLOW not specified or the value is empty, it means to support all Atmosic SOC series besides atmx2.
+
+- CONFIG_ATM_SOC_ALLOW="ATM34": supports atm34 only
+- CONFIG_ATM_SOC_ALLOW="ATM33,ATM34": supports both atm33 and atm34
+- CONFIG_ATM_SOC_ALLOW="": supports all Atmosic SOC series besides atmx2
 
 Refer to ``zephyrproject\openair\samples\sysbuild\hello_world`` for detail
 
-.. _Build with sysbuild:
+.. _build_with_sysbuild:
 
 Build with sysbuild
 -------------------
@@ -31,7 +35,7 @@ west build command::
   <BOARD>: Atmosic board, ex: ATMEVK-3330e-QN-5, ATMEVK-3405-PQK-2
   <APP_TEST_ITEM>: test item, ex: samples.sysbuild.hello_world.atm, samples.sysbuild.hello_world.atm.mcuboot
 
-.. _Flash with sysbuild:
+.. _flash_with_sysbuild:
 
 Flash with sysbuild
 -------------------
@@ -81,7 +85,7 @@ To see more detail::
   python3 openair/tools/scripts/sysbuild_utils.py -h
 
 
-.. _List Atmosic test items:
+.. _list_atmosic_test_items:
 
 List Atmosic test items
 -----------------------
@@ -107,5 +111,5 @@ Examples of gen known Atmosic test items of samples to zephyr repository::
   python3 openair/tools/scripts/sysbuild_utils.py -t samples/bluetooth/beacon -r zephyr gen
   python3 openair/tools/scripts/sysbuild_utils.py -e samples.bluetooth.beacon.atm.mcuboot -t samples/bluetooth/beacon -r zephyr gen
 
-Refer to :ref:`List Atmosic test items` to check Atmosic test items after generated.
-Refer to :ref:`Build with sysbuild`  and :ref:`Flash with sysbuild` to build and flash Atmosic test items.
+Refer to list_atmosic_test_items_ to check Atmosic test items after generated.
+Refer to build_with_sysbuild_ and flash_with_sysbuild_ to build and flash Atmosic test items.

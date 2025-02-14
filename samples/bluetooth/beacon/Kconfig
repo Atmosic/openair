@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -19,9 +19,10 @@ choice
 # This is a good example for measuring the device's low power performance.
 #
 config REFBCN_POWER_PROFILE
-	bool "power profile"
+	bool "hibernate beacon demo"
 	help
 	  Select this option to enable power profile.
+
 #
 # socoff_beacon_demo
 #
@@ -31,7 +32,7 @@ config REFBCN_POWER_PROFILE
 config REFBCN_SOCOFF_BEACON
 	bool "socoff beacon demo"
 	help
-	  Select this option to see the soc off
+	  Select this option to see the 30s beacon and 30s soc off.
 
 endchoice
 

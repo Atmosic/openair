@@ -5,7 +5,7 @@
  *
  * @brief Power Management Unit driver configuration
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  ******************************************************************************
  */
@@ -22,6 +22,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "pinmux.h"
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 #if DT_NODE_HAS_PROP(DT_NODELABEL(pmu), batt_type)
@@ -57,8 +59,12 @@ extern "C" {
 #define BATT_LEVEL BATT_LEVEL_GT_1P8V
 #endif
 
+#ifndef VDDPA_SRC_DEFAULT
+#define VDDPA_SRC_DEFAULT VDDPA_SRC_VDDIOP
+#endif
+
 #ifndef VDDPA_SRC
-#define VDDPA_SRC VDDPA_SRC_VDDIOP
+#define VDDPA_SRC VDDPA_SRC_DEFAULT
 #endif
 
 #ifdef __cplusplus

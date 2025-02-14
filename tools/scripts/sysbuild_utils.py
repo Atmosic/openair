@@ -33,6 +33,10 @@ REPO_LIST = {
     'atmosic-private': ['applications', 'samples'],
 }
 
+class IndentDumper(yaml.Dumper):
+    def increase_indent(self, flow=False, indentless=False):
+        return super(IndentDumper, self).increase_indent(flow, False)
+
 class TestInfo:
     def __init__(self, rootpath, filepath, exp_items, debug):
         self.rootpath = rootpath
@@ -77,7 +81,8 @@ class TestInfo:
                 updated = True
         if updated:
             with open(self.sample_file, 'w', encoding="utf-8") as f:
-                yaml.dump(loaded_data, f)
+                yaml.dump(loaded_data, f, sort_keys=False,
+                    default_flow_style=False, Dumper=IndentDumper)
 
     def _init(self):
         self.check_support_bt()
