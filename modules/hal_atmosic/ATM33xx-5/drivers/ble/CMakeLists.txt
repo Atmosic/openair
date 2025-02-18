@@ -1,16 +1,17 @@
-# Copyright (c) 2022-2024 Atmosic
+# Copyright (c) 2022-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
-zephyr_include_directories(
+if(CONFIG_ATM_RWLC)
+  zephyr_include_directories(
     ../../include/ble
     ../../include/reg_ble
-)
-zephyr_sources(
+  )
+  zephyr_sources(
     src/ble_driver.c
-)
+  )
 
-set(BLE_FULL_STACK_C_FLAGS
+  set(BLE_FULL_STACK_C_FLAGS
     -DCFG_ACT=12
     -DCFG_ADV_CH_IDX
     -DCFG_AOA
@@ -37,9 +38,9 @@ set(BLE_FULL_STACK_C_FLAGS
     -DCFG_RTOS
     -DCFG_STATIC
     -DCFG_SYSTEM_MEM_SAFETY_MARGIN_SIZE=1000
-)
+  )
 
-set(BLE_PD50_STACK_C_FLAGS
+  set(BLE_PD50_STACK_C_FLAGS
     -DCFG_ACT=6
     -DCFG_ADV_CH_IDX
     -DCFG_BLE_EMB
@@ -54,33 +55,34 @@ set(BLE_PD50_STACK_C_FLAGS
     -DCFG_RTOS
     -DCFG_STATIC
     -DCFG_SYSTEM_MEM_SAFETY_MARGIN_SIZE=1000
-)
+  )
 
-set(ATMWSTKLIB_C_FLAGS
+  set(ATMWSTKLIB_C_FLAGS
     -DCFG_STATIC_HEAP
     -DCFG_ATMWSTKLIB
-)
+  )
 
-if (CONFIG_USE_ATMWSTK)
-    if (CONFIG_ATMWSTK STREQUAL "LL")
-	zephyr_compile_definitions(${BLE_FULL_STACK_C_FLAGS})
-    elseif (CONFIG_ATMWSTK STREQUAL "PD50LL")
-	zephyr_compile_definitions(${BLE_PD50_STACK_C_FLAGS})
-    else ()
-	message(FATAL_ERROR "Invalid CONFIG_ATMWSTK")
-    endif ()
+  if(CONFIG_USE_ATMWSTK)
+    if(CONFIG_ATMWSTK STREQUAL "LL")
+      zephyr_compile_definitions(${BLE_FULL_STACK_C_FLAGS})
+    elseif(CONFIG_ATMWSTK STREQUAL "PD50LL")
+      zephyr_compile_definitions(${BLE_PD50_STACK_C_FLAGS})
+    else()
+      message(FATAL_ERROR "Invalid CONFIG_ATMWSTK")
+    endif()
     zephyr_link_libraries(
-	${LINKERFLAGPREFIX},-R${CMAKE_CURRENT_SOURCE_DIR}/atmwstk_${CONFIG_ATMWSTK}.elf
+      ${LINKERFLAGPREFIX},-R${CMAKE_CURRENT_SOURCE_DIR}/atmwstk_${CONFIG_ATMWSTK}.elf
     )
-else ()
-    if (CONFIG_ATMWSTKLIB STREQUAL "PD50")
-	zephyr_compile_definitions(${BLE_PD50_STACK_C_FLAGS})
-	zephyr_compile_definitions(${ATMWSTKLIB_C_FLAGS})
-    else ()
-	message(FATAL_ERROR "Invalid CONFIG_ATMWSTKLIB")
-    endif ()
+  else()
+    if(CONFIG_ATMWSTKLIB STREQUAL "PD50")
+      zephyr_compile_definitions(${BLE_PD50_STACK_C_FLAGS})
+      zephyr_compile_definitions(${ATMWSTKLIB_C_FLAGS})
+    else()
+      message(FATAL_ERROR "Invalid CONFIG_ATMWSTKLIB")
+    endif()
     zephyr_link_libraries(
-	-L${CMAKE_CURRENT_SOURCE_DIR}
+      -L${CMAKE_CURRENT_SOURCE_DIR}
     )
     zephyr_link_libraries(blell${CONFIG_ATMWSTKLIB})
+  endif()
 endif()

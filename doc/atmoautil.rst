@@ -1,178 +1,123 @@
-.. Define CSS format
-.. role:: codebox
-   :class: code-box
-
-.. role:: redtext
-   :class: red-text
-
-.. role:: bluetext
-   :class: blue-text
-
-.. raw:: html
-
-   <style>
-      .red-text {
-         color: red;
-         font-weight: bold;
-      }
-      .blue-text {
-         color: blue;
-         font-weight: bold;
-      }
-      .white-border-table table {
-         border-collapse: collapse;
-         width: 100%;
-      }
-      .white-border-table th {
-         background-color: #EDEDED;
-         color: rgb(37, 37, 37);
-         padding: 10px;
-         border: 1px solid white !important;
-      }
-      .white-border-table td {
-         background-color: white;
-         color: rgb(37, 37, 37);
-         padding: 10px;
-         border: 1px solid black !important;
-      }
-      .code-box {
-         color: gray;
-         border: 1px solid #C4C4C4;
-         display: inline-block;
-         white-space: pre-wrap;
-         background-color: #F5F5F5;
-         padding: 10px;
-         width: auto;
-      }
-      body {
-         font-family: Arial, sans-serif;
-      }
-      .black-code-box {
-         background-color: black;
-         color: white;
-         padding: 10px;
-         border-radius: 5px;
-         white-space: pre-wrap;
-         width: auto;
-      }
-      div.note {
-         background-color: #f7f7f7;
-         border-left: 5px solid #2d87f0;
-         padding: 10px 10px;
-         margin: 10px 0;
-         font-size: 1rem;
-         color: #333;
-         box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-         position: relative;
-         word-wrap: break-word;
-      }
-      div.note h4 {
-         margin-top: 0;
-         font-weight: bold;
-         color: #2d87f0;
-         position: relative;
-         z-index: 1;
-         padding: 0px 5px;
-      }
-      div.note::before {
-         content: "";
-         position: absolute;
-         top: 0;
-         left: 0;
-         right: 0;
-         height: 20%;
-         background-color: rgb(205, 226, 250);
-         z-index: 0;
-      }
-      div.note p {
-         margin: 0px 0;
-         white-space: pre-wrap;
-      }
-   </style>
-
 Atmosic Open Air Utility
 ########################
-Atmosic Open Air Utility (atmoautil) is an unified tool for Zephyr, and the purpose is reducing the effort for developers to set up the develop environment for Atmosic Open Air SDK. The atmoautil could manage and download the Zephyr toolchain, Python, Git … on the Internet through the URL list at Download section. Please refer to the Commands section to see the complete list of functions.
+Atmosic Open Air Utility (atmoautil) is an unified tool for Zephyr, and the purpose is reducing the effort for developers to set up the develop environment for Atmosic Open Air SDK.
+The atmoautil could manage and download the Zephyr toolchain, Python, Git.
 
-Download
-========
-Before setting up the toolchain, please install the available executable for your operating system to ensure proper functionality.
-
-.. list-table::
-   :header-rows: 1
-   :widths: auto
-   :class: white-border-table
-
-   * - Operating System
-   * - `Windows <https://atmosic.com/public/atmoautil/Tool/Windows/atmoautil.zip>`_
-   * - `Linux <https://atmosic.com/public/atmoautil/Tool/Linux/atmoautil.tgz>`_
-   * - MacOS (Not supported)
+Table of Contents
+=================
+.. contents::
+   :depth: 2
+   :local:
 
 |
 
+Download
+--------
+
 .. raw:: html
 
-   <div class="note">
-      <h4>Note (for the Windows users):</h4>
-      <p>
-         Please add atmoautil.exe to the “Exclusions” due to the atmoautil.exe file not signed yet.
+   <div>
+      <table style="border-collapse:collapse;width:auto;border-style:double;font-family: Arial, sans-serif">
+         <tr>
+            <th style="background-color: #EDEDED;color:rgb(37, 37, 37);padding: 10px;border: 1px solid white !important">Operating System</th>
+            <th style="background-color: #EDEDED;color:rgb(37, 37, 37);padding: 10px;border: 1px solid white !important">x64</th>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Windows 10</a></td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important"><a href="https://atmosic.com/public/atmoautil/Tool/Windows/atmoautil.zip">Download</a></td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Linux - Ubuntu 22.04 LTS</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important"><a href="https://atmosic.com/public/atmoautil/Tool/Linux/atmoautil.tgz">Download</a></td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">MacOS</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Not supported</td>
+         </tr>
+      </table>
+   </div><br>
 
-         1. Go to “Settings” / “Privacy & security” / “Windows Security” / “Virus & threat protection”
-         2. Click the “Manage settings” of “Virus & threat protection settings” region
-         3. Scroll down to the “Exclusions” and click the “Add or remove exclusions”
-         4. Click “Add an exclusion” and apply atmoautil.exe to the exclusion list.
-      </p>
-   </div>
+   <blockquote style="background-color: #f7f7f7; font-family: Arial, sans-serif; border-left: 5px solid #2d87f0; padding: 10px; margin: 10px 0; font-size: 1rem; color: #333;">
+      <h4 style="margin-top: 0; font-weight: bold; color: #0077C8; background-color: #E7EFF4; padding: 10px; margin: -10px -10px 10px -10px; display: block;">Note (for the Windows users)</h4>
+      <p>Please add atmoautil.exe to the “Exclusions” due to the atmoautil.exe file not signed yet<br><br>
+         1. Go to “Settings” / “Privacy & security” / “Windows Security” / “Virus & threat protection”<br>
+         2. Click the “Manage settings” of “Virus & threat protection settings” region<br>
+         3. Scroll down to the “Exclusions” and click the “Add or remove exclusions”<br>
+         4. Click “Add an exclusion” and apply atmoautil.exe to the exclusion list.</p>
+   </blockquote>
 
 |
 
 Commands
-========
+--------
 
 The table below lists the available commands of Atmosic Open Air Utility (atmoautil). Detailed descriptions of the commands can be found in the section below.
 
-.. list-table::
-   :header-rows: 1
-   :widths: auto
-   :class: white-border-table
+.. raw:: html
 
-   * - Command
-     - Explanation
-   * - Basic
-     -
-   * - -h, --help
-     - Show this help message and exit.
-   * - -d, --debug
-     - Enable debug mode. (Internal Used)
-   * - --default_cmd
-     - Command to execute before entering CLI loop. (Internal Used)
-   * - -s, --show_log
-     - Display detailed log information. (For debug)
-   * - Manager
-     -
-   * - ?, help
-     - List commands.
-   * - toolchain_install
-     - Install a specific version of the toolchain.
-   * - toolchain_uninstall
-     - Uninstall the currently installed toolchain.
-   * - toolchain_launch
-     - Launch the installed toolchain.
-   * - toolchain_list
-     - List all available and installed versions of the toolchain.
-   * - show_version
-     - Show version of the tool.
-   * - install_rdi
-     - Install RDI driver. (Windows Only)
-   * - uninstall_rdi
-     - Uninstall RDI driver. (Windows Only)
-   * - exit
-     - Exit Atmosic Open Air Utility CLI.
+   <div>
+      <table style="border-collapse: collapse;width:auto;;border-style:double;font-family: Arial, sans-serif">
+         <tr>
+            <th style="background-color: #EDEDED;color: rgb(37, 37, 37);padding: 10px;border: 1px solid white !important">Command</th>
+            <th style="background-color: #EDEDED;color: rgb(37, 37, 37);padding: 10px;border: 1px solid white !important">Explanation</th>
+         </tr>
+         <tr>
+            <td colspan="2" style="background-color: white;font-weight: bold; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important"><i>Basic</i></td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">?, help</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Show this help message and exit.</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">-s, --show_log</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Display detailed log information. (For debug)</td>
+         </tr>
+         <tr>
+            <td colspan="2" style="background-color: white;font-weight: bold; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important"><i>Manager</i></td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">?, help</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">List commands.</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">toolchain_install</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Install a specific version of the toolchain.</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">toolchain_uninstall</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Uninstall the currently installed toolchain.</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">toolchain_launch</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Launch the installed toolchain.</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">toolchain_list</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">List all available and installed versions of the toolchain.</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">show_version</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Show version of the tool.</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">install_rdi</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Install RDI driver. (Windows Only)</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">uninstall_rdi</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Uninstall RDI driver. (Windows Only)</td>
+         </tr>
+         <tr>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">exit</td>
+            <td style="background-color: white; color: rgb(37, 37, 37); padding: 10px;border: 1px solid black !important">Exit Atmosic Open Air Utility CLI.</td>
+         </tr>
+      </table>
+   </div><br>
 
 |
 
 Basic
------
+^^^^^
 
 1. **-h, --help**
 
@@ -182,49 +127,7 @@ Basic
 
    atmoautil [-h | --help]
 
-|
-
-2. **-d, --debug (Internal Used)**
-
-   Enable debug mode.
-
-   **Syntax**
-
-   atmoautil -d
-
-   **Example**
-   Please follow the The atmoautil tool - Phase 2 | Why is debug mode required? to generate server_setting.xml file.
-
-   .. raw:: html
-
-      <pre class="black-code-box">
-      $ atmoautil.exe -d
-      Welcome to Atmosic Open Air Utility CLI. Type 'help' or '?' to list commands.
-      </pre>
-
-|
-
-3. **--default_cmd (Internal Used)**
-
-   Command to execute before entering CLI loop
-
-   **Syntax**
-
-   atmoautil --default_cmd DEFAULT_CMD
-
-   **Example**
-
-   Enter the command in advance before launching the atmoautil.
-
-   .. raw:: html
-
-      <pre class="black-code-box">
-      $ atmoautil.exe -d --default_cmd "toolchain_launch -v 25.02.0"
-      </pre>
-
-|
-
-4. **--show_log**
+2. **--show_log**
 
    Command to display detailed log information (For debug)
 
@@ -238,16 +141,16 @@ Basic
 
    .. raw:: html
 
-      <pre class="black-code-box">
-      $ atmoautil.exe -d -s
-      ❕❕ Enable Debug Mode ❕❕
-      Welcome to Atmosic Open Air Utility CLI. Type 'help' or '?' to list commands.
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
+         $ atmoautil -d -s
+         ❕❕ Enable Debug Mode ❕❕
+         Welcome to Atmosic Open Air Utility CLI. Type 'help' or '?' to list commands.
       </pre>
 
 |
 
 Manager
--------
+^^^^^^^
 
 1. **?, help**
 
@@ -261,7 +164,7 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (atmoautil) manager> ?
       ╔════════════════════╗
       ║ Available commands ║
@@ -276,8 +179,6 @@ Manager
       exit                      Exit Atmosic Open Air Utility CLI.
       </pre>
 
-|
-
 2. **show_version**
 
    Show the atmoautil version
@@ -290,14 +191,12 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (atmoautil) manager> show_version
       ╔══════════════════════════╗
       ║ Tool Version: 1.0.0.0.56 ║
       ╚══════════════════════════╝
       </pre>
-
-|
 
 3. **exit**
 
@@ -311,12 +210,10 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (atmoautil) manager> exit
       Exiting Atmosic Open Air Utility CLI.
       </pre>
-
-|
 
 4. **toolchain_list**
 
@@ -326,15 +223,13 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (atmoautil) manager> toolchain_list
       ╔════════════════════════╗
       ║ Toolchain Version List ║
       ╚════════════════════════╝
       25.02.0
       </pre>
-
-|
 
 5. **toolchain_install**
 
@@ -349,7 +244,7 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (atmoautil) manager> toolchain_install -v 25.02.0
       ╔════════════════════╗
       ║ Download Toolchain ║
@@ -360,8 +255,6 @@ Manager
       ╚═══════════════════╝
       Installing ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╺━━━━━  100% 0:00:00
       </pre>
-
-|
 
 6. **toolchain_launch**
 
@@ -378,15 +271,13 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       ╔═══════════════════════════════════════════╗
       ║     Atmosic Zephyr Develop Environment    ║
       ╚═══════════════════════════════════════════╝
       Type 'exit' to quit...
       (25.02.0) C:\Temp\atmoautil>
       </pre>
-
-|
 
 7. **toolchain_uninstall**
 
@@ -402,12 +293,10 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (atmoautil) manager> toolchain_uninstall -v 25.02.0
       Please manually remove the toolchain directory under the C:\atmoa\toolchains path.
       </pre>
-
-|
 
 8. **install_rdi**
 
@@ -422,15 +311,13 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (atmoautil) manager> install_rdi
       ╔════════════════════╗
       ║ Install RDI driver ║
       ╚════════════════════╝
       Install RDI Done
       </pre>
-
-|
 
 9. **uninstall_rdi**
 
@@ -445,7 +332,7 @@ Manager
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (atmoautil) manager> uninstall_rdi
       ╔══════════════════════╗
       ║ UnInstall RDI driver ║
@@ -455,96 +342,96 @@ Manager
 
 |
 
-Install toolchain
-=================
+Installation
+------------
 
-1. Download and extract the atmoautil from website. (`The atmoautil User Guide | Download <https://atmosic.atlassian.net/wiki/spaces/ST/pages/edit-v2/1008959532#Download>`_)
-2. Open a terminal window and execute atmoautil command.
+Atmosic provides Open Air Utility (atmoautil) to manage the Zephyr development environment by command line. The following steps install Atmosic Open Air SDK source code and toolchain.
+This includes everything that is required by Zephyr’s Getting Started Guide together with additional tools and Python dependencies that Atmosic Open Air SDK uses.
 
-   :codebox:`atmoautil.exe`
+1) Update operating system
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+Before setting up the toolchain, please install the available executable for your operating system to make sure it supports Atmosic Open Air SDK firmware.
+Please refer to the `Download`_ section for more details.
 
-3. Run the following command to install the toolchain.
+2) Install prerequisites
+^^^^^^^^^^^^^^^^^^^^^^^^
+Depending on your preferred development environment, install the following software tools.
 
-   :codebox:`toolchain_install -v 25.02.0`
+- **All operating systems**:
 
-4. Launch develop environment through atmoautil by “toolchain_launch” command. It will pop-up a new Windows command prompt which the window title shows “Atmosic Zephyr” for Windows user. Subsequently, go to the atmoa directory and create zephyrproject folder. (For the Windows user, “cd C:\atmoa”, for the Linux user,  “cd ~/atmoa”)
+The latest version of atmoautil, a unified command-line utility for Atmosic products. Check operating system versions that support this tool and download the installer.
 
-   :codebox:`toolchain_launch -v 25.02.0`
+.. raw:: html
 
-5. Checkout source code from internal or public. Please make sure add you account before the domain name if the OS login user not using your Atmosic account.
+      <blockquote style="background-color: #f7f7f7; font-family: Arial, sans-serif; border-left: 5px solid #2d87f0; padding: 10px; margin: 10px 0; font-size: 1rem; color: #333;">
+         <h4 style="margin-top: 0; font-weight: bold; color: #0077C8; background-color: #E7EFF4; padding: 10px; margin: -10px -10px 10px -10px; display: block;">Note</h4>
+         <p>
+         After downloading the atmoautil executable, move it to a directory that is in the system PATH. On Linux, the downloaded file also needs to be given execute permission by typing chmod +x atmoautil or by checking the checkbox in the file properties.
+         </p> 
+      </blockquote>
 
-- :bluetext:`Internal repository`: login user use Atmosic account
+- Download SEGGER J-Link from the `J-Link Software and Documentation Pack <https://www.segger.com/downloads/jlink>`_ page.
 
-   :codebox:`west init -m ssh://git.sj.atmosic.com/prj/digital/db/zephyrproject-rtos/apps-internal.git
-   west update`
+3) Install Atmosic Open Air SDK toolchain
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- :bluetext:`Internal repository`: login user :redtext:`NOT` use Atmosic account. Please modify the "atmosic-internal/west.yml" file as well after "west init".
-
-   :codebox:`west init -m ssh://<account>@git.sj.atmosic.com/prj/digital/db/zephyrproject-rtos/apps-internal.git
-   # modify zephyproject/atmosic-internal/west.yml
-   west update`
-
-   - Console log
-
-   .. raw:: html
-
-      <pre class="black-code-box">
-      (25.02.0) C:\atmoa\zephyrproject>west init -m ssh://thsieh@git.sj.atmosic.com/prj/digital/db/zephyrproject-rtos/apps-internal.git
-      === Initializing in C:\atmoa\zephyrproject
-      --- Cloning manifest repository from ssh://thsieh@git.sj.atmosic.com/prj/digital/db/zephyrproject-rtos/apps-internal.git
-      Cloning into 'C:\atmoa\zephyrproject\.west\manifest-tmp'...
-      warning: templates not found in C:\atmoa/toolchains/25.02.0/git/share/git-core/templates
-      (thsieh@git.sj.atmosic.com) Password:
-      remote: Enumerating objects: 5523, done.
-      remote: Counting objects: 100% (59/59), done.
-      remote: Compressing objects: 100% (52/52), done.
-      remote: Total 5523 (delta 8), reused 0 (delta 0), pack-reused 5464
-      Receiving objects: 100% (5523/5523), 170.52 MiB | 5.38 MiB/s, done.
-      Resolving deltas: 100% (3268/3268), done.
-      --- setting manifest.path to atmosic-internal
-      === Initialized. Now run "west update" inside C:\atmoa\zephyrproject.
-      </pre>
-
-   |
-
-   - zephyproject/atmosic-internal/west.yml (Modify the <account> section)
+1. Open a terminal window and execute atmoautil command.
 
    .. raw:: html
 
-      <pre class="black-code-box">
-      # This is a copy of the west file in the openair repository with differences:
-      #
-      # 1) Internal repositories in atmosic/west.yml are redirected.  (Unfortunately,
-      #    as of west v1.1.0, the entire content of a "project", including the
-      #    name-allow lists, has to be replicated.  There's no "inheritance" rule or
-      #    partial override capability.)
-      #
-      # 2) openair is imported (obviously)
-
-      manifest:
-      version: "0.10"
-      group-filter: [-optional]
-      remotes:
-         - name: atm_internal
-            url-base: ssh://account@git.sj.atmosic.com/prj/digital/db
-      defaults:
-         remote: atm_internal
+      <pre style="margin: 5; padding: 5px; white-space: pre-wrap; display: block; color: gray; border: 1px solid #C4C4C4; background-color: #F5F5F5;width: auto">
+      atmoautil
       </pre>
 
-- :bluetext:`Public repository`:
+2. Run the following command to install the toolchain.
 
-   :codebox:`west init -m https://github.com/Atmosic/openair.git
-   west update`
+   .. raw:: html
 
-6. Build sample - hello_world in openair.
+      <pre style="margin: 5; padding: 5px; white-space: pre-wrap; display: block; color: gray; border: 1px solid #C4C4C4; background-color: #F5F5F5;width: auto">
+      toolchain_install -v 25.02.0
+      </pre>
 
-   :codebox:`west build -p always --sysbuild openair/samples/sysbuild/hello_world -b ATMEVK-3330e-QN-5//ns -T samples.sysbuild.hello_world.atm`
+      With the default location to install the toolchain (C&#58;/atmoa/toolchains on Windows, ~/atmoa/toolchains/ on Linux), your directory structure now looks similar to this:
+
+      <pre style="margin: 5; padding: 5px; white-space: pre-wrap; display: block; color: gray; border: 1px solid #C4C4C4; background-color: #F5F5F5;width: auto">
+      atmoa
+      └─── toolchains
+            └───&lt;toolchain-installation&gt;
+      </pre>
+
+   In this simplified structure preview, <toolchain-installation> corresponds to the version name you installed
+
+3. Launch develop environment through atmoautil by “toolchain_launch” command. It will pop-up a new Windows command prompt which the window title shows “Atmosic Zephyr” for Windows user. Subsequently, go to the atmoa directory and create zephyrproject folder. (For the Windows user, “cd C:\atmoa”, for the Linux user,  “cd ~/atmoa”)
+
+   .. raw:: html
+
+      <pre style="margin: 5; padding: 5px; white-space: pre-wrap; display: block; color: gray; border: 1px solid #C4C4C4; background-color: #F5F5F5;width: auto">
+      toolchain_launch -v 25.02.0
+      </pre>
+
+4. Checkout source code from internal or public. Please make sure add you account before the domain name if the OS login user not using your Atmosic account.
+
+   .. raw:: html
+
+      <pre style="margin: 5; padding: 5px; white-space: pre-wrap; display: block; color: gray; border: 1px solid #C4C4C4; background-color: #F5F5F5;width: auto">
+      west init -m https://github.com/Atmosic/openair.git
+      west update
+      </pre>
+
+
+5. Build sample - hello_world in openair.
+
+   .. raw:: html
+
+      <pre style="margin: 5; padding: 5px; white-space: pre-wrap; display: block; color: gray; border: 1px solid #C4C4C4; background-color: #F5F5F5;width: auto">
+      west build -p always --sysbuild openair/samples/sysbuild/hello_world -b ATMEVK-3330e-QN-5//ns -T samples.sysbuild.hello_world.atm
+      </pre>
 
    For Example:
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (25.02.0) C:\atmoa\zephyrproject> west build -p always --sysbuild openair/samples/sysbuild/hello_world -b ATMEVK-3330e-QN-5//ns -T samples.sysbuild.hello_world.atm
       -- west build: generating a build system
       Loading Zephyr module(s) (Zephyr base): sysbuild_default
@@ -564,29 +451,28 @@ Install toolchain
          *************************
       </pre>
 
-   .. raw:: html
-
-      <div class="note">
-         <h4>Note</h4>
-         <p>The Zephyr stock samples support System Build (sysbuild) as well. Please apply following commands to apply test cast to stock samples.
-
-            $ cd zephyrproject
+      <blockquote style="background-color: #f7f7f7; font-family: Arial, sans-serif; border-left: 5px solid #2d87f0; padding: 10px; margin: 10px 0; font-size: 1rem; color: #333;">
+      <h4 style="margin-top: 0; font-weight: bold; color: #0077C8; background-color: #E7EFF4; padding: 10px; margin: -10px -10px 10px -10px; display: block;">Note</h4>
+         <p>The Zephyr stock samples support System Build (sysbuild) as well. Please apply following commands to apply test cast to stock samples.<br><br>
+            $ cd zephyrproject<br>
             $ python3 openair/tools/scripts/sysbuild_utils.py -r zephyr gen
          </p>
-      </div>
+      </blockquote>
 
-|
+6. [Windows] Install RDI driver if need
+7. Program firmware to EVK
 
-7. [Windows] Install RDI driver if need
-8. Program firmware to EVK
+   .. raw:: html
 
-   :codebox:`west flash --skip-rebuild --fast_load --device=<JLINK_SERIAL> --jlink`
+      <pre style="margin: 5; padding: 5px; white-space: pre-wrap; display: block; color: gray; border: 1px solid #C4C4C4; background-color: #F5F5F5;width: auto">
+      west flash --skip-rebuild --fast_load --device=<JLINK_SERIAL> --jlink
+      </pre>
 
    For Example:
 
    .. raw:: html
 
-      <pre class="black-code-box">
+      <pre style="background-color:#1E2A47;color:#FFFFFF;padding: 10px;border-radius: 5px;white-space: pre-wrap;width:auto;">
       (25.02.0) d:\atmoa\zephyrproject>west flash --skip-rebuild --fast_load --device=900036842 --jlink
       WARNING: Specifying runner options for multiple domains is experimental.
       If problems are experienced, please specify a single domain using '--domain <domain>'
@@ -607,4 +493,4 @@ Install toolchain
       Open On-Chip Debugger 0.12.0-00020-gaf2e30d6d (2024-04-23-16:10)
       Licensed under GNU GPL v2
       For bug reports, read
-      </pre>
+      </pre><br>

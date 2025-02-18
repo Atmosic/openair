@@ -1,10 +1,10 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 config ATM_EUI
 	bool "Atmosic EUI module"
-	default y if BT || IEEE802154_ATM34
+	select SETTINGS
 
 if ATM_EUI
 

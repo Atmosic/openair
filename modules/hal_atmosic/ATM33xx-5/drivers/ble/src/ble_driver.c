@@ -24,7 +24,7 @@
 
 #include <zephyr/sys/byteorder.h>
 
-#ifdef CONFIG_BT
+#ifdef CONFIG_ATM_BLE
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/drivers/bluetooth.h>
@@ -54,7 +54,7 @@ LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 	defined(CONFIG_MINIMAL_LIBC_NON_REENTRANT_FUNCTIONS)))
 #define ATM_PROVIDE_LIBC_RAND
 #endif
-#if (defined(CONFIG_BT) || defined(ATM_PROVIDE_LIBC_RAND))
+#if (defined(CONFIG_ATM_BLE) || defined(ATM_PROVIDE_LIBC_RAND))
 #include <zephyr/random/random.h>
 #endif
 #include "arch.h"
@@ -67,6 +67,9 @@ LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 #include "rwble.h"
 #include "reg_ipcore.h"
 #include "hci.h"
+#ifdef CONFIG_ATM_EUI
+#include "eui.h"
+#endif
 
 #include "at_wrpr.h"
 #include "at_apb_pseq_regs_core_macro.h"
@@ -91,7 +94,7 @@ ble_appm_last_init(void)
     return (RV_DONE);
 }
 
-#ifdef CONFIG_BT
+#ifdef CONFIG_ATM_BLE
 #define H4_NONE 0x00
 #define H4_CMD  0x01
 #define H4_ACL  0x02
@@ -183,7 +186,7 @@ dummy_write(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t),
     callback(ctxt, RWIP_EIF_STATUS_OK);
 }
 #define BT_HCI_EIF_WRITE_FUNC dummy_write
-#endif  // CONFIG_BT
+#endif // CONFIG_ATM_BLE
 
 static void dummy_read(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t), void *dummy) {}
 static void dummy_flow_on(void) {}
@@ -327,7 +330,7 @@ ble_thread(void *p1, void *p2, void *p3)
     }
 }
 
-#ifdef CONFIG_BT
+#ifdef CONFIG_ATM_BLE
 static rwtl_itf_t *p_itf;
 
 static int
@@ -449,7 +452,7 @@ static struct bt_hci_driver_api const drv = {
 };
 
 static struct hci_data hci_data;
-#endif // CONFIG_BT
+#endif // CONFIG_ATM_BLE
 
 #define BLE_IRQ_SETUP(idx, isr) do { \
     IRQ_CONNECT(DT_INST_IRQ_BY_IDX(0, idx, irq), \
@@ -488,20 +491,23 @@ static uint8_t user_param_get(uint8_t param_id, uint8_t *lengthPtr,
 	return RWIP_PARAM_INVALID;
     }
 
+    uint8_t eui48[BD_ADDR_LEN];
     switch (param_id) {
 	case PARAM_ID_BD_ADDRESS: {
-	    static uint8_t const default_addr[6] = {0x66, 0x55, 0x44, 0x33,
-		0x22, 0x11};
-	    if (*lengthPtr < sizeof(default_addr)) {
+	    if (*lengthPtr < BD_ADDR_LEN) {
 		status = RWIP_PARAM_INVALID;
 		break;
 	    }
-	    if (cal_pub_addr_len == sizeof(cal_pub_addr)) {
-		param_data = cal_pub_addr;
+#ifdef CONFIG_ATM_EUI
+	    if (read_eui48(eui48)) {
+		param_data = eui48;
+		copy_len = sizeof(eui48);
 	    } else {
-		param_data = default_addr;
+#endif
+		status = RWIP_PARAM_NOT_FOUND;
+#ifdef CONFIG_ATM_EUI
 	    }
-	    copy_len = sizeof(default_addr);
+#endif
 	} break;
 #ifdef CONFIG_ATM_LPC_RCOS
 	case PARAM_ID_MAX_SLEEP_DUR: {

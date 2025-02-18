@@ -101,17 +101,17 @@ def main():
             ("esl_c auto_ap 1\n", "state:synchronized"),
             # turn off auto synchronization
             ("esl_c auto_ap 0\n", "New ESL_AP_AUTO_MODE 0"),
-            # read sensor data
+            # read sensor data (esl_c pawr push_sync_buf <group_id)> <OPCODE ESL_ID Sensor_Index>)
             ("esl_c pawr push_sync_buf 0 100000\n", "#SLOT:0,0x0b348e00"),
-            # create acl connection
-            ("esl_c acl connect_esl 0 0\n", "#DISCOVERY"),
-            # upload image data 0
+            # create acl connection (esl_c acl connect_esl <group_id ESL_ID>)
+            ("esl_c acl connect_esl 0000\n", "#DISCOVERY"),
+            # upload image data 0 (esl_c obj_c write <conn_idx> <tag_img_idx> <stored image idx>)
             ("esl_c obj_c write 0 0 0\n", "#OTS_WRITTEN"),
             # upload image data 1
             ("esl_c obj_c write 0 1 1\n", "#OTS_WRITTEN"),
-            # update complete cmd
-            ("esl_c update_complete 0 0 0\n", "esl_c update_complete 0 0 0"),
-            # past procedure
+            # update complete cmd (esl_c update_complete <conn_idx> <group_id ESL_ID>)
+            ("esl_c update_complete 0 0000\n", "esl_c update_complete 0 0000"),
+            # past procedure (esl_c acl past <conn_idx>)
             ("esl_c acl past 0\n", "state:synchronized"),
             # update image
             ("esl_c pawr push_sync_buf 0 20000000\n", "#SLOT:0,0x0434110000"),
@@ -163,8 +163,8 @@ def main():
         exe_cmds(commands)
         factory_reset_commands = [
             # create acl connection
-            ("esl_c acl connect_esl 0 0\n", "#DISCOVERY"),
-            # factory reset
+            ("esl_c acl connect_esl 0000\n", "#DISCOVERY"),
+            # factory reset (esl_c factory <conn_idx>)
             ("esl_c factory 0\n", "Disconnected"),
         ]
         exe_cmds(factory_reset_commands)
