@@ -5,7 +5,7 @@
  *
  * @brief Print-based debug interface
  *
- * Copyright (C) Atmosic 2021-2023
+ * Copyright (C) Atmosic 2021-2025
  *
  *******************************************************************************
  */
@@ -109,6 +109,7 @@ void assert_warn(int param0, int param1, const char * file, int line)
 #endif
 }
 
+__attribute__((weak))
 int
 debug_trace(const char *fmt, ...)
 {

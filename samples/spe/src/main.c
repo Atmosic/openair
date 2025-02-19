@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Atmosic
+ * Copyright (c) 2022-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -104,8 +104,11 @@ COND_CODE_0(DT_CHILD_NUM(part),( \
 
 static void mpc_cfg(void)
 {
+    at_tz_mpc_ret_t ret;
+
     // Configuring MPC of Flash
-    at_tz_mpc_enable_int(AT_TZ_MPC_DEV_FLASH);
+    ret = at_tz_mpc_enable_int(AT_TZ_MPC_DEV_FLASH);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
 
 #ifdef CONFIG_BOOTLOADER_MCUBOOT
 #if CONFIG_ROM_START_OFFSET % AT_TZ_MPC_FLS_BLK_SIZE != 0
@@ -114,31 +117,39 @@ static void mpc_cfg(void)
     // Allow mcumgr to read image header.
     uint32_t boot_hdr_baddr = PART_SPE_ADDR();
     uint32_t boot_hdr_laddr = boot_hdr_baddr + CONFIG_ROM_START_OFFSET - 1;
-    at_tz_mpc_config_region(boot_hdr_baddr, boot_hdr_laddr,
+    ret = at_tz_mpc_config_region(boot_hdr_baddr, boot_hdr_laddr,
 	AT_TZ_MPC_ATTR_NONSECURE);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
 #endif // CONFIG_BOOTLOADER_MCUBOOT
 
     // Configure remaining flash partitions.
     CONFIGURE_MPC_FLASH_PARTITIONS();
 #if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
     // Permit access to RRAM registers
-    at_tz_mpc_config_region(ROM_RRAM_SIZE, ROM_RRAM_SIZE + 0x800 - 1,
+    ret = at_tz_mpc_config_region(ROM_RRAM_SIZE, ROM_RRAM_SIZE + 0x800 - 1,
 	AT_TZ_MPC_ATTR_NONSECURE);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
     // permit AT_PRRF_NONSECURE access and external Flash
-    at_tz_mpc_config_region(CMSDK_EXT_FLASH_NONSECURE_BASE - 0x800,
+    ret = at_tz_mpc_config_region(CMSDK_EXT_FLASH_NONSECURE_BASE - 0x800,
 	CMSDK_EXT_FLASH_NONSECURE_BASE + AT_TZ_MPC_EXT_FLASH_MPC_SIZE - 1,
 	AT_TZ_MPC_ATTR_NONSECURE);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
 #endif
-    at_tz_mpc_config_remaining_ext_flash(AT_TZ_MPC_ATTR_NONSECURE);
+    ret = at_tz_mpc_config_remaining_ext_flash(AT_TZ_MPC_ATTR_NONSECURE);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
 
     // Configuring MPC of RAM
-    at_tz_mpc_enable_int(AT_TZ_MPC_DEV_RAM);
-    at_tz_mpc_config_region(DT_REG_ADDR(DT_NODELABEL(sram0)) +
+    ret = at_tz_mpc_enable_int(AT_TZ_MPC_DEV_RAM);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
+    ret = at_tz_mpc_config_region(DT_REG_ADDR(DT_NODELABEL(sram0)) +
 	    DT_REG_SIZE(DT_NODELABEL(sram0)),
 	DT_REG_ADDR(DT_NODELABEL(sram0)) + RAM_SIZE - 1,
 	AT_TZ_MPC_ATTR_NONSECURE);
-    at_tz_mpc_enable_bus_fault(AT_TZ_MPC_DEV_FLASH);
-    at_tz_mpc_enable_bus_fault(AT_TZ_MPC_DEV_RAM);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
+    ret = at_tz_mpc_enable_bus_fault(AT_TZ_MPC_DEV_FLASH);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
+    ret = at_tz_mpc_enable_bus_fault(AT_TZ_MPC_DEV_RAM);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
 
     return;
 }
@@ -169,6 +180,7 @@ static void sau_cfg(void)
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK(phys_lc_baddr),
 	AT_TZ_SAU_LADDR_MASK(phys_lc_laddr), AT_TZ_SAU_NS);
+    SEC_ASSERT(ret == AT_TZ_SAU_OK);
 #endif
 
     // Allocate RRAM, RRAM regs, prrf, and ext_flash as NS to save on SAU regions
@@ -182,6 +194,7 @@ static void sau_cfg(void)
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK(rram_flash_baddr),
 	AT_TZ_SAU_LADDR_MASK(rram_flash_laddr), AT_TZ_SAU_NS);
+    SEC_ASSERT(ret == AT_TZ_SAU_OK);
 
     uint32_t ns_sram_baddr = GET_PHYS_ADDR(DT_REG_ADDR(DT_NODELABEL(sram0))) +
 	DT_REG_SIZE(DT_NODELABEL(sram0));
@@ -190,11 +203,13 @@ static void sau_cfg(void)
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK(ns_sram_baddr),
 	AT_TZ_SAU_LADDR_MASK(ns_sram_laddr), AT_TZ_SAU_NS);
+    SEC_ASSERT(ret == AT_TZ_SAU_OK);
 
     // Allocate non-secure callable region
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK((unsigned int)NSC_EN_REGION_START),
 	AT_TZ_SAU_LADDR_MASK((unsigned int)NSC_EN_REGION_END), AT_TZ_SAU_NSC);
+    SEC_ASSERT(ret == AT_TZ_SAU_OK);
 
     // Allocate peripheral region
     uint32_t peripheral_baddr = GET_PHYS_ADDR(
@@ -205,6 +220,7 @@ static void sau_cfg(void)
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK(peripheral_baddr),
 	AT_TZ_SAU_LADDR_MASK(peripheral_laddr), AT_TZ_SAU_NS);
+    SEC_ASSERT(ret == AT_TZ_SAU_OK);
 
 #ifdef CONFIG_BOOTLOADER_MCUBOOT
     // Allow mcumgr to read image header.
@@ -213,6 +229,7 @@ static void sau_cfg(void)
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK(boot_hdr_baddr),
 	AT_TZ_SAU_LADDR_MASK(boot_hdr_laddr), AT_TZ_SAU_NS);
+    SEC_ASSERT(ret == AT_TZ_SAU_OK);
 #endif // CONFIG_BOOTLOADER_MCUBOOT
 #endif // CONFIG_ATM_SPE_DISABLE_SAU
     __DSB();
