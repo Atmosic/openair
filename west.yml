@@ -1,7 +1,7 @@
 manifest:
   group-filter:
-  - -optional
   - -babblesim
+  - -optional
   projects:
   - name: hal_atmosic
     url: https://github.com/Atmosic/hal_atmosic
