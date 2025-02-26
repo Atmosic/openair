@@ -111,6 +111,9 @@ class AtmIsp:
             cmd_arg.append('--sec_boot')
             cmd_arg.append('--sec_boot_key_checksum')
             cmd_arg.append(sb_key_cs)
+        if hasattr(self.partInfo, 'REV_PFX'):
+            cmd_arg.append('--revision')
+            cmd_arg.append(self.partInfo.REV_PFX)
         return self.exe_cmd(cmd_arg)
 
     def append(self, load_type, filepath, input_file, output_file):
