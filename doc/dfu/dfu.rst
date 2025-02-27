@@ -9,6 +9,11 @@ Overlay files for Serial DFU (``overlay-serial-dfu.conf``) and for BLE OTA (``ov
 They may either be used individually, or together depending on what forms of DFU are desired.
 By including both overlays, the ability to perform Serial DFU and BLE OTA will be supported.
 
+When using DFU it can be useful to version the images being flashed, both the Atmosic mobile app and the MCUmgr utility will show the version of the application.
+The version of the image can be set using the `CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION <https://docs.zephyrproject.org/latest/kconfig.html#CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION>`_ Kconfig option.
+This Kconfig option expects a string using the format of ``"major.minor.revision+build"``, for example ``"2.1.0+0"``, however ``"+build"`` is optional.
+The version data will then be stored in the image header that is created by the MCUboot image signing tools.
+
 Using the Overlay Files
 =======================
 There are three methods for using the provided overlay files:
@@ -63,6 +68,9 @@ For Atmosic EVKs this can be found in ``${WEST_TOPDIR}/zephyr/boards/atmosic/``:
     &uart0 {
         status = "okay";
     };
+
+**NOTE:** Make sure to use the DTS file that is being used for the application.
+For platforms with TrustZone this will usually be the Non-Secure version, typically indicated by ``_ns``.
 
 When performing Serial DFU the ``mcumgr`` Golang utility is used. It may be installed using the following command::
 
