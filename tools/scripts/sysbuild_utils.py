@@ -128,7 +128,7 @@ class TestInfo:
 
 
 def parse_args(args=None, namespace=None):
-    parser = argparse.ArgumentParser(description='Zephyr Twister Sysbuild Tool')
+    parser = argparse.ArgumentParser(description='Atmosic Zephyr Sysbuild Tool')
     subparsers = parser.add_subparsers(dest='opcode')
     list_parser = subparsers.add_parser(
         'list',
