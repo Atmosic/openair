@@ -21,7 +21,7 @@ manifest:
     path: modules/crypto/micro-ecc
   - name: zephyr
     url: https://github.com/Atmosic/zephyr
-    revision: a43464f1acf0e6441cd32a8d486b157195f46f3e
+    revision: 21017b1194b97149a1ca92653ee26cf75d85a36d
     west-commands: scripts/west-commands.yml
   - name: cmsis
     url: https://github.com/zephyrproject-rtos/cmsis
