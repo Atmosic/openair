@@ -27,6 +27,8 @@ tests:
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
   samples.sysbuild.hello_world.atm.mcuboot.atmx2:
     sysbuild: true
     tags: introduction atmx2
@@ -34,3 +36,5 @@ tests:
       - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y

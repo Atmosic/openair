@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-if (CONFIG_ATMx2_ROM)
+if(CONFIG_ATMx2_ROM)
     zephyr_link_libraries(
         ${LINKERFLAGPREFIX},-R${CMAKE_CURRENT_SOURCE_DIR}/drivers/ble/rom/rom.elf
         ${LINKERFLAGPREFIX},--just-symbols=${CMAKE_CURRENT_SOURCE_DIR}/drivers/ble/rom/romsymdef
     )
 
     add_subdirectory(drivers)
-endif ()
+endif()
 
 add_subdirectory(src)
 

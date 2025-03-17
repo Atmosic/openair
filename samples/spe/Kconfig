@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,3 +13,6 @@ config ATM_SPE_DISABLE_SHUB
 
 config ATM_ENABLE_NSC_EXAMPLE
 	bool "Enable NSC example function for extending SPE"
+
+config ATM_SPE_DEBUG_TZ
+	bool "Enable verbose TrustZone configuration debug"

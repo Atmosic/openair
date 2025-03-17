@@ -1,0 +1,58 @@
+# Copyright (c) 2017, NXP
+# SPDX-License-Identifier: Apache-2.0
+
+# Common fields for ADC controllers
+
+include: adc-controller.yaml
+
+properties:
+    resolution:
+      type: int
+      required: true
+
+    ch-cell:
+      type: int
+      required: false
+
+    ch-store:
+      type: int
+      required: false
+
+    ch-core:
+      type: int
+      required: false
+
+    ch-temp:
+      type: int
+      required: false
+
+    ch-p1diff:
+      type: int
+      required: false
+
+    ch-p0diff:
+      type: int
+      required: false
+
+    ch-p1single0:
+      type: int
+      required: false
+
+    ch-p1single1:
+      type: int
+      required: false
+
+    ch-p0single0:
+      type: int
+      required: false
+
+    ch-p0single1:
+      type: int
+      required: false
+
+    ch-batt:
+      type: int
+      required: false
+
+io-channel-cells:
+    - input

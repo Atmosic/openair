@@ -5,8 +5,8 @@
  *
  * @brief Common optimized math functions
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  *
  ****************************************************************************************
@@ -320,6 +320,17 @@ __INLINE uint32_t co_max(uint32_t a, uint32_t b)
 
 /**
  ****************************************************************************************
+ * @brief Function to return the greatest of 2 signed 32 bits words.
+ * @return The greatest value.
+ ****************************************************************************************
+ */
+__INLINE int32_t co_max_s(int32_t a, int32_t b)
+{
+    return a > b ? a : b;
+}
+
+/**
+ ****************************************************************************************
  * @brief Function to return the absolute value of a signed integer.
  * @return The absolute value.
  ****************************************************************************************
@@ -327,6 +338,55 @@ __INLINE uint32_t co_max(uint32_t a, uint32_t b)
 __INLINE int co_abs(int val)
 {
     return (val < 0) ? (0 - val) : val;
+}
+
+/**
+ ****************************************************************************************
+ * @brief Function to return the factorial count of a value.
+ * @return The factorial count (n! = n x (n-1) x (n-2) x (n-3) x ... x 1).
+ ****************************************************************************************
+ */
+__INLINE uint8_t co_fct(uint8_t n)
+{
+    // Use static reference table as factorial of only small values <= 4 currently required
+    const uint8_t fct_tbl[] = {1,1,2,(3*2),(4*3*2)};
+    ASSERT_ERR(n < sizeof(fct_tbl));
+    return fct_tbl[n];
+}
+
+/**
+ ****************************************************************************************
+ * @brief Function to return the greatest common divisor.
+ * The GCD of two numbers is the largest number that divides both of them without leaving a remainder.
+ * @return The gcd gcd(a,b) = gcd(b,a mod b).
+ ****************************************************************************************
+ */
+__INLINE uint32_t co_gcd(uint32_t a, uint32_t b)
+{
+    while (b != 0)
+    {
+        uint32_t temp = b;
+        // 'b' is updated with the remainder of 'a' divided by 'b'.
+        b = a % b;
+        // 'a' is updated with the value of 'b' before the above operation.
+        a = temp;
+    }
+    // When 'b' becomes 0, 'a' is the GCD of the initial 'a' and 'b'.
+    return a;
+}
+
+/**
+ ****************************************************************************************
+ * @brief Function to return the lowest common multiple of two numbers.
+ * The LCM of two integers 'a' and 'b' is the smallest positive integer that is divisible by both 'a' and 'b'.
+ * @return The lowest common multiple, LCM(a, b) = (a * b) / GCD(a, b).
+ ****************************************************************************************
+ */
+__INLINE uint32_t co_lcm(uint32_t a, uint32_t b)
+{
+    // Calculate 'a' divided by the GCD of 'a' and 'b', the result is then multiplied by 'b' to get the LCM.
+    uint32_t result = CO_DIVIDE_CEIL(a, co_gcd(a,b)) * b;
+    return result;
 }
 
 /// @} CO_MATH

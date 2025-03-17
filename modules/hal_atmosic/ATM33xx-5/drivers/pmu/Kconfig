@@ -8,7 +8,7 @@ config ATM_PMU
 	default y if BT
 	default y if ENTROPY_ATM_TRNG
 	default y if PM
-	default y if BROWNOUT
+	default y if ATM_BROWNOUT
 
 config PMU_WDOG_TIMEOUT
 	int "PMU watchdog timeout"

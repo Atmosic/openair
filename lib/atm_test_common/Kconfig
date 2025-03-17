@@ -1,0 +1,35 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_TEST_UTIL
+	bool "ATM auto test enable"
+	depends on AUTO_TEST
+	select ATM_RESET
+
+config ATM_TEST_UTIL_HAS_OVR
+	bool "Use overwrite values"
+
+if ATM_TEST_UTIL
+
+config ATM_TEST_AUTO_PASS
+	bool "Auto pass after certain time."
+
+config ATM_TEST_AUTO_PASS_TIME
+	int "Timeout value in millisecond"
+	depends on ATM_TEST_AUTO_PASS
+	default 600 if ATM_IS_FOR_SIM
+	default 10000
+
+config ATM_TEST_UTIL_INT1
+	int "Int value to overwrite configuration value"
+	depends on ATM_TEST_UTIL_HAS_OVR
+
+config ATM_TEST_UTIL_INT2
+	int "Int value to overwrite configuration value"
+	depends on ATM_TEST_UTIL_HAS_OVR
+
+config ATM_TEST_UTIL_HEX1
+	hex "hex value to overwrite configuration value"
+	depends on ATM_TEST_UTIL_HAS_OVR
+endif

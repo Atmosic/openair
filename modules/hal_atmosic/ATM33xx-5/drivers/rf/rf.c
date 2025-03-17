@@ -5,7 +5,7 @@
  *
  * @brief Radio initialization and specific functions
  *
- * Copyright (C) Atmosic 2020-2024
+ * Copyright (C) Atmosic 2020-2025
  *
  *******************************************************************************
  */
@@ -39,7 +39,10 @@
 #define RSSI_INTERF_THRHLD   -70
 
 #ifndef CONFIG_SOC_FAMILY_ATM
-STATIC_ASSERT(CONFIG_MAX_TX_PWR >= CONFIG_ADV_TX_PWR, "ADV TX power exceeds");
+STATIC_ASSERT(CONFIG_MAX_TX_PWR <= CFG_MAX_TX_PWR_UB,
+    "MAX_TX_PWR value exceeds the upper bound");
+STATIC_ASSERT(CONFIG_MAX_TX_PWR >= CFG_ADV_TX_PWR, "ADV TX power exceeds");
+STATIC_ASSERT(CONFIG_MAX_TX_PWR >= CFG_CONN_TX_PWR, "CONN TX power exceeds");
 #endif
 
 // TX min power
@@ -63,8 +66,9 @@ static int8_t const RF_TX_PW_CONV_TBL[RF_POWER_LVL_NUM] = {
 
 static int8_t tx_gain_offset;
 static uint8_t txpwr_max;
+static int8_t txpwr_con_dbm = INVALID_TX_POWER_VALUE;
 #ifndef CONFIG_SOC_FAMILY_ATM
-static uint8_t txpwr_adv_dbm;
+static int8_t txpwr_adv_dbm;
 #endif
 
 /**
@@ -273,7 +277,7 @@ void rf_init(struct rwip_rf_api *api)
     txpwr_max = rf_txpwr_cs_get_in_range(CONFIG_MAX_TX_PWR, TXPWR_CS_LOWER, 0,
 	RF_POWER_LVL_NUM - 1);
 #ifndef CONFIG_SOC_FAMILY_ATM
-    txpwr_adv_dbm = CONFIG_ADV_TX_PWR;
+    txpwr_adv_dbm = CFG_ADV_TX_PWR;
 #endif
     api->txpwr_max_get = rf_txpwr_max_get;
     api->sleep         = rf_sleep;
@@ -472,6 +476,14 @@ void rf_init(struct rwip_rf_api *api)
 
 int8_t rf_set_txpwr_maximum_val(int8_t txpwr_dbm)
 {
+    if (((txpwr_con_dbm != INVALID_TX_POWER_VALUE) &&
+	(txpwr_dbm < txpwr_con_dbm))
+#ifndef CONFIG_SOC_FAMILY_ATM
+	|| (txpwr_dbm < txpwr_adv_dbm)
+#endif
+	) {
+	return INVALID_TX_POWER_VALUE;
+    }
     txpwr_max = rf_txpwr_cs_get_in_range(txpwr_dbm, TXPWR_CS_LOWER, 0,
 	RF_POWER_LVL_NUM - 1);
     return rwip_rf.txpwr_dbm_get(txpwr_max);
@@ -482,7 +494,6 @@ bool rf_set_txpwr_advertising_val(int8_t txpwr_dbm)
 {
     if (rf_txpwr_cs_get_in_range(txpwr_dbm, TXPWR_CS_LOWER, 0,
 	RF_POWER_LVL_NUM - 1) > txpwr_max) {
-	DEBUG_TRACE("Err:Exceed Max TxPwr");
 	return false;
     }
     txpwr_adv_dbm = txpwr_dbm;
@@ -505,6 +516,11 @@ void rf_set_txpwr_override(int8_t txpwr_dbm)
 
 int8_t rf_set_cs_txpwr_val(uint8_t cs_idx, int8_t txpwr_dbm)
 {
+    if (rf_txpwr_cs_get_in_range(txpwr_dbm, TXPWR_CS_LOWER, 0,
+	RF_POWER_LVL_NUM - 1) > txpwr_max) {
+	return INVALID_TX_POWER_VALUE;
+    }
+    txpwr_con_dbm = txpwr_dbm;
     uint8_t gain_index = rwip_rf.txpwr_cs_get(txpwr_dbm, TXPWR_CS_LOWER);
     em_ble_txrxcntl_txpwr_setf(cs_idx, gain_index);
     return rwip_rf.txpwr_dbm_get(gain_index);

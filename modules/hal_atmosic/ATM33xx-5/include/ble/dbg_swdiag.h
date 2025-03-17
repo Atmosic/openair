@@ -5,8 +5,8 @@
 *
 * @brief SW profiling module
 *
-* Copyright (C) RivieraWaves 2009-2024
-* Release Identifier: dc6acdca
+* Copyright (C) RivieraWaves 2009-2025
+* Release Identifier: eedc1896
 *
 *
 ****************************************************************************************
@@ -931,14 +931,11 @@ enum dbg_swdiag
     DBG_SWDIAG_LEPERADV_EVT_CANCELED_OFFSET          = 3,
     DBG_SWDIAG_LEPERADV_EVT_CANCELED_MASK            = 0x08,
 
-    DBG_SWDIAG_LEPERADV_RX_ISR_OFFSET                = 4,
-    DBG_SWDIAG_LEPERADV_RX_ISR_MASK                  = 0x10,
+    DBG_SWDIAG_LEPERADV_FRM_ISR_OFFSET               = 4,
+    DBG_SWDIAG_LEPERADV_FRM_ISR_MASK                 = 0x10,
 
-    DBG_SWDIAG_LEPERADV_FRM_ISR_OFFSET               = 5,
-    DBG_SWDIAG_LEPERADV_FRM_ISR_MASK                 = 0x20,
-
-    DBG_SWDIAG_LEPERADV_SCHED_OFFSET                 = 6,
-    DBG_SWDIAG_LEPERADV_SCHED_MASK                   = 0x40,
+    DBG_SWDIAG_LEPERADV_SCHED_OFFSET                 = 5,
+    DBG_SWDIAG_LEPERADV_SCHED_MASK                   = 0x20,
 
     /**
      ******************************************************************************************
@@ -1532,8 +1529,10 @@ enum dbg_swdiag
     DBG_SWDIAG_PRV_SLP_SET_MASK                      = 0x02,
 
 
+
+
     /// Number of SW profiles - to increase when new bank are added
-    DBG_SWDIAG_NB_PROFILES                           = 65,
+    DBG_SWDIAG_NB_PROFILES                           = 67,
 
 };
 

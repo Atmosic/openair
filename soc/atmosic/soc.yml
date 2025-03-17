@@ -1,0 +1,20 @@
+family:
+  - name: atmosic
+    series:
+      - name: ATMx2
+        socs:
+          - name: ATMx2xx-x1x
+      - name: ATM33
+        socs:
+          - name: ATM33xx-5
+runners:
+  run_once:
+    '--erase_flash':
+      - run: first
+        runners:
+          - atmisp
+        groups:
+          - qualifiers:
+              - ATM33xx-5
+              - ATM33xx-5/ns
+              - ATMx2xx-x1x

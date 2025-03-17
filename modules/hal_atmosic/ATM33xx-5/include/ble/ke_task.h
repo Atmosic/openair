@@ -5,8 +5,8 @@
  *
  * @brief This file contains the definition related to kernel task management.
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  *
  ****************************************************************************************
@@ -78,13 +78,13 @@ typedef int (*ke_msg_func_t)(ke_msg_id_t const msgid, void const *param,
 #define KE_MSG_HANDLER_TAB(task)   __STATIC const struct ke_msg_handler task##_msg_handler_tab[] =
 
 /// Element of a message handler table.
-struct ke_msg_handler
+typedef struct ke_msg_handler
 {
     /// Id of the handled message.
     ke_msg_id_t id;
     /// Pointer to the handler function for the msgid above.
     ke_msg_func_t func;
-};
+} ke_msg_handler_t;
 
 /// Task descriptor grouping all information required by the kernel for the scheduling.
 typedef struct ke_task_desc

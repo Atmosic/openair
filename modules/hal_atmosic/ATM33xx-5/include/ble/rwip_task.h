@@ -5,8 +5,8 @@
  *
  * @brief Task Identifier description for the RW IP
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  ****************************************************************************************
  */
@@ -102,9 +102,6 @@ enum TASK_API_ID
     TASK_ID_FINDL        = 24,   // Find Me Locator Task
     TASK_ID_FINDT        = 25,   // Find Me Target Task
 
-    TASK_ID_IASC         = TASK_ID_FINDL,   // Immediate Alert Service Client Task
-    TASK_ID_IASS         = TASK_ID_FINDT,   // Immediate Alert Service Server Task
-
     TASK_ID_HTPC         = 26,   // Health Thermometer Collector Task
     TASK_ID_HTPT         = 27,   // Health Thermometer Sensor Task
 
@@ -169,8 +166,10 @@ enum TASK_API_ID
     TASK_ID_PLXS         = 67,   // Pulse Oximeter Profile Server Task
     TASK_ID_PLXC         = 68,   // Pulse Oximeter Profile Client Task
 
-    TASK_ID_CGMS         = 69,   // Continuous Glucose Monitoring Server Task
-    TASK_ID_CGMC         = 70,   // Continuous Glucose Monitoring Client Task
+    TASK_ID_CGMS         = 69,   // Continuous Glucose Monitoring Server Task - DEPRECATED
+    TASK_ID_CGMSS        = 69,   // Continuous Glucose Monitoring Server Task
+    TASK_ID_CGMC         = 70,   // Continuous Glucose Monitoring Client Task - DEPRECATED
+    TASK_ID_CGMSC        = 70,   // Continuous Glucose Monitoring Client Task
 
     TASK_ID_CSISM        = 71,   // Coordinated Set Identification Profile Set Member Task
     TASK_ID_CSISC        = 72,   // Coordinated Set Identification Profile Set Coordinator Task
@@ -181,8 +180,20 @@ enum TASK_API_ID
     TASK_ID_BMSS         = 75,   // Bond Management Service Server Task
     TASK_ID_BMSC         = 76,   // Bond Management Service Client Task
 
-    TASK_ID_ESL_AP       = 77,   // Electronic Shelf Label Access Point role Task
-    TASK_ID_ESL_TAG      = 78,   // Electronic Shelf Label TAG role Task
+    TASK_ID_ESL_AP       = 77,   // Electronic Shelf Label Access Point Task
+    TASK_ID_ESL_TAG      = 78,   // Electronic Shelf Label Tag Task
+
+    TASK_ID_RASS         = 79,   // Ranging Service Server Task
+    TASK_ID_RASC         = 80,   // Ranging Service Client Task
+
+    TASK_ID_IASC         = 81,   // Immediate Alert Service Client Task
+    TASK_ID_IASS         = 82,   // Immediate Alert Service Server Task
+
+    TASK_ID_LLSS         = 83,   // Link Loss Service Client Task
+    TASK_ID_LLSC         = 84,   // Link Loss Service Server Task
+
+    TASK_ID_TPSC         = 85,   // Tx Power Service Client Task
+    TASK_ID_TPSS         = 86,   // Tx Power Service Server Task
 
     TASK_ID_USER1        = 100,   // USER task
     TASK_ID_USER2        = 101,   // USER task

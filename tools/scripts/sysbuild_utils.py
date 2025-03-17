@@ -27,7 +27,7 @@ WEST_DIR = str(Path(ZEPHYR_BASE).resolve().parents[0])
 TEMPLATE_DIR = os.path.join(WEST_DIR, 'openair', 'tools', 'scripts', 'sysbuild')
 
 REPO_LIST = {
-    'zephyr':  ['samples'],
+    'zephyr':  ['samples', 'tests'],
     'openair': ['applications', 'samples'],
     'atmosic-internal': ['applications', 'samples'],
     'atmosic-private': ['applications', 'samples'],
@@ -193,9 +193,13 @@ def collect_test_info(repo_list, exp_items=None, debug=False):
             os.chdir(repo_path)
             for dir_name in check_dir_list:
                 if os.path.exists(os.path.join(repo_path, dir_name)):
+                    if 'tests' == dir_name:
+                        file_name = 'testcase.yaml'
+                    else:
+                        file_name = 'sample.yaml'
                     if debug:
-                        print(f"check_dir: {dir_name}/**/sample.yaml")
-                    file_list = glob(f"{dir_name}/**/sample.yaml",
+                        print(f"check_dir: {dir_name}/**/{file_name}")
+                    file_list = glob(f"{dir_name}/**/{file_name}",
                         recursive=True)
                     if debug:
                         print(f"file_list={file_list}")

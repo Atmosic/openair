@@ -1,0 +1,25 @@
+# Copyright 2018-2024 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    This binding gives a base representation of the Atmosic BLE
+
+compatible: "atmosic,ble"
+
+include: bt-hci.yaml
+
+properties:
+  bt-hci-name:
+    default: "Atmosic BLE"
+  bt-hci-bus:
+    default: "virtual"
+
+  reg:
+      type: array
+      description: mmio register space
+      required: true
+
+  interrupts:
+      type: array
+      description: required interrupts
+      required: true

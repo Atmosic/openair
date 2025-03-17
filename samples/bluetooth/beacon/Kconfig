@@ -20,6 +20,8 @@ choice
 #
 config REFBCN_POWER_PROFILE
 	bool "hibernate beacon demo"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
 	help
 	  Select this option to enable power profile.
 
@@ -31,6 +33,8 @@ config REFBCN_POWER_PROFILE
 #
 config REFBCN_SOCOFF_BEACON
 	bool "socoff beacon demo"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
 	help
 	  Select this option to see the 30s beacon and 30s soc off.
 
@@ -40,18 +44,16 @@ endchoice
 # Invisible Kconfig symbols
 #
 
+rsource "Kconfig.adv_opts"
+
 # for Create
 config ADV_INTV
 	hex
 	range 0x20 0x640
+	default ATM_TEST_UTIL_HEX1 if ATM_TEST_UTIL_HAS_OVR  # for testing
 	default 0x640 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 1s
 	default 0x20
 
-config ADV_OPTS
-	hex
-	range 0 0xFFFFF
-	default 0x204 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON  # nc_s_
-	default 0
 
 config ADV_DISC
 	hex
@@ -66,11 +68,13 @@ config ADV_TOUT
 
 config ADV_MAX_EVT
 	int
+	default ATM_TEST_UTIL_INT1 if ATM_TEST_UTIL_HAS_OVR # for testing
 	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s_adv (30 * 1s)
 	default 0
 
 config ADV_RSTRT_DUR
 	int
+	default ATM_TEST_UTIL_INT2 if ATM_TEST_UTIL_HAS_OVR  # for testing
 	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s
 	default 0
 

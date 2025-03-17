@@ -5,7 +5,7 @@
  *
  * @brief Power Management Unit APIs
  *
- * Copyright (C) Atmosic 2020
+ * Copyright (C) Atmosic 2020-2025
  *
  *
  ******************************************************************************
@@ -96,12 +96,6 @@ typedef enum {
  * @param[in] vstore    Vstore capacity
  */
 extern void pmu_stopharv_threshold(vstore_t vstore);
-
-
-/**
- * @brief Program PMU registers prior to entering SOC_OFF state
- */
-extern void pmu_soc_off(void);
 
 /**
  * @brief Read pmu_wkup_det value

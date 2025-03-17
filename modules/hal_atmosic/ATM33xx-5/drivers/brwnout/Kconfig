@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-config BROWNOUT
+config ATM_BROWNOUT
 	bool "Enable brownout support"
 
-if BROWNOUT
+if ATM_BROWNOUT
 
 config BROWNOUT_THR_VBAT
         int "VBAT brownout threshold"

@@ -5,7 +5,7 @@
  *
  * @brief battery procedure for application layer.
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -24,7 +24,7 @@
 #include "reset.h"
 
 #ifdef CONFIG_SOC_FAMILY_ATM
-#define BROWNOUT_SUPPORT IS_ENABLED(CONFIG_BROWNOUT)
+#define BROWNOUT_SUPPORT IS_ENABLED(CONFIG_ATM_BROWNOUT)
 #else
 #ifndef NO_BROWNOUT
 #define BROWNOUT_SUPPORT 1

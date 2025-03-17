@@ -3,7 +3,7 @@
 
 @brief Helper file for Atmosic openocd
 
-Copyright (C) Atmosic 2024
+Copyright (C) Atmosic 2024-2025
 '''
 import contextlib
 import glob
@@ -29,11 +29,60 @@ def get_atm_plat_dir_from_board(board):
     # if a ns board is passed, strip before continuing
     if board.endswith('ns'):
         board = board.split("/", 1)[0]
-    if "ATMEVK-33" in board:
+
+    soc = get_soc_from_board(board)
+
+    if soc == "ATM33xx-5":
         openocd_dir_path = os.path.join('openair', 'modules', 'hal_atmosic')
         return os.path.join(openocd_dir_path, "ATM33xx-5")
+    elif soc.startswith("ATM34xx"):
+        openocd_dir_path = os.path.join('atmosic-private', 'modules', 'hal_atmosic')
+        if soc.endswith("-2"):
+            return os.path.join(openocd_dir_path, "ATM34xx", "rev-2")
+        elif soc.endswith("-5"):
+            return os.path.join(openocd_dir_path, "ATM34xx", "rev-5")
+        else:
+            raise RuntimeError("Could not match board revision.")
     return None
 
+def get_soc_from_board(board):
+    def get_soc_from_west_boards(board, board_path):
+        try:
+            west_boards_results = subprocess.run(
+                ["west", "boards", "-f", "{qualifiers}", "--board", board,
+                 "--board-root", board_path],
+                text=True, capture_output=True, check=True)
+            if west_boards_results.stdout:
+                qualifiers = west_boards_results.stdout.strip().split(",")
+                socs = [i for i in qualifiers if not i.endswith("/ns")]
+                print(socs)
+                return socs[0]
+            else:
+                return None
+        except subprocess.CalledProcessError:
+            return None
+
+    # First check if the given board is defined in regular board paths.
+    board_paths = [
+        "./zephyr/boards/atmosic/",
+        "./atmosic-internal/boards/atmosic/"]
+
+    for board_path in board_paths:
+        soc = get_soc_from_west_boards(board, board_path)
+        if soc is not None:
+            return soc
+
+    # If none match, check the board name.
+    atm33 = ["3325", "3330"]
+    atm34 = ["3405", "3425", "3430"]
+    if any(i in board for i in atm33):
+        return "ATM33xx-5"
+    elif any(i in board for i in atm34):
+        if board.endswith("-5"):
+            return "ATM34xx-5"
+        else:
+            return "ATM34xx-2"
+    return None
 
 
 @contextlib.contextmanager

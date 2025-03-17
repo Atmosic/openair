@@ -6,8 +6,8 @@
  * @brief This file contains the HCI Bluetooth defines, enumerations and structures
  *        definitions for use by all modules in RW stack.
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  ****************************************************************************************
  */
@@ -319,9 +319,9 @@ struct hci_sync_hdr
 typedef struct hci_evt_hdr
 {
     ///Event code
-    uint8_t  code;
+    uint8_t code;
     ///Event parameters length
-    uint8_t  parlen;
+    uint8_t parlen;
 } hci_evt_hdr_t;
 
 ///HCI ISO data packets header structure
@@ -664,11 +664,21 @@ enum hci_opcode
     HCI_LE_SET_CONLESS_IQ_SAMPL_EN_CMD_OPCODE           = 0x2053,
     #endif // (BLE_CONLESS_CTE_RX)
     #endif // (BLE_PER_ADV)
+    #if (BLE_CON_CTE_REQ)
     HCI_LE_SET_CON_CTE_RX_PARAM_CMD_OPCODE              = 0x2054,
+    #endif // (BLE_CON_CTE_REQ)
+    #if (BLE_CON_CTE_RSP)
     HCI_LE_SET_CON_CTE_TX_PARAM_CMD_OPCODE              = 0x2055,
+    #endif // (BLE_CON_CTE_RSP)
+    #if (BLE_CON_CTE_REQ)
     HCI_LE_CON_CTE_REQ_EN_CMD_OPCODE                    = 0x2056,
+    #endif // (BLE_CON_CTE_REQ)
+    #if (BLE_CON_CTE_RSP)
     HCI_LE_CON_CTE_RSP_EN_CMD_OPCODE                    = 0x2057,
+    #endif // (BLE_CON_CTE_RSP)
+    #if (BLE_AOA || BLE_AOD)
     HCI_LE_RD_ANTENNA_INF_CMD_OPCODE                    = 0x2058,
+    #endif // (BLE_AOA || BLE_AOD)
     #if (BLE_PER_ADV)
     HCI_LE_SET_PER_ADV_REC_EN_CMD_OPCODE                = 0x2059,
     #endif // (BLE_PER_ADV)
@@ -718,6 +728,9 @@ enum hci_opcode
     HCI_LE_SET_PATH_LOSS_REP_EN_CMD_OPCODE              = 0x2079,
     HCI_LE_SET_TX_POWER_REP_EN_CMD_OPCODE               = 0x207A,
     HCI_LE_TX_TEST_V4_CMD_OPCODE                        = 0x207B,
+
+
+
 
 
 
@@ -788,6 +801,10 @@ enum hci_opcode
     #endif // (BT_READ_PICONET_CLOCK)
 
 
+    #if (BLE_CIS || BLE_BIS)
+    HCI_VS_ISO_SUBEVT_MARGIN_SET_CMD_OPCODE        = 0xFC57,
+    #endif // (BLE_CIS || BLE_BIS)
+
 
     #if CRYPTO_UT
     HCI_DBG_TEST_CRYPTO_FUNC_CMD_OPCODE            = 0xFC60,
@@ -836,6 +853,7 @@ enum hci_opcode
     #if (BLE_PWR_CTRL && RW_DEBUG)
     HCI_DBG_LE_SET_RSP_TX_PWR_CMD_OPCODE            = 0xFC78,
     #endif // (BLE_PWR_CTRL && RW_DEBUG)
+
 
 
     /*
@@ -916,6 +934,7 @@ enum hci_evt_code
     HCI_CON_SLV_BCST_CH_MAP_CHG_EVT_CODE       = 0x55,
     HCI_AUTH_PAYL_TO_EXP_EVT_CODE              = 0x57,
     HCI_SAM_STATUS_CHANGE_EVT_CODE             = 0x58,
+    HCI_ENC_CHG_V2_EVT_CODE                    = 0x59,
     HCI_MAX_EVT_MSK_PAGE_2_CODE,
     HCI_VS_META_EVT_CODE                       = 0xFF,
 
@@ -947,14 +966,18 @@ enum hci_le_evt_subcode
     HCI_LE_ADV_SET_TERMINATED_EVT_SUBCODE      = 0x12,
     HCI_LE_SCAN_REQ_RCVD_EVT_SUBCODE           = 0x13,
     HCI_LE_CH_SEL_ALGO_EVT_SUBCODE             = 0x14,
+    #if (BLE_CONLESS_CTE_RX)
     HCI_LE_CONLESS_IQ_REPORT_EVT_SUBCODE       = 0x15,
+    #endif // (BLE_CONLESS_CTE_RX)
+    #if (BLE_CON_CTE_REQ)
     HCI_LE_CON_IQ_REPORT_EVT_SUBCODE           = 0x16,
     HCI_LE_CTE_REQ_FAILED_EVT_SUBCODE          = 0x17,
+    #endif // (BLE_CON_CTE_REQ)
     #if (BLE_PAST)
     HCI_LE_PER_ADV_SYNC_TRANSF_REC_V1_EVT_SUBCODE = 0x18,
     #endif // (BLE_PAST)
     #if (BLE_CIS)
-    HCI_LE_CIS_ESTABLISHED_EVT_SUBCODE         = 0x19,
+    HCI_LE_CIS_ESTABLISHED_V1_EVT_SUBCODE      = 0x19,
     HCI_LE_CIS_REQUEST_EVT_SUBCODE             = 0x1A,
     #endif // (BLE_CIS)
     #if (BLE_BIS)
@@ -969,6 +992,9 @@ enum hci_le_evt_subcode
     #if (BLE_BIS)
     HCI_LE_BIG_INFO_ADV_REPORT_EVT_SUBCODE     = 0x22,
     #endif // (BLE_BIS)
+    #if (BLE_CIS)
+    HCI_LE_CIS_ESTABLISHED_V2_EVT_SUBCODE      = 0x2A,
+    #endif // (BLE_CIS)
 };
 
 /*@TRACE*/
@@ -1030,11 +1056,11 @@ typedef struct hci_acl_data
     /// bits[00:11]: Connection handle
     /// bits[12:13]: Packet boundary flag
     /// bits[14:15]: Broadcast flag
-    uint16_t  conhdl_pb_bc_flag;
+    uint16_t conhdl_pb_bc_flag;
     /// length of the data
-    uint16_t  length;
+    uint16_t length;
     /// Memory Pointer address
-    uint32_t  buf_ptr;
+    uint32_t buf_ptr;
 } hci_acl_data_t;
 
 /// HCI Synchronous data packet structure
@@ -1043,11 +1069,11 @@ typedef struct hci_sync_data
 {
     /// bits[00:11]: Connection handle
     /// bits[12:13]: Packet status flag
-    uint16_t  conhdl_psf;
+    uint16_t conhdl_psf;
     /// length of the data
-    uint8_t  length;
+    uint8_t length;
     /// EM buffer pointer
-    uint16_t  buf_ptr;
+    uint16_t buf_ptr;
 } hci_sync_data_t;
 
 #if BLE_ISO_PRESENT
@@ -1058,7 +1084,7 @@ typedef struct iso_data_load
     /// Time_Stamp
     uint32_t time_stamp;
     /// Packet Sequence Number
-    uint16_t  pkt_seq_nb;
+    uint16_t pkt_seq_nb;
     /// length of the ISO SDU
     /// bits[00:11]: ISO SDU length
     /// bits[12:13]: RFU
@@ -1076,9 +1102,9 @@ typedef struct hci_iso_data
     /// bits[12:13]: Packet boundary flag
     /// bit[14]: Time_Stamp flag
     /// bit[15]: RFU
-    uint16_t  conhdl_pbf_tsf;
+    uint16_t conhdl_pbf_tsf;
     /// ISO_Data_Load_Length and 2 RFU bits
-    uint16_t  iso_data_load_len;
+    uint16_t iso_data_load_len;
     /// ISO_Data_Load
     struct iso_data_load iso_data_load;
 } hci_iso_data_t;
@@ -1097,14 +1123,14 @@ typedef struct hci_iso_data
 typedef struct hci_basic_conhdl_cmd
 {
     /// connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
 } hci_basic_conhdl_cmd_t;
 
 /// HCI basic command structure with BD address
 typedef struct hci_basic_bd_addr_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
 } hci_basic_bd_addr_cmd_t;
 
 /// HCI Accept connection request command structure
@@ -1112,9 +1138,9 @@ typedef struct hci_basic_bd_addr_cmd
 typedef struct hci_accept_con_req_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Page Scan Repetition Mode
-    uint8_t         role;
+    uint8_t role;
 } hci_accept_con_req_cmd_t;
 
 /// HCI Accept synchronous connection request command structure
@@ -1122,19 +1148,19 @@ typedef struct hci_accept_con_req_cmd
 typedef struct hci_accept_sync_con_req_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Transmit bandwidth
-    uint32_t    tx_bw;
+    uint32_t tx_bw;
     ///Receive bandwidth
-    uint32_t    rx_bw;
+    uint32_t rx_bw;
     ///Max latency
-    uint16_t    max_lat;
+    uint16_t max_lat;
     ///Voice settings
-    uint16_t    vx_set;
+    uint16_t vx_set;
     ///Retransmission effort
-    uint8_t      retx_eff;
+    uint8_t retx_eff;
     ///Packet type
-    uint16_t     pkt_type  ;
+    uint16_t pkt_type  ;
 } hci_accept_sync_con_req_cmd_t;
 
 /// HCI Enhanced Accept synchronous connection request command structure
@@ -1142,30 +1168,30 @@ typedef struct hci_accept_sync_con_req_cmd
 typedef struct hci_enh_accept_sync_con_cmd
 {
 
-    struct bd_addr    bd_addr;            // BD address
-    uint32_t          tx_bw;              // Transmit Bandwidth (in B/sec)
-    uint32_t          rx_bw;              // Receive Bandwidth (in B/sec)
-    uint8_t           tx_cod_fmt[5];      // Transmit Coding Format
-    uint8_t           rx_cod_fmt[5];      // Receive Coding Format
-    uint16_t          tx_cod_fr_sz;       // Transmit Codec Frame Size (in B)
-    uint16_t          rx_cod_fr_sz;       // Receive Codec Frame Size (in B)
-    uint32_t          in_bw;              // Input Bandwidth (in B/sec)
-    uint32_t          out_bw;             // Output Bandwidth (in B/sec)
-    uint8_t           in_cod_fmt[5];      // Input Coding Format
-    uint8_t           out_cod_fmt[5];     // Output Coding Format
-    uint16_t          in_cod_data_sz;     // Input Coded Data Size (in bits)
-    uint16_t          out_cod_data_sz;    // Output Coded Data Size (in bits)
-    uint8_t           in_data_fmt;        // Input PCM Data Format
-    uint8_t           out_data_fmt;       // Output PCM Data Format
-    uint8_t           in_msb_pos;         // Input PCM Sample Payload MSB Position (in bits)
-    uint8_t           out_msb_pos;        // Output PCM Sample Payload MSB Position (in bits)
-    uint8_t           in_data_path;       // Input Data Path
-    uint8_t           out_data_path;      // Output Data Path
-    uint8_t           in_tr_unit_sz;      // Input Transport Unit Size (in bits)
-    uint8_t           out_tr_unit_sz;     // Output Transport Unit Size (in bits)
-    uint16_t          max_lat;            // Max Latency (in ms)
-    uint16_t          packet_type;        // Packet Type
-    uint8_t           retx_eff;           // Retransmission Effort
+    struct bd_addr bd_addr; // BD address
+    uint32_t tx_bw; // Transmit Bandwidth (in B/sec)
+    uint32_t rx_bw; // Receive Bandwidth (in B/sec)
+    uint8_t tx_cod_fmt[5]; // Transmit Coding Format
+    uint8_t rx_cod_fmt[5]; // Receive Coding Format
+    uint16_t tx_cod_fr_sz; // Transmit Codec Frame Size (in B)
+    uint16_t rx_cod_fr_sz; // Receive Codec Frame Size (in B)
+    uint32_t in_bw; // Input Bandwidth (in B/sec)
+    uint32_t out_bw; // Output Bandwidth (in B/sec)
+    uint8_t in_cod_fmt[5]; // Input Coding Format
+    uint8_t out_cod_fmt[5]; // Output Coding Format
+    uint16_t in_cod_data_sz; // Input Coded Data Size (in bits)
+    uint16_t out_cod_data_sz; // Output Coded Data Size (in bits)
+    uint8_t in_data_fmt; // Input PCM Data Format
+    uint8_t out_data_fmt; // Output PCM Data Format
+    uint8_t in_msb_pos; // Input PCM Sample Payload MSB Position (in bits)
+    uint8_t out_msb_pos; // Output PCM Sample Payload MSB Position (in bits)
+    uint8_t in_data_path; // Input Data Path
+    uint8_t out_data_path; // Output Data Path
+    uint8_t in_tr_unit_sz; // Input Transport Unit Size (in bits)
+    uint8_t out_tr_unit_sz; // Output Transport Unit Size (in bits)
+    uint16_t max_lat; // Max Latency (in ms)
+    uint16_t packet_type; // Packet Type
+    uint8_t retx_eff; // Retransmission Effort
 } hci_enh_accept_sync_con_cmd_t;
 
 /// HCI reject connection request command structure
@@ -1173,9 +1199,9 @@ typedef struct hci_enh_accept_sync_con_cmd
 typedef struct hci_reject_con_req_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Reason
-    uint8_t         reason;
+    uint8_t reason;
 } hci_reject_con_req_cmd_t;
 
 /// HCI reject synchronous connection request command structure
@@ -1183,9 +1209,9 @@ typedef struct hci_reject_con_req_cmd
 typedef struct hci_reject_sync_con_req_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Reason
-    uint8_t         reason;
+    uint8_t reason;
 } hci_reject_sync_con_req_cmd_t;
 
 /// HCI link key request reply command structure
@@ -1193,9 +1219,9 @@ typedef struct hci_reject_sync_con_req_cmd
 typedef struct hci_lk_req_reply_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Key
-    struct ltk         key;
+    struct ltk key;
 } hci_lk_req_reply_cmd_t;
 
 /// HCI link key request reply command structure
@@ -1203,9 +1229,9 @@ typedef struct hci_lk_req_reply_cmd
 typedef struct hci_pin_code_req_reply_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Pin code length
-    uint8_t     pin_len;
+    uint8_t pin_len;
     ///Key
     struct pin_code pin;
 } hci_pin_code_req_reply_cmd_t;
@@ -1215,7 +1241,7 @@ typedef struct hci_pin_code_req_reply_cmd
 typedef struct hci_switch_role_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Read all flag
     uint8_t role;
 } hci_switch_role_cmd_t;
@@ -1300,7 +1326,7 @@ typedef struct hci_rd_link_pol_stg_cmd_cmp_evt
 typedef struct hci_wr_link_pol_stg_cmd
 {
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///Link policy
     uint16_t lnk_policy;
 } hci_wr_link_pol_stg_cmd_t;
@@ -1310,15 +1336,15 @@ typedef struct hci_wr_link_pol_stg_cmd
 typedef struct hci_sniff_mode_cmd
 {
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     /// Maximum interval (in slots)
-    uint16_t    max_int;
+    uint16_t max_int;
     /// Minimum interval (in slots)
-    uint16_t    min_int;
+    uint16_t min_int;
     /// Attempts (number of receive slots) (in slots)
-    uint16_t    attempt;
+    uint16_t attempt;
     /// Timeout (number of receive slots) (in slots)
-    uint16_t    timeout;
+    uint16_t timeout;
 } hci_sniff_mode_cmd_t;
 
 /// HCI sniff subrating mode request command parameters structure
@@ -1326,13 +1352,13 @@ typedef struct hci_sniff_mode_cmd
 typedef struct hci_sniff_sub_cmd
 {
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     /// Maximum latency used to calculate the maximum sniff subrate that the remote device may use (in slots)
-    uint16_t    max_lat;
+    uint16_t max_lat;
     /// Minimum base sniff subrate timeout that the remote device may use (in slots)
-    uint16_t    min_rem_to;
+    uint16_t min_rem_to;
     /// Minimum base sniff subrate timeout that the local device may use (in slots)
-    uint16_t    min_loc_to;
+    uint16_t min_loc_to;
 } hci_sniff_sub_cmd_t;
 
 /// HCI role discovery complete event parameters structure
@@ -1460,11 +1486,11 @@ typedef struct hci_rd_enh_tx_pwr_lvl_cmd_cmp_evt
 typedef struct hci_inq_cmd
 {
     ///Lap
-    struct lap  lap;
+    struct lap lap;
     ///Inquiry Length in units of 1.28 s
-    uint8_t     inq_len;
+    uint8_t inq_len;
     ///Number of response
-    uint8_t     nb_rsp;
+    uint8_t nb_rsp;
 } hci_inq_cmd_t;
 
 /*@TRACE*/
@@ -1486,13 +1512,13 @@ typedef struct hci_per_inq_mode_cmd
 typedef struct hci_create_con_cmd
 {
     /// BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     /// Packet Type
-    uint16_t        pkt_type;
+    uint16_t pkt_type;
     /// Page Scan Repetition Mode
-    uint8_t         page_scan_rep_mode;
+    uint8_t page_scan_rep_mode;
     /// Reserved
-    uint8_t         rsvd;
+    uint8_t rsvd;
     /**
      * Clock Offset
      *
@@ -1501,9 +1527,9 @@ typedef struct hci_create_con_cmd
      *   Invalid Clock Offset = 0
      *   Valid Clock Offset = 1
      */
-    uint16_t        clk_off;
+    uint16_t clk_off;
     /// Allow Switch
-    uint8_t         switch_en;
+    uint8_t switch_en;
 } hci_create_con_cmd_t;
 
 /// HCI disconnect command structure
@@ -1511,9 +1537,9 @@ typedef struct hci_create_con_cmd
 typedef struct hci_disconnect_cmd
 {
     /// connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     /// reason
-    uint8_t     reason;
+    uint8_t reason;
 } hci_disconnect_cmd_t;
 
 /// HCI master link key command structure
@@ -1538,11 +1564,11 @@ typedef struct hci_set_con_enc_cmd
 typedef struct hci_rem_name_req_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Page Scan Repetition Mode
-    uint8_t         page_scan_rep_mode;
+    uint8_t page_scan_rep_mode;
     ///Reserved
-    uint8_t         rsvd;
+    uint8_t rsvd;
     /**
      * Clock Offset
      *
@@ -1551,7 +1577,7 @@ typedef struct hci_rem_name_req_cmd
      *   Invalid Clock Offset = 0
      *   Valid Clock Offset = 1
      */
-    uint16_t        clk_off;
+    uint16_t clk_off;
 } hci_rem_name_req_cmd_t;
 
 /// HCI remote name request complete event structure
@@ -1590,30 +1616,30 @@ typedef struct hci_setup_sync_con_cmd
 /*@TRACE*/
 typedef struct hci_enh_setup_sync_con_cmd
 {
-    uint16_t      conhdl;               // Connection Handle
-    uint32_t      tx_bw;                // Transmit Bandwidth (in B/sec)
-    uint32_t      rx_bw;                // Receive Bandwidth (in B/sec)
-    uint8_t       tx_cod_fmt[5];        // Transmit Coding Format
-    uint8_t       rx_cod_fmt[5];        // Receive Coding Format
-    uint16_t      tx_cod_fr_sz;         // Transmit Codec Frame Size (in B)
-    uint16_t      rx_cod_fr_sz;         // Receive Codec Frame Size (in B)
-    uint32_t      in_bw;                // Input Bandwidth (in B/sec)
-    uint32_t      out_bw;               // Output Bandwidth (in B/sec)
-    uint8_t       in_cod_fmt[5];        // Input Coding Format
-    uint8_t       out_cod_fmt[5];       // Output Coding Format
-    uint16_t      in_cod_data_sz;       // Input Coded Data Size (in bits)
-    uint16_t      out_cod_data_sz;      // Output Coded Data Size (in bits)
-    uint8_t       in_data_fmt;          // Input PCM Data Format
-    uint8_t       out_data_fmt;         // Output PCM Data Format
-    uint8_t       in_msb_pos;           // Input PCM Sample Payload MSB Position (in bits)
-    uint8_t       out_msb_pos;          // Output PCM Sample Payload MSB Position (in bits)
-    uint8_t       in_data_path;         // Input Data Path
-    uint8_t       out_data_path;        // Output Data Path
-    uint8_t       in_tr_unit_sz;        // Input Transport Unit Size (in bits)
-    uint8_t       out_tr_unit_sz;       // Output Transport Unit Size (in bits)
-    uint16_t      max_lat;              // Max Latency (in ms)
-    uint16_t      packet_type;          // Packet Type
-    uint8_t       retx_eff;             // Retransmission Effort
+    uint16_t conhdl;               // Connection Handle
+    uint32_t tx_bw;                // Transmit Bandwidth (in B/sec)
+    uint32_t rx_bw;                // Receive Bandwidth (in B/sec)
+    uint8_t tx_cod_fmt[5];        // Transmit Coding Format
+    uint8_t rx_cod_fmt[5];        // Receive Coding Format
+    uint16_t tx_cod_fr_sz;         // Transmit Codec Frame Size (in B)
+    uint16_t rx_cod_fr_sz;         // Receive Codec Frame Size (in B)
+    uint32_t in_bw;                // Input Bandwidth (in B/sec)
+    uint32_t out_bw;               // Output Bandwidth (in B/sec)
+    uint8_t in_cod_fmt[5];        // Input Coding Format
+    uint8_t out_cod_fmt[5];       // Output Coding Format
+    uint16_t in_cod_data_sz;       // Input Coded Data Size (in bits)
+    uint16_t out_cod_data_sz;      // Output Coded Data Size (in bits)
+    uint8_t in_data_fmt;          // Input PCM Data Format
+    uint8_t out_data_fmt;         // Output PCM Data Format
+    uint8_t in_msb_pos;           // Input PCM Sample Payload MSB Position (in bits)
+    uint8_t out_msb_pos;          // Output PCM Sample Payload MSB Position (in bits)
+    uint8_t in_data_path;         // Input Data Path
+    uint8_t out_data_path;        // Output Data Path
+    uint8_t in_tr_unit_sz;        // Input Transport Unit Size (in bits)
+    uint8_t out_tr_unit_sz;       // Output Transport Unit Size (in bits)
+    uint16_t max_lat;              // Max Latency (in ms)
+    uint16_t packet_type;          // Packet Type
+    uint8_t retx_eff;             // Retransmission Effort
 } hci_enh_setup_sync_con_cmd_t;
 
 /// HCI io capability request reply command structure
@@ -1621,7 +1647,7 @@ typedef struct hci_enh_setup_sync_con_cmd
 typedef struct hci_io_cap_req_reply_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///IO capability
     uint8_t io_capa;
     ///OOB data present
@@ -1636,7 +1662,7 @@ typedef struct hci_io_cap_req_reply_cmd
 typedef struct hci_io_cap_req_neg_reply_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Reason
     uint8_t reason;
 } hci_io_cap_req_neg_reply_cmd_t;
@@ -1646,7 +1672,7 @@ typedef struct hci_io_cap_req_neg_reply_cmd
 typedef struct hci_user_passkey_req_reply_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Numeric value
     uint32_t num_val;
 } hci_user_passkey_req_reply_cmd_t;
@@ -1656,7 +1682,7 @@ typedef struct hci_user_passkey_req_reply_cmd
 typedef struct hci_rem_oob_data_req_reply_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///hash part
     struct hash oob_c;
     ///random part
@@ -1668,7 +1694,7 @@ typedef struct hci_rem_oob_data_req_reply_cmd
 typedef struct hci_send_keypress_notif_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Notification type
     uint8_t notif_type;
 } hci_send_keypress_notif_cmd_t;
@@ -1678,9 +1704,9 @@ typedef struct hci_send_keypress_notif_cmd
 typedef struct hci_trunc_page_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     /// Page Scan Repetition Mode
-    uint8_t         page_scan_rep_mode;
+    uint8_t page_scan_rep_mode;
     /**
      * Clock Offset
      *
@@ -1689,7 +1715,7 @@ typedef struct hci_trunc_page_cmd
      *   Invalid Clock Offset = 0
      *   Valid Clock Offset = 1
      */
-    uint16_t        clk_off;
+    uint16_t clk_off;
 } hci_trunc_page_cmd_t;
 
 /// HCI truncated page cancel command structure
@@ -1697,7 +1723,7 @@ typedef struct hci_trunc_page_cmd
 typedef struct hci_trunc_page_can_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
 } hci_trunc_page_can_cmd_t;
 
 /// HCI set connectionless slave broadcast command structure
@@ -1857,16 +1883,16 @@ typedef struct hci_qos_setup_cmd
 typedef struct hci_rd_dft_link_pol_stg_cmd_cmp_evt
 {
     ///Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Link policy
-    uint16_t    link_pol_stg;
+    uint16_t link_pol_stg;
 } hci_rd_dft_link_pol_stg_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_dft_link_pol_stg_cmd
 {
     ///Link policy
-    uint16_t    link_pol_stg;
+    uint16_t link_pol_stg;
 } hci_wr_dft_link_pol_stg_cmd_t;
 
 /*
@@ -1879,7 +1905,7 @@ typedef struct hci_wr_dft_link_pol_stg_cmd
 typedef struct hci_set_evt_mask_cmd
 {
     ///Event Mask
-    struct evt_mask    event_mask;
+    struct evt_mask event_mask;
 } hci_set_evt_mask_cmd_t;
 
 /// HCI set event filter command structure
@@ -1981,9 +2007,9 @@ typedef struct hci_flush_cmd_cmp_evt
 typedef struct hci_rd_pin_type_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     ///PIN type
-    uint8_t   pin_type;
+    uint8_t pin_type;
 } hci_rd_pin_type_cmd_cmp_evt_t;
 
 /*@TRACE*/
@@ -1997,7 +2023,7 @@ typedef struct hci_wr_pin_type_cmd
 typedef struct hci_rd_stored_lk_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Read all flag
     uint8_t rd_all_flag;
 } hci_rd_stored_lk_cmd_t;
@@ -2007,7 +2033,7 @@ typedef struct hci_rd_stored_lk_cmd
 typedef struct hci_rd_stored_lk_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Maximum number of key
     uint16_t num_key_max;
     ///Read number of key
@@ -2031,16 +2057,16 @@ typedef struct hci_wr_stored_lk_cmd
 typedef struct hci_wr_stored_lk_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///number of key written
-    uint8_t    num_key_wr;
+    uint8_t num_key_wr;
 } hci_wr_stored_lk_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_del_stored_lk_cmd
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Delete all flag
     uint8_t del_all_flag;
 } hci_del_stored_lk_cmd_t;
@@ -2050,7 +2076,7 @@ typedef struct hci_del_stored_lk_cmd
 typedef struct hci_del_stored_lk_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Read number of key
     uint16_t num_key_del;
 } hci_del_stored_lk_cmd_cmp_evt_t;
@@ -2059,7 +2085,7 @@ typedef struct hci_del_stored_lk_cmd_cmp_evt
 typedef struct hci_wr_local_name_cmd
 {
     ///Name
-    struct device_name  name;
+    struct device_name name;
 } hci_wr_local_name_cmd_t;
 
 /// HCI command complete event structure for the read local name command
@@ -2067,9 +2093,9 @@ typedef struct hci_wr_local_name_cmd
 typedef struct hci_rd_local_name_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     ///Name
-    uint8_t  name[BD_NAME_SIZE];
+    uint8_t name[BD_NAME_SIZE];
 } hci_rd_local_name_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for the Read connection accept to command
@@ -2077,16 +2103,16 @@ typedef struct hci_rd_local_name_cmd_cmp_evt
 typedef struct hci_rd_con_accept_to_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     /// Connection accept timeout (in slots)
-    uint16_t    con_acc_to;
+    uint16_t con_acc_to;
 } hci_rd_con_accept_to_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_con_accept_to_cmd
 {
     /// Connection accept timeout (in slots)
-    uint16_t    con_acc_to;
+    uint16_t con_acc_to;
 } hci_wr_con_accept_to_cmd_t;
 
 /// HCI command complete event structure for the Read page to command
@@ -2094,16 +2120,16 @@ typedef struct hci_wr_con_accept_to_cmd
 typedef struct hci_rd_page_to_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     /// Page timeout (in slots)
-    uint16_t    page_to;
+    uint16_t page_to;
 } hci_rd_page_to_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_page_to_cmd
 {
     /// Page timeout (in slots)
-    uint16_t    page_to;
+    uint16_t page_to;
 } hci_wr_page_to_cmd_t;
 
 /// HCI command complete event structure for the Read scan enable command
@@ -2111,9 +2137,9 @@ typedef struct hci_wr_page_to_cmd
 typedef struct hci_rd_scan_en_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     ///Status of the scan enable
-    uint8_t     scan_en;
+    uint8_t scan_en;
 } hci_rd_scan_en_cmd_cmp_evt_t;
 
 /*@TRACE*/
@@ -2128,7 +2154,7 @@ typedef struct hci_wr_scan_en_cmd
 typedef struct hci_rd_page_scan_act_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     /// Page scan interval (in slots)
     uint16_t page_scan_intv;
     /// Page scan window (in slots)
@@ -2149,7 +2175,7 @@ typedef struct hci_wr_page_scan_act_cmd
 typedef struct hci_rd_inq_scan_act_cmd_cmp_evt
 {
     /// Status of the command
-    uint8_t  status;
+    uint8_t status;
     /// Inquiry scan interval (in slots)
     uint16_t inq_scan_intv;
     /// Inquiry scan window (in slots)
@@ -2170,9 +2196,9 @@ typedef struct hci_wr_inq_scan_act_cmd
 typedef struct hci_rd_auth_en_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     ///Value of the authentication
-    uint8_t    auth_en;
+    uint8_t auth_en;
 } hci_rd_auth_en_cmd_cmp_evt_t;
 
 /*@TRACE*/
@@ -2187,7 +2213,7 @@ typedef struct hci_wr_auth_en_cmd
 typedef struct hci_rd_class_of_dev_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     ///Class of device
     struct devclass class_of_dev;
 } hci_rd_class_of_dev_cmd_cmp_evt_t;
@@ -2204,7 +2230,7 @@ typedef struct hci_wr_class_of_dev_cmd
 typedef struct hci_rd_voice_stg_cmd_cmp_evt
 {
     ///Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     /// Voice setting
     uint16_t voice_stg;
 } hci_rd_voice_stg_cmd_cmp_evt_t;
@@ -2221,7 +2247,7 @@ typedef struct hci_wr_voice_stg_cmd
 typedef struct hci_rd_nb_bdcst_retx_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Read number of broadcast retransmission
     uint8_t num_bcst_ret;
 } hci_rd_nb_bdcst_retx_cmd_cmp_evt_t;
@@ -2238,16 +2264,16 @@ typedef struct hci_wr_nb_bdcst_retx_cmd
 typedef struct hci_rd_sync_flow_ctrl_en_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Synchronous flow control enable
-    uint8_t     sync_flow_ctrl_en;
+    uint8_t sync_flow_ctrl_en;
 } hci_rd_sync_flow_ctrl_en_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_sync_flow_ctrl_en_cmd
 {
     /// Synchronous Flow Control enable
-    uint8_t   sync_flow_ctrl_en;
+    uint8_t sync_flow_ctrl_en;
 } hci_wr_sync_flow_ctrl_en_cmd_t;
 
 ///HCI set controller to host flow control command
@@ -2263,13 +2289,13 @@ typedef struct hci_set_ctrl_to_host_flow_ctrl_cmd
 typedef struct hci_host_buf_size_cmd
 {
     ///Host ACL packet length
-    uint16_t    acl_pkt_len;
+    uint16_t acl_pkt_len;
     ///Host synchronous packet length
-    uint8_t     sync_pkt_len;
+    uint8_t sync_pkt_len;
     ///Host Total number of ACL packets allowed
-    uint16_t    nb_acl_pkts;
+    uint16_t nb_acl_pkts;
     ///Host total number of synchronous packets allowed
-    uint16_t    nb_sync_pkts;
+    uint16_t nb_sync_pkts;
 } hci_host_buf_size_cmd_t;
 
 /// Number of completed packet for a connection
@@ -2277,9 +2303,9 @@ typedef struct hci_host_buf_size_cmd
 typedef struct hci_nb_cmp_pkt
 {
     /// connection handles
-    uint16_t    hdl;
+    uint16_t hdl;
     /// Number of completed packets values for connection handles.
-    uint16_t    nb_comp_pkt;
+    uint16_t nb_comp_pkt;
 } hci_nb_cmp_pkt_t;
 
 ///HCI host number of completed packets command
@@ -2287,7 +2313,7 @@ typedef struct hci_nb_cmp_pkt
 typedef struct hci_host_nb_cmp_pkts_cmd
 {
     ///Number of handles for which the completed packets number is given
-    uint8_t     nb_of_hdl;
+    uint8_t nb_of_hdl;
     /// Array of number of completed packets per connection
     struct hci_nb_cmp_pkt con[MAX_NB_CMP_PKTS_CON];
 } hci_host_nb_cmp_pkts_cmd_t;
@@ -2318,9 +2344,9 @@ typedef struct hci_wr_link_supv_to_cmd
 typedef struct hci_rd_nb_supp_iac_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     ///nb_of iac
-    uint8_t  nb_iac;
+    uint8_t nb_iac;
 } hci_rd_nb_supp_iac_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for read current IAC LAP command
@@ -2328,9 +2354,9 @@ typedef struct hci_rd_nb_supp_iac_cmd_cmp_evt
 typedef struct hci_rd_curr_iac_lap_cmd_cmp_evt
 {
     ///Status of the command
-    uint8_t     status;
+    uint8_t status;
     ///nb of current iac
-    uint8_t  nb_curr_iac;
+    uint8_t nb_curr_iac;
     ///lap
     struct lap iac_lap;
 } hci_rd_curr_iac_lap_cmd_cmp_evt_t;
@@ -2340,7 +2366,7 @@ typedef struct hci_rd_curr_iac_lap_cmd_cmp_evt
 typedef struct hci_wr_curr_iac_lap_cmd
 {
     /// Number of current iac laps
-    uint8_t  nb_curr_iac;
+    uint8_t nb_curr_iac;
     ///lap
     struct lap iac_lap[(HCI_MAX_CMD_PARAM_SIZE / BD_ADDR_LAP_LEN) - 1];
 } hci_wr_curr_iac_lap_cmd_t;
@@ -2349,7 +2375,7 @@ typedef struct hci_wr_curr_iac_lap_cmd
 typedef struct hci_set_afh_host_ch_class_cmd
 {
     ///AFH channel map
-    struct bt_ch_map   afh_ch;
+    struct bt_ch_map afh_ch;
 } hci_set_afh_host_ch_class_cmd_t;
 
 /// HCI command complete event structure for write inquiry scan type command structure
@@ -2357,16 +2383,16 @@ typedef struct hci_set_afh_host_ch_class_cmd
 typedef struct hci_rd_inq_scan_type_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     /// Inquiry scan type
-    uint8_t     inq_scan_type;
+    uint8_t inq_scan_type;
 } hci_rd_inq_scan_type_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_inq_scan_type_cmd
 {
     /// Inquiry scan type
-    uint8_t     inq_scan_type;
+    uint8_t inq_scan_type;
 } hci_wr_inq_scan_type_cmd_t;
 
 /// HCI command complete event structure for read inquiry mode command structure
@@ -2374,16 +2400,16 @@ typedef struct hci_wr_inq_scan_type_cmd
 typedef struct hci_rd_inq_mode_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     /// Inquiry mode
-    uint8_t     inq_mode;
+    uint8_t inq_mode;
 } hci_rd_inq_mode_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_inq_mode_cmd
 {
     /// Inquiry mode
-    uint8_t     inq_mode;
+    uint8_t inq_mode;
 } hci_wr_inq_mode_cmd_t;
 
 /// HCI command complete event structure for write page scan type command structure
@@ -2391,16 +2417,16 @@ typedef struct hci_wr_inq_mode_cmd
 typedef struct hci_rd_page_scan_type_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     /// Page scan type
-    uint8_t     page_scan_type;
+    uint8_t page_scan_type;
 } hci_rd_page_scan_type_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_page_scan_type_cmd
 {
     /// Page scan type
-    uint8_t     page_scan_type;
+    uint8_t page_scan_type;
 } hci_wr_page_scan_type_cmd_t;
 
 /// HCI command complete event structure for read assessment mode command structure
@@ -2408,16 +2434,16 @@ typedef struct hci_wr_page_scan_type_cmd
 typedef struct hci_rd_afh_ch_assess_mode_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///AFH channel assessment mode
-    uint8_t     afh_ch_ass_mode;
+    uint8_t afh_ch_ass_mode;
 } hci_rd_afh_ch_assess_mode_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_afh_ch_assess_mode_cmd
 {
     ///AFH channel assessment mode
-    uint8_t     afh_ch_ass_mode;
+    uint8_t afh_ch_ass_mode;
 } hci_wr_afh_ch_assess_mode_cmd_t;
 
 /// HCI command complete event structure for remote name request cancel command
@@ -2425,20 +2451,20 @@ typedef struct hci_wr_afh_ch_assess_mode_cmd
 typedef struct hci_rd_ext_inq_rsp_cmd_cmp_evt
 {
     ///status
-    uint8_t     status;
+    uint8_t status;
     ///FEC required
-    uint8_t     fec_req;
+    uint8_t fec_req;
     ///Extended inquiry response
-    struct eir  eir;
+    struct eir eir;
 } hci_rd_ext_inq_rsp_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_ext_inq_rsp_cmd
 {
     ///FEC required
-    uint8_t     fec_req;
+    uint8_t fec_req;
     ///Extended inquiry response
-    struct eir  eir;
+    struct eir eir;
 } hci_wr_ext_inq_rsp_cmd_t;
 
 /// HCI command complete event structure for remote name request cancel command
@@ -2446,16 +2472,16 @@ typedef struct hci_wr_ext_inq_rsp_cmd
 typedef struct hci_rd_sp_mode_cmd_cmp_evt
 {
     ///status
-    uint8_t     status;
+    uint8_t status;
     ///Simple pairing mode
-    uint8_t     sp_mode;
+    uint8_t sp_mode;
 } hci_rd_sp_mode_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_sp_mode_cmd
 {
     ///Simple pairing mode
-    uint8_t     sp_mode;
+    uint8_t sp_mode;
 } hci_wr_sp_mode_cmd_t;
 
 /// HCI command complete event structure for read oob data command
@@ -2463,7 +2489,7 @@ typedef struct hci_wr_sp_mode_cmd
 typedef struct hci_rd_loc_oob_data_cmd_cmp_evt
 {
     ///status
-    uint8_t     status;
+    uint8_t status;
     ///hash part
     struct hash oob_c;
     ///random part
@@ -2493,9 +2519,9 @@ typedef struct hci_wr_inq_tx_pwr_lvl_cmd
 typedef struct hci_rd_dft_err_data_rep_cmd_cmp_evt
 {
     ///status
-    uint8_t     status;
+    uint8_t status;
     ///Erroneous data reporting
-    uint8_t     err_data_rep;
+    uint8_t err_data_rep;
 } hci_rd_dft_err_data_rep_cmd_cmp_evt_t;
 
 /*@TRACE*/
@@ -2735,7 +2761,7 @@ typedef struct hci_set_res_lt_addr_cmd
 typedef struct hci_set_res_lt_addr_cmd_cmp_evt
 {
     /// Status
-    uint8_t  status;
+    uint8_t status;
     /// LT_ADDR
     uint8_t lt_addr;
 } hci_set_res_lt_addr_cmd_cmp_evt_t;
@@ -2753,7 +2779,7 @@ typedef struct hci_del_res_lt_addr_cmd
 typedef struct hci_del_res_lt_addr_cmd_cmp_evt
 {
     /// Status
-    uint8_t  status;
+    uint8_t status;
     /// LT_ADDR
     uint8_t lt_addr;
 } hci_del_res_lt_addr_cmd_cmp_evt_t;
@@ -2777,7 +2803,7 @@ typedef struct hci_set_con_slv_bcst_data_cmd
 typedef struct hci_set_con_slv_bcst_data_cmd_cmp_evt
 {
     /// Status
-    uint8_t  status;
+    uint8_t status;
     /// LT_ADDR
     uint8_t lt_addr;
 } hci_set_con_slv_bcst_data_cmd_cmp_evt_t;
@@ -2787,7 +2813,7 @@ typedef struct hci_set_con_slv_bcst_data_cmd_cmp_evt
 typedef struct hci_rd_sync_train_param_cmd_cmp_evt
 {
     /// Status
-    uint8_t  status;
+    uint8_t status;
     /// Sync_Train_Interval (in slots)
     uint16_t sync_train_int;
     /// synchronization_trainTO (in slots)
@@ -2815,7 +2841,7 @@ typedef struct hci_wr_sync_train_param_cmd
 typedef struct hci_wr_sync_train_param_cmd_cmp_evt
 {
     /// Status
-    uint8_t  status;
+    uint8_t status;
     /// Sync_Train_Interval (in slots)
     uint16_t sync_train_int;
 } hci_wr_sync_train_param_cmd_cmp_evt_t;
@@ -2824,7 +2850,7 @@ typedef struct hci_wr_sync_train_param_cmd_cmp_evt
 typedef struct hci_sync_train_cmp_evt
 {
     /// Status
-    uint8_t  status;
+    uint8_t status;
 } hci_sync_train_cmp_evt_t;
 
 /// HCI read authenticated payload timeout command
@@ -2832,7 +2858,7 @@ typedef struct hci_sync_train_cmp_evt
 typedef struct hci_rd_auth_payl_to_cmd
 {
     ///Connection handle
-    uint16_t     conhdl;
+    uint16_t conhdl;
 } hci_rd_auth_payl_to_cmd_t;
 
 /// HCI command complete event structure for the Read Authenticated Payload Timeout Command
@@ -2840,11 +2866,11 @@ typedef struct hci_rd_auth_payl_to_cmd
 typedef struct hci_rd_auth_payl_to_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Connection handle
-    uint16_t     conhdl;
+    uint16_t conhdl;
     ///Authenticated payload timeout
-    uint16_t     auth_payl_to;
+    uint16_t auth_payl_to;
 } hci_rd_auth_payl_to_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for read oob extended data command
@@ -2852,7 +2878,7 @@ typedef struct hci_rd_auth_payl_to_cmd_cmp_evt
 typedef struct hci_rd_loc_oob_ext_data_cmd_cmp_evt
 {
     ///status
-    uint8_t     status;
+    uint8_t status;
     ///hash part
     struct hash oob_c_192;
     ///random part
@@ -2868,7 +2894,7 @@ typedef struct hci_rd_loc_oob_ext_data_cmd_cmp_evt
 typedef struct hci_rd_ext_page_to_cmd_cmp_evt
 {
     /// Status
-    uint8_t  status;
+    uint8_t status;
     /**
      * Extended Page Timeout measured in Number of Baseband slots. Interval Length = N * 0.625 msec (1 Baseband slot)
      * Range for N: 0x0000 (default) - 0xFFFF
@@ -2940,17 +2966,17 @@ typedef struct hci_config_data_path_cmd
 typedef struct hci_rd_local_ver_info_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///HCI version number
-    uint8_t     hci_ver;
+    uint8_t hci_ver;
     ///HCI revision number
-    uint16_t    hci_rev;
+    uint16_t hci_rev;
     ///LMP version
-    uint8_t     lmp_ver;
+    uint8_t lmp_ver;
     ///manufacturer name
-    uint16_t    manuf_name;
+    uint16_t manuf_name;
     ///LMP Subversion
-    uint16_t    lmp_subver;
+    uint16_t lmp_subver;
 } hci_rd_local_ver_info_cmd_cmp_evt_t;
 
 ///HCI command complete event structure for read local supported commands
@@ -2958,9 +2984,9 @@ typedef struct hci_rd_local_ver_info_cmd_cmp_evt
 typedef struct hci_rd_local_supp_cmds_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t             status;
+    uint8_t status;
     ///Supported Commands structure
-    struct supp_cmds    local_cmds;
+    struct supp_cmds local_cmds;
 } hci_rd_local_supp_cmds_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for read local supported features command
@@ -2968,7 +2994,7 @@ typedef struct hci_rd_local_supp_cmds_cmd_cmp_evt
 typedef struct hci_rd_local_supp_feats_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t         status;
+    uint8_t status;
     ///Local  supported features
     struct features feats;
 } hci_rd_local_supp_feats_cmd_cmp_evt_t;
@@ -2985,11 +3011,11 @@ typedef struct hci_rd_local_ext_feats_cmd
 typedef struct hci_rd_local_ext_feats_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Page number
-    uint8_t     page_nb;
+    uint8_t page_nb;
     ///Maximum page number
-    uint8_t     page_nb_max;
+    uint8_t page_nb_max;
     ///Extended LMP features
     struct features ext_feats;
 } hci_rd_local_ext_feats_cmd_cmp_evt_t;
@@ -2999,15 +3025,15 @@ typedef struct hci_rd_local_ext_feats_cmd_cmp_evt
 typedef struct hci_rd_buf_size_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///ACL data packet length controller can receive from host
-    uint16_t     hc_data_pk_len;
+    uint16_t hc_data_pk_len;
     ///Synchronous data packet length controller can receive from host
-    uint8_t      hc_sync_pk_len;
+    uint8_t hc_sync_pk_len;
     ///Total number of ACL data packets controller can receive from host
-    uint16_t     hc_tot_nb_data_pkts;
+    uint16_t hc_tot_nb_data_pkts;
     ///Total number of synchronous data packets controller can receive from host
-    uint16_t     hc_tot_nb_sync_pkts;
+    uint16_t hc_tot_nb_sync_pkts;
 } hci_rd_buf_size_cmd_cmp_evt_t;
 
 ///HCI command complete event structure for read bd address
@@ -3015,9 +3041,9 @@ typedef struct hci_rd_buf_size_cmd_cmp_evt
 typedef struct hci_rd_bd_addr_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t             status;
+    uint8_t status;
     ///BD address
-    struct bd_addr      local_addr;
+    struct bd_addr local_addr;
 } hci_rd_bd_addr_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for read local supported codecs
@@ -3039,7 +3065,7 @@ typedef struct hci_rd_local_supp_codecs_cmd_cmp_evt
 typedef struct hci_rd_local_supp_codecs_v2_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t               status;
+    uint8_t status;
 
     /// Array that contains list of codec
     /// uint8_t nb_supp_std_codecs
@@ -3142,7 +3168,7 @@ typedef struct hci_rd_clk_cmd
 typedef struct hci_rd_clk_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Connection handle
     uint16_t conhdl;
     ///clock
@@ -3162,23 +3188,23 @@ typedef struct hci_rd_clk_cmd_cmp_evt
 typedef struct hci_rd_loopback_mode_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Local  supported features
-    uint8_t     lb_mode;
+    uint8_t lb_mode;
 } hci_rd_loopback_mode_cmd_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_wr_loopback_mode_cmd
 {
     ///Local  supported features
-    uint8_t     lb_mode;
+    uint8_t lb_mode;
 } hci_wr_loopback_mode_cmd_t;
 
 /*@TRACE*/
 typedef struct hci_wr_sp_dbg_mode_cmd
 {
     ///Simple pairing mode
-    uint8_t     sp_mode;
+    uint8_t sp_mode;
 } hci_wr_sp_dbg_mode_cmd_t;
 
 
@@ -3208,21 +3234,21 @@ typedef struct hci_le_set_rand_addr_cmd
 typedef struct hci_le_set_adv_param_cmd
 {
     ///Minimum interval for advertising
-    uint16_t       adv_intv_min;
+    uint16_t adv_intv_min;
     ///Maximum interval for advertising
-    uint16_t       adv_intv_max;
+    uint16_t adv_intv_max;
     ///Advertising type (see #adv_type enumeration)
-    uint8_t        adv_type;
+    uint8_t adv_type;
     ///Own address type:  public=0 / random=1 / rpa_or_pub=2 / rpa_or_rnd=3
-    uint8_t        own_addr_type;
+    uint8_t own_addr_type;
     ///Peer address type: public=0 / random=1
-    uint8_t        peer_addr_type;
+    uint8_t peer_addr_type;
     ///Peer Bluetooth device address
     struct bd_addr peer_addr;
     ///Advertising channel map
-    uint8_t        adv_ch_map;
+    uint8_t adv_ch_map;
     ///Advertising filter policy
-    uint8_t        adv_filt_policy;
+    uint8_t adv_filt_policy;
 } hci_le_set_adv_param_cmd_t;
 
 ///HCI LE Set Advertising Data Command parameters structure
@@ -3230,7 +3256,7 @@ typedef struct hci_le_set_adv_param_cmd
 typedef struct hci_le_set_adv_data_cmd
 {
     ///Advertising data length
-    uint8_t         adv_data_len;
+    uint8_t adv_data_len;
     ///Advertising data - maximum 31 bytes
     struct adv_data data;
 } hci_le_set_adv_data_cmd_t;
@@ -3240,7 +3266,7 @@ typedef struct hci_le_set_adv_data_cmd
 typedef struct hci_le_set_scan_rsp_data_cmd
 {
     ///Scan response data length
-    uint8_t              scan_rsp_data_len;
+    uint8_t scan_rsp_data_len;
     ///Scan response data - maximum 31 bytes
     struct scan_rsp_data data;
 } hci_le_set_scan_rsp_data_cmd_t;
@@ -3250,7 +3276,7 @@ typedef struct hci_le_set_scan_rsp_data_cmd
 typedef struct hci_le_set_adv_en_cmd
 {
     ///Advertising enable - 0=disabled, 1=enabled
-    uint8_t        adv_en;
+    uint8_t adv_en;
 } hci_le_set_adv_en_cmd_t;
 
 ///HCI LE Set Scan Parameters Command parameters structure
@@ -3258,15 +3284,15 @@ typedef struct hci_le_set_adv_en_cmd
 typedef struct hci_le_set_scan_param_cmd
 {
     ///Scan type - 0=passive / 1=active
-    uint8_t        scan_type;
+    uint8_t scan_type;
     ///Scan interval
-    uint16_t       scan_intv;
+    uint16_t scan_intv;
     ///Scan window size
-    uint16_t       scan_window;
+    uint16_t scan_window;
     ///Own address type - public=0 / random=1 / rpa_or_pub=2 / rpa_or_rnd=3
-    uint8_t        own_addr_type;
+    uint8_t own_addr_type;
     ///Scan filter policy
-    uint8_t        scan_filt_policy;
+    uint8_t scan_filt_policy;
 } hci_le_set_scan_param_cmd_t;
 
 ///HCI LE Set Scan Enable Command parameters structure
@@ -3274,9 +3300,9 @@ typedef struct hci_le_set_scan_param_cmd
 typedef struct hci_le_set_scan_en_cmd
 {
     ///Scan enable - 0=disabled, 1=enabled
-    uint8_t        scan_en;
+    uint8_t scan_en;
     ///Enable for duplicates filtering - 0 =disabled/ 1=enabled
-    uint8_t        filter_duplic;
+    uint8_t filter_duplic;
 } hci_le_set_scan_en_cmd_t;
 
 ///HCI LE Create Connection Command parameters structure
@@ -3284,29 +3310,29 @@ typedef struct hci_le_set_scan_en_cmd
 typedef struct hci_le_create_con_cmd
 {
     ///Scan interval (N * 0.625 ms)
-    uint16_t       scan_intv;
+    uint16_t scan_intv;
     ///Scan window size (N * 0.625 ms)
-    uint16_t       scan_window;
+    uint16_t scan_window;
     ///Initiator filter policy
-    uint8_t        init_filt_policy;
+    uint8_t init_filt_policy;
     ///Peer address type - public=0 / random=1 / rpa_or_pub=2 / rpa_or_rnd=3
-    uint8_t        peer_addr_type;
+    uint8_t peer_addr_type;
     ///Peer BD address
     struct bd_addr peer_addr;
     ///Own address type - public=0 / random=1 / rpa_or_pub=2 / rpa_or_rnd=3
-    uint8_t        own_addr_type;
+    uint8_t own_addr_type;
     ///Minimum of connection interval (N * 1.25 ms)
-    uint16_t       con_intv_min;
+    uint16_t con_intv_min;
     ///Maximum of connection interval (N * 1.25 ms)
-    uint16_t       con_intv_max;
+    uint16_t con_intv_max;
     ///Connection latency
-    uint16_t       con_latency;
+    uint16_t con_latency;
     ///Link supervision timeout
-    uint16_t       superv_to;
+    uint16_t superv_to;
     ///Minimum CE length (N * 0.625 ms)
-    uint16_t       ce_len_min;
+    uint16_t ce_len_min;
     ///Maximum CE length (N * 0.625 ms)
-    uint16_t       ce_len_max;
+    uint16_t ce_len_max;
 } hci_le_create_con_cmd_t;
 
 ///HCI LE Add Device to White List Command parameters structure
@@ -3314,7 +3340,7 @@ typedef struct hci_le_create_con_cmd
 typedef struct hci_le_add_dev_to_wlst_cmd
 {
     ///Type of address of the device to be added to the White List - 0=public/1=random
-    uint8_t        dev_addr_type;
+    uint8_t dev_addr_type;
     ///Address of device to be added to White List
     struct bd_addr dev_addr;
 } hci_le_add_dev_to_wlst_cmd_t;
@@ -3324,7 +3350,7 @@ typedef struct hci_le_add_dev_to_wlst_cmd
 typedef struct hci_le_rmv_dev_from_wlst_cmd
 {
     ///Type of address of the device to be removed from the White List - 0=public/1=random
-    uint8_t        dev_addr_type;
+    uint8_t dev_addr_type;
     ///Address of device to be removed from White List
     struct bd_addr dev_addr;
 } hci_le_rmv_dev_from_wlst_cmd_t;
@@ -3334,20 +3360,20 @@ typedef struct hci_le_rmv_dev_from_wlst_cmd
 typedef struct hci_le_set_ext_scan_param_cmd
 {
     ///Own address type public/random/rpa
-    uint8_t         own_addr_type;
+    uint8_t own_addr_type;
     ///Scanning filter policy
-    uint8_t         scan_filt_policy;
+    uint8_t scan_filt_policy;
     ///Indicates the PHY(s) on which the advertising packets should be received (@see enum le_phy_mask)
-    uint8_t         scan_phys;
+    uint8_t scan_phys;
     ///Paramaters for PHY(s)
     struct scan_phy_param
     {
         ///Scaning Type: passive/active
-        uint8_t         scan_type;
+        uint8_t scan_type;
         ///Scan interval (slots)
-        uint16_t        scan_intv;
+        uint16_t scan_intv;
         ///Scan window size (slots)
-        uint16_t        scan_window;
+        uint16_t scan_window;
     } phy[MAX_SCAN_PHYS];
 } hci_le_set_ext_scan_param_cmd_t;
 
@@ -3356,34 +3382,34 @@ typedef struct hci_le_set_ext_scan_param_cmd
 typedef struct hci_le_set_ext_scan_en_cmd
 {
     ///Scan enable - 0=disabled, 1=enabled
-    uint8_t             scan_en;
+    uint8_t scan_en;
     ///Filter duplicates - 0=disabled, 1=enabled, 2=enabled & reset each scan period
-    uint8_t             filter_duplic;
+    uint8_t filter_duplic;
     ///Scan duration (Time=N*10ms)  | 0x0000: Scan continuously until explicitly disable
-    uint16_t            duration;
+    uint16_t duration;
     ///Scan period (Time=N*1.28sec) | 0x0000: Periodic scanning disabled
-    uint16_t            period;
+    uint16_t period;
 } hci_le_set_ext_scan_en_cmd_t;
 
 /*@TRACE*/
 typedef struct init_phy_param
 {
     ///Scan interval (N * 0.625 ms)
-    uint16_t        scan_interval;
+    uint16_t scan_interval;
     ///Scan window size (N * 0.625 ms)
-    uint16_t        scan_window;
+    uint16_t scan_window;
     ///Minimum of connection interval (N * 1.25 ms)
-    uint16_t       con_intv_min;
+    uint16_t con_intv_min;
     ///Maximum of connection interval (N * 1.25 ms)
-    uint16_t       con_intv_max;
+    uint16_t con_intv_max;
     ///Connection latency
-    uint16_t       con_latency;
+    uint16_t con_latency;
     ///Link supervision timeout
-    uint16_t       superv_to;
+    uint16_t superv_to;
     ///Minimum CE length (N * 0.625 ms)
-    uint16_t       ce_len_min;
+    uint16_t ce_len_min;
     ///Maximum CE length (N * 0.625 ms)
-    uint16_t       ce_len_max;
+    uint16_t ce_len_max;
 } init_phy_param_t;
 
 ///HCI LE Extended Create Connection V1 Command parameters structure
@@ -3391,15 +3417,15 @@ typedef struct init_phy_param
 typedef struct hci_le_ext_create_con_v1_cmd
 {
     ///Initiator filter policy
-    uint8_t         init_filter_policy;
+    uint8_t init_filter_policy;
     ///Own address type public/random/rpa
-    uint8_t         own_addr_type;
+    uint8_t own_addr_type;
     ///Peer address type public/random/rpa
-    uint8_t         peer_addr_type;
+    uint8_t peer_addr_type;
     ///Peer address
-    struct bd_addr  peer_addr;
+    struct bd_addr peer_addr;
     ///Indicates the PHY(s) on which the advertising packets should be received
-    uint8_t         init_phys;
+    uint8_t init_phys;
     ///Paramaters for PHY(s)
     struct init_phy_param phy[MAX_INIT_PHYS];
 } hci_le_ext_create_con_v1_cmd_t;
@@ -3413,19 +3439,19 @@ typedef struct hci_le_ext_create_con_v1_cmd
 typedef struct hci_le_per_adv_create_sync_cmd
 {
     /// Options (@see enum per_sync_opt)
-    uint8_t         options;
+    uint8_t options;
     ///Advertising SID
-    uint8_t         adv_sid;
+    uint8_t adv_sid;
     ///Advertising address type
-    uint8_t         adv_addr_type;
+    uint8_t adv_addr_type;
     ///Advertiser address
-    struct bd_addr  adv_addr;
+    struct bd_addr adv_addr;
     ///max Skip after receive
-    uint16_t        skip;
+    uint16_t skip;
     ///Sync timeout (Time=N*10ms)
-    uint16_t        sync_to;
+    uint16_t sync_to;
     /// Sync CTE type (@see enum sync_cte_type)
-    uint8_t         sync_cte_type;
+    uint8_t sync_cte_type;
 } hci_le_per_adv_create_sync_cmd_t;
 
 ///HCI LE Periodic Advertising Terminate Sync Command parameters structure
@@ -3433,7 +3459,7 @@ typedef struct hci_le_per_adv_create_sync_cmd
 typedef struct hci_le_per_adv_term_sync_cmd
 {
     ///Sync handle
-    uint16_t        sync_hdl;
+    uint16_t sync_hdl;
 } hci_le_per_adv_term_sync_cmd_t;
 
 ///HCI LE Add Device to Periodic Advertiser List Command parameters structure
@@ -3441,11 +3467,11 @@ typedef struct hci_le_per_adv_term_sync_cmd
 typedef struct hci_le_add_dev_to_per_adv_list_cmd
 {
      ///Advertiser address type
-    uint8_t         adv_addr_type;
+    uint8_t adv_addr_type;
     ///Advertiser address
-    struct bd_addr  adv_addr;
+    struct bd_addr adv_addr;
     ///Advertising SID
-    uint8_t         adv_sid;
+    uint8_t adv_sid;
 } hci_le_add_dev_to_per_adv_list_cmd_t;
 
 ///HCI LE Remove Device from Periodic Advertiser List Command parameters structure
@@ -3453,11 +3479,11 @@ typedef struct hci_le_add_dev_to_per_adv_list_cmd
 typedef struct hci_le_rmv_dev_from_per_adv_list_cmd
 {
      ///Advertiser address type
-    uint8_t         adv_addr_type;
+    uint8_t adv_addr_type;
     ///Advertiser address
-    struct bd_addr  adv_addr;
+    struct bd_addr adv_addr;
     ///Advertising SID
-    uint8_t         adv_sid;
+    uint8_t adv_sid;
 } hci_le_rmv_dev_from_per_adv_list_cmd_t;
 #endif // (BLE_PER_ADV)
 
@@ -3466,11 +3492,11 @@ typedef struct hci_le_rmv_dev_from_per_adv_list_cmd
 typedef struct hci_le_set_priv_mode_cmd
 {
     ///Peer identity address type
-    uint8_t         peer_addr_type;
+    uint8_t peer_addr_type;
     ///Peer identity address
     struct bd_addr  peer_addr;
     ///Privacy mode
-    uint8_t         priv_mode;
+    uint8_t priv_mode;
 } hci_le_set_priv_mode_cmd_t;
 
 ///HCI LE Set Host Channel Classification Command parameters structure
@@ -3487,7 +3513,7 @@ typedef struct hci_le_set_host_ch_class_cmd
 typedef struct hci_le_rx_test_v1_cmd
 {
     /// RX channel, range: 0x00 to 0x27
-    uint8_t     rx_channel;
+    uint8_t rx_channel;
 } hci_le_rx_test_v1_cmd_t;
 
 ///HCI LE Transmitter Test v1 Command parameters structure
@@ -3495,9 +3521,9 @@ typedef struct hci_le_rx_test_v1_cmd
 typedef struct hci_le_tx_test_v1_cmd
 {
     /// TX channel, range: 0x00 to 0x27
-    uint8_t     tx_channel;
+    uint8_t tx_channel;
     /// Length of test data in bytes, range: 0x00 to 0xFF
-    uint8_t     test_data_len;
+    uint8_t test_data_len;
     /**
      * Packet payload
      * 0x00 PRBS9 sequence "11111111100000111101" (in transmission order) as described in [Vol 6] Part F, Section 4.1.5
@@ -3510,7 +3536,7 @@ typedef struct hci_le_tx_test_v1_cmd
      * 0x07 Repeated "01010101" (in transmission order) sequence
      * 0x08-0xFF Reserved for future use
      */
-    uint8_t     pkt_payl;
+    uint8_t pkt_payl;
 } hci_le_tx_test_v1_cmd_t;
 
 ///HCI LE Encrypt Command parameters structure
@@ -3518,9 +3544,9 @@ typedef struct hci_le_tx_test_v1_cmd
 typedef struct hci_le_enc_cmd
 {
     ///Long term key structure
-    struct ltk     key;
+    struct ltk key;
     ///Pointer to buffer with plain data to encrypt - 16 bytes
-    uint8_t        plain_data[16];
+    uint8_t plain_data[16];
 } hci_le_enc_cmd_t;
 
 /// HCI LE Connection Update Command parameters structure
@@ -3528,19 +3554,19 @@ typedef struct hci_le_enc_cmd
 typedef struct hci_le_con_update_cmd
 {
     ///Connection Handle
-    uint16_t       conhdl;
+    uint16_t conhdl;
     ///Minimum of connection interval (units of 1.25 ms)
-    uint16_t       con_intv_min;
+    uint16_t con_intv_min;
     ///Maximum of connection interval (units of 1.25 ms)
-    uint16_t       con_intv_max;
+    uint16_t con_intv_max;
     ///Connection latency (units of connection event)
-    uint16_t       con_latency;
+    uint16_t con_latency;
     ///Link supervision timeout (units of 10 ms)
-    uint16_t       superv_to;
+    uint16_t superv_to;
     ///Minimum of CE length (units of 0.625 ms)
-    uint16_t       ce_len_min;
+    uint16_t ce_len_min;
     ///Maximum of CE length (units of 0.625 ms)
-    uint16_t       ce_len_max;
+    uint16_t ce_len_max;
 } hci_le_con_update_cmd_t;
 
 /// HCI LE Enable Encryption Command parameters structure
@@ -3548,13 +3574,13 @@ typedef struct hci_le_con_update_cmd
 typedef struct hci_le_en_enc_cmd
 {
     ///Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     ///Random number - 8B
-    struct rand_nb  nb;
+    struct rand_nb nb;
     ///Encryption Diversifier
-    uint16_t       enc_div;
+    uint16_t enc_div;
     ///Long term key
-    struct ltk     ltk;
+    struct ltk ltk;
 } hci_le_en_enc_cmd_t;
 
 /// HCI long term key request reply command parameters structure
@@ -3562,9 +3588,9 @@ typedef struct hci_le_en_enc_cmd
 typedef struct hci_le_ltk_req_reply_cmd
 {
     ///Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     ///Long term key
-    struct ltk      ltk;
+    struct ltk ltk;
 } hci_le_ltk_req_reply_cmd_t;
 
 /// HCI long term key request negative reply command parameters structure
@@ -3572,7 +3598,7 @@ typedef struct hci_le_ltk_req_reply_cmd
 typedef struct hci_le_ltk_req_neg_reply_cmd
 {
     ///Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
 } hci_le_ltk_req_neg_reply_cmd_t;
 
 /// HCI LE remote connection parameter request reply command parameters structure
@@ -3580,19 +3606,19 @@ typedef struct hci_le_ltk_req_neg_reply_cmd
 typedef struct hci_le_rem_con_param_req_reply_cmd
 {
     ///Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     ///Interval_Min
-    uint16_t        interval_min;
+    uint16_t interval_min;
     ///Interval_Max
-    uint16_t        interval_max;
+    uint16_t interval_max;
     ///Latency
-    uint16_t        latency;
+    uint16_t latency;
     ///Timeout
-    uint16_t        timeout;
+    uint16_t timeout;
     ///Minimum_CE_Length
-    uint16_t        min_ce_len;
+    uint16_t min_ce_len;
     ///Maximum_CE_Length
-    uint16_t        max_ce_len;
+    uint16_t max_ce_len;
 } hci_le_rem_con_param_req_reply_cmd_t;
 
 /// HCI LE remote connection parameter request negative reply command parameters structure
@@ -3600,9 +3626,9 @@ typedef struct hci_le_rem_con_param_req_reply_cmd
 typedef struct hci_le_rem_con_param_req_neg_reply_cmd
 {
     ///Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     ///Reason
-    uint8_t         reason;
+    uint8_t reason;
 } hci_le_rem_con_param_req_neg_reply_cmd_t;
 
 
@@ -3611,13 +3637,13 @@ typedef struct hci_le_rem_con_param_req_neg_reply_cmd
 typedef struct hci_le_set_data_len_cmd
 {
     ///Connection Handle
-    uint16_t       conhdl;
+    uint16_t conhdl;
     ///Preferred maximum number of payload octets that the local Controller should include
     ///in a single Link Layer Data Channel PDU.
-    uint16_t       tx_octets;
+    uint16_t tx_octets;
     ///Preferred maximum number of microseconds that the local Controller should use to transmit
     ///a single Link Layer Data Channel PDU
-    uint16_t       tx_time;
+    uint16_t tx_time;
 } hci_le_set_data_len_cmd_t;
 
 /// HCI LE Read Suggested Default Data Length Command
@@ -3625,9 +3651,9 @@ typedef struct hci_le_set_data_len_cmd
 typedef struct hci_le_wr_suggted_dft_data_len_cmd
 {
     ///Suggested value for the Controller's maximum transmitted number of payload octets to be used
-    uint16_t       suggted_max_tx_octets;
+    uint16_t suggted_max_tx_octets;
     ///Suggested value for the Controller's maximum packet transmission time to be used
-    uint16_t       suggted_max_tx_time;
+    uint16_t suggted_max_tx_time;
 } hci_le_wr_suggted_dft_data_len_cmd_t;
 
 /// HCI LE Add Device to Resolving List Command
@@ -3635,13 +3661,13 @@ typedef struct hci_le_wr_suggted_dft_data_len_cmd
 typedef struct hci_le_add_dev_to_rslv_list_cmd
 {
     /// Peer Identity Address Type
-    uint8_t             peer_id_addr_type;
+    uint8_t peer_id_addr_type;
     /// Peer Identity Address
-    struct bd_addr      peer_id_addr;
+    struct bd_addr peer_id_addr;
     /// Peer IRK
-    struct irk          peer_irk;
+    struct irk peer_irk;
     /// Local IRK
-    struct irk          local_irk;
+    struct irk local_irk;
 } hci_le_add_dev_to_rslv_list_cmd_t;
 
 /// HCI LE Remove Device From Resolving List Command
@@ -3649,9 +3675,9 @@ typedef struct hci_le_add_dev_to_rslv_list_cmd
 typedef struct hci_le_rmv_dev_from_rslv_list_cmd
 {
     /// Peer Identity Address Type
-    uint8_t             peer_id_addr_type;
+    uint8_t peer_id_addr_type;
     /// Peer Identity Address
-    struct bd_addr      peer_id_addr;
+    struct bd_addr peer_id_addr;
 } hci_le_rmv_dev_from_rslv_list_cmd_t;
 
 /// HCI LE Read Peer Resolvable Address Command
@@ -3659,9 +3685,9 @@ typedef struct hci_le_rmv_dev_from_rslv_list_cmd
 typedef struct hci_le_rd_peer_rslv_addr_cmd
 {
     /// Peer Identity Address Type
-    uint8_t             peer_id_addr_type;
+    uint8_t peer_id_addr_type;
     /// Peer Identity Address
-    struct bd_addr      peer_id_addr;
+    struct bd_addr peer_id_addr;
 } hci_le_rd_peer_rslv_addr_cmd_t;
 
 /// HCI LE Read Local Resolvable Address Command
@@ -3669,9 +3695,9 @@ typedef struct hci_le_rd_peer_rslv_addr_cmd
 typedef struct hci_le_rd_loc_rslv_addr_cmd
 {
     /// Peer Identity Address Type
-    uint8_t             peer_id_addr_type;
+    uint8_t peer_id_addr_type;
     /// Peer Identity Address
-    struct bd_addr      peer_id_addr;
+    struct bd_addr peer_id_addr;
 } hci_le_rd_loc_rslv_addr_cmd_t;
 
 /// HCI LE Set Address Resolution Enable Command
@@ -3679,7 +3705,7 @@ typedef struct hci_le_rd_loc_rslv_addr_cmd
 typedef struct hci_le_set_addr_resol_en_cmd
 {
     /// Address Resolution Enable
-    uint8_t             enable;
+    uint8_t enable;
 } hci_le_set_addr_resol_en_cmd_t;
 
 /// HCI LE Set Resolvable Private Address Timeout Command
@@ -3687,7 +3713,7 @@ typedef struct hci_le_set_addr_resol_en_cmd
 typedef struct hci_le_set_rslv_priv_addr_to_cmd
 {
     /// RPA Timeout
-    uint16_t            rpa_timeout;
+    uint16_t rpa_timeout;
 } hci_le_set_rslv_priv_addr_to_cmd_t;
 
 /*
@@ -3710,19 +3736,19 @@ typedef struct hci_inq_res_evt
 {
 
     ///Number of response
-    uint8_t     nb_rsp;
+    uint8_t nb_rsp;
     ///BdAddr
     struct bd_addr bd_addr;
     ///Page Scan Repetition Mode
-    uint8_t     page_scan_rep_mode;
+    uint8_t page_scan_rep_mode;
     ///Reserved
-    uint8_t     reserved1;
+    uint8_t reserved1;
     ///Reserved
-    uint8_t     reserved2;
+    uint8_t reserved2;
     ///class of device
     struct devclass class_of_dev;
     ///Clock Offset
-    uint16_t        clk_off;
+    uint16_t clk_off;
 
 } hci_inq_res_evt_t;
 
@@ -3731,19 +3757,19 @@ typedef struct hci_inq_res_evt
 typedef struct hci_inq_res_with_rssi_evt
 {
     ///Number of response
-    uint8_t     nb_rsp;
+    uint8_t nb_rsp;
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Page Scan Repetition Mode
-    uint8_t     page_scan_rep_mode;
+    uint8_t page_scan_rep_mode;
     ///Reserved
-    uint8_t     reserved1;
+    uint8_t reserved1;
     ///class of device
     struct devclass class_of_dev;
     ///Clock Offset
-    uint16_t     clk_off;
+    uint16_t clk_off;
     ///RSSI
-    int8_t       rssi;
+    int8_t rssi;
 
 } hci_inq_res_with_rssi_evt_t;
 
@@ -3752,21 +3778,21 @@ typedef struct hci_inq_res_with_rssi_evt
 typedef struct hci_ext_inq_res_evt
 {
     ///Number of response
-    uint8_t     nb_rsp;
+    uint8_t nb_rsp;
     ///BdAddr
     struct bd_addr  bd_addr;
     ///Page Scan Repetition Mode
-    uint8_t     page_scan_rep_mode;
+    uint8_t page_scan_rep_mode;
     ///Reserved
-    uint8_t     reserved1;
+    uint8_t reserved1;
     ///class of device
     struct devclass class_of_dev;
     ///Clock Offset
-    uint16_t        clk_off;
+    uint16_t clk_off;
     ///RSSI
-    int8_t          rssi;
+    int8_t rssi;
     ///Extended inquiry response data
-    struct eir      eir;
+    struct eir eir;
 } hci_ext_inq_res_evt_t;
 
 /// HCI disconnect complete event structure
@@ -3774,11 +3800,11 @@ typedef struct hci_ext_inq_res_evt
 typedef struct hci_disc_cmp_evt
 {
     ///Status of received command
-    uint8_t     status;
+    uint8_t status;
     ///Connection Handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///Reason for disconnection
-    uint8_t     reason;
+    uint8_t reason;
 } hci_disc_cmp_evt_t;
 
 /// HCI basic command complete event structure
@@ -3819,9 +3845,9 @@ typedef struct hci_basic_cmd_cmp_evt
 typedef struct hci_basic_conhdl_cmd_cmp_evt
 {
     /// status
-    uint8_t     status;
+    uint8_t status;
     /// connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
 } hci_basic_conhdl_cmd_cmp_evt_t;
 
 /// HCI basic command complete event structure with connection handle
@@ -3829,11 +3855,11 @@ typedef struct hci_basic_conhdl_cmd_cmp_evt
 typedef struct hci_basic_conhdl_le_cmp_evt
 {
     ///LE Subevent code
-    uint8_t     subcode;
+    uint8_t subcode;
     /// status
-    uint8_t     status;
+    uint8_t status;
     /// connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
 } hci_basic_conhdl_le_cmp_evt_t;
 
 /// HCI basic command complete event structure with advertising handle
@@ -3841,9 +3867,9 @@ typedef struct hci_basic_conhdl_le_cmp_evt
 typedef struct hci_basic_adv_hdl_cmd_cmp_evt
 {
     /// Status
-    uint8_t     status;
+    uint8_t status;
     /// Advertising handle
-    uint8_t     adv_hdl;
+    uint8_t adv_hdl;
 } hci_basic_adv_hdl_cmd_cmp_evt_t;
 
 /// HCI basic command complete event structure with sync handle
@@ -3851,16 +3877,16 @@ typedef struct hci_basic_adv_hdl_cmd_cmp_evt
 typedef struct hci_basic_sync_hdl_cmd_cmp_evt
 {
     /// Status
-    uint8_t     status;
+    uint8_t status;
     /// Sync handle
-    uint16_t     sync_hdl;
+    uint16_t sync_hdl;
 } hci_basic_sync_hdl_cmd_cmp_evt_t;
 
 /// HCI basic command complete event structure with BD address
 typedef struct hci_basic_bd_addr_cmd_cmp_evt
 {
     ///status
-   uint8_t         status;
+   uint8_t status;
    ///BdAddr
     struct bd_addr bd_addr;
 } hci_basic_bd_addr_cmd_cmp_evt_t;
@@ -3869,7 +3895,7 @@ typedef struct hci_basic_bd_addr_cmd_cmp_evt
 typedef struct hci_basic_stat_bd_addr_evt
 {
     ///status
-   uint8_t         status;
+   uint8_t status;
    ///BdAddr
     struct bd_addr bd_addr;
 } hci_basic_stat_bd_addr_evt_t;
@@ -3878,7 +3904,7 @@ typedef struct hci_basic_stat_bd_addr_evt
 typedef struct hci_basic_conhdl_evt
 {
     ///Connection handle
-    uint16_t     conhdl;
+    uint16_t conhdl;
 } hci_basic_conhdl_evt_t;
 
 /// HCI complete event with status only.
@@ -3894,7 +3920,7 @@ typedef struct hci_cmd_stat_event
 typedef struct hci_nb_cmp_pkts_evt
 {
     /// number of handles
-    uint8_t     nb_of_hdl;
+    uint8_t nb_of_hdl;
 
     /// Array of number of completed packets per connection
     struct hci_nb_cmp_pkt con[MAX_NB_CMP_PKTS_CON];
@@ -3924,7 +3950,7 @@ typedef struct hci_enc_change_evt
     ///Connection handle
     uint16_t conhdl;
     ///Encryption enabled information
-    uint8_t     enc_stat;
+    uint8_t enc_stat;
 } hci_enc_change_evt_t;
 
 /// HCI encryption key refresh complete event structure
@@ -3943,7 +3969,7 @@ typedef struct hci_enc_key_ref_cmp_evt
 typedef struct hci_auth_payl_to_exp_evt
 {
     ///Connection handle
-    uint16_t     conhdl;
+    uint16_t conhdl;
 } hci_auth_payl_to_exp_evt_t;
 
 /// HCI command complete event structure for create connection
@@ -3951,15 +3977,15 @@ typedef struct hci_auth_payl_to_exp_evt
 typedef struct hci_con_cmp_evt
 {
     /// Status
-    uint8_t             status;
+    uint8_t status;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     ///Bluetooth Device address
-    struct bd_addr      bd_addr;
+    struct bd_addr bd_addr;
     ///Link type
-    uint8_t             link_type;
+    uint8_t link_type;
     ///Encryption state
-    uint8_t             enc_en;
+    uint8_t enc_en;
 } hci_con_cmp_evt_t;
 
 /// HCI command complete event structure for qos setup
@@ -4055,17 +4081,17 @@ typedef struct hci_max_slot_chg_evt
 typedef struct hci_sniff_sub_evt
 {
     ///Status.
-    uint8_t     status;
+    uint8_t status;
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///Maximum transmit latency
-    uint16_t    max_lat_tx;
+    uint16_t max_lat_tx;
     ///Maximum receive latency
-    uint16_t    max_lat_rx;
+    uint16_t max_lat_rx;
     ///Minimum remote TO
-    uint16_t    min_rem_to;
+    uint16_t min_rem_to;
     ///Minimum local TO
-    uint16_t    min_loc_to;
+    uint16_t min_loc_to;
 } hci_sniff_sub_evt_t;
 
 /// HCI read remote extended features complete event parameters structure
@@ -4115,11 +4141,11 @@ typedef struct hci_rd_rem_ver_info_cmp_evt
     ///Connection handle
     uint16_t conhdl;
     ///LMP version
-    uint8_t     vers;
+    uint8_t vers;
     ///Manufacturer name
-    uint16_t    compid;
+    uint16_t compid;
     ///LMP subversion
-    uint16_t    subvers;
+    uint16_t subvers;
 } hci_rd_rem_ver_info_cmp_evt_t;
 
 /// HCI encryption change event structure
@@ -4131,7 +4157,7 @@ typedef struct hci_enc_chg_evt
     ///Connection handle
     uint16_t conhdl;
     ///Encryption enabled information
-    uint8_t     enc_stat;
+    uint8_t enc_stat;
 } hci_enc_chg_evt_t;
 
 /// HCI mode change event structure
@@ -4141,11 +4167,11 @@ typedef struct hci_mode_chg_evt
     ///Status for command reception
     uint8_t status;
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///Current mode
-    uint8_t    cur_mode;
+    uint8_t cur_mode;
     /// Interval
-    uint16_t    interv;
+    uint16_t interv;
 } hci_mode_chg_evt_t;
 
 /// HCI simple pairing complete event structure
@@ -4155,7 +4181,7 @@ typedef struct hci_sp_cmp_evt
     ///Status for command reception
     uint8_t status;
     ///Bluetooth Device address
-    struct bd_addr      bd_addr;
+    struct bd_addr bd_addr;
 } hci_sp_cmp_evt_t;
 
 /// HCI Authentication complete event structure
@@ -4165,7 +4191,7 @@ typedef struct hci_auth_cmp_evt
     ///Status for command reception
     uint8_t status;
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
 } hci_auth_cmp_evt_t;
 
 /// HCI change connection link key complete event structure
@@ -4175,7 +4201,7 @@ typedef struct hci_chg_con_lk_cmp_evt
     ///Status
     uint8_t status;
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
 } hci_chg_con_lk_cmp_evt_t;
 
 /// HCI encryption key refresh complete event structure
@@ -4185,7 +4211,7 @@ typedef struct hci_enc_key_refresh_cmp_evt
     ///Status for command reception
     uint8_t status;
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
 } hci_enc_key_refresh_cmp_evt_t;
 
 /// HCI master link key complete event structure
@@ -4195,7 +4221,7 @@ typedef struct hci_master_lk_cmp_evt
     ///Status for command reception
     uint8_t status;
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///Key flag
     uint8_t key_flag;
 } hci_master_lk_cmp_evt_t;
@@ -4206,7 +4232,7 @@ typedef struct hci_sync_con_cmp_evt
     ///Status for command reception
     uint8_t status;
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///BD address
     struct bd_addr bd_addr;
     ///Link type
@@ -4231,7 +4257,7 @@ typedef struct hci_sync_con_chg_evt
     ///Status for command reception
     uint8_t status;
     ///Synchronous Connection handle
-    uint16_t    sync_conhdl;
+    uint16_t sync_conhdl;
     ///Transmit interval
     uint8_t tx_int;
     ///Retransmission window
@@ -4249,9 +4275,9 @@ typedef struct hci_con_pkt_type_chg_evt
     ///Status for command reception
     uint8_t status;
     ///Synchronous Connection handle
-    uint16_t    sync_conhdl;
+    uint16_t sync_conhdl;
     ///Synchronous packet type
-    uint16_t    pkt_type;
+    uint16_t pkt_type;
 } hci_con_pkt_type_chg_evt_t;
 
 /// HCI link supervision timeout change event structure
@@ -4259,9 +4285,9 @@ typedef struct hci_con_pkt_type_chg_evt
 typedef struct hci_link_supv_to_chg_evt
 {
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///Link supervision timeout
-    uint16_t    lsto_val;
+    uint16_t lsto_val;
 } hci_link_supv_to_chg_evt_t;
 
 /// HCI link key request event structure
@@ -4279,7 +4305,7 @@ typedef struct hci_enc_key_refresh_evt
     ///Status for command reception
     uint8_t status;
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
 } hci_enc_key_refresh_evt_t;
 
 /// HCI connection request event structure
@@ -4307,7 +4333,7 @@ typedef struct hci_qos_viol_evt
 typedef struct hci_io_cap_rsp_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///IO capability
     uint8_t io_capa;
     ///OOB data present
@@ -4322,7 +4348,7 @@ typedef struct hci_io_cap_rsp_evt
 typedef struct hci_io_cap_req_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
 } hci_io_cap_req_evt_t;
 
 /// HCI Return link keys event structure
@@ -4332,9 +4358,9 @@ typedef struct hci_return_link_keys_evt
     ///Number of Keys
     uint8_t num_keys;
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Key
-    struct ltk      key;
+    struct ltk key;
 } hci_return_link_keys_evt_t;
 
 /// HCI pin code request event structure
@@ -4342,7 +4368,7 @@ typedef struct hci_return_link_keys_evt
 typedef struct hci_pin_code_req_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
 } hci_pin_code_req_evt_t;
 
 /// HCI user passkey request event structure
@@ -4350,7 +4376,7 @@ typedef struct hci_pin_code_req_evt
 typedef struct hci_user_passkey_req_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
 } hci_user_passkey_req_evt_t;
 
 /// HCI user passkey notification event structure
@@ -4358,7 +4384,7 @@ typedef struct hci_user_passkey_req_evt
 typedef struct hci_user_passkey_notif_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Passkey
     uint32_t passkey;
 } hci_user_passkey_notif_evt_t;
@@ -4368,7 +4394,7 @@ typedef struct hci_user_passkey_notif_evt
 typedef struct hci_rem_oob_data_req_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
 } hci_rem_oob_data_req_evt_t;
 
 /// HCI user confirmation request event structure
@@ -4376,7 +4402,7 @@ typedef struct hci_rem_oob_data_req_evt
 typedef struct hci_user_cfm_req_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Passkey
     uint32_t passkey;
 } hci_user_cfm_req_evt_t;
@@ -4386,7 +4412,7 @@ typedef struct hci_user_cfm_req_evt
 typedef struct hci_keypress_notif_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///type
     uint8_t type;
 } hci_keypress_notif_evt_t;
@@ -4396,9 +4422,9 @@ typedef struct hci_keypress_notif_evt
 typedef struct hci_lk_notif_evt
 {
     ///BdAddr
-    struct bd_addr  bd_addr;
+    struct bd_addr bd_addr;
     ///Key
-    struct ltk  key;
+    struct ltk key;
     ///type
     uint8_t key_type;
 } hci_lk_notif_evt_t;
@@ -4407,19 +4433,19 @@ typedef struct hci_lk_notif_evt
 typedef struct hci_sam_status_change_evt
 {
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///Local SAM index
-    uint8_t     loc_idx;
+    uint8_t loc_idx;
     ///Local SAM TX availability
-    uint8_t     loc_tx_av;
+    uint8_t loc_tx_av;
     ///Local SAM RX availability
-    uint8_t     loc_rx_av;
+    uint8_t loc_rx_av;
     ///Remote SAM index
-    uint8_t     rem_idx;
+    uint8_t rem_idx;
     ///Remote SAM TX availability
-    uint8_t     rem_tx_av;
+    uint8_t rem_tx_av;
     ///Remote SAM RX availability
-    uint8_t     rem_rx_av;
+    uint8_t rem_rx_av;
 } hci_sam_status_change_evt_t;
 
 
@@ -4436,9 +4462,9 @@ typedef struct hci_sam_status_change_evt
 typedef struct hci_le_rd_local_supp_feats_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t             status;
+    uint8_t status;
     ///Local LE supported features
-    le_features_t       feats;
+    le_features_t feats;
 } hci_le_rd_local_supp_feats_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for the Read Advertising Channel Tx Power Command
@@ -4447,9 +4473,9 @@ typedef struct hci_le_rd_local_supp_feats_cmd_cmp_evt
 typedef struct hci_rd_adv_chnl_tx_pw_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Advertising channel Tx power level
-    int8_t     adv_tx_pw_lvl;
+    int8_t adv_tx_pw_lvl;
 } hci_rd_adv_chnl_tx_pw_cmd_cmp_evt_t;
 
 ///HCI command complete event structure for the Read White List Size Command
@@ -4457,9 +4483,9 @@ typedef struct hci_rd_adv_chnl_tx_pw_cmd_cmp_evt
 typedef struct hci_le_rd_wlst_size_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///White List size
-    uint8_t     wlst_size;
+    uint8_t wlst_size;
 } hci_le_rd_wlst_size_cmd_cmp_evt_t;
 
 ///HCI command complete event structure for the Read Buffer Size Command
@@ -4467,11 +4493,11 @@ typedef struct hci_le_rd_wlst_size_cmd_cmp_evt
 typedef struct hci_le_rd_buf_size_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///ACL data packet length that can be sent from host to controller
-    uint16_t    hc_data_pk_len;
+    uint16_t hc_data_pk_len;
     ///Total number of ACL data packets that can be sent from host to controller.
-    uint8_t     hc_tot_nb_data_pkts;
+    uint8_t hc_tot_nb_data_pkts;
 } hci_le_rd_buf_size_cmd_cmp_evt_t;
 
 ///HCI command complete event structure for LE Rand Command
@@ -4479,9 +4505,9 @@ typedef struct hci_le_rd_buf_size_cmd_cmp_evt
 typedef struct hci_le_rand_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t             status;
+    uint8_t status;
     ///Random number
-    struct rand_nb      nb;
+    struct rand_nb nb;
 } hci_le_rand_cmd_cmp_evt_t;
 
 ///HCI command complete event structure for Read Supported States Command
@@ -4489,9 +4515,9 @@ typedef struct hci_le_rand_cmd_cmp_evt
 typedef struct hci_le_rd_supp_states_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t             status;
+    uint8_t status;
     ///LE supported states response
-    struct le_states    states;
+    struct le_states states;
 } hci_le_rd_supp_states_cmd_cmp_evt_t;
 
 ///HCI command complete event structure for Test End
@@ -4500,9 +4526,9 @@ typedef struct hci_le_rd_supp_states_cmd_cmp_evt
 typedef struct hci_test_end_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t             status;
+    uint8_t status;
     ///Number of RX packets - null if TX test was the ended one
-    uint16_t            nb_packet_received;
+    uint16_t nb_packet_received;
 } hci_test_end_cmd_cmp_evt_t;
 
 ///HCI LE Encrypt complete event structure
@@ -4521,11 +4547,11 @@ typedef struct hci_le_enc_cmd_cmp_evt
 typedef struct hci_le_adv_report_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Number of advertising reports in this event
-    uint8_t             nb_reports;
+    uint8_t nb_reports;
     ///Advertising reports structures array
-    struct adv_report   adv_rep[BLE_ADV_REPORTS_MAX];
+    struct adv_report adv_rep[BLE_ADV_REPORTS_MAX];
 } hci_le_adv_report_evt_t;
 
 ///HCI LE extended advertising report event structure
@@ -4533,9 +4559,9 @@ typedef struct hci_le_adv_report_evt
 typedef struct hci_le_ext_adv_report_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Number of advertising reports in this event
-    uint8_t             nb_reports;
+    uint8_t nb_reports;
     ///Paramaters for each report
     struct ext_adv_report adv_rep[BLE_ADV_REPORTS_MAX];
 } hci_le_ext_adv_report_evt_t;
@@ -4546,23 +4572,23 @@ typedef struct hci_le_ext_adv_report_evt
 typedef struct hci_le_per_adv_sync_est_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     /// Status of the advertising sync
-    uint8_t             status;
+    uint8_t status;
     /// Sync Handle to be used
-    uint16_t            sync_hdl;
+    uint16_t sync_hdl;
     /// Advertising SID
-    uint8_t             adv_sid;
+    uint8_t adv_sid;
     ///Advertising address type: public/random
-    uint8_t             adv_addr_type;
+    uint8_t adv_addr_type;
     ///Advertising address value
-    struct bd_addr      adv_addr;
+    struct bd_addr adv_addr;
     /// Advertiser PHY (@enum le_phy_value)
-    uint8_t             phy;
+    uint8_t phy;
     /// Advertising interval (Time=N*1.25ms)
-    uint16_t            interval;
+    uint16_t interval;
     /// Advertiser clock accuracy (@see enum SCA)
-    uint8_t             adv_ca;
+    uint8_t adv_ca;
 } hci_le_per_adv_sync_est_evt_t;
 
 ///HCI LE periodic advertising report V1 event structure
@@ -4570,21 +4596,21 @@ typedef struct hci_le_per_adv_sync_est_evt
 typedef struct hci_le_per_adv_report_v1_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     /// Sync Handle to be used
-    uint16_t            sync_hdl;
+    uint16_t sync_hdl;
     /// Tx Power
-    int8_t              tx_power;
+    int8_t tx_power;
     /// RSSI
-    int8_t              rssi;
+    int8_t rssi;
     /// CTE type
-    uint8_t             cte_type;
+    uint8_t cte_type;
     /// Data Status
-    uint8_t             status;
+    uint8_t status;
     ///Data length in advertising packet
-    uint8_t             data_len;
+    uint8_t data_len;
     ///Data of advertising packet
-    uint8_t             data[PER_ADV_DATA_MAX_LEN];
+    uint8_t data[PER_ADV_DATA_MAX_LEN];
 } hci_le_per_adv_report_v1_evt_t;
 
 
@@ -4594,9 +4620,9 @@ typedef struct hci_le_per_adv_report_v1_evt
 typedef struct hci_le_per_adv_sync_lost_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     /// Sync Handle to be used
-    uint16_t            sync_hdl;
+    uint16_t sync_hdl;
 } hci_le_per_adv_sync_lost_evt_t;
 #endif // (BLE_PER_ADV)
 
@@ -4605,7 +4631,7 @@ typedef struct hci_le_per_adv_sync_lost_evt
 typedef struct hci_le_scan_timeout_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
 } hci_le_scan_timeout_evt_t;
 
 #endif //BLE_EMB_PRESENT || BLE_HOST_PRESENT
@@ -4615,9 +4641,9 @@ typedef struct hci_le_scan_timeout_evt
 typedef struct hci_le_rd_ch_map_cmd_cmp_evt
 {
     ///Status of command reception
-    uint8_t            status;
+    uint8_t status;
     ///Connection handle
-    uint16_t           conhdl;
+    uint16_t conhdl;
     ///Channel map
     struct le_ch_map ch_map;
 } hci_le_rd_ch_map_cmd_cmp_evt_t;
@@ -4627,9 +4653,9 @@ typedef struct hci_le_rd_ch_map_cmd_cmp_evt
 typedef struct hci_le_ltk_req_reply_cmd_cmp_evt
 {
     ///Status of command reception
-    uint8_t        status;
+    uint8_t status;
     ///Connection handle
-    uint16_t       conhdl;
+    uint16_t conhdl;
 } hci_le_ltk_req_reply_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for Long Term Key Request Negative Reply Command
@@ -4637,9 +4663,9 @@ typedef struct hci_le_ltk_req_reply_cmd_cmp_evt
 typedef struct hci_le_ltk_req_neg_reply_cmd_cmp_evt
 {
     ///Status of command reception
-    uint8_t        status;
+    uint8_t status;
     ///Connection handle
-    uint16_t       conhdl;
+    uint16_t conhdl;
 } hci_le_ltk_req_neg_reply_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for LE Read Suggested Default Data Length Command
@@ -4647,11 +4673,11 @@ typedef struct hci_le_ltk_req_neg_reply_cmd_cmp_evt
 typedef struct hci_le_rd_suggted_dft_data_len_cmd_cmp_evt
 {
     ///Status of command reception
-    uint8_t        status;
+    uint8_t status;
     ///Host's suggested value for the Controller's maximum transmitted number of payload octets
-    uint16_t       suggted_max_tx_octets;
+    uint16_t suggted_max_tx_octets;
     ///Host's suggested value for the Controller's maximum packet transmission time
-    uint16_t       suggted_max_tx_time;
+    uint16_t suggted_max_tx_time;
 } hci_le_rd_suggted_dft_data_len_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for LE Read Maximum Data Length Command
@@ -4659,15 +4685,15 @@ typedef struct hci_le_rd_suggted_dft_data_len_cmd_cmp_evt
 typedef struct hci_le_rd_max_data_len_cmd_cmp_evt
 {
     ///Status of command reception
-    uint8_t        status;
+    uint8_t status;
     ///Maximum number of payload octets that the local Controller supports for transmission
-    uint16_t       suppted_max_tx_octets;
+    uint16_t suppted_max_tx_octets;
     ///Maximum time, in microseconds, that the local Controller supports for transmission
-    uint16_t       suppted_max_tx_time;
+    uint16_t suppted_max_tx_time;
     ///Maximum number of payload octets that the local Controller supports for reception
-    uint16_t       suppted_max_rx_octets;
+    uint16_t suppted_max_rx_octets;
     ///Maximum time, in microseconds, that the local Controller supports for reception
-    uint16_t       suppted_max_rx_time;
+    uint16_t suppted_max_rx_time;
 } hci_le_rd_max_data_len_cmd_cmp_evt_t;
 
 /// HCI LE Read Peer Resolvable Address Command Complete Event
@@ -4677,7 +4703,7 @@ typedef struct hci_le_rd_peer_rslv_addr_cmd_cmp_evt
     ///Status
     uint8_t status;
     /// Peer Resolvable Address
-    struct bd_addr      peer_rslv_addr;
+    struct bd_addr peer_rslv_addr;
 } hci_le_rd_peer_rslv_addr_cmd_cmp_evt_t;
 
 /// HCI LE Read Local Resolvable Address Command Complete Event
@@ -4687,7 +4713,7 @@ typedef struct hci_le_rd_loc_rslv_addr_cmd_cmp_evt
     ///Status
     uint8_t status;
     /// Local Resolvable Address
-    struct bd_addr      loc_rslv_addr;
+    struct bd_addr loc_rslv_addr;
 } hci_le_rd_loc_rslv_addr_cmd_cmp_evt_t;
 
 /// HCI LE Read Resolving List Size Command Complete Event
@@ -4697,7 +4723,7 @@ typedef struct hci_le_rd_rslv_list_size_cmd_cmp_evt
     ///Status
     uint8_t status;
     /// Resolving List Size
-    uint8_t             size;
+    uint8_t size;
 } hci_le_rd_rslv_list_size_cmd_cmp_evt_t;
 
 
@@ -4706,9 +4732,9 @@ typedef struct hci_le_rd_rslv_list_size_cmd_cmp_evt
 typedef struct hci_wr_auth_payl_to_cmd
 {
     ///Connection handle
-    uint16_t     conhdl;
+    uint16_t conhdl;
     ///Authenticated payload timeout (N*10ms)
-    uint16_t     auth_payl_to;
+    uint16_t auth_payl_to;
 } hci_wr_auth_payl_to_cmd_t;
 
 /// HCI command complete event structure for the Write Authenticated Payload Timeout Command
@@ -4716,9 +4742,9 @@ typedef struct hci_wr_auth_payl_to_cmd
 typedef struct hci_wr_auth_payl_to_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t     status;
+    uint8_t status;
     ///Connection handle
-    uint16_t     conhdl;
+    uint16_t conhdl;
 } hci_wr_auth_payl_to_cmd_cmp_evt_t;
 
 /// HCI command complete event structure for HCI LE Connection Update Command
@@ -4726,17 +4752,17 @@ typedef struct hci_wr_auth_payl_to_cmd_cmp_evt
 typedef struct hci_le_con_update_cmp_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Status of received command
-    uint8_t             status;
+    uint8_t status;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     ///Connection interval value
-    uint16_t            con_interval;
+    uint16_t con_interval;
     ///Connection latency value
-    uint16_t            con_latency;
+    uint16_t con_latency;
     ///Supervision timeout
-    uint16_t            sup_to;
+    uint16_t sup_to;
 } hci_le_con_update_cmp_evt_t;
 
 /// HCI command complete event structure for create connection
@@ -4744,25 +4770,25 @@ typedef struct hci_le_con_update_cmp_evt
 typedef struct hci_le_con_cmp_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Status of received command
-    uint8_t             status;
+    uint8_t status;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     ///Device role - 0=Master/ 1=Slave
-    uint8_t             role;
+    uint8_t role;
     ///Peer address type - 0=public/1=random
-    uint8_t             peer_addr_type;
+    uint8_t peer_addr_type;
     ///Peer address
-    struct bd_addr      peer_addr;
+    struct bd_addr peer_addr;
     ///Connection interval
-    uint16_t            con_interval;
+    uint16_t con_interval;
     ///Connection latency
-    uint16_t            con_latency;
+    uint16_t con_latency;
     ///Link supervision timeout
-    uint16_t            sup_to;
+    uint16_t sup_to;
     ///Master clock accuracy
-    uint8_t             clk_accuracy;
+    uint8_t clk_accuracy;
 } hci_le_con_cmp_evt_t;
 
 /// HCI LE read remote used feature command parameters structure
@@ -4770,7 +4796,7 @@ typedef struct hci_le_con_cmp_evt
 typedef struct hci_le_rd_rem_feats_cmd
 {
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
 } hci_le_rd_rem_feats_cmd_t;
 
 /// HCI command complete event structure for HCI LE read remote feature Command
@@ -4778,13 +4804,13 @@ typedef struct hci_le_rd_rem_feats_cmd
 typedef struct hci_le_rd_rem_feats_cmd_cmp_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Status of received command
-    uint8_t             status;
+    uint8_t status;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     ///Le Features
-    le_features_t       le_feats;
+    le_features_t le_feats;
 } hci_le_rd_rem_feats_cmd_cmp_evt_t;
 
 /// HCI command structure for the read transmit power level command
@@ -4792,9 +4818,9 @@ typedef struct hci_le_rd_rem_feats_cmd_cmp_evt
 typedef struct hci_rd_tx_pwr_lvl_cmd
 {
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     ///Power Level type: current or maximum
-    uint8_t     type;
+    uint8_t type;
 } hci_rd_tx_pwr_lvl_cmd_t;
 
 /// HCI command complete event structure for the read transmit power level command
@@ -4806,7 +4832,7 @@ typedef struct hci_rd_tx_pwr_lvl_cmd_cmp_evt
     ///Connection handle
     uint16_t conhdl;
     ///Value of TX power level
-    int8_t     tx_pow_lvl;
+    int8_t tx_pow_lvl;
 } hci_rd_tx_pwr_lvl_cmd_cmp_evt_t;
 
 /// HCI read remote information version command parameters structure
@@ -4814,7 +4840,7 @@ typedef struct hci_rd_tx_pwr_lvl_cmd_cmp_evt
 typedef struct hci_rd_rem_ver_info_cmd
 {
     ///Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
 } hci_rd_rem_ver_info_cmd_t;
 
 /// HCI LE remote connection parameter request event
@@ -4822,17 +4848,17 @@ typedef struct hci_rd_rem_ver_info_cmd
 typedef struct hci_le_rem_con_param_req_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     ///Interval_Min
-    uint16_t            interval_min;
+    uint16_t interval_min;
     ///Interval_Max
-    uint16_t            interval_max;
+    uint16_t interval_max;
     ///Latency
-    uint16_t            latency;
+    uint16_t latency;
     ///Timeout
-    uint16_t            timeout;
+    uint16_t timeout;
 } hci_le_rem_con_param_req_evt_t;
 
 
@@ -4841,49 +4867,49 @@ typedef struct hci_le_rem_con_param_req_evt
 typedef struct hci_le_enh_con_cmp_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Status of received command
-    uint8_t             status;
+    uint8_t status;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     ///Device role - 0=Master/ 1=Slave
-    uint8_t             role;
+    uint8_t role;
     ///Peer address type - 0=public/1=random
-    uint8_t             peer_addr_type;
+    uint8_t peer_addr_type;
     ///Peer address
-    struct bd_addr      peer_addr;
+    struct bd_addr peer_addr;
     ///Local Resolvable Private Address
-    struct bd_addr      loc_rslv_priv_addr;
+    struct bd_addr loc_rslv_priv_addr;
     ///Peer Resolvable Private Address
-    struct bd_addr      peer_rslv_priv_addr;
+    struct bd_addr peer_rslv_priv_addr;
     ///Connection interval
-    uint16_t            con_interval;
+    uint16_t con_interval;
     ///Connection latency
-    uint16_t            con_latency;
+    uint16_t con_latency;
     ///Link supervision timeout
-    uint16_t            sup_to;
+    uint16_t sup_to;
     ///Master clock accuracy
-    uint8_t             clk_accuracy;
+    uint8_t clk_accuracy;
 } hci_le_enh_con_cmp_evt_t;
 
 typedef struct hci_le_generate_dhkey_cmp_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Status of received command
-    uint8_t             status;
+    uint8_t status;
     /// The 32 byte Diffie Helman Key
-    uint8_t             dh_key[32];
+    uint8_t dh_key[32];
 } hci_le_generate_dhkey_cmp_evt_t;
 
 typedef struct hci_le_rd_local_p256_public_key_cmp_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Status of received command
-    uint8_t             status;
+    uint8_t status;
     /// The 32 byte Diffie Helman Key
-    uint8_t             public_key[64];
+    uint8_t public_key[64];
 
 } hci_le_rd_local_p256_public_key_cmp_evt_t;
 
@@ -4893,9 +4919,9 @@ typedef struct hci_le_rd_local_p256_public_key_cmp_evt
 typedef struct hci_le_dir_adv_rep_evt
 {
     ///LE Subevent code
-    uint8_t                 subcode;
+    uint8_t subcode;
     ///Number of reports
-    uint8_t                 nb_reports;
+    uint8_t nb_reports;
     ///Direct Advertising reports structures array
     struct dir_adv_report   adv_rep[BLE_ADV_REPORTS_MAX];
 } hci_le_dir_adv_rep_evt_t;
@@ -4905,9 +4931,9 @@ typedef struct hci_le_dir_adv_rep_evt
 typedef struct hci_le_con_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
 } hci_le_con_evt_t;
 
 /// HCI command complete event structure for HCI LE read remote used feature Command
@@ -4915,13 +4941,13 @@ typedef struct hci_le_con_evt
 typedef struct hci_le_ltk_request_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     ///Random number
-    struct rand_nb      rand_val;
+    struct rand_nb rand_val;
     ///Encryption diversifier
-    uint16_t            ediv;
+    uint16_t ediv;
 } hci_le_ltk_request_evt_t;
 
 /// HCI LE META event LE Data Length Change Event
@@ -4929,17 +4955,17 @@ typedef struct hci_le_ltk_request_evt
 typedef struct hci_le_data_len_chg_evt
 {
     /// LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     /// Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     /// The maximum number of payload octets in TX
-    uint16_t            max_tx_octets;
+    uint16_t max_tx_octets;
     /// The maximum time that the local Controller will take to transmit (in us)
-    uint16_t            max_tx_time;
+    uint16_t max_tx_time;
     /// The maximum number of payload octets in RX
-    uint16_t            max_rx_octets;
+    uint16_t max_rx_octets;
     /// The maximum time that the local Controller will take to receive (in us)
-    uint16_t            max_rx_time;
+    uint16_t max_rx_time;
 } hci_le_data_len_chg_evt_t;
 
 
@@ -4948,15 +4974,15 @@ typedef struct hci_le_data_len_chg_evt
 typedef struct hci_sync_train_rec_evt
 {
     /// Status
-    uint8_t            status;
+    uint8_t status;
     /// BD_ADDR
-    struct bd_addr     bd_addr;
+    struct bd_addr bd_addr;
     /// Clock_Offset (28 bits) - (CLKNslave - CLK) modulo 2^28
-    uint32_t           clock_offset;
+    uint32_t clock_offset;
     /// AFH_Channel_Map
-    struct bt_ch_map    afh_ch_map;
+    struct bt_ch_map afh_ch_map;
     /// LT_ADDR
-    uint8_t            lt_addr;
+    uint8_t lt_addr;
     /// Next_Broadcast_Instant (28 bits)
     uint32_t next_bcst_instant;
     /// Connectionless_Slave_Broadcast_Interval (in slots)
@@ -4970,15 +4996,15 @@ typedef struct hci_sync_train_rec_evt
 typedef struct hci_con_slv_bcst_rec_evt
 {
     /// BD_ADDR
-    struct bd_addr     bd_addr;
+    struct bd_addr bd_addr;
     /// LT_ADDR
-    uint8_t            lt_addr;
+    uint8_t lt_addr;
     /// CLK (28 bits)
-    uint32_t           clk;
+    uint32_t clk;
     /// Offset (28 bits) - (CLKNslave - CLK) modulo 2^28
-    uint32_t           offset;
+    uint32_t offset;
     /// Receive Status
-    uint8_t            receive_status;
+    uint8_t receive_status;
     /// Fragment
     uint8_t fragment;
     /// Data_Length (in bytes)
@@ -4992,9 +5018,9 @@ typedef struct hci_con_slv_bcst_rec_evt
 typedef struct hci_con_slv_bcst_to_evt
 {
     /// BD_ADDR
-    struct bd_addr     bd_addr;
+    struct bd_addr bd_addr;
     /// LT_ADDR
-    uint8_t            lt_addr;
+    uint8_t lt_addr;
 } hci_con_slv_bcst_to_evt_t;
 
 /// HCI Connectionless Slave Broadcast Channel Map Change Event
@@ -5002,25 +5028,25 @@ typedef struct hci_con_slv_bcst_to_evt
 typedef struct hci_con_slv_bcst_ch_map_chg_evt
 {
     /// Channel_Map
-    struct bt_ch_map    ch_map;
+    struct bt_ch_map ch_map;
 } hci_con_slv_bcst_ch_map_chg_evt_t;
 
 /*@TRACE*/
 typedef struct hci_le_gen_dhkey_cmp_evt
 {
     ///LE Subevent code
-    uint8_t      subcode;
-    uint8_t      status;
-    uint8_t      dh_key[32];
+    uint8_t subcode;
+    uint8_t status;
+    uint8_t dh_key[32];
 } hci_le_gen_dhkey_cmp_evt_t;
 
 /*@TRACE*/
 typedef struct hci_le_rd_loc_p256_pub_key_cmp_evt
 {
     ///LE Subevent code
-    uint8_t       subcode;
-    uint8_t       status;
-    public_key_t  public_key;
+    uint8_t subcode;
+    uint8_t status;
+    public_key_t public_key;
 } hci_le_rd_loc_p256_pub_key_cmp_evt_t;
 
 
@@ -5029,21 +5055,21 @@ typedef struct hci_le_rd_loc_p256_pub_key_cmp_evt
 typedef struct hci_le_rx_test_v3_cmd
 {
     /// RX channel, range: 0x00 to 0x27
-    uint8_t     rx_channel;
+    uint8_t rx_channel;
     /// PHY (@enum le_phy_value)
-    uint8_t     phy;
+    uint8_t phy;
     /// Modulation index (0: standard | 1: stable)
-    uint8_t     mod_idx;
+    uint8_t mod_idx;
     /// Expected CTE length in 8us units, range: 0x02 to 0x14
-    uint8_t     exp_cte_len;
+    uint8_t exp_cte_len;
     /// Expected CTE type (0: AOA | 1: AOD-1us | 2: AOD-2us)
-    uint8_t     exp_cte_type;
+    uint8_t exp_cte_type;
     /// Slot durations (1: 1 us | 2: 2 us)
-    uint8_t     slot_dur;
+    uint8_t slot_dur;
     /// Length of switching pattern (number of antenna IDs in the pattern), range: 0x02 to 0x4B
-    uint8_t     switching_pattern_len;
+    uint8_t switching_pattern_len;
     /// Antenna IDs
-    uint8_t     antenna_id[MAX_SWITCHING_PATTERN_LEN];
+    uint8_t antenna_id[MAX_SWITCHING_PATTERN_LEN];
 } hci_le_rx_test_v3_cmd_t;
 
 /// HCI command structure for the LE transmitter test v3 command
@@ -5051,9 +5077,9 @@ typedef struct hci_le_rx_test_v3_cmd
 typedef struct hci_le_tx_test_v3_cmd
 {
     /// TX channel, range: 0x00 to 0x27
-    uint8_t     tx_channel;
+    uint8_t tx_channel;
     /// Length of test data in bytes, range: 0x00 to 0xFF
-    uint8_t     test_data_len;
+    uint8_t test_data_len;
     /**
      * Packet payload
      * 0x00 PRBS9 sequence "11111111100000111101" (in transmission order) as described in [Vol 6] Part F, Section 4.1.5
@@ -5066,17 +5092,17 @@ typedef struct hci_le_tx_test_v3_cmd
      * 0x07 Repeated "01010101" (in transmission order) sequence
      * 0x08-0xFF Reserved for future use
      */
-    uint8_t     pkt_payl;
+    uint8_t pkt_payl;
     /// PHY (@enum le_phy_value)
-    uint8_t     phy;
+    uint8_t phy;
     /// CTE length (in 8us unit)
-    uint8_t     cte_len;
+    uint8_t cte_len;
     /// CTE type (0: AOA | 1: AOD-1us | 2: AOD-2us)
-    uint8_t     cte_type;
+    uint8_t cte_type;
     /// Length of switching pattern (number of antenna IDs in the pattern)
-    uint8_t     switching_pattern_len;
+    uint8_t switching_pattern_len;
     /// Antenna IDs
-    uint8_t     antenna_id[MAX_SWITCHING_PATTERN_LEN];
+    uint8_t antenna_id[MAX_SWITCHING_PATTERN_LEN];
 } hci_le_tx_test_v3_cmd_t;
 
 /// HCI command structure for the LE transmitter test v4 command
@@ -5084,9 +5110,9 @@ typedef struct hci_le_tx_test_v3_cmd
 typedef struct hci_le_tx_test_v4_cmd
 {
     /// TX channel, range: 0x00 to 0x27
-    uint8_t     tx_channel;
+    uint8_t tx_channel;
     /// Length of test data in bytes, range: 0x00 to 0xFF
-    uint8_t     test_data_len;
+    uint8_t test_data_len;
     /**
      * Packet payload
      * 0x00 PRBS9 sequence "11111111100000111101" (in transmission order) as described in [Vol 6] Part F, Section 4.1.5
@@ -5099,37 +5125,38 @@ typedef struct hci_le_tx_test_v4_cmd
      * 0x07 Repeated "01010101" (in transmission order) sequence
      * 0x08-0xFF Reserved for future use
      */
-    uint8_t     pkt_payl;
+    uint8_t pkt_payl;
     /// PHY (@enum le_phy_value)
-    uint8_t     phy;
+    uint8_t phy;
     /// CTE length (in 8us unit)
-    uint8_t     cte_len;
+    uint8_t cte_len;
     /// CTE type (0: AOA | 1: AOD-1us | 2: AOD-2us)
-    uint8_t     cte_type;
+    uint8_t cte_type;
     /// Length of switching pattern (number of antenna IDs in the pattern)
-    uint8_t     switching_pattern_len;
+    uint8_t switching_pattern_len;
     /// Antenna IDs
-    uint8_t     antenna_id[MAX_SWITCHING_PATTERN_LEN];
+    uint8_t antenna_id[MAX_SWITCHING_PATTERN_LEN];
     /// Transmit power level in dBm (0x7E: minimum | 0x7F: maximum | range: -127 to +20)
-    int8_t     tx_pwr_lvl;
+    int8_t tx_pwr_lvl;
 } hci_le_tx_test_v4_cmd_t;
 
+#if (BLE_CONLESS_CTE_TX)
 /// HCI command structure for the LE set connectionless CTE transmit parameters command
 /*@TRACE*/
 typedef struct hci_le_set_conless_cte_tx_param_cmd
 {
     /// Advertising handle
-    uint8_t     adv_hdl;
+    uint8_t adv_hdl;
     /// CTE length (in 8us unit)
-    uint8_t     cte_len;
+    uint8_t cte_len;
     /// CTE type (0: AOA | 1: AOD-1us | 2: AOD-2us)
-    uint8_t     cte_type;
+    uint8_t cte_type;
     /// CTE count (number of CTEs to transmit in each periodic advertising interval, range 0x01 to 0x10)
-    uint8_t     cte_count;
+    uint8_t cte_count;
     /// Length of switching pattern (number of antenna IDs in the pattern)
-    uint8_t     switching_pattern_len;
+    uint8_t switching_pattern_len;
     /// Antenna IDs
-    uint8_t     antenna_id[MAX_SWITCHING_PATTERN_LEN];
+    uint8_t antenna_id[MAX_SWITCHING_PATTERN_LEN];
 } hci_le_set_conless_cte_tx_param_cmd_t;
 
 /// HCI command structure for the LE set connectionless CTE transmit enable command
@@ -5137,100 +5164,113 @@ typedef struct hci_le_set_conless_cte_tx_param_cmd
 typedef struct hci_le_set_conless_cte_tx_en_cmd
 {
     /// Advertising handle
-    uint8_t     adv_hdl;
+    uint8_t adv_hdl;
     /// CTE enable
-    uint8_t     cte_en;
+    uint8_t cte_en;
 } hci_le_set_conless_cte_tx_en_cmd_t;
+#endif // (BLE_CONLESS_CTE_TX)
 
+#if (BLE_CONLESS_CTE_RX)
 /// HCI command structure for LE set connectionless IQ sampling enable command
 /*@TRACE*/
 typedef struct hci_le_set_conless_iq_sampl_en_cmd
 {
     /// Sync handle
-    uint16_t    sync_hdl;
+    uint16_t sync_hdl;
     /// Sampling enable
-    uint8_t     sampl_en;
+    uint8_t sampl_en;
     /// Slot durations (1: 1us | 2: 2us)
-    uint8_t     slot_dur;
+    uint8_t slot_dur;
     /// Max sampled CTEs
-    uint8_t     max_sampl_cte;
+    uint8_t max_sampl_cte;
     /// Length of switching pattern
-    uint8_t     switching_pattern_len;
+    uint8_t switching_pattern_len;
     /// Antenna IDs
-    uint8_t     antenna_id[MAX_SWITCHING_PATTERN_LEN];
+    uint8_t antenna_id[MAX_SWITCHING_PATTERN_LEN];
 } hci_le_set_conless_iq_sampl_en_cmd_t;
+#endif // (BLE_CONLESS_CTE_RX)
 
+#if (BLE_CON_CTE_REQ)
 /// HCI command structure for the LE set connection CTE receive parameters command
 /*@TRACE*/
 typedef struct hci_le_set_con_cte_rx_param_cmd
 {
     /// Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     /// Sampling enable
-    uint8_t     sampl_en;
+    uint8_t sampl_en;
     /// Slot durations (1: 1us | 2: 2us)
-    uint8_t     slot_dur;
+    uint8_t slot_dur;
     /// Length of switching pattern (number of antenna IDs in the pattern)
-    uint8_t     switching_pattern_len;
+    uint8_t switching_pattern_len;
     /// Antenna IDs
-    uint8_t     antenna_id[MAX_SWITCHING_PATTERN_LEN];
+    uint8_t antenna_id[MAX_SWITCHING_PATTERN_LEN];
 } hci_le_set_con_cte_rx_param_cmd_t;
+#endif // (BLE_CON_CTE_REQ)
 
+#if (BLE_CON_CTE_RSP)
 /// HCI command structure for the LE set connection CTE transmit parameters command
 /*@TRACE*/
 typedef struct hci_le_set_con_cte_tx_param_cmd
 {
     /// Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     /// CTE types (bit0: AOA | bit1: AOD-1us | bit2: AOD-2us)
-    uint8_t     cte_types;
+    uint8_t cte_types;
     /// Length of switching pattern (number of antenna IDs in the pattern)
-    uint8_t     switching_pattern_len;
+    uint8_t switching_pattern_len;
     /// Antenna IDs
-    uint8_t     antenna_id[MAX_SWITCHING_PATTERN_LEN];
+    uint8_t antenna_id[MAX_SWITCHING_PATTERN_LEN];
 } hci_le_set_con_cte_tx_param_cmd_t;
+#endif // (BLE_CON_CTE_RSP)
 
+#if (BLE_CON_CTE_REQ)
 /// HCI command structure for the LE connection CTE request enable command
 /*@TRACE*/
 typedef struct hci_le_con_cte_req_en_cmd
 {
     /// Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     /// Enable
-    uint8_t     en;
+    uint8_t en;
     /// CTE request interval (in number of connection events)
-    uint16_t    cte_req_intv;
+    uint16_t cte_req_intv;
     /// Requested CTE length (in 8us unit)
-    uint8_t     req_cte_len;
+    uint8_t req_cte_len;
     /// Requested CTE type (0: AOA | 1: AOD-1us | 2: AOD-2us)
-    uint8_t     req_cte_type;
+    uint8_t req_cte_type;
 } hci_le_con_cte_req_en_cmd_t;
+#endif // (BLE_CON_CTE_REQ)
 
+#if (BLE_CON_CTE_RSP)
 /// HCI command structure for the LE connection CTE response enable command
 /*@TRACE*/
 typedef struct hci_le_con_cte_rsp_en_cmd
 {
     /// Connection handle
-    uint16_t    conhdl;
+    uint16_t conhdl;
     /// Enable
-    uint8_t     en;
+    uint8_t en;
 } hci_le_con_cte_rsp_en_cmd_t;
+#endif // (BLE_CON_CTE_RSP)
 
+#if (BLE_AOA || BLE_AOD)
 /// HCI command structure for LE read antenna information command complete event
 /*@TRACE*/
 typedef struct hci_le_rd_antenna_inf_cmd_cmp_evt
 {
     /// Status
-    uint8_t     status;
+    uint8_t status;
     /// Supported switching sampling rates
-    uint8_t     supp_switching_sampl_rates;
+    uint8_t supp_switching_sampl_rates;
     /// Number of antennae
-    uint8_t     antennae_num;
+    uint8_t antennae_num;
     /// Max length of switching pattern (number of antenna IDs in the pattern)
-    uint8_t     max_switching_pattern_len;
+    uint8_t max_switching_pattern_len;
     /// Max CTE length
-    uint8_t     max_cte_len;
+    uint8_t max_cte_len;
 } hci_le_rd_antenna_inf_cmd_cmp_evt_t;
+#endif // (BLE_AOA || BLE_AOD)
 
 #if (BLE_PER_ADV)
 /// HCI command structure for the LE set periodic advertising receive enable command
@@ -5274,15 +5314,15 @@ typedef struct hci_le_per_adv_set_info_transf_cmd
 typedef struct hci_le_set_per_adv_sync_transf_param_cmd
 {
     /// Connection handle
-    uint16_t  conhdl;
+    uint16_t conhdl;
     /// Mode (@see enum per_adv_sync_info_rec_mode)
-    uint8_t   mode;
+    uint8_t mode;
     /// The number of periodic advertising packets that can be skipped after a successful receive
-    uint16_t  skip;
+    uint16_t skip;
     /// Sync timeout (Time=N*10ms)
-    uint16_t  sync_to;
+    uint16_t sync_to;
     /// CTE type (@see enum sync_cte_type)
-    uint8_t   cte_type;
+    uint8_t cte_type;
 } hci_le_set_per_adv_sync_transf_param_cmd_t;
 
 /// HCI command structure for the LE Set Default Periodic Advertising Sync Transfer Parameters command
@@ -5290,13 +5330,13 @@ typedef struct hci_le_set_per_adv_sync_transf_param_cmd
 typedef struct hci_le_set_dft_per_adv_sync_transf_param_cmd
 {
     /// Mode (@see enum per_adv_sync_info_rec_mode)
-    uint8_t   mode;
+    uint8_t mode;
     /// The number of periodic advertising packets that can be skipped after a successful receive
-    uint16_t  skip;
+    uint16_t skip;
     /// Sync timeout (Time=N*10ms)
-    uint16_t  sync_to;
+    uint16_t sync_to;
     /// CTE type (@see enum sync_cte_type)
-    uint8_t   cte_type;
+    uint8_t cte_type;
 } hci_le_set_dft_per_adv_sync_transf_param_cmd_t;
 
 /// HCI LE Periodic Advertising Sync Transfer Received event strucutre
@@ -5304,27 +5344,27 @@ typedef struct hci_le_set_dft_per_adv_sync_transf_param_cmd
 typedef struct hci_le_per_adv_sync_transf_rec_evt
 {
     /// LE Subevent code
-    uint8_t        subcode;
+    uint8_t subcode;
     /// Status
-    uint8_t        status;
+    uint8_t status;
     /// Connection handle
-    uint16_t       conhdl;
+    uint16_t conhdl;
     /// Service data (value provided by the Host)
-    uint16_t       serv_data;
+    uint16_t serv_data;
     /// Sync handle
-    uint16_t       sync_hdl;
+    uint16_t sync_hdl;
     /// Advertising SID
-    uint8_t        adv_sid;
+    uint8_t adv_sid;
     ///Advertising address type: public/random
-    uint8_t        adv_addr_type;
+    uint8_t adv_addr_type;
     ///Advertising address value
     struct bd_addr adv_addr;
     /// Advertiser PHY (@enum le_phy_value)
-    uint8_t        phy;
+    uint8_t phy;
     /// Advertising interval (Time=N*1.25ms)
-    uint16_t       interval;
+    uint16_t interval;
     /// Advertiser clock accuracy (@see enum SCA)
-    uint8_t        adv_ca;
+    uint8_t adv_ca;
 } hci_le_per_adv_sync_transf_rec_evt_t;
 #endif // (BLE_PAST)
 
@@ -5333,9 +5373,9 @@ typedef struct hci_le_per_adv_sync_transf_rec_evt
 typedef struct hci_le_enh_rd_tx_pwr_lvl_cmd
 {
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// PHY (@see enum le_phy_pwr_value)
-    uint8_t        phy;
+    uint8_t phy;
 } hci_le_enh_rd_tx_pwr_lvl_cmd_t;
 
 /// HCI command structure for the LE enhanced read transmit power level command complete event
@@ -5343,15 +5383,15 @@ typedef struct hci_le_enh_rd_tx_pwr_lvl_cmd
 typedef struct hci_le_enh_rd_tx_pwr_lvl_cmd_cmp_evt
 {
     /// Status
-    uint8_t     status;
+    uint8_t status;
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// PHY (@see enum le_phy_pwr_value)
-    uint8_t         phy;
+    uint8_t phy;
     /// Current transmit power level (dBm)
-    int8_t         curr_tx_pwr_lvl;
+    int8_t curr_tx_pwr_lvl;
     /// Max transmit power level (dBm)
-    int8_t         max_tx_pwr_lvl;
+    int8_t max_tx_pwr_lvl;
 } hci_le_enh_rd_tx_pwr_lvl_cmd_cmp_evt_t;
 
 /// HCI command structure for the LE read remote transmit power level command
@@ -5359,9 +5399,9 @@ typedef struct hci_le_enh_rd_tx_pwr_lvl_cmd_cmp_evt
 typedef struct hci_le_rd_remote_tx_pwr_lvl_cmd
 {
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// PHY (@see le_phy_pwr_value)
-    uint8_t         phy;
+    uint8_t phy;
 } hci_le_rd_remote_tx_pwr_lvl_cmd_t;
 
 /// HCI command structure for the LE set path loss reporting parameters command
@@ -5369,17 +5409,17 @@ typedef struct hci_le_rd_remote_tx_pwr_lvl_cmd
 typedef struct hci_le_set_path_loss_rep_param_cmd
 {
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// High threshold (dB)
-    uint8_t         hi_thr;
+    uint8_t hi_thr;
     /// High hysteresis (dB)
-    uint8_t         hi_hyst;
+    uint8_t hi_hyst;
     /// Low threshold (dB)
-    uint8_t         lo_thr;
+    uint8_t lo_thr;
     /// Low hysteresis (dB)
-    uint8_t         lo_hyst;
+    uint8_t lo_hyst;
     /// Min time spent (conn events)
-    uint16_t        min_time;
+    uint16_t min_time;
 } hci_le_set_path_loss_rep_param_cmd_t;
 
 /// HCI command structure for the LE set path loss reporting parameters command complete event
@@ -5387,9 +5427,9 @@ typedef struct hci_le_set_path_loss_rep_param_cmd
 typedef struct hci_le_set_path_loss_rep_param_cmd_cmp_evt
 {
     /// Status
-    uint8_t     status;
+    uint8_t status;
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
 } hci_le_set_path_loss_rep_param_cmd_cmp_evt_t;
 
 /// HCI command structure for the LE set path loss reporting enable command
@@ -5397,9 +5437,9 @@ typedef struct hci_le_set_path_loss_rep_param_cmd_cmp_evt
 typedef struct hci_le_set_path_loss_rep_en_cmd
 {
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// Enable (@see enum pwr_report_en)
-    uint8_t         en;
+    uint8_t en;
 } hci_le_set_path_loss_rep_en_cmd_t;
 
 /// HCI command structure for the LE set path loss reporting enable command complete event
@@ -5407,9 +5447,9 @@ typedef struct hci_le_set_path_loss_rep_en_cmd
 typedef struct hci_le_set_path_loss_rep_en_cmd_cmp_evt
 {
     /// Status
-    uint8_t     status;
+    uint8_t status;
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
 } hci_le_set_path_loss_rep_en_cmd_cmp_evt_t;
 
 /// HCI command structure for the LE set transmit power reporting enable command
@@ -5417,11 +5457,11 @@ typedef struct hci_le_set_path_loss_rep_en_cmd_cmp_evt
 typedef struct hci_le_set_tx_power_rep_en_cmd
 {
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// Local Enable (@see enum pwr_report_en)
-    uint8_t         local_en;
+    uint8_t local_en;
     /// Remote Enable (@see enum pwr_report_en)
-    uint8_t         remote_en;
+    uint8_t remote_en;
 } hci_le_set_tx_power_rep_en_cmd_t;
 
 /// HCI command structure for the LE set transmit power reporting enable command complete event
@@ -5429,9 +5469,9 @@ typedef struct hci_le_set_tx_power_rep_en_cmd
 typedef struct hci_le_set_tx_power_rep_en_cmd_cmp_evt
 {
     /// Status
-    uint8_t     status;
+    uint8_t status;
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
 } hci_le_set_tx_power_rep_en_cmd_cmp_evt_t;
 
 /// HCI command structure for the LE Path Loss Threshold event
@@ -5439,13 +5479,13 @@ typedef struct hci_le_set_tx_power_rep_en_cmd_cmp_evt
 typedef struct hci_le_path_loss_threshold_evt
 {
     /// LE Subevent code
-    uint8_t         subcode;
+    uint8_t subcode;
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// Current path loss (dB)
-    uint8_t         curr_path_loss;
+    uint8_t curr_path_loss;
     /// Zone entered (see enum #le_path_loss_zone) meaningful only with available current path loss
-    uint8_t         zone_entered;
+    uint8_t zone_entered;
 } hci_le_path_loss_threshold_evt_t;
 
 /// HCI command strucutre for the LE Transmit Power Reporting event
@@ -5453,21 +5493,21 @@ typedef struct hci_le_path_loss_threshold_evt
 typedef struct hci_le_tx_power_rep_evt
 {
     /// LE Subevent code
-    uint8_t         subcode;
+    uint8_t subcode;
     /// Status
-    uint8_t        status;
+    uint8_t status;
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// Reason (@see enum pwr_report_reason)
-    uint8_t         reason;
+    uint8_t reason;
     /// PHY (@see enum le_phy_pwr_value)
-    uint8_t         phy;
+    uint8_t phy;
     /// Transmit Power level (dBm)
-    int8_t         tx_pwr;
+    int8_t tx_pwr;
     /// Transmit Power level flags (@see enum pwr_ctrl_flags)
-    uint8_t         flags;
+    uint8_t flags;
     /// Delta (dB)
-    int8_t         delta;
+    int8_t delta;
 } hci_le_tx_power_rep_evt_t;
 
 #if (BLE_PWR_CTRL && RW_DEBUG)
@@ -5476,9 +5516,9 @@ typedef struct hci_le_tx_power_rep_evt
 typedef struct hci_dbg_le_set_rsp_tx_pwr_cmd
 {
     /// Connection handle
-    uint16_t        conhdl;
+    uint16_t conhdl;
     /// TX power
-    int8_t          tx_pwr;
+    int8_t tx_pwr;
 } hci_dbg_le_set_rsp_tx_pwr_cmd_t;
 #endif // (BLE_PWR_CTRL && RW_DEBUG)
 
@@ -5644,9 +5684,9 @@ typedef struct hci_vs_rd_piconet_clock_cmd_cmp_evt
 typedef struct hci_vs_rx_test_cmd
 {
     /// RX channel, range: 0 to 79
-    uint8_t     rx_channel;
+    uint8_t rx_channel;
     /// Packet type
-    uint8_t     pkt_type;
+    uint8_t pkt_type;
     /// Infinite test indicator: false if 0, true if 1
     uint8_t infinite_test;
 } hci_vs_rx_test_cmd_t;
@@ -5656,9 +5696,9 @@ typedef struct hci_vs_rx_test_cmd
 typedef struct hci_vs_tx_test_cmd
 {
     /// TX channel, range: 0 to 79
-    uint8_t     tx_channel;
+    uint8_t tx_channel;
     /// Length of test data in bytes, range: 0 to 1021
-    uint16_t     test_data_len;
+    uint16_t test_data_len;
     /**
      * Packet payload
      * 0x00 PRBS9 sequence "11111111100000111101" (in transmission order) as described in [Vol 6] Part F, Section 4.1.5
@@ -5671,11 +5711,11 @@ typedef struct hci_vs_tx_test_cmd
      * 0x07 Repeated "01010101" (in transmission order) sequence
      * 0x08-0xFF Reserved for future use
      */
-    uint8_t     pkt_payl;
+    uint8_t pkt_payl;
     /// Packet_Type
-    uint8_t     pkt_type;
+    uint8_t pkt_type;
     /// Transmit power level in dBm (0x7E: minimum | 0x7F: maximum | range: -127 to +20)
-    int8_t     tx_pwr_lvl;
+    int8_t tx_pwr_lvl;
     /// Infinite test indicator: false if 0, true if 1
     uint8_t infinite_test;
 } hci_vs_tx_test_cmd_t;
@@ -5685,9 +5725,9 @@ typedef struct hci_vs_tx_test_cmd
 typedef struct hci_vs_test_end_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t             status;
+    uint8_t status;
     ///Number of RX/TX packets
-    uint16_t            nb_packets;
+    uint16_t nb_packets;
 } hci_vs_test_end_cmd_cmp_evt_t;
 #endif //(BT_HCI_TEST_MODE)
 
@@ -6168,16 +6208,17 @@ typedef struct hci_vs_le_set_infinite_test_cmd
 } hci_vs_le_set_infinite_test_cmd_t;
 #endif // (BLE_EMB_PRESENT && BLE_TEST_MODE_SUPPORT)
 
+
 #if (RW_DEBUG)
 /// HCI DBG Meta Event indicating a SW assertion
 /*@TRACE*/
 typedef struct hci_dbg_assert_evt
 {
     ///DBG Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     /// Assert type (warning/error)
     //@trc_ref assert_type
-    uint8_t             type;
+    uint8_t type;
     /// Line number
     uint32_t line;
     /// Param0
@@ -6194,7 +6235,7 @@ typedef struct hci_dbg_assert_evt
 typedef struct hci_le_rd_phy_cmd
 {
     /// Connection Handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
 } hci_le_rd_phy_cmd_t;
 
 /// HCI LE Set Default PHY Command
@@ -6202,11 +6243,11 @@ typedef struct hci_le_rd_phy_cmd
 typedef struct hci_le_set_dft_phy_cmd
 {
     /// Preferred PHYS selection
-    uint8_t            all_phys;
+    uint8_t all_phys;
     /// Preferred PHYS for TX
-    uint8_t            tx_phys;
+    uint8_t tx_phys;
     /// Preferred PHYS for RX
-    uint8_t            rx_phys;
+    uint8_t rx_phys;
 } hci_le_set_dft_phy_cmd_t;
 
 /// HCI LE Set PHY Command
@@ -6214,15 +6255,15 @@ typedef struct hci_le_set_dft_phy_cmd
 typedef struct hci_le_set_phy_cmd
 {
     /// Connection Handle
-    uint16_t           conhdl;
+    uint16_t conhdl;
     /// Preferred PHYS selection
-    uint8_t            all_phys;
+    uint8_t all_phys;
     /// Preferred PHYS for TX
-    uint8_t            tx_phys;
+    uint8_t tx_phys;
     /// Preferred PHYS for RX
-    uint8_t            rx_phys;
+    uint8_t rx_phys;
     /// PHY options
-    uint16_t           phy_opt;
+    uint16_t phy_opt;
 } hci_le_set_phy_cmd_t;
 
 /// HCI LE Set Extended Advertising Parameters Command Complete Event
@@ -6230,9 +6271,9 @@ typedef struct hci_le_set_phy_cmd
 typedef struct hci_le_set_ext_adv_param_cmd_cmp_evt
 {
     /// Status
-    uint8_t            status;
+    uint8_t status;
     /// Selected Tx power
-    int8_t             sel_tx_pwr;
+    int8_t sel_tx_pwr;
 } hci_le_set_ext_adv_param_cmd_cmp_evt_t;
 
 /// HCI LE Receiver Test v2 Command
@@ -6240,11 +6281,11 @@ typedef struct hci_le_set_ext_adv_param_cmd_cmp_evt
 typedef struct hci_le_rx_test_v2_cmd
 {
     /// RX channel, range: 0x00 to 0x27
-    uint8_t     rx_channel;
+    uint8_t rx_channel;
     /// PHY (@enum le_phy_value)
-    uint8_t     phy;
+    uint8_t phy;
     /// Modulation index (0: standard | 1: stable)
-    uint8_t     mod_idx;
+    uint8_t mod_idx;
 } hci_le_rx_test_v2_cmd_t;
 
 /// HCI LE Transmitter Test v2 Command
@@ -6252,9 +6293,9 @@ typedef struct hci_le_rx_test_v2_cmd
 typedef struct hci_le_tx_test_v2_cmd
 {
     /// TX channel, range: 0x00 to 0x27
-    uint8_t     tx_channel;
+    uint8_t tx_channel;
     /// Length of test data in bytes, range: 0x00 to 0xFF
-    uint8_t     test_data_len;
+    uint8_t test_data_len;
     /**
      * Packet payload
      * 0x00 PRBS9 sequence "11111111100000111101" (in transmission order) as described in [Vol 6] Part F, Section 4.1.5
@@ -6267,9 +6308,9 @@ typedef struct hci_le_tx_test_v2_cmd
      * 0x07 Repeated "01010101" (in transmission order) sequence
      * 0x08-0xFF Reserved for future use
      */
-    uint8_t     pkt_payl;
+    uint8_t pkt_payl;
     /// PHY (@enum le_phy_value)
-    uint8_t     phy;
+    uint8_t phy;
 } hci_le_tx_test_v2_cmd_t;
 
 ///HCI LE Set Advertising Set Random Address Command parameters structure
@@ -6529,21 +6570,23 @@ typedef struct hci_le_set_per_adv_en_cmd
 
 
 
+
+
 ///HCI LE Advertising Set Terminated event
 /*@TRACE
  * hci_le_adv_set_terminated_evt = hci_le_adv_set_term_evt*/
 typedef struct hci_le_adv_set_term_evt
 {
     /// LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Status
-    uint8_t  status;
+    uint8_t status;
     /// Advertising handle
-    uint8_t  adv_hdl;
+    uint8_t adv_hdl;
     /// Connection handle
     uint16_t conhdl;
     /// Num_Completed_Extended_Advertising_Events
-    uint8_t  nb_cmp_ext_adv_evt;
+    uint8_t nb_cmp_ext_adv_evt;
 } hci_le_adv_set_term_evt_t;
 
 ///HCI LE Scan Request Received event
@@ -6551,9 +6594,9 @@ typedef struct hci_le_adv_set_term_evt
 typedef struct hci_le_scan_req_rcvd_evt
 {
     /// LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Advertising handle
-    uint8_t  adv_hdl;
+    uint8_t adv_hdl;
     /// Scanner address type:  public=0 / random=1 / rpa_or_pub=2 / rpa_or_rnd=3
     uint8_t scan_addr_type;
     /// Scanner address
@@ -6574,14 +6617,16 @@ typedef struct hci_le_rd_per_adv_list_size_cmd_cmp_evt
 
 
 
+
+
 ///HCI LE Channel Selection Algorithm event
 /*@TRACE*/
 typedef struct hci_le_ch_sel_algo_evt
 {
     /// LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Connection handle
-    uint16_t  conhdl;
+    uint16_t conhdl;
     /// Channel selection algorithm
     uint8_t ch_sel_algo;
 } hci_le_ch_sel_algo_evt_t;
@@ -6591,15 +6636,15 @@ typedef struct hci_le_ch_sel_algo_evt
 typedef struct hci_le_rd_phy_cmd_cmp_evt
 {
     ///Status of received command
-    uint8_t             status;
+    uint8_t status;
     /// Connection Handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     /// Current configured PHY for TX
     //@trc_ref le_phy_value
-    uint8_t             tx_phy;
+    uint8_t tx_phy;
     /// Current configured PHY for RX
     //@trc_ref le_phy_value
-    uint8_t             rx_phy;
+    uint8_t rx_phy;
 } hci_le_rd_phy_cmd_cmp_evt_t;
 
 /// HCI LE PHY Update Complete event
@@ -6607,29 +6652,30 @@ typedef struct hci_le_rd_phy_cmd_cmp_evt
 typedef struct hci_le_phy_upd_cmp_evt
 {
     ///LE Subevent code
-    uint8_t             subcode;
+    uint8_t subcode;
     ///Status of received command
-    uint8_t             status;
+    uint8_t status;
     ///Connection handle
-    uint16_t            conhdl;
+    uint16_t conhdl;
     ///TX phy chosen
     //@trc_ref le_phy_value
-    uint8_t             tx_phy;
+    uint8_t tx_phy;
     ///RX phy chosen
     //@trc_ref le_phy_value
-    uint8_t             rx_phy;
+    uint8_t rx_phy;
 } hci_le_phy_upd_cmp_evt_t;
 
+#if (BLE_CONLESS_CTE_RX)
 ///HCI LE Connectionless IQ Report event
 /*@TRACE*/
 typedef struct hci_le_conless_iq_report_evt
 {
     /// LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Sync handle
     uint16_t sync_hdl;
     /// Data channel index
-    uint8_t  channel_idx;
+    uint8_t channel_idx;
     /// RSSI (in 0.1 dBm)
     int16_t rssi;
     /// RSSI antenna ID
@@ -6653,19 +6699,21 @@ typedef struct hci_le_conless_iq_report_evt
         int8_t q;
     } iq_sample[MAX_SAMPLE_CNT];
 } hci_le_conless_iq_report_evt_t;
+#endif // (BLE_CONLESS_CTE_RX)
 
+#if (BLE_CON_CTE_REQ)
 ///HCI LE Connection IQ Report event
 /*@TRACE*/
 typedef struct hci_le_con_iq_report_evt
 {
     /// LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Connection handle
     uint16_t conhdl;
     /// Rx PHY  (@see enum le_phy_value)
-    uint8_t  rx_phy;
+    uint8_t rx_phy;
     /// Data channel index
-    uint8_t  data_channel_idx;
+    uint8_t data_channel_idx;
     /// RSSI (in 0.1 dBm)
     int16_t rssi;
     /// RSSI antenna ID
@@ -6695,12 +6743,13 @@ typedef struct hci_le_con_iq_report_evt
 typedef struct hci_le_cte_req_failed_evt
 {
     /// LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Status
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle
-    uint16_t  conhdl;
+    uint16_t conhdl;
 } hci_le_cte_req_failed_evt_t;
+#endif // (BLE_CON_CTE_REQ)
 
 ///Commands Opcodes: OGF(6b) | OCF(10b)
 /* Some Abbreviation used in names:
@@ -6723,16 +6772,17 @@ typedef struct hci_le_cte_req_failed_evt
 typedef struct hci_le_rd_buf_size_v2_cmd_cmp_evt
 {
     /// 0x00 - Request succeed ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Maximum length (in octets) of the data portion of each HCI ACL (0x0000: No dedicated LE buffer, 0x0001-0x001A RFU, Range 0x001B-0xFFFF)
     uint16_t le_acl_data_packet_length;
     /// The total number of HCI ACL data packets that can be stored in the data buffers of the Controller (0x00: No dedicated LE buffer, Range 0x01-0xFF)
-    uint8_t  total_num_le_acl_data_packets;
+    uint8_t total_num_le_acl_data_packets;
     /// The maximum length (in octets) of the data portion of each HCI ISO data packet (0x0000: No dedicated ISO buffer, Range 0x0001-0xFFFF)
     uint16_t iso_data_packet_length;
     /// The total number of HCI ISO data packets that can be stored in the ISO buffers of the Controller (0x00: No dedicated ISO buffer, Range 0x01-0xFF)
-    uint8_t  total_num_iso_data_packets;
+    uint8_t total_num_iso_data_packets;
 } hci_le_rd_buf_size_v2_cmd_cmp_evt_t;
+
 
 #if (BLE_CIS || BLE_BIS)
 /// Command Complete event of HCI_LE_RD_ISO_TX_SYNC_CMD
@@ -6740,7 +6790,7 @@ typedef struct hci_le_rd_buf_size_v2_cmd_cmp_evt
 typedef struct hci_le_rd_iso_tx_sync_cmd_cmp_evt
 {
     /// 0x00 - Command succeeded ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle of the CIS or BIS (12 bits meaningful - Range 0x0000-0x0EFF)
     uint16_t conhdl;
     /// The packet sequence number of an SDU (Range 0x0000-0xFFFF)
@@ -6758,19 +6808,19 @@ typedef struct hci_le_rd_iso_tx_sync_cmd_cmp_evt
 typedef struct hci_le_cis_param
 {
     /// Used to identify a Connected Isochronous Stream. (Range 0x00-0xEF)
-    uint8_t  cis_id;
+    uint8_t cis_id;
     /// Maximum size of an SDU in octets from the master Host (12 bits meaningful - Range 0x000-0xFFF).
     uint16_t max_sdu_m2s;
     /// Maximum size of an SDU in octets from the master Host (12 bits meaningful - Range 0x000-0xFFF).
     uint16_t max_sdu_s2m;
     /// Master to slave PHY, bit 0: 1Mbps, bit 1: 2Mbps, bit 2: LE-Coded
-    uint8_t  phy_m2s;
+    uint8_t phy_m2s;
     /// Slave to master PHY, bit 0: 1Mbps, bit 1: 2Mbps, bit 2: LE-Coded
-    uint8_t  phy_s2m;
+    uint8_t phy_s2m;
     /// Maximum number of times every CIS Data PDU should be retransmitted from the master to slave (range 0x00-0x0F)
-    uint8_t  rtn_m2s;
+    uint8_t rtn_m2s;
     /// Maximum number of times every CIS Data PDU should be retransmitted from the slave to master (range 0x00-0x0F)
-    uint8_t  rtn_s2m;
+    uint8_t rtn_s2m;
 } hci_le_cis_param_t;
 
 /// Used by a master Host to set the parameters of all Connected Isochronous Streams associated with a Connected
@@ -6779,7 +6829,7 @@ typedef struct hci_le_cis_param
 typedef struct hci_le_set_cig_params_cmd
 {
     /// Used to identify the Connected Isochronous Group (range 0x00 to 0xEF).
-    uint8_t  cig_id;
+    uint8_t cig_id;
     /// Interval in microseconds of periodic SDUs master to slave (20 bits meaningful Range 0x000FF - 0xFFFFF).
     uint32_t sdu_interval_m2s;
     /// Interval in microseconds of periodic SDUs slave to master (20 bits meaningful Range 0x000FF - 0xFFFFF).
@@ -6787,11 +6837,11 @@ typedef struct hci_le_set_cig_params_cmd
     /// Slave Clock Accuracy:
     /// 0x00: 251 ppm to 500 ppm,  0x01: 151 ppm to 250 ppm, 0x02: 101 ppm to 150 ppm, 0x03: 76 ppm to 100 ppm
     /// 0x04:  51 ppm to  75 ppm,  0x05:  31 ppm to  50 ppm, 0x06:  21 ppm to  30 ppm, 0x07:  0 ppm to  20 ppm
-    uint8_t  sca;
+    uint8_t sca;
     /// Scheduling method, 0: Sequential, 1: Interleaved
-    uint8_t  packing;
+    uint8_t packing;
     /// ISOAL Framing mode, 0: Unframed, 1: Framed
-    uint8_t  framing;
+    uint8_t framing;
     /// The maximum time in milliseconds for an SDU to be transported from the master Controller to slave Controller.
     /// (range 0x0005 to 0x0FA0)
     uint16_t max_trans_latency_m2s;
@@ -6799,7 +6849,7 @@ typedef struct hci_le_set_cig_params_cmd
     /// (range 0x0005 to 0x0FA0)
     uint16_t max_trans_latency_s2m;
     /// Total number of CISs in the CIG being added or modified. (Range 0x01-0x10)
-    uint8_t  cis_count;
+    uint8_t cis_count;
     /// CIS Parameters
     struct hci_le_cis_param params[0x10];
 } hci_le_set_cig_params_cmd_t;
@@ -6809,11 +6859,11 @@ typedef struct hci_le_set_cig_params_cmd
 typedef struct hci_le_set_cig_params_cmd_cmp_evt
 {
     /// 0x00 - The Broadcast Isochronous Group has been completed ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Used to identify the Connected Isochronous Group. (Range 0x00-0xEF)
-    uint8_t  cig_id;
+    uint8_t cig_id;
     /// Total number of CISs added or modified by this command (Range 0x01-0x10)
-    uint8_t  cis_count;
+    uint8_t cis_count;
     /// List of connection handles of CISs in the CIG. The connection handle list order is the same as the list order
     /// of the CISs in the command  (Range 0x0000-0x0EFF)
     uint16_t conhdl[0x10];
@@ -6824,24 +6874,24 @@ typedef struct hci_le_set_cig_params_cmd_cmp_evt
 typedef struct hci_le_cis_test_param
 {
     /// Used to identify a Connected Isochronous Stream. (Range 0x00-0xEF)
-    uint8_t  cis_id;
+    uint8_t cis_id;
     /// Maximum number of subevents in each interval of Connected Isochronous Stream (Range 0x00-0x1F)
-    uint8_t  nse;
+    uint8_t nse;
     /// Maximum size of an SDU in octets from the master Host (12 bits meaningful - Range 0x000-0xFFF).
     uint16_t max_sdu_m2s;
     /// Maximum size of an SDU in octets from the master Host (12 bits meaningful - Range 0x000-0xFFF).
     uint16_t max_sdu_s2m;
     /// Maximum size of payload from master Link Layer to slave Link Layer (Range 0x01-0xFB).
-    uint16_t  max_pdu_m2s;
+    uint16_t max_pdu_m2s;
     /// Maximum size of payload from slave Link Layer to master Link Layer (Range 0x01-0xFB).
-    uint16_t  max_pdu_s2m;
+    uint16_t max_pdu_s2m;
     /// Master to slave PHY, bit 0: 1Mbps, bit 1: 2Mbps, bit 2: LE-Coded
-    uint8_t  phy_m2s;
+    uint8_t phy_m2s;
     /// Slave to master PHY, bit 0: 1Mbps, bit 1: 2Mbps, bit 2: LE-Coded
-    uint8_t  phy_s2m;
+    uint8_t phy_s2m;
     /// The burst number for master to slave transmission (Range 0x00-0x0F).
     /// 0x00 - No isochronous data from the master to the slave
-    uint8_t  bn_m2s;
+    uint8_t bn_m2s;
     /// The burst number for slave to master transmission (Range 0x00-0x0F).
     /// 0x00 - No isochronous data from the slave to the master
     uint8_t  bn_s2m;
@@ -6853,27 +6903,27 @@ typedef struct hci_le_cis_test_param
 typedef struct hci_le_set_cig_params_test_cmd
 {
     /// Used to identify the Connected Isochronous Group. (Range 0x00-0xEF)
-    uint8_t  cig_id;
+    uint8_t cig_id;
     /// Interval in microseconds of periodic SDUs master to slave (20 bits meaningful Range 0x000FF - 0xFFFFF).
     uint32_t sdu_interval_m2s;
     /// Interval in microseconds of periodic SDUs slave to master (20 bits meaningful Range 0x000FF - 0xFFFFF).
     uint32_t sdu_interval_s2m;
     /// The maximum flush timeout for each payload from the master (Range 0x01-0x1F).
-    uint8_t  ft_m2s;
+    uint8_t ft_m2s;
     /// The maximum flush timeout for each payload from the slave (Range 0x01-0x1F).
-    uint8_t  ft_s2m;
+    uint8_t ft_s2m;
     /// The duration of the isochronous interval in multiples of 1.25 ms (Range 0x0004-0xC80).
     uint16_t iso_interval;
     /// Slave Clock Accuracy:
     /// 0x00: 251 ppm to 500 ppm,  0x01: 151 ppm to 250 ppm, 0x02: 101 ppm to 150 ppm, 0x03: 76 ppm to 100 ppm
     /// 0x04:  51 ppm to  75 ppm,  0x05:  31 ppm to  50 ppm, 0x06:  21 ppm to  30 ppm, 0x07:  0 ppm to  20 ppm
-    uint8_t  sca;
+    uint8_t sca;
     /// Scheduling method, 0: Sequential, 1: Interleaved
-    uint8_t  packing;
+    uint8_t packing;
     /// ISOAL Framing mode, 0: Unframed, 1: Framed
-    uint8_t  framing;
+    uint8_t framing;
     /// Total number of CISs in the CIG being added or modified. (Range 0x00-0x10)
-    uint8_t  cis_count;
+    uint8_t cis_count;
     /// CIS Parameters
     struct hci_le_cis_test_param params[0x10];
 } hci_le_set_cig_params_test_cmd_t;
@@ -6883,11 +6933,11 @@ typedef struct hci_le_set_cig_params_test_cmd
 typedef struct hci_le_set_cig_params_test_cmd_cmp_evt
 {
     /// 0x00 - The Broadcast Isochronous Group has been completed ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Used to identify the Connected Isochronous Group. (Range 0x00-0xEF)
-    uint8_t  cig_id;
+    uint8_t cig_id;
     /// Total number of CISs added or modified by this command (Range 0x00-0x10)
-    uint8_t  cis_count;
+    uint8_t cis_count;
     /// List of connection handles of CISs in the CIG. The connection handle list order is the same as the list order
     /// of the CISs in the command  (Range 0x0000-0x0EFF)
     uint16_t conhdl[0x10];
@@ -6909,7 +6959,7 @@ typedef struct hci_le_cis_create_param
 typedef struct hci_le_create_cis_cmd
 {
     /// Total number of CISs to be established. (Range 0x01-0x1F)
-    uint8_t  cis_count;
+    uint8_t cis_count;
     /// Create CIS Parameters
     struct hci_le_cis_create_param params[0x1F];
 } hci_le_create_cis_cmd_t;
@@ -6920,7 +6970,7 @@ typedef struct hci_le_create_cis_cmd
 typedef struct hci_le_remove_cig_cmd
 {
     /// Used to identify the Connected Isochronous Group. (Range 0x00-0xEF)
-    uint8_t  cig_id;
+    uint8_t cig_id;
 } hci_le_remove_cig_cmd_t;
 
 /// Command Complete event of HCI_LE_REMOVE_CIG_CMD
@@ -6928,9 +6978,9 @@ typedef struct hci_le_remove_cig_cmd
 typedef struct hci_le_remove_cig_cmd_cmp_evt
 {
     /// 0x00 - The HCI_LE_Remove_CIG command succeeded ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Identifier of a CIG. (Range 0x00-0xEF)
-    uint8_t  cig_id;
+    uint8_t cig_id;
 } hci_le_remove_cig_cmd_cmp_evt_t;
 
 /// Used by the slave Host to inform the Controller to accept the request for the Connected Isochronous Stream that is
@@ -6950,7 +7000,7 @@ typedef struct hci_le_reject_cis_req_cmd
     /// Connection handle of the Connected Isochronous Stream (Range: 0x0000-0x0EFF)
     uint16_t conhdl;
     /// The reason for rejecting the Connected Isochronous Stream
-    uint8_t  reason;
+    uint8_t reason;
 } hci_le_reject_cis_req_cmd_t;
 #endif // (BLE_CIS)
 
@@ -6960,11 +7010,11 @@ typedef struct hci_le_reject_cis_req_cmd
 typedef struct hci_le_create_big_cmd
 {
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
     /// Used to identify the Periodic Advertising set (Range 0x00-0xEF)
-    uint8_t  adv_hdl;
+    uint8_t adv_hdl;
     /// Total number of Broadcast Isochronous Streams in the Broadcast Isochronous Group. (Range 0x01-0x1F)
-    uint8_t  num_bis;
+    uint8_t num_bis;
     /// Interval of periodic SDUs in microseconds (20 bits meaningful - range 0x000FF-0xFFFFF).
     uint32_t sdu_interval;
     /// Maximum size of an SDU (12 bits meaningful Range 0x000 to 0xFFF).
@@ -6972,17 +7022,17 @@ typedef struct hci_le_create_big_cmd
     /// The maximum time in milliseconds for a SDU to be transported (Range 0x0000-0x0FA0)
     uint16_t trans_latency;
     /// Number of times every BIS Data PDU should be retransmitted (Range 0x00-0x0F)
-    uint8_t  rtn;
+    uint8_t rtn;
     /// PHY, bit 0: 1Mbps, bit 1: 2Mbps, bit 2: LE-Coded
-    uint8_t  phy;
+    uint8_t phy;
     /// Scheduling method, 0: Sequential, 1: Interleaved
-    uint8_t  packing;
+    uint8_t packing;
     /// ISOAL Framing mode, 0: Unframed, 1: Framed
-    uint8_t  framing;
+    uint8_t framing;
     /// 0: Unencrypted, 1: Encrypted
-    uint8_t  encryption;
+    uint8_t encryption;
     /// Code used for deriving the session key for encrypting and decrypting payloads of BISs.
-    uint8_t  broadcast_code[KEY_LEN];
+    uint8_t broadcast_code[KEY_LEN];
 } hci_le_create_big_cmd_t;
 
 /// Prepares the CL-Master Controller to set up a new BIG.
@@ -6990,37 +7040,37 @@ typedef struct hci_le_create_big_cmd
 typedef struct hci_le_create_big_test_cmd
 {
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
     /// Used to identify the Periodic Advertising set (Range 0x00-0xEF)
-    uint8_t  adv_hdl;
+    uint8_t adv_hdl;
     /// Total number of Broadcast Isochronous Streams in the Broadcast Isochronous Group. (Range 0x01-0x1F)
-    uint8_t  num_bis;
+    uint8_t num_bis;
     /// Interval of periodic SDUs in microseconds (20 bits meaningful - range 0x000FF-0xFFFFF).
     uint32_t sdu_interval;
     /// Isochronous Interval in multiples of 1.25 ms (Range 0x0004-0xC80)
     uint16_t iso_interval;
     /// Total number of subevents in each interval of each BIS in the BIG (Range 0x01-0x1F)
-    uint8_t  nse;
+    uint8_t nse;
     /// Maximum size of an SDU (12 bits meaningful Range 0x000 to 0xFFF).
     uint16_t max_sdu;
     /// Maximum size of payload (Range 0x01-0xFB)
-    uint16_t  max_pdu;
+    uint16_t max_pdu;
     /// PHY, bit 0: 1Mbps, bit 1: 2Mbps, bit 2: LE-Coded
-    uint8_t  phy;
+    uint8_t phy;
     /// Scheduling method, 0: Sequential, 1: Interleaved
-    uint8_t  packing;
+    uint8_t packing;
     /// ISOAL Framing mode, 0: Unframed, 1: Framed
-    uint8_t  framing;
+    uint8_t framing;
     /// Number of new payloads in each interval for each Broadcast Isochronous Stream (Burst Number) (Range 0x01-0x07)
-    uint8_t  bn;
+    uint8_t bn;
     /// Number of times the scheduled payload(s) should be transmitted (Range 0x01-0x0F)
-    uint8_t  irc;
+    uint8_t irc;
     /// Isochronous Interval spacing of payloads transmitted in the Pre_Transmission_Subevents (Range 0x00-0x0F)
-    uint8_t  pto;
+    uint8_t pto;
     /// 0: Unencrypted, 1: Encrypted
-    uint8_t  encryption;
+    uint8_t encryption;
     /// Code used for encrypting or decrypting payloads of an encrypted Broadcast Isochronous Stream
-    uint8_t  broadcast_code[KEY_LEN];
+    uint8_t broadcast_code[KEY_LEN];
 } hci_le_create_big_test_cmd_t;
 
 /// Terminate transmission of all Broadcast Isochronous Streams of a Broadcast Isochronous Group or to cancel
@@ -7029,9 +7079,9 @@ typedef struct hci_le_create_big_test_cmd
 typedef struct hci_le_terminate_big_cmd
 {
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
     /// Termination reason
-    uint8_t  reason;
+    uint8_t reason;
 } hci_le_terminate_big_cmd_t;
 
 /// Used to synchronize and receive PDUs from one or more Broadcast Isochronous Streams within a Broadcast Isochronous
@@ -7040,22 +7090,22 @@ typedef struct hci_le_terminate_big_cmd
 typedef struct hci_le_big_create_sync_cmd
 {
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
     /// Used to identify the periodic advertising set (Range 0x0000-0x0EFF)
     uint16_t sync_hdl;
     /// 0: Unencrypted, 1: Encrypted
-    uint8_t  encryption;
+    uint8_t encryption;
     /// 128-bit code used for deriving the session key for decrypting payloads of encrypted BISs.
-    uint8_t  broadcast_code[16];
+    uint8_t broadcast_code[16];
     /// Maximum number of subevents that should be used to receive data payloads in each isochronous interval (0x00-0xFF)
     /// 0x00 - The Controller can  schedule reception of any number of subevents up to NSE
-    uint8_t  mse;
+    uint8_t mse;
     /// Synchronization timeout for a Broadcast Isochronous Group (step 10ms, range 0x000A-0x4000)
     uint16_t big_sync_timeout;
     /// Total number of BISs to synchronize. (Range 0x01-0x1F)
-    uint8_t  num_bis;
+    uint8_t num_bis;
     /// List of indices of BISs (bis_id Range 0x01-0x1F)
-    uint8_t  bis_id[0x1F];
+    uint8_t bis_id[0x1F];
 } hci_le_big_create_sync_cmd_t;
 
 /// Stop synchronization with Broadcast Isochronous Streams or to cancel the process of synchronization to Broadcast Isochronous Streams
@@ -7063,7 +7113,7 @@ typedef struct hci_le_big_create_sync_cmd
 typedef struct hci_le_big_terminate_sync_cmd
 {
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
 } hci_le_big_terminate_sync_cmd_t;
 
 /// Command Complete event of HCI_LE_BIG_TERMINATE_SYNC_CMD
@@ -7071,9 +7121,9 @@ typedef struct hci_le_big_terminate_sync_cmd
 typedef struct hci_le_big_terminate_sync_cmd_cmp_evt
 {
     /// 0x00 - Command succeeded ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
 } hci_le_big_terminate_sync_cmd_cmp_evt_t;
 #endif // (BLE_BIS)
 
@@ -7097,20 +7147,20 @@ typedef struct hci_le_setup_iso_data_path_cmd
     /// 0x00       Input (Host to Controller)
     /// 0x01       Output (Controller to Host)
     /// Others     Reserved for future use
-    uint8_t  data_path_direction;
+    uint8_t data_path_direction;
     /// Data path ID
     /// 0x00       HCI
     /// 0x01-0xFE  Logical_Channel_Number. The meaning of the logical channel is vendor specific.
     /// 0xFF       Reserved for future use
-    uint8_t  data_path_id;
+    uint8_t data_path_id;
     /// Codec ID (5 octets)
-    uint8_t  codec_id[CODEC_ID_LEN];
+    uint8_t codec_id[CODEC_ID_LEN];
     /// Controller delay in ms (Range: 0x000000 to 0x3D0900)
     uint32_t ctrl_delay;
     /// Codec configuration length
-    uint8_t  codec_cfg_len;
+    uint8_t codec_cfg_len;
     /// Codec configuration
-    uint8_t  codec_cfg[__ARRAY_EMPTY];
+    uint8_t codec_cfg[__ARRAY_EMPTY];
 } hci_le_setup_iso_data_path_cmd_t;
 
 /// Command Complete event of HCI_LE_SETUP_ISO_DATA_PATH_CMD
@@ -7118,7 +7168,7 @@ typedef struct hci_le_setup_iso_data_path_cmd
 typedef struct hci_le_setup_iso_data_path_cmd_cmp_evt
 {
     /// 0x00 - Command succeeded ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle of the CIS or BIS (12 bits meaningful - Range 0x0000-0x0EFF)
     uint16_t conhdl;
 } hci_le_setup_iso_data_path_cmd_cmp_evt_t;
@@ -7133,7 +7183,7 @@ typedef struct hci_le_remove_iso_data_path_cmd
     /// bit 0      Input (Host to Controller)
     /// bit 1      Output (Controller to Host)
     /// Others     Reserved for future use
-    uint8_t  data_path_direction;
+    uint8_t data_path_direction;
 } hci_le_remove_iso_data_path_cmd_t;
 
 /// Command Complete event of HCI_LE_REMOVE_ISO_DATA_PATH_CMD
@@ -7141,7 +7191,7 @@ typedef struct hci_le_remove_iso_data_path_cmd
 typedef struct hci_le_remove_iso_data_path_cmd_cmp_evt
 {
     /// 0x00 - Command succeeded ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle of the CIS or BIS (12 bits meaningful - Range 0x0000-0x0EFF)
     uint16_t conhdl;
 } hci_le_remove_iso_data_path_cmd_cmp_evt_t;
@@ -7154,7 +7204,7 @@ typedef struct hci_le_iso_tx_test_cmd
     uint16_t conhdl;
     /// 0x00: Zero length payload 0x01: Variable length payload 0x02: Maximum length payload
     /// All other values: RFU
-    uint8_t  payload_type;
+    uint8_t payload_type;
 } hci_le_iso_tx_test_cmd_t;
 
 /// Used to configure an established CIS or a synchronized BIG specified by the Connection_Handle parameter to receive payloads.
@@ -7165,7 +7215,7 @@ typedef struct hci_le_iso_rx_test_cmd
     uint16_t conhdl;
     /// 0x00: Zero length payload 0x01: Variable length payload 0x02: Maximum length payload
     /// All other values: RFU
-    uint8_t  payload_type;
+    uint8_t payload_type;
 } hci_le_iso_rx_test_cmd_t;
 
 /// Used to read the test counters in the Controller which are configured in ISO Receive Test mode for a CIS or BIS specified by the Connection_Handle.
@@ -7181,7 +7231,7 @@ typedef struct hci_le_iso_read_test_counters_cmd
 typedef struct hci_le_iso_read_test_counters_cmd_cmp_evt
 {
     /// 0x00 - Command succeeded ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle of the CIS or BIS (12 bits meaningful - Range 0x0000-0x0EFF)
     uint16_t conhdl;
     /// Number in the Received_Packet_Count (0xXXXXXXXX)
@@ -7205,7 +7255,7 @@ typedef struct hci_le_iso_test_end_cmd
 typedef struct hci_le_iso_test_end_cmd_cmp_evt
 {
     /// 0x00 - Command succeeded ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle of the CIS or BIS (12 bits meaningful - Range 0x0000-0x0EFF)
     uint16_t conhdl;
     /// Number in the Received_Packet_Count (0xXXXXXXXX)
@@ -7223,6 +7273,14 @@ typedef struct hci_le_rd_iso_link_quality_cmd
     /// Connection handle of the CIS or BIS. (Range 0x0000-0x0EFF)
     uint16_t conhdl;
 } hci_le_rd_iso_link_quality_cmd_t;
+
+/// Set the margin between ISO sub-events.
+/*@TRACE*/
+struct hci_vs_iso_subevt_margin_set_cmd
+{
+    /// Sub-event margin between ISO sub-events, in units of us.
+    uint32_t subevt_margin;
+};
 #endif // (BLE_CIS || BLE_BIS)
 
 /// Used by the Host to set or clear a bit of the feature controlled by the Host in the Link Layer FeatureSet stored in the Controller.
@@ -7240,7 +7298,7 @@ typedef struct hci_le_set_host_feature_cmd
 typedef struct hci_le_rd_iso_link_quality_cmd_cmp_evt
 {
     /// 0x00 - Command succeeded ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle of the CIS or BIS (12 bits meaningful - Range 0x0000-0x0EFF)
     uint16_t conhdl;
     /// Value of the Tx_UnACKed_Packets counter (0xXXXXXXXX)
@@ -7275,12 +7333,12 @@ typedef struct hci_le_basic_evt
 #if (BLE_CIS)
 /// Event indicates that the Connected Isochronous Stream with the Connection_Handle has been established.
 /*@TRACE*/
-typedef struct hci_le_cis_established_evt
+typedef struct hci_le_cis_established_v1_evt
 {
     ///LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// 0x00 - The Broadcast Isochronous Group has been completed ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle of the Connected Isochronous Stream (Range: 0x0000-0x0EFF)
     uint16_t conhdl;
     /// The CIG synchronization delay time in microseconds
@@ -7294,42 +7352,96 @@ typedef struct hci_le_cis_established_evt
     /// (range 0x0000EA to 0x7FFFFF)
     uint32_t trans_latency_s2m;
     /// Master to slave PHY, 0x01: 1Mbps, 0x02: 2Mbps, 0x03: LE-Coded
-    uint8_t  phy_m2s;
+    uint8_t phy_m2s;
     /// Slave to master PHY, 0x01: 1Mbps, 0x02: 2Mbps, 0x03: LE-Coded
-    uint8_t  phy_s2m;
+    uint8_t phy_s2m;
     /// Maximum number of subevents in each isochronous event (Range: 0x01-0x1E)
-    uint8_t  nse;
+    uint8_t nse;
     /// The burst number for master to slave transmission (0x00: no isochronous data from the master to the slave, range 0x01-0x0F)
-    uint8_t  bn_m2s;
+    uint8_t bn_m2s;
     /// The burst number for slave to master transmission (0x00: no isochronous data from the slave to the master, range 0x01-0x0F)
-    uint8_t  bn_s2m;
+    uint8_t bn_s2m;
     /// The flush timeout, in multiples of the ISO_Interval, for each payload sent from the master to the slave (Range: 0x01-0x1F)
-    uint8_t  ft_m2s;
+    uint8_t ft_m2s;
     /// The flush timeout, in multiples of the ISO_Interval, for each payload sent from the slave to the master (Range: 0x01-0x1F)
-    uint8_t  ft_s2m;
+    uint8_t ft_s2m;
     /// Maximum size, in octets, of the payload from master to slave (Range: 0x00-0xFB)
     uint16_t  max_pdu_m2s;
     /// Maximum size, in octets, of the payload from slave to master (Range: 0x00-0xFB)
     uint16_t  max_pdu_s2m;
     /// ISO interval (1.25ms unit, range: 5ms to 4s)
     uint16_t iso_interval;
-} hci_le_cis_established_evt_t;
+} hci_le_cis_established_v1_evt_t;
 
 /// Event indicates that the Connected Isochronous Stream with the Connection_Handle has been established.
 /*@TRACE*/
 typedef struct hci_le_cis_request_evt
 {
     ///LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Connection handle of the ACL (Range: 0x0000-0x0EFF)
     uint16_t acl_conhdl;
     /// Connection handle of the Connected Isochronous Stream (Range: 0x0000-0x0EFF)
     uint16_t cis_conhdl;
     /// Used to identify the Connected Isochronous Group. (Range 0x00-0xEF)
-    uint8_t  cig_id;
+    uint8_t cig_id;
     /// Used to identify a Connected Isochronous Stream. (Range 0x00-0xEF)
-    uint8_t  cis_id;
+    uint8_t cis_id;
 } hci_le_cis_request_evt_t;
+
+/// Event indicates that the Connected Isochronous Stream with the Connection_Handle has been established.
+/*@TRACE*/
+typedef struct hci_le_cis_established_v2_evt
+{
+    ///LE Subevent code
+    uint8_t subcode;
+    /// 0x00 - The Broadcast Isochronous Group has been completed ; 0x01-0xFF Failed reason
+    uint8_t status;
+    /// Connection handle of the Connected Isochronous Stream (Range: 0x0000-0x0EFF)
+    uint16_t conhdl;
+    /// The CIG synchronization delay time in microseconds
+    uint32_t cig_sync_delay;
+    /// The CIS synchronization delay time in microseconds
+    uint32_t cis_sync_delay;
+    /// The maximum time, in microseconds, for transmission of SDUs of all CISes from master to slave
+    /// (range 0x0000EA to 0x7FFFFF)
+    uint32_t trans_latency_m2s;
+    /// The maximum time, in microseconds, for transmission of SDUs of all CISes from slave to master
+    /// (range 0x0000EA to 0x7FFFFF)
+    uint32_t trans_latency_s2m;
+    /// Master to slave PHY, 0x01: 1Mbps, 0x02: 2Mbps, 0x03: LE-Coded
+    uint8_t phy_m2s;
+    /// Slave to master PHY, 0x01: 1Mbps, 0x02: 2Mbps, 0x03: LE-Coded
+    uint8_t phy_s2m;
+    /// Maximum number of subevents in each isochronous event (Range: 0x01-0x1E)
+    uint8_t nse;
+    /// The burst number for master to slave transmission (0x00: no isochronous data from the master to the slave, range 0x01-0x0F)
+    uint8_t bn_m2s;
+    /// The burst number for slave to master transmission (0x00: no isochronous data from the slave to the master, range 0x01-0x0F)
+    uint8_t bn_s2m;
+    /// The flush timeout, in multiples of the ISO_Interval, for each payload sent from the master to the slave (Range: 0x01-0x1F)
+    uint8_t ft_m2s;
+    /// The flush timeout, in multiples of the ISO_Interval, for each payload sent from the slave to the master (Range: 0x01-0x1F)
+    uint8_t ft_s2m;
+    /// Maximum size, in octets, of the payload from master to slave (Range: 0x00-0xFB)
+    uint16_t  max_pdu_m2s;
+    /// Maximum size, in octets, of the payload from slave to master (Range: 0x00-0xFB)
+    uint16_t  max_pdu_s2m;
+    /// ISO interval (1.25ms unit, range: 5ms to 4s)
+    uint16_t iso_interval;
+    /// Time, in microseconds, between the start of consecutive subevents in a CIS event (Range: 0x000190 to ISO_Interval×1250 – 1 )
+    uint32_t sub_interval;
+    /// Maximum size, in octets, of the payload from the Central's Host (Range: 0x0000-0x0FFF)
+    uint16_t max_sdu_m2s;
+    /// Maximum size, in octets, of the payload from the Peripheral's Host (Range: 0x0000-0x0FFF)
+    uint16_t max_sdu_s2m;
+    /// Time, in microseconds, between the start of consecutive SDUs sent by the Central (Range: 0x000000 to 0x0FFFFF)
+    uint32_t sdu_Interval_m2s;
+    /// Time, in microseconds, between the start of consecutive SDUs sent by the Peripheral (Range: 0x000000 to 0x0FFFFF)
+    uint32_t sdu_Interval_s2m;
+    /// ISOAL Framing mode, 0: Unframed, 1: Framed
+    uint8_t framing;
+} hci_le_cis_established_v2_evt_t;
 #endif // (BLE_CIS)
 
 #if (BLE_BIS)
@@ -7339,31 +7451,31 @@ typedef struct hci_le_cis_request_evt
 typedef struct hci_le_create_big_cmp_evt
 {
     ///LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// 0x00 - The Broadcast Isochronous Group has been completed ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
     /// Transmission delay time in microseconds of all BISs in the BIG (in us range 0x0000EA-0x7FFFFF)
     uint32_t big_sync_delay;
     /// The maximum delay time, in microseconds, for transmission of SDUs of all BISes (in us range 0x0000EA-0x7FFFFF)
     uint32_t big_trans_latency;
     /// PHY used, bit 0: 1Mbps, bit 1: 2Mbps, bit 2: LE-Coded
-    uint8_t  phy;
+    uint8_t phy;
     /// The number of subevents in each BIS event in the BIG, range 0x01-0x1E
-    uint8_t  nse;
+    uint8_t nse;
     /// The number of new payloads in each BIS event, range 0x01-0x07
-    uint8_t  bn;
+    uint8_t bn;
     /// Offset used for pre-transmissions, range 0x00-0x0F
-    uint8_t  pto;
+    uint8_t pto;
     /// The number of times a payload is transmitted in a BIS event, range 0x01-0x0F
-    uint8_t  irc;
+    uint8_t irc;
     /// Maximum size of the payload in octets, range 0x00-0xFB
     uint16_t  max_pdu;
     /// ISO interval (1.25ms unit, range: 5ms to 4s)
     uint16_t iso_interval;
     /// Total number of BISs in the BIG (Range 0x01-0x1F)
-    uint8_t  num_bis;
+    uint8_t num_bis;
     /// The connection handles of the BISs (Range 0x0000-0x0EFF)
     uint16_t conhdl[0x1F];
 } hci_le_create_big_cmp_evt_t;
@@ -7374,11 +7486,11 @@ typedef struct hci_le_create_big_cmp_evt
 typedef struct hci_le_terminate_big_cmp_evt
 {
     ///LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
     /// Reason for termination (0xXX)
-    uint8_t  reason;
+    uint8_t reason;
 } hci_le_terminate_big_cmp_evt_t;
 
 /// Event is generated in a scanning device when the Controller has synchronized with the requested Broadcast
@@ -7387,27 +7499,27 @@ typedef struct hci_le_terminate_big_cmp_evt
 typedef struct hci_le_big_sync_est_evt
 {
     ///LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// 0x00 - The Broadcast Isochronous Group has been completed ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
     /// The maximum delay time, in microseconds, for transmission of SDUs of all BISes (in us range 0x0000EA-0x7FFFFF)
     uint32_t big_trans_latency;
     /// The number of subevents in each BIS event in the BIG, range 0x01-0x1E
-    uint8_t  nse;
+    uint8_t nse;
     /// The number of new payloads in each BIS event, range 0x01-0x07
-    uint8_t  bn;
+    uint8_t bn;
     /// Offset used for pre-transmissions, range 0x00-0x0F
-    uint8_t  pto;
+    uint8_t pto;
     /// The number of times a payload is transmitted in a BIS event, range 0x01-0x0F
-    uint8_t  irc;
+    uint8_t irc;
     /// Maximum size of the payload in octets, range 0x00-0xFB
-    uint16_t  max_pdu;
+    uint16_t max_pdu;
     /// ISO interval (1.25ms unit, range: 5ms to 4s)
     uint16_t iso_interval;
     /// Total number of BISs in the BIG (Range 0x01-0x1F)
-    uint8_t  num_bis;
+    uint8_t num_bis;
     /// The connection handles of the BISs (Range 0x0000-0x0EFF)
     uint16_t conhdl[0x1F];
 } hci_le_big_sync_est_evt_t;
@@ -7418,11 +7530,11 @@ typedef struct hci_le_big_sync_est_evt
 typedef struct hci_le_big_sync_lost_evt
 {
     ///LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// BIG_Handle is used to identify the BIS Group. (Range 0x00-0xEF)
-    uint8_t  big_hdl;
+    uint8_t big_hdl;
     /// Reason of synchronization to BIG termination
-    uint8_t  reason;
+    uint8_t reason;
 } hci_le_big_sync_lost_evt_t;
 #endif // (BLE_BIS)
 
@@ -7431,13 +7543,13 @@ typedef struct hci_le_big_sync_lost_evt
 typedef struct hci_le_req_peer_sca_cmp_evt
 {
     ///LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// 0x00 - The Peer_Clock_Accuracy parameter is successfully received ; 0x01-0xFF Failed reason
-    uint8_t  status;
+    uint8_t status;
     /// Connection handle of the ACL (12 bits meaningful Range 0x0000-0x0EFF)
     uint16_t conhdl;
     /// Peer clock accuracy (@see enum SCA)
-    uint8_t  peer_clock_accuracy;
+    uint8_t peer_clock_accuracy;
 } hci_le_req_peer_sca_cmp_evt_t;
 
 #if (BLE_BIS)
@@ -7446,33 +7558,33 @@ typedef struct hci_le_req_peer_sca_cmp_evt
 typedef struct hci_le_big_info_adv_report_evt
 {
     ///LE Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Sync_Handle identifying the periodic advertising train (Range 0x0000-0x0EFF)
-    uint16_t  sync_hdl;
+    uint16_t sync_hdl;
     /// Value of the Num_BIS subfield of the BIGInfo field (Range 0x01-0x1F)
-    uint8_t  num_bis;
+    uint8_t num_bis;
     /// Value of the NSE subfield of the BIGInfo field (Range 0x01-0x1F)
-    uint8_t  nse;
+    uint8_t nse;
     /// Value of the ISO_Interval subfield of the BIGInfo field (0xXXXX)
-    uint16_t  iso_interval;
+    uint16_t iso_interval;
     /// Value of the BN subfield of the BIGInfo field (Range 0x01-0x07)
-    uint8_t  bn;
+    uint8_t bn;
     /// Value of the PTO subfield of the BIGInfo field (Range 0x00-0x0F)
-    uint8_t  pto;
+    uint8_t pto;
     /// Value of the IRC subfield of the BIGInfo field (Range 0x01-0x0F)
-    uint8_t  irc;
+    uint8_t irc;
     /// Value of the Max_PDU subfield of the BIGInfo field (Range 0x0000-0x00FB)
-    uint16_t  max_pdu;
+    uint16_t max_pdu;
     /// Value of the SDU_Interval subfield of the BIGInfo field (Range 0x0000FF-0x0FFFFF)
-    uint8_t  sdu_interval[3];
+    uint8_t sdu_interval[3];
     /// Value of the Max_SDU subfield of the BIGInfo field (Range 0x0000-0x0FFF)
     uint16_t max_sdu;
     /// Value of the PHY subfield of the BIGInfo field (0x01: 1M, 0x02: 2M, 0x03: Coded, All other values: RFU)
-    uint8_t  phy;
+    uint8_t phy;
     /// Value of the Framing subfield of the BIGInfo field (0x00: Unframed, 0x01: Framed, All other values: RFU)
-    uint8_t  framing;
+    uint8_t framing;
     /// Value of the Encryption subfield of the BIGInfo field (0x00: Unencrypted, 0x01: Encrypted, All other values: RFU)
-    uint8_t  encryption;
+    uint8_t encryption;
 } hci_le_big_info_adv_report_evt_t;
 #endif // (BLE_BIS)
 
@@ -7483,9 +7595,9 @@ typedef struct hci_le_big_info_adv_report_evt
 typedef struct hci_vs_le_decrypt_cmd
 {
     ///Long term key structure
-    struct ltk     key;
+    struct ltk key;
     ///Pointer to buffer with encrypt data to decrypt - 16 bytes
-    uint8_t        encrypt_data[16];
+    uint8_t encrypt_data[16];
 } hci_vs_le_decrypt_cmd_t;
 ///HCI VS LE Decrypt Command complete event structure
 /*@TRACE*/
@@ -7504,7 +7616,7 @@ typedef struct hci_vs_le_decrypt_cmd_cmp_evt
 typedef struct hci_vs_le_ch_scan_end_cmd_cmp_evt
 {
     /// Status of the command reception
-    uint8_t             status;
+    uint8_t status;
 } hci_vs_le_ch_scan_end_cmd_cmp_evt_t;
 
 /// HCI LE Set Channel Scan Command
@@ -7561,13 +7673,13 @@ typedef struct hci_vs_bt_setup_audio_data_path_cmd
     /// 0xFF       Reserved for future use
     uint8_t  data_path_id;
     /// Codec ID (5 octets)
-    uint8_t  codec_id[CODEC_ID_LEN];
+    uint8_t codec_id[CODEC_ID_LEN];
     /// Controller delay in ms (Range: 0x000000 to 0x3D0900)
-    uint32_t  ctrl_delay;
+    uint32_t ctrl_delay;
     /// Codec configuration length
-    uint8_t  codec_cfg_len;
+    uint8_t codec_cfg_len;
     /// Codec configuration
-    uint8_t  codec_cfg[__ARRAY_EMPTY];
+    uint8_t codec_cfg[__ARRAY_EMPTY];
 } hci_vs_bt_setup_audio_data_path_cmd_t;
 
 /// The command remove the BT audio data path between the Host and Controller and vice versa.
@@ -7600,7 +7712,7 @@ typedef struct hci_dbg_le_con_evt_trace_cmd
 typedef struct hci_dbg_le_con_evt_trace_cmd_cmp_evt
 {
     /// DBG Subevent code
-    uint8_t  subcode;
+    uint8_t subcode;
     /// Connection handle
     uint16_t con_hdl;
     /// Number of events to trace

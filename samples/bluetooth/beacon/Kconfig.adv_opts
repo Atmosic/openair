@@ -1,0 +1,61 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ADV_OPTS_CONN
+	bool
+
+config ADV_OPTS_USE_IDENTITY
+	bool
+
+config ADV_OPTS_DIR_MODE_LOW_DUTY
+	bool
+
+config ADV_OPTS_DIR_ADDR_RPA
+	bool
+
+config ADV_OPTS_FILTER_SCAN_REQ
+	bool
+
+config ADV_OPTS_FILTER_CONN
+	bool
+
+config ADV_OPTS_NOTIFY_SCAN_REQ
+	bool
+
+config ADV_OPTS_SCANNABLE
+	bool
+	depends on !(ADV_OPTS_CONN && ADV_OPTS_EXT_ADV)
+
+config ADV_OPTS_EXT_ADV
+	bool
+
+if ADV_OPTS_EXT_ADV
+
+config ADV_OPTS_NO_2M
+	bool
+	depends on !ADV_OPTS_CODED
+
+config ADV_OPTS_CODED
+	bool
+
+config ADV_OPTS_ANONYMOUS
+	bool
+
+config ADV_OPTS_USE_TX_POWER
+	bool
+
+endif # ADV_OPTS_EXT_ADV
+
+config ADV_OPTS_DISABLE_CHAN_37
+	bool
+
+config ADV_OPTS_DISABLE_CHAN_38
+	bool
+
+config ADV_OPTS_DISABLE_CHAN_39
+	bool
+
+config ADV_OPTS_USE_NRPA
+	bool
+	depends on !ADV_OPTS_USE_IDENTITY

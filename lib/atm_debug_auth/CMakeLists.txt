@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-if (CONFIG_ATM_SEC_DEBUG_AUTH)
+if(CONFIG_ATM_SEC_DEBUG_AUTH)
     zephyr_include_directories(.)
     zephyr_sources(atm_debug_auth.c)
 
@@ -44,6 +44,6 @@ if (CONFIG_ATM_SEC_DEBUG_AUTH)
 	add_dependencies(app debug_auth_key)
     else()
 	message( FATAL_ERROR "CONFIG_ATM_SEC_DEBUG_AUTH_SIGNATURE_KEY_FILE must be set if enabling secure debug." )
-    endif ()
-endif ()
+    endif()
+endif()
 

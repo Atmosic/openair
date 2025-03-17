@@ -2,8 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+name: openair
+
 build:
   cmake: .
   sysbuild-cmake: sysbuild
   sysbuild-kconfig: sysbuild/Kconfig.sysbuild
   kconfig: Kconfig
+  settings:
+    board_root: .
+    dts_root: .
+    soc_root: .

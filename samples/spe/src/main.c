@@ -31,6 +31,14 @@
 #include "sec_jrnl.h"
 #endif
 
+#ifdef CONFIG_ATM_SPE_DEBUG_TZ
+#define TRACE_TZ_CFG printk
+#else
+#define TRACE_TZ_CFG(s, ...) \
+    do { \
+    } while (0)
+#endif
+
 extern irq_target_state_t irq_target_state_set(unsigned int irq,
     irq_target_state_t target_state);
 
@@ -74,13 +82,16 @@ extern irq_target_state_t irq_target_state_set(unsigned int irq,
 #define PART_NSPE_SIZE() DT_REG_SIZE(DT_NODELABEL(nspe_partition))
 #define PART_FAST_CODE_SIZE() DT_REG_SIZE(DT_NODELABEL(fast_code_partition))
 
-#define PROG_MPC_PARTITION(part, base_partition) do { \
+#define PROG_MPC_PARTITION(part, base_partition) \
+    do { \
 	uint32_t part_baddr = \
 	    DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(base_partition)) + \
 	    DT_REG_ADDR(part); \
 	uint32_t part_laddr = part_baddr + DT_REG_SIZE(part) - 1; \
-	at_tz_mpc_config_region(part_baddr, part_laddr, AT_TZ_MPC_ATTR_NONSECURE); \
-} while(0)
+	TRACE_TZ_CFG("MPC NS: [0x%08x - 0x%08x]\n", part_baddr, part_laddr); \
+	at_tz_mpc_config_region(part_baddr, part_laddr, \
+	    AT_TZ_MPC_ATTR_NONSECURE); \
+    } while (0)
 
 #define PROG_MPC_PARTITION_ENTRY(part, base_partition)  \
 COND_CODE_1(DT_PROP(part, secure), (), ( \
@@ -117,10 +128,26 @@ static void mpc_cfg(void)
     // Allow mcumgr to read image header.
     uint32_t boot_hdr_baddr = PART_SPE_ADDR();
     uint32_t boot_hdr_laddr = boot_hdr_baddr + CONFIG_ROM_START_OFFSET - 1;
+    TRACE_TZ_CFG("MPC BOOT hdr: [0x%08x - 0x%08x]\n", boot_hdr_baddr,
+	boot_hdr_laddr);
     ret = at_tz_mpc_config_region(boot_hdr_baddr, boot_hdr_laddr,
 	AT_TZ_MPC_ATTR_NONSECURE);
     SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
 #endif // CONFIG_BOOTLOADER_MCUBOOT
+
+#if !DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
+    // FIXME, mark the region after the SPE up to the max. flash MPC
+    // configurable region as non-secure
+    uint32_t flash_ns_baddr =
+	PART_SPE_ADDR() + DT_REG_SIZE(DT_NODELABEL(spe_partition));
+    uint32_t flash_ns_laddr = DT_REG_ADDR(DT_NODELABEL(flash_controller)) +
+	AT_TZ_MPC_EXT_FLASH_MPC_SIZE - 1;
+    TRACE_TZ_CFG("MPC FLASH NS: [0x%08x - 0x%08x]\n", flash_ns_baddr,
+	flash_ns_laddr);
+    ret = at_tz_mpc_config_region(flash_ns_baddr, flash_ns_laddr,
+	AT_TZ_MPC_ATTR_NONSECURE);
+    SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
+#endif
 
     // Configure remaining flash partitions.
     CONFIGURE_MPC_FLASH_PARTITIONS();
@@ -183,6 +210,7 @@ static void sau_cfg(void)
     SEC_ASSERT(ret == AT_TZ_SAU_OK);
 #endif
 
+#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
     // Allocate RRAM, RRAM regs, prrf, and ext_flash as NS to save on SAU regions
     // Relies on NS region immediately following SPE.
     uint32_t rram_ns_start =
@@ -191,10 +219,29 @@ static void sau_cfg(void)
     uint32_t rram_flash_laddr =
 	GET_PHYS_ADDR(DT_REG_ADDR(DT_NODELABEL(flash_controller))) +
 	DT_REG_SIZE(DT_NODELABEL(flash_controller)) - 1;
+    TRACE_TZ_CFG("SAU RRAM NS: [0x%08x - 0x%08x]\n", rram_flash_baddr,
+	rram_flash_laddr);
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK(rram_flash_baddr),
 	AT_TZ_SAU_LADDR_MASK(rram_flash_laddr), AT_TZ_SAU_NS);
     SEC_ASSERT(ret == AT_TZ_SAU_OK);
+#else
+    // flash (no RRAM) system
+    // map everything after the SPE as non-secure to save on SAU entries
+    uint32_t flash_ns_start =
+	PART_SPE_ADDR() + DT_REG_SIZE(DT_NODELABEL(spe_partition));
+    uint32_t flash_baddr = GET_PHYS_ADDR(flash_ns_start);
+    // get the end of the flash address region (limited by the size of the
+    // device)
+    uint32_t flash_laddr =
+	GET_PHYS_ADDR(DT_REG_ADDR(DT_NODELABEL(flash_controller))) +
+	DT_REG_SIZE(DT_NODELABEL(flash_controller)) - 1;
+    TRACE_TZ_CFG("SAU FLASH NS: [0x%08x - 0x%08x]\n", flash_baddr, flash_laddr);
+    ret =
+	at_tz_sau_enable_region(sau_region++, AT_TZ_SAU_BADDR_MASK(flash_baddr),
+	    AT_TZ_SAU_LADDR_MASK(flash_laddr), AT_TZ_SAU_NS);
+    SEC_ASSERT(ret == AT_TZ_SAU_OK);
+#endif
 
     uint32_t ns_sram_baddr = GET_PHYS_ADDR(DT_REG_ADDR(DT_NODELABEL(sram0))) +
 	DT_REG_SIZE(DT_NODELABEL(sram0));
@@ -217,6 +264,8 @@ static void sau_cfg(void)
 	    0));
     uint32_t peripheral_laddr = peripheral_baddr +
 	DT_RANGES_LENGTH_BY_IDX(DT_PATH(soc, peripheral_50000000), 0) - 1;
+    TRACE_TZ_CFG("SAU PERIPH NS: [0x%08x - 0x%08x]\n", peripheral_baddr,
+	peripheral_laddr);
     ret = at_tz_sau_enable_region(sau_region++,
 	AT_TZ_SAU_BADDR_MASK(peripheral_baddr),
 	AT_TZ_SAU_LADDR_MASK(peripheral_laddr), AT_TZ_SAU_NS);
@@ -239,8 +288,9 @@ static void sau_cfg(void)
 }
 
 #if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
-#if !DT_SAME_NODE(DT_GPARENT(DT_NODELABEL(factory_partition)), \
-    DT_NODELABEL(rram0))
+#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller)) && \
+    !DT_SAME_NODE(DT_GPARENT(DT_NODELABEL(factory_partition)), \
+	DT_NODELABEL(rram0))
 #error "Factory partition is not in RRAM"
 #endif
 
@@ -279,6 +329,21 @@ static void pre_sau_security_lockdown(void)
     printk("SHUB disabled\n");
 #endif
 
+#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
+    if (check_factory_part_lock()) {
+	// write protect factory data partition
+	uint32_t factory_offset = PART_OFFSET(factory_partition);
+	uint32_t factory_size = DT_REG_SIZE(DT_NODELABEL(factory_partition));
+	printk("factory data WP: 0x%x, 0x%x \n", factory_offset, factory_size);
+#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
+	sec_s = rram_prot_sticky_write_disable(factory_offset, factory_size);
+	SEC_ASSERT(sec_s);
+#else
+	// FIXME : flash write locks
+#endif
+    }
+#endif // factory_partition
+
 #if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
     // lock out the ROM
     uint32_t rom_offset = ROM_ADDR_TO_OFFSET(CMSDK_FLASH_BASE);
@@ -295,17 +360,6 @@ static void pre_sau_security_lockdown(void)
     SEC_ASSERT(sec_s);
     sec_s = rram_prot_sticky_read_disable(mcuboot_offset, mcuboot_size);
     SEC_ASSERT(sec_s);
-#endif
-
-#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
-    if (check_factory_part_lock()) {
-	// write protect factory data partition
-	uint32_t factory_offset = PART_OFFSET(factory_partition);
-	uint32_t factory_size = DT_REG_SIZE(DT_NODELABEL(factory_partition));
-	printk("factory data WP: 0x%x, 0x%x \n", factory_offset, factory_size);
-	sec_s = rram_prot_sticky_write_disable(factory_offset, factory_size);
-	SEC_ASSERT(sec_s);
-    }
 #endif
 
 #if DT_NODE_EXISTS(DT_NODELABEL(slot2_partition)) && \
@@ -385,6 +439,65 @@ FUNC_NORETURN void spe_main(void)
     register uint32_t addr = application_addr[1] & ~0x1; // S->NS: clear LSB
     __ASM volatile("BXNS %0" : : "r"(addr));
     __builtin_unreachable();
+}
+
+#define CFSR_MMFSR_READ(cfsr) ((uint8_t)(cfsr & 0xff))
+#define CFSR_BFSR_READ(cfsr) ((uint8_t)((cfsr >> 8) & 0xff))
+
+void k_sys_fatal_error_handler(unsigned int reason, const struct arch_esf *pEsf)
+{
+    sec_switch_console();
+
+    switch (reason) {
+	case K_ERR_ARM_SECURE_ATTRIBUTION_UNIT: {
+	    printk("**SecFault\n");
+	    uint32_t sfar = SAU->SFAR;
+	    if (sfar < ROM_SIZE) {
+		// ROM starts at 0x0 - ROM_SIZE, this area is marked secure.
+		// NS images will secure fault to here if it tries to access.
+		// This could be a NULL pointer access or just accessing a
+		// secured ROM location covered by the SAU
+		printk("  NULL access to 0x%" PRIx32 "?\n", sfar);
+	    }
+	} break;
+	default: {
+	    printk("**Caught fatal system error -- reason %d\n", reason);
+	} break;
+    }
+
+    printk("  xpsr: 0x%" PRIx32 "\n", pEsf->basic.xpsr);
+    printk("  lr  : 0x%" PRIx32 "\n", pEsf->basic.lr);
+    printk("  pc  : 0x%" PRIx32 "\n", pEsf->basic.pc);
+    printk("  r0  : 0x%" PRIx32 "\n", pEsf->basic.r0);
+    printk("  r1  : 0x%" PRIx32 "\n", pEsf->basic.r1);
+    printk("  r2  : 0x%" PRIx32 "\n", pEsf->basic.r2);
+    printk("  r3  : 0x%" PRIx32 "\n", pEsf->basic.r3);
+
+    uint32_t _cfsr = SCB->CFSR;
+    printk("  CFSR : 0x%" PRIx32 "\n", _cfsr);
+    printk("  BFSR : 0x%x\n", CFSR_BFSR_READ(_cfsr));
+    printk("  BFAR : 0x%" PRIx32 "\n", SCB->BFAR);
+    printk("  MMFSR: 0x%x\n", CFSR_MMFSR_READ(_cfsr));
+    printk("  MMFAR: 0x%" PRIx32 "\n", SCB->MMFAR);
+    printk("  HFSR : 0x%" PRIx32 "\n", SCB->HFSR);
+    printk("  SFSR : 0x%" PRIx32 "\n", SAU->SFSR);
+    printk("  SFAR : 0x%" PRIx32 "\n", SAU->SFAR);
+
+    // Some non-secure faults can be escalated to the secure side.
+    // Dump non-secure status registers to help with debug.
+    // Note:  the MMFSR may get cleared by the NS exception handler
+    // before it escalates to the secure side.
+    uint32_t _cfsr_ns = SCB_NS->CFSR;
+    printk("  CFSR_NS : 0x%" PRIx32 "\n", _cfsr_ns);
+    printk("  BFSR_NS : 0x%x\n", CFSR_BFSR_READ(_cfsr_ns));
+    printk("  BFAR_NS : 0x%" PRIx32 "\n", SCB_NS->BFAR);
+    printk("  MMFSR_NS: 0x%x\n", CFSR_MMFSR_READ(_cfsr_ns));
+    printk("  MMFAR_NS: 0x%" PRIx32 "\n", SCB_NS->MMFAR);
+    printk("  BFSR_NS : 0x%x\n", CFSR_BFSR_READ(_cfsr_ns));
+    printk("  HFSR_NS : 0x%" PRIx32 "\n", SCB_NS->HFSR);
+
+    printk("**Halting\n");
+    k_fatal_halt(reason);
 }
 
 int main(void)

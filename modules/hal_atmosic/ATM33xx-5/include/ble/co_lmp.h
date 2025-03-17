@@ -6,8 +6,8 @@
  * @brief This file contains the HCI Bluetooth defines, enumerations and structures
  *        definitions for use by all modules in RW stack.
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  ****************************************************************************************
  */

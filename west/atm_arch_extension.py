@@ -66,6 +66,26 @@ class AtmIsp:
         self.atm_isp_exe_path = atm_isp_path
         self.partInfo = None
         self.debug = debug
+        self.protobuf_check_gen()
+
+    def protobuf_check_gen(self):
+        tools_path = str(Path(self.atm_isp_exe_path).resolve().parents[0])
+        atm_isp_python_path = os.path.join(tools_path, 'atm_isp_python')
+        if not os.path.exists(atm_isp_python_path):
+            os.makedirs(atm_isp_python_path)
+        atm_isp_proto = 'atm_isp.proto'
+        atm_isp_proto_path = os.path.join(tools_path, atm_isp_proto)
+        if not os.path.exists(atm_isp_proto_path):
+            print(f"Cannot find {atm_isp_proto_path} for generate atm_isp_python")
+            sys.exit(1)
+        # always re-generate atm_isp_python with current installed grpcio_tools
+        # and protobuf
+        cmd_arg = ['python', '-m', 'grpc_tools.protoc',
+               f"--proto_path={tools_path}",
+               f"--python_out={atm_isp_python_path}",
+               atm_isp_proto]
+        return self.exe_cmd(cmd_arg)
+
 
     def decode_atm(self, input_file):
         # atm_isp decode [-h] [-i ARCHIVE]

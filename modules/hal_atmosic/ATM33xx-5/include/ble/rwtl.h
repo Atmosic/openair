@@ -5,8 +5,8 @@
  *
  * @brief RW Transport Layer header file. Defines a common interface for any transport layers
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  ****************************************************************************************
  */
@@ -81,9 +81,9 @@ struct rwtl_tx_client_s
     /// Callback executed when client message has been transmitted by message transport layer
     rwtl_tx_cb_sent cb_sent;
 
-    /// Logical channel message of message to transmit
+    /// Logical channel message of message to transmit (@enum h4_msg_lc)
     uint8_t lc;
-    /// Length of message to transmit
+    /// Length of message to transmit (in bytes)
     uint16_t data_len;
     /// Pointer to message to transmit (1 byte must be available on top of buffer to add logical channel)
     uint8_t* p_data;
@@ -94,7 +94,7 @@ struct rwtl_tx_client_s
 /// Reception information
 typedef struct
 {
-    /// Length of message to receive
+    /// Length of message to receive (in bytes)
     int16_t data_len;
     /// Pointer where message should be filled
     uint8_t* p_data;
@@ -131,11 +131,11 @@ struct rwtl_rx_client_s
      */
     rwtl_rx_next_t (*cb_received)(rwtl_itf_t* p_itf, uint8_t event, const uint8_t* p_hdr, uint16_t data_len, const uint8_t* p_data);
 
-    /// Logical channel message expected by client
+    /// Logical channel message expected by client (@enum h4_msg_lc)
     uint8_t lc;
-    /// Size of message header
+    /// Size of message header (in bytes)
     uint8_t header_len;
-    /// Length of expected message pattern used to exit from out of sync state (0 if not supported).
+    /// Length of expected message pattern used to exit from out of sync state (0 if not supported) (in bytes).
     uint8_t sync_pattern_len;
     /// Pointer to message pattern used to exit from out of sync state. This pattern must contain the logical channel.
     const uint8_t* p_sync_pattern;
@@ -186,7 +186,7 @@ const rwtl_rx_client_t* rwtl_rx_client_get(uint8_t lc);
  *        Synchronization message comparison must be perform in reverse order, starting from last received byte up to
  *        size of sync patterns (see #rwtl_rx_client_t.p_sync_pattern)
  *
- * @param[in] buf_len Size of buffer
+ * @param[in] buf_len Size of buffer (in bytes)
  * @param[in] p_buf   Pointer to buffer that contains received data
  *
  * @return NULL if no sync message found; pointer to RX client that match sync pattern otherwise.

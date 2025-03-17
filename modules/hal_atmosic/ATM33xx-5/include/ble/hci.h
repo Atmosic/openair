@@ -5,8 +5,8 @@
  *
  * @brief This file contains definitions related to the HCI module.
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  *
  ****************************************************************************************
@@ -299,28 +299,6 @@ uint16_t hci_con_accept_to_get(void);
  *****************************************************************************************
  */
 uint8_t hci_evt_filter_add(struct hci_set_evt_filter_cmd const *param);
-
-#if (MAX_NB_SYNC > 0)
-/**
- ****************************************************************************************
- * @brief Get voice setting (for SCO auto-accept via event filter)
- *
- * @return   Voice settings
- *****************************************************************************************
- */
-uint16_t hci_voice_settings_get(void);
-
-/**
- ****************************************************************************************
- * @brief Set voice setting (for SCO auto-accept via event filter)
- *
- * @param[in]   voice_settings    Voice settings
- *
- * @return   Status (0: Success | Others: failure)
- *****************************************************************************************
- */
-uint8_t hci_voice_settings_set(uint16_t voice_settings);
-#endif // (MAX_NB_SYNC > 0)
 #endif //(BT_EMB_PRESENT)
 
 #if (EMB_PRESENT && HOST_PRESENT && HCI_TL_SUPPORT)
@@ -350,6 +328,7 @@ bool hci_is_ext_host(void);
 bool hci_le_evt_mask_check(uint8_t evt_code);
 #endif //(BLE_EMB_PRESENT)
 
+#if (HCI_CTRL_TO_HOST_FLOW_CTRL)
 //common for both BLE & BT
 /**
  ****************************************************************************************
@@ -411,7 +390,7 @@ void hci_fc_host_nb_acl_pkts_complete(uint16_t acl_pkt_nb);
  ***************************************************************************************a**
  */
 void hci_fc_host_nb_sync_pkts_complete(uint16_t sync_pkt_nb);
-
+#endif // (HCI_CTRL_TO_HOST_FLOW_CTRL)
 #endif //HCI_PRESENT
 
 /// @} HCI

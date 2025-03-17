@@ -6,8 +6,8 @@
  * @brief This file contains the LLCP Bluetooth defines, enumerations and structures
  *        definitions for use by all modules in RW stack.
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  ****************************************************************************************
  */
@@ -22,18 +22,19 @@
  ****************************************************************************************
  */
 
-
 /*
  * INCLUDE FILES
  ****************************************************************************************
  */
 #include "co_bt.h"
+
 /*
  * DEFINES
  ****************************************************************************************
  */
 #define LLCP_OPCODE_MASK      (0xFF)
 #define LLCP_OPCODE_POS       (0)
+
 /*
  * TYPE DEFINITIONS
  ****************************************************************************************
@@ -97,6 +98,9 @@ enum co_llcp_op_code
 
 
 
+
+
+
     /// Opcode length
     LL_OPCODE_MAX_OPCODE,
     LL_OPCODE_DEBUG = 0xFF,
@@ -155,12 +159,16 @@ enum co_llcp_length
 
 
 
-    #if (BLE_CIS || BLE_PAST)
-    /// Control Length Extension feature
-    LL_PDU_LENGTH_MAX                = 36,
+
+
+    #if (BLE_CIS)
+    LL_PDU_LENGTH_MAX                = LL_CIS_REQ_LEN,
+    #elif (BLE_PAST)
+    LL_PDU_LENGTH_MAX                = LL_PER_SYNC_IND_LEN,
     #else // !(BLE_CIS || BLE_PAST)
     LL_PDU_LENGTH_MAX                = LE_MIN_OCTETS,
     #endif // !(BLE_CIS || BLE_PAST)
+
 };
 
 
@@ -230,6 +238,7 @@ enum co_llcp_sid_atype_sca
     LLCP_PER_SYNC_IND_SCA_LSB     = 5,
     LLCP_PER_SYNC_IND_SCA_MASK    = (0xE0),
 };
+
 
 /*
  * MESSAGES
@@ -785,6 +794,7 @@ struct  ll_cis_req
 /// CIS Request Bit Field parameters
 enum ll_cis_req_bf
 {
+
     /// bit[15] - Frame mode in max_sdu_m2s parameter
     BLE_CIS_FRAME_MODE_BIT    = 0x8000,
     BLE_CIS_FRAME_MODE_POS    = 15,
@@ -925,6 +935,9 @@ struct ll_pwr_change_ind
 
 
 
+
+
+
 /// LLCP pdu format
 /*@TRACE
  @trc_ref co_llcp_op_code
@@ -1047,6 +1060,9 @@ union llcp_pdu
     //@trc_union op_code == LL_PWR_CHANGE_IND_OPCODE
     struct ll_pwr_change_ind            pwr_change_ind;
     #endif // BLE_PWR_CTRL
+
+
+
 
 
 

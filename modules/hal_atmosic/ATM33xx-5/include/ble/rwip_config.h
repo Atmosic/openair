@@ -5,8 +5,8 @@
  *
  * @brief Configuration of the RW IP SW
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  *
  ****************************************************************************************
@@ -112,7 +112,9 @@
 
 /// Flag indicating BT 5.4 support
 
-/// Flag indicating BT 5.5 support
+/// Flag indicating BT 6.0 support
+
+/// Flag indicating BT 6.1 support
 
 /******************************************************************************************/
 /* -------------------------   INTERFACES DEFINITIONS      -------------------------------*/
@@ -238,16 +240,12 @@
 #endif // defined(CFG_PERIPHERAL)
 
 #if (HOST_PRESENT)
-    #define HOST_ACTIVITY_MAX        (CFG_ACT)
-#if ((0) || BLE_CENTRAL || BLE_PERIPHERAL)
+#define HOST_ACTIVITY_MAX            (CFG_HL_ACT)
+#if (BLE_CENTRAL || BLE_PERIPHERAL)
     #define HOST_CONNECTION_MAX      (CFG_CON)
-#else // !((0) || BLE_CENTRAL || BLE_PERIPHERAL)
+#else // !(BLE_CENTRAL || BLE_PERIPHERAL)
     #define HOST_CONNECTION_MAX      (0)
-#endif // !((0) || BLE_CENTRAL || BLE_PERIPHERAL)
-
-#if (HOST_CONNECTION_MAX >= HOST_ACTIVITY_MAX)
-    #error "Number of connections must be strictly less than number of activities"
-#endif // (HOST_CONNECTION_MAX >= BLE_ACTIVITY_MAX)
+#endif // !(BLE_CENTRAL || BLE_PERIPHERAL)
 #endif // (HOST_PRESENT)
 
 #if (BLE_EMB_PRESENT || BLE_HOST_PRESENT)
@@ -332,6 +330,12 @@
 #endif // defined(CFG_ADV_CH_IDX)
 
 /******************************************************************************************/
+/* -----------------------             LE Subrating                    -------------------*/
+/******************************************************************************************/
+
+/// LE Subrating
+
+/******************************************************************************************/
 /* ----------------------- Coding Scheme Selection on Advertising      -------------------*/
 /******************************************************************************************/
 
@@ -342,6 +346,30 @@
 /******************************************************************************************/
 
 /// Channel Sounding
+
+/******************************************************************************************/
+/* ----------------------- ISOAL Unsegmented Framed Mode               -------------------*/
+/******************************************************************************************/
+
+/// ISOAL Unsegmented Framed Mode
+
+/******************************************************************************************/
+/* ----------------------- Frame Space Update                          -------------------*/
+/******************************************************************************************/
+
+/// Frame Space Update
+
+/******************************************************************************************/
+/* ----------------------- Monitored Advertisers List                  -------------------*/
+/******************************************************************************************/
+
+/// Monitored Advertisers List
+
+/******************************************************************************************/
+/* ----------------------- Higher Data Throughput                      -------------------*/
+/******************************************************************************************/
+
+/// Higher Data Throughput
 
 /******************************************************************************************/
 /* ----------------------- Test Mode                                   -------------------*/
@@ -529,6 +557,11 @@
 
 
 
+
+/******************************************************************************************/
+/* -------------------   TIME TACKING - ACTIVITY SHIFT     -------------------------------*/
+/******************************************************************************************/
+
 /******************************************************************************************/
 /* --------------------------   BUFFER SETUP       --------------------------------------*/
 /******************************************************************************************/
@@ -558,6 +591,17 @@
 #else
 #define CO_BUF_PRESENT         0
 #endif //HOST_PRESENT
+
+/******************************************************************************************/
+/* --------------------------   FLOW CONTROL       ---------------------------------------*/
+/******************************************************************************************/
+
+/// Controller to Host flow control enable/disable
+#if defined(CFG_HCI_C2H_FLOW_CTRL)
+#define HCI_CTRL_TO_HOST_FLOW_CTRL      1
+#else
+#define HCI_CTRL_TO_HOST_FLOW_CTRL      0
+#endif //CFG_HCI_C2H_FLOW_CTRL
 
 /******************************************************************************************/
 /* --------------------------   DISPLAY SETUP        -------------------------------------*/
@@ -714,6 +758,11 @@
 /// Default programming delay, margin for programming the baseband in advance of each activity (in half-slots)
 #define IP_PROG_DELAY_DFT  (3)
 
+#ifndef REMOVE_CEVA_CASE_18829
+/// Low threshold for scheduling arbiter programming a HW timer (in half-us)
+#define IP_ARB_TIMER_PROG_THR (150)
+#endif
+
 /**
  * Prefetch time (in us)
  *  - Radio power up: radio defined (worst case)
@@ -776,6 +825,8 @@
     #define RW_MWS_COEX_TEST            0
 #endif // defined(CFG_MWS_COEX)
 
+/// To let the HW use the default values set in the registers
+#define RW_PTI_PRIO_AUTO    0x1F
 
 /******************************************************************************************/
 /* ------------------------   RSSI & POWER CONTROL   -------------------------------------*/
@@ -1250,8 +1301,6 @@ enum PARAM_ID
 
     /// Synchronous links configuration
     PARAM_ID_SYNC_CONFIG                = 0x2C,
-    /// PCM Settings
-    PARAM_ID_PCM_SETTINGS               = 0x2D,
     /// Tracer configuration
     PARAM_ID_TRACER_CONFIG              = 0x2F,
 
@@ -1348,8 +1397,6 @@ enum PARAM_LEN
 
      /// Synchronous links configuration
      PARAM_LEN_SYNC_CONFIG                = 2,
-     /// PCM Settings
-     PARAM_LEN_PCM_SETTINGS               = 8,
      /// Tracer configuration
      PARAM_LEN_TRACER_CONFIG              = 4,
 

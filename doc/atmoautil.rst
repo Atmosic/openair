@@ -465,7 +465,7 @@ The latest version of atmoautil, a unified command-line utility for Atmosic prod
    .. raw:: html
 
       <pre style="margin: 5; padding: 5px; white-space: pre-wrap; display: block; color: gray; border: 1px solid #C4C4C4; background-color: #F5F5F5;width: auto">
-      west flash --skip-rebuild --fast_load --device=<JLINK_SERIAL> --jlink
+      west flash --skip-rebuild --fast_load --device=&lt;JLINK_SERIAL&gt; --jlink
       </pre>
 
    For Example:

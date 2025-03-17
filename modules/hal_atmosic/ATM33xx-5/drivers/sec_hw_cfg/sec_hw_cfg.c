@@ -5,10 +5,14 @@
  *
  * @brief Early and secure hardware configuration
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
+#ifndef SECURE_MODE
+#define SECURE_MODE 1
+#endif
+
 #ifdef CONFIG_SOC_FAMILY_ATM
 #include <zephyr/kernel.h>
 #include <soc.h>

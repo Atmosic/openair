@@ -26,6 +26,8 @@ tests:
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
   samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.pd50ll:
     sysbuild: true
     harness: console
@@ -48,6 +50,8 @@ tests:
       - DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
     extra_configs:
       - CONFIG_ATMWSTK="PD50LL"
       - CONFIG_USE_ATMWSTK=y
@@ -74,6 +78,8 @@ tests:
       - DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL"
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
     extra_configs:
       - CONFIG_ATMWSTK="LL"
       - CONFIG_USE_ATMWSTK=y
@@ -104,6 +110,8 @@ tests:
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
     extra_configs:
       - CONFIG_ATMWSTKLIB="PD50"
   samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.cpd200:
@@ -129,6 +137,8 @@ tests:
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
     extra_configs:
       - CONFIG_ATMWSTKLIB="CPD200"
       - CONFIG_ATM_SOC_ALLOW="ATM34"
@@ -155,6 +165,8 @@ tests:
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
     extra_configs:
       - CONFIG_ATMWSTKLIB=""
       - CONFIG_ATM_SOC_ALLOW="ATM34"
@@ -174,3 +186,5 @@ tests:
       - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y

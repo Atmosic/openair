@@ -5,7 +5,7 @@
  *
  * @brief Secure Assert library
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2025
  *
  *******************************************************************************
  */
@@ -23,6 +23,11 @@
 
 void sec_assert(const char *file, int line)
 {
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+    sec_switch_console();
+#endif
+
     PRINTF("Fatal security assert");
 
 #if PLF_DEBUG

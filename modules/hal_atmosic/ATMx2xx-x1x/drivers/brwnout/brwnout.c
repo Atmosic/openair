@@ -5,7 +5,7 @@
  *
  * @brief ATM2/ATM3 Brownout Driver
  *
- * Copyright (C) Atmosic 2020-2024
+ * Copyright (C) Atmosic 2020-2025
  *
  *******************************************************************************
  */
@@ -113,8 +113,6 @@ __FAST static void user_init_check_brwnout(enum pm_state state)
 	}
     }
 #endif
-
-    pmu_soc_off();
 
 #ifndef CONFIG_SOC_FAMILY_ATM
     if (!duration && !brwnout_4ssocoff) {

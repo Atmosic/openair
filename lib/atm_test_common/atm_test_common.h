@@ -5,7 +5,7 @@
  *
  * @brief File to include architecture dependent macros/function definitions
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  *******************************************************************************
  */
@@ -38,6 +38,8 @@ __STATIC_INLINE void ATM_TEST_FAILED(void)
     printk("\x03\n");
 #endif
 }
+
+void atm_test_pass_if_socoff(void);
 
 #endif // CONFIG_SOC_FAMILY_ATM
 

@@ -5,8 +5,8 @@
  *
  * @brief Version definitions for BT5.2
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  *
  ****************************************************************************************
@@ -31,15 +31,11 @@
 #include "co_bt.h"           // BT standard definitions
 
 /// RWBT SW Major Version
-#define RWBT_SW_VERSION_MAJOR                   BT54_VERSION
-
+#define RWBT_SW_VERSION_MAJOR                   BT60_VERSION
 /// RWBT SW Minor Version
-#define RWBT_SW_VERSION_MINOR                   0
-
+#define RWBT_SW_VERSION_MINOR                   1
 /// RWBT SW Build Version
-#define RWBT_SW_VERSION_BUILD                   20
-/// RWBT SW Sub-Build Version
-#define RWBT_SW_VERSION_SUB_BUILD               0
+#define RWBT_SW_VERSION_BUILD                   0
 
 /// @} CO_VERSION
 

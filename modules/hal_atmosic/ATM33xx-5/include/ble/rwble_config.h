@@ -5,8 +5,8 @@
  *
  * @brief Configuration of the BLE lower layer stack
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  ****************************************************************************************
  */
@@ -102,13 +102,17 @@
 #define BLE_FEATURES_BYTE5  (  ((0) << (BLE_FEAT_ADV_CODING_SEL - 40) ) \
                              | ((0) << (BLE_FEAT_PAWR_ADVERTISER - 40) ) \
                              | ((0) << (BLE_FEAT_PAWR_SCANNER - 40) ) \
-                             | ((0) << (BLE_FEAT_CHAN_SND - 40) ) )
+                             | ((0) << (BLE_FEAT_UNSEG_FRAMED_MODE - 40) ) \
+                             | ((0) << (BLE_FEAT_CHAN_SND - 40) ))
 
 /// Features byte 6
 #define BLE_FEATURES_BYTE6  (0)
 
 /// Features byte 7
-#define BLE_FEATURES_BYTE7  ((0) << (BLE_FEAT_BLE_ENH_TEST_MODE - 56) ) // TBD
+#define BLE_FEATURES_BYTE7  (  ((0) << (BLE_FEAT_BLE_ENH_TEST_MODE - 56) ) \
+                             | ((0) << (BLE_FEAT_EXT_FEAT_SET - 56) ))
+/// Features byte 8
+#define BLE_FEATURES_BYTE8  ((0) << (BLE_FEAT_FRAME_SPACE_UPD - 64) )
 
 /// States byte 0
 #define BLE_STATES_BYTE0    ( BLE_NON_CON_ADV_STATE | BLE_DISC_ADV_STATE\
@@ -228,11 +232,12 @@
  * Additional reception window for receiving on Coded PHY (in half-us)
  * On Coded PHY, the baseband needs 8 symbols duration at 125Kbps to capture the sync, the sync window is extended accordingly.
  * On Coded PHY, the symbol for the Access Address is 8 times longer than the symbol for 1Mbps.
+ * Note: Coded PHY additional window size depends on modem implementation sync detection and should be affine according to it.
  */
-#define BLE_CODED_PHY_ADD_WIN_SIZE       (2 * BLE_NORMAL_WIN_SIZE * 7)
+#define BLE_CODED_PHY_ADD_WIN_SIZE       (2 * BLE_RX_MARGIN * 7)
 
-/// Normal Rx window size (in us)
-#define BLE_NORMAL_WIN_SIZE              (14)
+/// RX margin (in us)
+#define BLE_RX_MARGIN              (14)
 
 /// Number of devices in the white list
 #define BLE_WHITELIST_MAX           ((uint8_t)(BLE_ACTIVITY_MAX + 2u))
@@ -243,7 +248,7 @@
 /// RPAs for InitA and AdvA
 #define BLE_RESOL_ADDR_LIST_MAX     (BLE_RAL_MAX)
 
-/// Workaround HW issue: RX Data pointer on RX Descriptor update (HW fix in 5.5 IP)
+/// Workaround HW issue: RX Data pointer on RX Descriptor update (HW fix in 6.0 IP)
 #define BLE_HW_WA_RX_BUF_FREE      1
 
 /// Number of RX data buffers (common for all activities)
@@ -323,13 +328,6 @@
 #define BLE_ADV_LEGACY_ITF           (HCI_TL_SUPPORT)
 
 /******************************************************************************************/
-/* -------------------------   COEXISTENCE SETUP      ------------------------------------*/
-/******************************************************************************************/
-
-///To let the HW using the default values set in the registers
-#define RW_BLE_PTI_PRIO_AUTO    31
-
-/******************************************************************************************/
 /* --------------------        CHANNEL ASSESSMENT SETUP         --------------------------*/
 /******************************************************************************************/
 
@@ -355,6 +353,7 @@
 /// An IQ sample is taken each usec during the reference period (8us) and one each sample slot thereafter.
 /// This results in 8 reference IQ samples, 1 to 37 IQ samples with 2 us slots, and 2 to 74 IQ samples with 1 us slots, meaning 9 to 82 samples in total.
 #define BLE_MAX_CTE_IQ_SAMPLES   (82)
+
 
 
 /******************************************************************************************/
@@ -399,12 +398,13 @@
 #define BLE_CMDS_BYTE7      (  ((BLE_CIS & BLE_PERIPHERAL)  << BLE_RD_CON_ACCEPT_TO_CMD                         ) \
                              | ((BLE_CIS & BLE_PERIPHERAL)  << BLE_WR_CON_ACCEPT_TO_CMD                         ) )
 //byte10
-#define BLE_CMDS_BYTE10     (  (1                           << BLE_HL_NB_CMP_PKT_CMD                            ) \
-                             | (1                           << BLE_RD_TX_PWR_CMD                                ) \
-                             | (1                           << BLE_HL_BUF_SIZE_CMD                              ) \
-                             | (1                           << BLE_SET_CTRL_TO_HL_FCTRL_CMD                     ) )
+#define BLE_CMDS_BYTE10     (  ((HCI_CTRL_TO_HOST_FLOW_CTRL)          << BLE_HL_NB_CMP_PKT_CMD                            ) \
+                             | (1                                     << BLE_RD_TX_PWR_CMD                                ) \
+                             | ((HCI_CTRL_TO_HOST_FLOW_CTRL)          << BLE_HL_BUF_SIZE_CMD                              ) \
+                             | ((HCI_CTRL_TO_HOST_FLOW_CTRL)          << BLE_SET_CTRL_TO_HL_FCTRL_CMD                     ) )
 //byte12
-#define BLE_CMDS_BYTE12     ( ((0))                    << BLE_CS_WR_CACHED_REMOTE_FAE_TABLE_CMD            ) )
+#define BLE_CMDS_BYTE12     ( (((0))                   << BLE_CS_RD_REMOTE_FAE_TABLE_CMD                   ) \
+                            | (((0))                   << BLE_CS_WR_CACHED_REMOTE_FAE_TABLE_CMD            ) )
 //byte13
 #define BLE_CMDS_BYTE13     (  (1                           << BLE_RD_AFH_CH_ASSESS_MODE_CMD                    ) \
                              | (1                           << BLE_WR_AFH_CH_ASSESS_MODE_CMD                    ) )
@@ -414,11 +414,21 @@
 //byte15
 #define BLE_CMDS_BYTE15     (  (1                           << BLE_RD_BD_ADDR_CMD                               ) \
                              | (1                           << BLE_RD_RSSI_CMD                                  ) )
+//byte16
+#define BLE_CMDS_BYTE16     (  (((0))                  << BLE_CS_CREATE_CONFIG_CMD                         ) \
+                             | (((0))                  << BLE_CS_REMOVE_CONFIG_CMD                         ) )
+//byte20
+#define BLE_CMDS_BYTE20     (  (((0))                  << BLE_CS_RD_LOC_SUP_CAP_CMD                        ) \
+                             | (((0))                  << BLE_CS_RD_REM_SUP_CAP_CMD                        ) \
+                             | (((0))                  << BLE_CS_WR_CACHED_REM_SUP_CAP_CMD                 ) )
 //byte22
 #define BLE_CMDS_BYTE22     (  (1                           << BLE_SET_EVT_MSK_PG2_CMD                          ) )
 //byte23
-#define BLE_CMDS_BYTE23     (  ((0))                   << BLE_CS_TEST_CMD                                  ) \
-                             | ((0))                   << BLE_CS_TEST_END_CMD                              ) )
+#define BLE_CMDS_BYTE23     (  (((0))                  << BLE_CS_TEST_CMD                                  ) \
+                             | (((0))                  << BLE_CS_TEST_END_CMD                              ) )
+//byte24
+#define BLE_CMDS_BYTE24     (  (((0))                  << BLE_CS_SEC_EN_CMD                                ) \
+                             | (((0))                  << BLE_CS_SET_DEFAULT_SETTINGS_CMD                  ) )
 //byte25
 #define BLE_CMDS_BYTE25     (  (1                           << BLE_LE_SET_EVT_MSK_CMD                           ) \
                              | (1                           << BLE_LE_RD_BUF_SIZE_CMD                           ) \
@@ -453,6 +463,10 @@
                              | (1                           << BLE_LE_RX_TEST_V1_CMD                            ) \
                              | (1                           << BLE_LE_TX_TEST_V1_CMD                            ) \
                              | (1                           << BLE_LE_STOP_TEST_CMD                             ) )
+//byte29
+#define BLE_CMDS_BYTE29     (  (((0))                  << BLE_LE_CS_SET_CH_CLASS_CMD                       ) \
+                             | (((0))                  << BLE_LE_CS_SET_PROC_PARAMS_CMD                    ) \
+                             | (((0))                  << BLE_LE_CS_PROC_EN_CMD                            ) )
 //byte32
 #define BLE_CMDS_BYTE32     (  (1                           << BLE_RD_AUTH_PAYL_TO_CMD                          ) \
                              | (1                           << BLE_WR_AUTH_PAYL_TO_CMD                          ) )
@@ -575,16 +589,23 @@
                              | (0                           << BLE_LL_SET_MIN_ENC_KEY_SIZE_CMD                  )  )
 
 //byte 46
-#define BLE_CMDS_BYTE46     (  (((0))                     << BLE_LL_SET_DEFAULT_SUBRATE_CMD                   ) \
-                             | (((0))                     << BLE_LL_SUBRATE_REQUEST_CMD                       ) \
-                             | (((0))                  << BLE_LL_SET_EXT_ADV_PARAM_V2_CMD                  ) \
-                             | (((0)|BLE_BROADCASTER)  << BLE_LL_SET_PER_ADV_SUBEVENT_DATA_CMD             ) \
-                             | (((0)|BLE_OBSERVER)     << BLE_LL_SET_PER_ADV_RSP_DATA_CMD                  ) \
-                             | (((0)|BLE_OBSERVER)     << BLE_LL_SET_PER_SYNC_SUBEVT_CMD                   )  )
+#define BLE_CMDS_BYTE46     (  (((0))               << BLE_LL_SET_DEFAULT_SUBRATE_CMD                   ) \
+                             | (((0))               << BLE_LL_SUBRATE_REQUEST_CMD                       ) \
+                             | (((0))                    << BLE_LL_SET_EXT_ADV_PARAM_V2_CMD                  ) \
+                             | (((0) & BLE_BROADCASTER)  << BLE_LL_SET_PER_ADV_SUBEVENT_DATA_CMD             ) \
+                             | (((0) & BLE_OBSERVER)     << BLE_LL_SET_PER_ADV_RSP_DATA_CMD                  ) \
+                             | (((0) & BLE_OBSERVER)     << BLE_LL_SET_PER_SYNC_SUBEVT_CMD                   )  )
 //byte 47
-#define BLE_CMDS_BYTE47     (  (((0)|BLE_CENTRAL)      << BLE_LL_EXT_CREATE_CON_V2_CMD                     ) \
-                             | (((0)|BLE_BROADCASTER)  << BLE_LL_SET_PER_ADV_PARAM_V2_CMD                  )  )
+#define BLE_CMDS_BYTE47     (  (((0) & BLE_CENTRAL)      << BLE_LL_EXT_CREATE_CON_V2_CMD                     ) \
+                             | (((0) & BLE_BROADCASTER)  << BLE_LL_SET_PER_ADV_PARAM_V2_CMD                  ) \
+                             | (((0))                       << BLE_LL_RD_ALL_LOC_SUPP_FEATS_CMD                 ) \
+                             | (((0))                       << BLE_LL_RD_ALL_REM_FEATS_CMD                      )  )
+//byte 48
+#define BLE_CMDS_BYTE48     (  (((0))                     << BLE_LE_FRAME_SPACE_UPD_CMD                       )  )
 
+//byte 63
+#define BLE_CMDS_BYTE63     (  (((0))           << BLE_LL_EN_OTA_UTP_MODE_CMD                       ) \
+                             | (((0))           << BLE_LL_UTP_SEND_CMD                              )  )
 
 
 /******************************************************************************************/
@@ -602,26 +623,26 @@
 #define BLE_SYNCHDL_MAX                (BLE_SYNCHDL_MIN + BLE_ACTIVITY_MAX - 1)
 #define BLE_ACTID_TO_SYNCHDL(act_id)   ((uint16_t) (BLE_SYNCHDL_MIN + (act_id)))
 #define BLE_SYNCHDL_TO_ACTID(synchdl)  ((uint8_t) ((synchdl) - BLE_SYNCHDL_MIN))
+#define BLE_IS_SYNCHDL(conhdl)         (((conhdl)  >= BLE_SYNCHDL_MIN) && ((conhdl) <= BLE_SYNCHDL_MAX))
 
 /// CIS Channel handle mapping
 #define BLE_CISHDL_MIN                  (0x100)
+#define BLE_CISHDL_MAX                  (BLE_CISHDL_MIN + BLE_ACTIVITY_MAX - 1)
 #define BLE_ACTID_TO_CISHDL(act_id)     ((uint16_t) (BLE_CISHDL_MIN + (act_id)))
 #define BLE_CISHDL_TO_ACTID(cishdl)     ((uint8_t) ((cishdl) - BLE_CISHDL_MIN))
-#define BLE_IS_CISHDL(conhdl)           ((((conhdl) >= BLE_CISHDL_MIN) && ((conhdl) < BLE_BISHDL_MIN)) ? true : false)
+#define BLE_IS_CISHDL(conhdl)           (((conhdl) >= BLE_CISHDL_MIN) && ((conhdl) <= BLE_CISHDL_MAX))
 /// BIS Channel handle mapping
 #define BLE_BISHDL_MIN                  (0x200)
+#define BLE_BISHDL_MAX                  (BLE_BISHDL_MIN + BLE_ACTIVITY_MAX - 1)
 #define BLE_ACTID_TO_BISHDL(act_id)     ((uint16_t) (BLE_BISHDL_MIN + (act_id)))
 #define BLE_BISHDL_TO_ACTID(bishdl)     ((uint8_t) ((bishdl) - BLE_BISHDL_MIN))
-#define BLE_IS_BISHDL(conhdl)           ((((conhdl) >= BLE_BISHDL_MIN) && ((conhdl) < BLE_AM0HDL_MIN)) ? true : false)
-
-
-
-
+#define BLE_IS_BISHDL(conhdl)           (((conhdl) >= BLE_BISHDL_MIN) && ((conhdl) <= BLE_BISHDL_MAX))
 /// AM0 Channel handle mapping
 #define BLE_AM0HDL_MIN                  (0x300)
+#define BLE_AM0HDL_MAX                  (BLE_AM0HDL_MIN + BLE_ACTIVITY_MAX - 1)
 #define BLE_ACTID_TO_AM0HDL(act_id)     ((uint16_t) (BLE_AM0HDL_MIN + (act_id)))
 #define BLE_AM0HDL_TO_ACTID(am0)        ((uint8_t) ((am0) - BLE_AM0HDL_MIN))
-#define BLE_IS_AM0HDL(conhdl)           (((conhdl) >= BLE_AM0HDL_MIN) ? true : false)
+#define BLE_IS_AM0HDL(conhdl)           (((conhdl) >= BLE_AM0HDL_MIN) && ((conhdl) <= BLE_AM0HDL_MAX))
 
 /// ISO Channel handle mapping
 #define BLE_ISOHDL_TO_ACTID(isohdl)     (((isohdl) >= BLE_AM0HDL_MIN) \

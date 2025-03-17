@@ -5,8 +5,8 @@
  *
  * @brief Common utilities definitions
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  *
  ****************************************************************************************
@@ -158,6 +158,8 @@
 
 /// Convert slot to half slots
 #define S_TO_HS(slots)          ((slots) << 1)
+/// Convert slot to microseconds
+#define S_TO_US(slots)         ((slots) * SLOT_SIZE)
 /// Convert slot to half microseconds
 #define S_TO_HUS(slots)         (((slots) * SLOT_SIZE) << 1)
 /// Convert half slot to slots
@@ -168,8 +170,12 @@
 #define US_TO_HS_FLOOR(us)      (((us) << 1) / HALF_SLOT_SIZE)
 /// Convert microseconds to half slots - ceil value
 #define US_TO_HS_CEIL(us)       ((((us) << 1) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
+/// Convert microseconds to slots - ceil value
+#define US_TO_S_CEIL(us)       (((us) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
 /// Convert half microseconds to microseconds
 #define HUS_TO_US(hus)          ((hus) >> 1)
+/// Convert half slots to frames
+#define HS_TO_FRAME(half_slots)    ((half_slots) >> 2)
 /// Convert half slots to microseconds
 #define HS_TO_US(half_slots)    ((half_slots) * HALF_SLOT_SIZE / 2)
 /// Convert half slots to half microseconds
@@ -178,12 +184,17 @@
 #define HUS_TO_HS_FLOOR(hus)    ((hus) / HALF_SLOT_SIZE)
 /// Convert half microseconds to half slots - ceil value
 #define HUS_TO_HS_CEIL(hus)     (((hus) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
+/// Convert frame to slots
+#define FRAME_TO_S(frame)      ((uint32_t)(frame) << 1)
 /// Convert frame to half slots
 #define FRAME_TO_HS(frame)      ((uint32_t)(frame) << 2)
 /// Convert frame to microseconds
-#define FRAME_TO_US(frame)      (((frame) * SLOT_SIZE) << 1)
+#define FRAME_TO_US(frame)      (((uint32_t)(frame) * SLOT_SIZE) << 1)
 /// Convert microseconds to frame
 #define US_TO_FRAME(us)         ((us) / (SLOT_SIZE*2))
+/// Convert frame to milliseconds
+#define FRAME_TO_MS_CEIL(frame) (FRAME_TO_US(frame)/1000)
+
 
 /// Force a value to be within valid range
 #define CO_VAL_FORCE_RANGE(val, range_min, range_max) \
@@ -230,7 +241,6 @@ enum phy_rate
     CO_RATE_NB      = 4,
 };
 
-
 /*
  * FUNCTION DECLARATIONS
  ****************************************************************************************
@@ -274,13 +284,14 @@ extern const uint8_t co_phy_mask_to_value[];
 /// Convert PHY a value to the corresponding mask bit
 extern const uint8_t co_phy_value_to_mask[];
 
+
 /// Convert Rate value to the corresponding PHY mask bit
 extern const uint8_t co_rate_to_phy_mask[];
 
 /// Convert PHY mask bit to the corresponding Rate value
 extern const uint8_t co_phy_mask_to_rate[];
 
-#if BLE_PWR_CTRL
+#if (BLE_PWR_CTRL || (0))
 
 /// Convert PHY rate value of power control to the corresponding PHY mask bit
 extern const uint8_t co_phypwr_value_to_mask[];
@@ -291,7 +302,7 @@ extern const uint8_t co_phypwr_mask_to_value[];
 /// Convert Rate value to PHY mask value of power control
 extern const uint8_t co_rate_to_phypwr_mask[];
 
-#endif // BLE_PWR_CTRL
+#endif // (BLE_PWR_CTRL || (0))
 
 /// Convert Rate value to byte duration in us
 extern const uint8_t co_rate_to_byte_dur_us[];
@@ -679,17 +690,16 @@ __INLINE uint8_t co_bit_cnt(const uint8_t* p_val, uint8_t size)
  * @param[in]   val       Value to find
  * @param[in]   p_vals    Array of values
  * @param[in]   len       Array length
- * @return      result    True: found, False: not found
+ * @return index of value if found, or -1 if not found
  ****************************************************************************************
  */
-__INLINE bool co_find_val(const uint8_t val, const uint8_t* p_vals, uint8_t len)
+__INLINE int8_t co_find_val(const uint8_t val, const uint8_t* p_vals, int8_t len)
 {
-    bool found = false;
-    do
+    for (len--; (len >= 0) && (val != p_vals[len]); len--)
     {
-        found = (val == p_vals[--len]);
-    } while (!found && (len > 0));
-    return (found);
+        /* continue */;
+    }
+    return (len);
 }
 
 /**
@@ -805,6 +815,7 @@ uint8_t co_nb_good_channels(const struct bt_ch_map* map);
  *     - XXB:           table of several bytes, where XX is the byte number, in decimal
  *     - XXG:           Number of several bytes, where XX is the byte number, in decimal
  *                      subject to be swapped according to endianess
+ *     - sB :           table size over 1 byte (the size is not part of the packed data), followed by the table of bytes
  *     - nB :           table size over 1 byte, followed by the table of bytes
  *     - NB :           table size over 2 bytes, followed by the table of bytes
  *     - [a...]:        Array of structures with n elements, number of element is an 8-bit value read in the bytes stream.

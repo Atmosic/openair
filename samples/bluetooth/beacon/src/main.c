@@ -15,6 +15,10 @@
 #include "power.h"
 #endif
 
+#if CONFIG_ATM_TEST_UTIL
+#include "atm_test_common.h"
+#endif
+
 #if CONFIG_ADV_DATA_BCN201
 #define SHORT_NAME    "A0000c9"
 #elif CONFIG_ADV_DATA_SIMPLE_BCN
@@ -75,6 +79,12 @@ static void adv_sent_cb(struct bt_le_ext_adv *adv, struct bt_le_ext_adv_sent_inf
 		k_work_init_delayable(&work, restart_adv);
 		k_work_schedule(&work, K_SECONDS(CONFIG_ADV_RSTRT_DUR));
 	}
+#if CONFIG_AUTO_TEST
+	printk("CONFIG_ADV_RSTRT_DUR = %d\n", CONFIG_ADV_RSTRT_DUR);
+	if (!CONFIG_ADV_RSTRT_DUR) {
+	    ATM_TEST_PASSED();
+	}
+#endif
 }
 
 static struct bt_le_ext_adv_cb adv_cbs = {
@@ -87,6 +97,61 @@ static void bt_ready(int err)
 		printk("Bluetooth init failed (err %d)\n", err);
 		return;
 	}
+
+	uint32_t CONFIG_ADV_OPTS = (0
+#ifdef CONFIG_ADV_OPTS_CONN
+		| BT_LE_ADV_OPT_CONN
+#endif
+#ifdef CONFIG_ADV_OPTS_USE_IDENTITY
+		| BT_LE_ADV_OPT_USE_IDENTITY
+#endif
+#ifdef CONFIG_ADV_OPTS_DIR_MODE_LOW_DUTY
+		| BT_LE_ADV_OPT_DIR_MODE_LOW_DUTY
+#endif
+#ifdef CONFIG_ADV_OPTS_DIR_ADDR_RPA
+		| BT_LE_ADV_OPT_DIR_ADDR_RPA
+#endif
+#ifdef CONFIG_ADV_OPTS_FILTER_SCAN_REQ
+		| BT_LE_ADV_OPT_FILTER_SCAN_REQ
+#endif
+#ifdef CONFIG_ADV_OPTS_FILTER_CONN
+		| BT_LE_ADV_OPT_FILTER_CONN
+#endif
+#ifdef CONFIG_ADV_OPTS_NOTIFY_SCAN_REQ
+		| BT_LE_ADV_OPT_NOTIFY_SCAN_REQ
+#endif
+#ifdef CONFIG_ADV_OPTS_SCANNABLE
+		| BT_LE_ADV_OPT_SCANNABLE
+#endif
+#ifdef CONFIG_ADV_OPTS_EXT_ADV
+		| BT_LE_ADV_OPT_EXT_ADV
+#endif
+#ifdef CONFIG_ADV_OPTS_NO_2M
+		| BT_LE_ADV_OPT_NO_2M
+#endif
+#ifdef CONFIG_ADV_OPTS_CODED
+		| BT_LE_ADV_OPT_CODED
+#endif
+#ifdef CONFIG_ADV_OPTS_ANONYMOUS
+		| BT_LE_ADV_OPT_ANONYMOUS
+#endif
+#ifdef CONFIG_ADV_OPTS_USE_TX_POWER
+		| BT_LE_ADV_OPT_USE_TX_POWER
+#endif
+#ifdef CONFIG_ADV_OPTS_DISABLE_CHAN_37
+		| BT_LE_ADV_OPT_DISABLE_CHAN_37
+#endif
+#ifdef CONFIG_ADV_OPTS_DISABLE_CHAN_38
+		| BT_LE_ADV_OPT_DISABLE_CHAN_38
+#endif
+#ifdef CONFIG_ADV_OPTS_DISABLE_CHAN_39
+		| BT_LE_ADV_OPT_DISABLE_CHAN_39
+#endif
+#ifdef CONFIG_ADV_OPTS_USE_NRPA
+		| BT_LE_ADV_OPT_USE_NRPA
+#endif
+	);
+	printk("CONFIG_ADV_OPTS = %#" PRIx32 "\n", CONFIG_ADV_OPTS);
 
 	/* Start advertising */
 	err = bt_le_ext_adv_create(
@@ -119,6 +184,10 @@ static void bt_ready(int err)
 
 	bt_id_get(&addr, &count);
 	bt_addr_le_to_str(&addr, addr_s, sizeof(addr_s));
+
+#if CONFIG_ATM_TEST_UTIL
+	atm_test_pass_if_socoff();
+#endif
 }
 
 int main(void)

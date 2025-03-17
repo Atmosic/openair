@@ -1,0 +1,92 @@
+syntax = "proto3";
+option java_package = "com.atmosic.blesdk.ota.image";
+
+// Define the format of an ISP archive -- meta information paired with
+// a list, or "script", of commands.
+
+message Archive {
+   message Platform {
+	string family = 1; // Platform family
+	string name = 2;   // Full platform name
+	string board = 3;   // board name
+	string revision = 4;   // Platform revision
+    }
+    message MetaInfo {
+	string signature = 1;
+	Platform platform = 2;
+	uint32 mpr_start = 3;
+	uint32 mpr_size = 4;
+	uint32 mpr_lock_size = 5;
+	uint32 ota = 6;   // OTA support
+	string sdk_ver = 7;
+	uint32 sec_dbg = 8;   // Secure Debug Enable
+	string sec_dbg_key_checksum = 9; // Secure Debug Key md5checksum
+	uint32 sec_boot = 10;   // Secure Boot Enable
+	string sec_boot_key_checksum = 11; // Secure Boot Key md5checksum
+	uint32 sec_dbg_static_unlock = 12;   // Secure Debug Static Unlock
+    }
+    message HiddenCmdNvdsReadModWrite {
+	bool invert = 1;
+	bytes nvdsContent = 2;
+    }
+    message CmdOpenOcdLoadBase {
+	bytes image = 1;
+    }
+    message CmdOpenOcdLoadFlashBase {
+	CmdOpenOcdLoadBase commonLoad = 1;
+	uint32 region_start = 2;
+	uint32 region_size = 3;
+    }
+    message CmdOpenOcdEraseRramBase {
+	uint32 region_start = 1;
+	uint32 region_size = 2;
+    }
+    message CmdOpenOcdEraseFlashBase {
+	uint32 region_size = 1;
+	uint32 address = 2;
+    }
+    message CmdOpenOcdLoadFlash {
+	CmdOpenOcdLoadFlashBase commonLoadFlash = 1;
+	uint32 address = 2;
+	string extrainfo = 3;
+    }
+    message CmdOpenOcdLoadRram {
+	CmdOpenOcdLoadFlashBase commonLoadRram = 1;
+	uint32 address = 2;
+	string extrainfo = 3;
+    }
+    message CmdOpenOcdLoadFlashNvds {
+	CmdOpenOcdLoadFlashBase commonLoadFlash = 1;
+	string extrainfo = 2;
+    }
+    message CmdOpenOcdLoadOtpNvds {
+	CmdOpenOcdLoadBase commonLoad = 1;
+    }
+    message CmdOpenOcdEraseRram {
+	CmdOpenOcdEraseRramBase commonEraseRram = 1;
+	uint32 base_address = 2;
+    }
+    message CmdOpenOcdEraseFlash {
+	CmdOpenOcdEraseFlashBase commonEraseFlash = 1;
+	uint32 base_address = 2;
+    }
+    message CmdExtend {
+	CmdOpenOcdLoadBase commonLoad = 1;
+	uint32 type = 2;
+	string extrainfo = 3;
+    }
+    message Command {
+	oneof cmdUnion {
+	    HiddenCmdNvdsReadModWrite nvdsReadModWrite = 1;
+	    CmdOpenOcdLoadFlash loadFlash = 2;
+	    CmdOpenOcdLoadFlashNvds loadFlashNvds = 3;
+	    CmdOpenOcdLoadOtpNvds loadOtpNvds = 4;
+	    CmdOpenOcdLoadRram loadRram = 5;
+	    CmdOpenOcdEraseRram eraseRram = 6;
+	    CmdOpenOcdEraseFlash eraseFlash = 7;
+	    CmdExtend cmdExtend = 8;
+	}
+    }
+    MetaInfo meta = 1;
+    repeated Command script = 2;
+}

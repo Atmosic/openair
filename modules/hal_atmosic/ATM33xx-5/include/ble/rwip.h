@@ -5,8 +5,8 @@
 *
 * @brief RW IP SW main module
 *
-* Copyright (C) RivieraWaves 2009-2024
-* Release Identifier: dc6acdca
+* Copyright (C) RivieraWaves 2009-2025
+* Release Identifier: eedc1896
 *
 *
 ****************************************************************************************
@@ -41,6 +41,9 @@
 #endif //(EMB_PRESENT)
 #include "co_list.h"              // List defines
 
+#if (BLE_CIS || BLE_BIS)
+#include "co_hci.h"
+#endif // (BLE_CIS || BLE_BIS)
 
 /*
  * DEFINES
@@ -214,13 +217,44 @@ enum rwip_rx_status
     RWIP_RX_OTHER_ERROR,
 };
 
-/// Bluetooth protocol type
-enum rwip_prot
+#if (EMB_PRESENT)
+/// Bluetooth activity type
+enum rwip_actv_type
 {
-    RWIP_PROT_BT = 0,
-    RWIP_PROT_BLE,
+    #if (BT_EMB_PRESENT)
+    // The following BT types can have any activity index between 0 and MAX_NB_ACTIVE_ACL-1
+    RWIP_ACT_BT_ACL         = 0,
+    RWIP_ACT_BT_PAGE        = 2,
+    RWIP_ACT_BT_PSCAN       = 3,
+    RWIP_ACT_BT_TEST        = 4,
+    // The following BT types have a fixed activity index between MAX_NB_ACTIVE_ACL and EM_BT_CS_INDEX_MAX-1
+    RWIP_ACT_BT_INQ         = 10,
+    RWIP_ACT_BT_ISCAN       = 11,
+    RWIP_ACT_BT_BCST        = 12,
+    RWIP_ACT_BT_STRAIN      = 13,
+    RWIP_ACT_BT_SSCAN       = 14, // No transmissions
+    RWIP_ACT_BT_CSB_TX      = 15,
+    RWIP_ACT_BT_CSB_RX      = 15, // No transmissions
+    #endif // (BT_EMB_PRESENT)
+    #if (BLE_EMB_PRESENT)
+    // The following BLE types can have any activity index between 0 and BLE_ACTIVITY_MAX-1
+    RWIP_ACT_BLE_ADV        = 20,
+    RWIP_ACT_BLE_BIS_TX     = 21,
+    RWIP_ACT_BLE_BIS_RX     = 22, // No transmissions
+    RWIP_ACT_BLE_CHSD       = 23,
+    RWIP_ACT_BLE_CIS        = 24,
+    RWIP_ACT_BLE_CON        = 25,
+    RWIP_ACT_BLE_INIT       = 26,
+    RWIP_ACT_BLE_SCAN       = 28,
+    RWIP_ACT_BLE_PER_ADV    = 27,
+    RWIP_ACT_BLE_SYNC       = 29, // No transmissions
+    RWIP_ACT_BLE_PAWR       = 30,
+    RWIP_ACT_BLE_SYNC_PAWR  = 31,
+    RWIP_ACT_BLE_TEST       = 32,
+    RWIP_ACT_BLE_ALL        = 33,
+    #endif // (BLE_EMB_PRESENT)
 };
-
+#endif // (EMB_PRESENT)
 
 /*
  * MACROS
@@ -234,7 +268,7 @@ enum rwip_prot
 #define RWIP_TX_PWR_GET(tx_pwr_req, option) (RWIP_TX_PWR_DBM_GET(rwip_rf.txpwr_cs_get(((int8_t)tx_pwr_req - rwip_tx_path_comp_get()/10), (uint8_t)option)))
 
 /// Fetch power control flags
-#define RWIP_TX_PWR_DBM_MAX_GET(prot_type, actv_id, phy) (RWIP_TX_PWR_DBM_GET(rwip_rf.txpwr_max_get(prot_type, actv_id, phy)))
+#define RWIP_TX_PWR_DBM_MAX_GET(actv_type, actv_id, phy) (RWIP_TX_PWR_DBM_GET(rwip_rf.txpwr_max_get(actv_type, actv_id, phy)))
 #define RWIP_TX_PWR_DBM_MIN_GET() (RWIP_TX_PWR_DBM_GET(rwip_rf.txpwr_min))
 
 
@@ -280,11 +314,13 @@ struct rwip_rf_api
     void (*sleep)(void);
     /// Function called to wake the RF from deep sleep mode
     void (*wake)(void);
+    /// Function called to enable/disable stable modulation index mode (true: en / false: dis)
+    void (*stable_mod_idx_set)(bool en);
     /// Index of minimum TX power
     uint8_t txpwr_min;
     /** Function called to provide the index of maximum TX power according to activity and PHY
      *  The parameters are respectively
-     *  - protocol type (see #rwip_prot)
+     *  - activity type (see #rwip_actv_type enumeration)
      *  - activity index
      *      - BT: [0, EM_BT_CS_INDEX_MAX]
      *          - Connection activity [0 to MAX_NB_ACTIVE_ACL-1]
@@ -292,13 +328,13 @@ struct rwip_rf_api
      *            for Inquiry / Inquiry scan / Active broadcast / Synchronization train / Synchronization scan / CPB transmission / CPB reception
      *      - BLE: [0 to BLE_ACTIVITY_MAX]
      *          - Specific activity [0 to BLE_ACTIVITY_MAX-1]
-     *          - If BLE_ACTIVITY_MAX (the parameter phy will be ignored),
-     *            the function should return the maximum TX power of all activities and all PHYs.
+     *          - If BLE_ACTIVITY_MAX, the function should return the maximum TX power of the activity type for the specified Phy.
      *  - phy
      *      - BT: see Packet Type Table defines
-     *      - BLE: see #le_phy_value
+     *      - BLE: see #le_phy_value enumeration
+     *          - If PHY_UNDEF_VALUE, the function should return the maximum TX power of all Phy.
      **/
-    uint8_t (*txpwr_max_get)(uint8_t prot_type, uint8_t actv_idx, uint8_t phy);
+    uint8_t (*txpwr_max_get)(uint8_t actv_type, uint8_t actv_idx, uint8_t phy);
     /// RSSI high threshold ('real' signed value in dBm)
     int8_t rssi_high_thr;
     /// RSSI low threshold ('real' signed value in dBm)
@@ -344,7 +380,6 @@ struct rwip_prio
     ///Increment
     uint8_t increment;
 };
-
 
 /**
  ****************************************************************************************
@@ -494,6 +529,7 @@ struct rwip_aes_client
     /// True to encrypt, False to decrypt
     bool cipher;
 };
+
 
 /*
  * VARIABLE DECLARATION
@@ -860,7 +896,7 @@ void rwip_active_mode_set(uint32_t prv_slp_id);
  * @param[in] prv_slp_id   ID of the event calling the prevent sleep
  ****************************************************************************************
  */
-void rwip_active_mode_clear(uint32_t prv_slp_bit);
+void rwip_active_mode_clear(uint32_t prv_slp_id);
 
 
 #if (BLE_EMB_PRESENT || BT_EMB_PRESENT)
@@ -886,6 +922,15 @@ uint16_t rwip_current_drift_get(void);
  ****************************************************************************************
  */
 uint16_t rwip_max_drift_get(void);
+
+/**
+ ****************************************************************************************
+ * @brief Get the active clock drift of the system
+ *
+ * @return  Active clock drift (in ppm)
+ ****************************************************************************************
+ */
+uint16_t rwip_active_drift_get(void);
 
 /**
  ****************************************************************************************
@@ -967,6 +1012,50 @@ void rwip_rtos_post_callback_set(void (*callback)(void));
 uint32_t rwip_bt_time_to_us(rwip_time_t bt_time);
 
 #endif // (EMB_PRESENT)
+
+#if (BLE_CIS)
+/**
+ ****************************************************************************************
+ * @brief Override CIS parameter selection for specified CIS index and direction of CIG parameters.
+ * Responsibility of customer to select compatible parameter combinations.
+ *
+ * @param[in] p_cmd         CIG Parameters.
+ * @param[in] cis_idx       CIS index.
+ * @param[in] dir           Direction (0:Tx, 1:Rx).
+ * @param[out] framing      Framing (see #iso_frame enumeration).
+ * @param[out] iso_intv     ISO interval (in units of 1.25ms).
+ * @param[out] bn           Burst number.
+ * @param[out] ft           Flush timeout (in multiples of the ISO_Interval).
+ * @param[out] max_pdu      Maximum PDU size (in bytes).
+ * @param[out] nse          Number of sub-events.
+ *
+ * @return True to override, False otherwise.
+ ****************************************************************************************
+ */
+bool rwip_cis_param_get(const hci_le_set_cig_params_cmd_t *p_cmd, uint8_t cis_idx, uint8_t dir, uint8_t* framing, uint16_t* iso_intv, uint8_t* bn, int8_t* ft, uint8_t* max_pdu, uint8_t* nse);
+#endif //(BLE_CIS)
+
+#if (BLE_BIS)
+/**
+ ****************************************************************************************
+ * @brief Override BIS parameter selection.
+ * Responsibility of customer to select compatible parameter combinations.
+ *
+ * @param[in] p_param       BIG Parameters.
+ * @param[out] framing      Framing (see #iso_frame enumeration).
+ * @param[out] iso_intv     ISO interval (in units of 1.25ms).
+ * @param[out] max_pdu      Maximum PDU size (in bytes).
+ * @param[out] bn           Burst number.
+ * @param[out] nse          Number of sub-events.
+ * @param[out] irc          Immediate repetition Count.
+ * @param[out] pto          PreTransmission offset.
+ *
+ * @return True to override, False otherwise.
+ ****************************************************************************************
+ */
+bool rwip_bis_param_get(struct hci_le_create_big_cmd const *p_param, uint8_t* framing, uint16_t* iso_intv, uint8_t* max_pdu, uint8_t* bn, uint8_t* nse, uint8_t* irc, uint8_t* pto);
+#endif //(BLE_BIS)
+
 
 #if (BLE_EMB_PRESENT)
 /**
@@ -1129,7 +1218,6 @@ int16_t rwip_tx_path_comp_get(void);
  */
 int16_t rwip_rx_path_comp_get(void);
 #endif // (EMB_PRESENT)
-
 
 ///@} ROOT
 #endif // RWIP_H_

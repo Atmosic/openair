@@ -8,8 +8,8 @@ config GEN_PARTITION_INFO
 
 config GEN_PARTITION_INFO_SCRIPT
 	string "Generate partition info script path"
-	default "${ZEPHYR_BASE}/../openair/tools/scripts/gen_atm_partition_info.py"
+	default "${ZEPHYR_OPENAIR_MODULE_DIR}/tools/scripts/gen_atm_partition_info.py"
 
 config GEN_TAG_DATA_BIN_FILE_SCRIPT
 	string "Generate tag data bin file script path"
-	default "${ZEPHYR_BASE}/../openair/tools/scripts/gen_tag_data_bin_file.py"
+	default "${ZEPHYR_OPENAIR_MODULE_DIR}/tools/scripts/gen_tag_data_bin_file.py"

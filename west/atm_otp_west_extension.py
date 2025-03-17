@@ -3,7 +3,7 @@
 
 @brief West extension for managing OTP
 
-Copyright (c) Atmosic 2024
+Copyright (c) Atmosic 2024-2025
 '''
 
 import binascii
@@ -159,12 +159,11 @@ class AtmOtpCommand(WestCommand):
 
     def do_run(self, args, unknown_args):
         self.board = args.board
+        soc = atm_openocd.get_soc_from_board(self.board)
 
-        plat_dir = atm_openocd.get_atm_plat_dir_from_board(self.board)
-        plat = os.path.basename(os.path.normpath(plat_dir))
-        if (plat == "ATM33xx-5"):
+        if soc == "ATM33xx-5":
             self.OTParray = Atmx3_OTPArray
-        elif ("ATM34xx" in self.atm_plat):
+        elif soc.startswith("ATM34xx"):
             self.OTParray = Atm34_OTPArray
         else:
             raise RuntimeError("Unsupported platform")

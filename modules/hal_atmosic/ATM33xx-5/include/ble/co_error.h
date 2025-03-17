@@ -5,8 +5,8 @@
  *
  * @brief List of codes for error in RW Software.
  *
- * Copyright (C) RivieraWaves 2009-2024
- * Release Identifier: dc6acdca
+ * Copyright (C) RivieraWaves 2009-2025
+ * Release Identifier: eedc1896
  *
  *
  ****************************************************************************************
@@ -104,6 +104,7 @@ enum co_error
     CO_ERROR_PKT_TOO_LONG                    = 0x45, /*!< 0x45 */
     CO_ERROR_TOO_LATE                        = 0x46, /*!< 0x46 */
     CO_ERROR_TOO_EARLY                       = 0x47, /*!< 0x47 */
+    CO_ERROR_INSUFFICIENT_CHANNELS           = 0x48, /*!< 0x48 */
 
     CO_ERROR_LAST_IDENTIFIER,
 
