@@ -54,5 +54,17 @@ properties:
       type: int
       required: false
 
+    ch-p2single:
+      type: int
+      required: false
+
+    ch-p3single:
+      type: int
+      required: false
+
+    ch-p4single:
+      type: int
+      required: false
+
 io-channel-cells:
     - input
