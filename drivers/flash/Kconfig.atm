@@ -1,0 +1,42 @@
+# Copyright (c) 2023-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_FLASH_ATM
+	bool "Atmosic external flash driver"
+	depends on DT_HAS_ATMOSIC_EXTERNAL_FLASH_CONTROLLER_ENABLED
+	select FLASH_HAS_DRIVER_ENABLED
+	select FLASH_HAS_PAGE_LAYOUT
+	select FLASH_HAS_EXPLICIT_ERASE
+	select MPU_ALLOW_FLASH_WRITE if ARM_MPU
+	default y if !(BOOTLOADER_MCUBOOT && TRUSTED_EXECUTION_SECURE)
+	help
+	  Enable Atmosic external flash driver.
+
+config SOC_FLASH_ATM_FORCE_PUYA
+	bool "Force recovered manufactuer ID to PUYA"
+	depends on SOC_FLASH_ATM
+	depends on SOC_SERIES_ATMX2
+
+config SOC_FLASH_ATM_USE_BREAK_IN
+	bool "Allow the use of Atmosic flash break-in support if available"
+	default y
+	depends on SOC_FLASH_ATM
+	depends on MULTITHREADING
+	depends on !MCUBOOT
+
+config SOC_FLASH_ATM_BREAK_IN_SUSPEND_US
+	int "Atmosic break-in suspend time in microseconds"
+	default 50
+	depends on SOC_FLASH_ATM_USE_BREAK_IN
+
+config SOC_FLASH_ATM_RRAM
+	bool "Atmosic RRAM driver"
+	depends on DT_HAS_ATMOSIC_RRAM_CONTROLLER_ENABLED
+	select FLASH_HAS_DRIVER_ENABLED
+	select FLASH_HAS_PAGE_LAYOUT
+	select FLASH_HAS_NO_EXPLICIT_ERASE
+	select MPU_ALLOW_FLASH_WRITE if ARM_MPU
+	default y
+	help
+	  Enable Atmosic RRAM driver.

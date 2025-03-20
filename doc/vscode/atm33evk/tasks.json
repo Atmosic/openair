@@ -1,0 +1,413 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Initialise-WEST INIT",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "init",
+                "-m",
+                "${input:gitRepo}",
+                "--mr",
+                "${input:gitBranch}"
+            ],
+            "detail": "Build MCUboot",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Initialise-WEST UPDATE",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "update"
+            ],
+            "detail": "west update",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Build-ONLY-MCUBOOT",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "build",
+                "-p",
+                "-s",
+                "bootloader/mcuboot/boot/zephyr",
+                "-b",
+                "${input:boardName}@mcuboot" ,
+                "-d",
+                "build/${input:boardName}/bootloader/mcuboot/boot/zephyr",
+                "--",
+                "-DCONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y",
+                "-DCONFIG_BOOT_MAX_IMG_SECTORS=512",
+                "-DDTC_OVERLAY_FILE=\"${workspaceFolder}/zephyr/boards/atmosic/atm33evk/${input:boardName}_mcuboot_bl.overlay\"",
+                "-DDTS_EXTRA_CPPFLAGS=\"-DATMWSTK=LL;\""
+            ],
+            "detail": "Build MCUboot",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Build-ONLY-SPE",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "build",
+                "-p",
+                "-s",
+                "openair/samples/spe",
+                "-b",
+                "${input:boardName}@mcuboot",
+                "-d",
+                "build/${input:boardName}/openair/samples/spe",
+                "--",
+                "-DCONFIG_BOOTLOADER_MCUBOOT=y",
+                "-DCONFIG_MCUBOOT_GENERATE_UNSIGNED_IMAGE=n",
+                "-DDTS_EXTRA_CPPFLAGS=-DATMWSTK=LL;"
+            ],
+            "detail": "Build spe"
+        },
+        {
+            "label": "Build-ONLY-APPLICATION",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "build",
+                "-p",
+                "-s",
+                "${input:sampleName}",
+                "-b",
+                "${input:boardName}@mcuboot//ns",
+                "-d",
+                "build/${input:boardName}_ns/${input:sampleName}",
+                "--",
+                "-DCONFIG_BOOTLOADER_MCUBOOT=y",
+                "-DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\\\"bootloader/mcuboot/root-ec-p256.pem\\\"",
+                "-DCONFIG_SPE_PATH=\"build/${input:boardName}/openair/samples/spe\" ",
+                "${input:extraConfigs}"
+            ],
+            "detail": "Build Zephyr application"
+        },
+        {
+            "label": "Build-SPE",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "build",
+                "-p",
+                "-s",
+                "openair/samples/spe",
+                "-b",
+                "${input:boardName}",
+                "-d",
+                "build/${input:boardName}/openair/samples/spe"
+            ],
+            "detail": "Build SPE only"
+        },
+        {
+            "label": "Build-ONLY-APPLICATION-WITHOUT-MCUBOOT",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "build",
+                "-p",
+                "-s",
+                "${input:sampleName}",
+                "-b",
+                "${input:boardName}//ns",
+                "-d",
+                "build/${input:boardName}_ns/${input:sampleName}",
+                "--",
+                "-DCONFIG_SPE_PATH=\\\"build/${input:boardName}/openair/samples/spe\\\"",
+		"${input:extraConfigs}"
+            ],
+            "detail": "Build application without mcuboot"
+        },
+        {
+            "label": "Build-WITHOUT-MCUBOOT",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build-SPE",
+                "Build-ONLY-APPLICATION-WITHOUT-MCUBOOT"
+            ],
+            "detail": "Build application without mcuboot"
+        },
+        {
+            "label": "Build-SPE-NSPE-merged",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build-SPE",
+                "Build-ONLY-APPLICATION-WITHOUT-MCUBOOT"
+            ],
+            "detail": "Build SPE-NSPE merged",
+            "args": [
+                "--",
+                "-DCONFIG_MERGE_SPE_NSPE=y"
+            ]
+        },
+
+        {
+            "label": "Build-SYSBUILD",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "build",
+                "-p",
+                "always",
+                "--sysbuild",
+                "${input:sampleName}",
+                "-b",
+                "${input:boardName}@mcuboot//ns",
+                "-T",
+                "${input:sysbuildArg}"
+            ],
+            "detail": "Build with sysbuild"
+        },
+        {
+            "label": "Flash-ONLY-MCUBOOT",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "flash",
+                "--verify",
+                "--device=${input:boardNum}",
+                "-d",
+                "build/${input:boardName}/bootloader/mcuboot/boot/zephyr",
+                "--noreset",
+                "--jlink"
+            ],
+            "detail": "flash mcuboot"
+        },
+        {
+            "label": "Flash-SYSBUILD",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "flash",
+                "--verify",
+                "--device=${input:boardNum}",
+                "-d",
+                "build",
+                "--noreset",
+                "--jlink"
+            ],
+            "detail": "flash the sysbuild"
+        },
+        {
+            "label": "Flash-ONLY-APPLICATION",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "flash",
+                "--verify",
+                "--device=${input:boardNum}",
+                "-d",
+                "build/${input:boardName}_ns/${input:sampleName}",
+                "--jlink"
+            ],
+            "detail": "Flash Zephyr application"
+        },
+        {
+            "label": "Flash-ONLY-SPE",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "flash",
+                "--verify",
+                "--device=${input:boardNum}",
+                "-d",
+                "build/${input:boardName}/openair/samples/spe",
+                "--noreset",
+                "--jlink"
+            ],
+            "detail": "Flash SPE only"
+        },
+        {
+            "label": "Flash-ONLY-APPLICATION-WITHOUT-MCUBOOT",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "flash",
+                "--verify",
+                "--device=${input:boardNum}",
+                "-d",
+                "build/${input:boardName}_ns/${input:sampleName}",
+                "--jlink"
+            ],
+            "detail": "Flash application without mcuboot"
+        },
+        {
+            "label": "Flash-WITHOUT-MCUBOOT",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Flash-ONLY-SPE",
+                "Flash-ONLY-APPLICATION-WITHOUT-MCUBOOT"
+            ],
+            "detail": "Flash application without mcuboot"
+        },
+        {
+            "label": "Flash-SPE-NSPE merged",
+           "dependsOrder": "sequence",
+            "dependsOn": [
+                "Flash-ONLY-SPE",
+		"Flash-ONLY-APPLICATION-WITHOUT-MCUBOOT"
+            ],
+            "detail": "Flash SPE-NSPE merged"
+        },
+        {
+            "label": "Flash-ATM BLE STK",
+            "type": "shell",
+            "command": "west",
+            "args": [
+                "flash",
+                "--verify",
+                "--device=${input:boardNum}",
+                "-d",
+                "build/${input:boardName}/bootloader/mcuboot/boot/zephyr",
+                "--use-elf",
+                "--elf-file",
+                "\"./openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_${input:ATMWSTK}.elf\"",
+                "--jlink"
+            ],
+            "detail": "flash application without mcuboot"
+        },
+		{
+		"label": "Debug-APP",
+		"type": "shell",
+		"command": "west",
+		"args": [
+			"debug",
+			"--build-dir",
+			"build/${input:boardName}_ns/${input:sampleName}",
+			"--openocd",
+			"./modules/hal/atmosic_lib/tools/openocd/bin/Linux/openocd",
+			"--domain",
+			"app"
+		],
+		"detail": "Debug app"
+	},
+	{
+		"label": "Debug-APP (with sysbuild)",
+		"type": "shell",
+		"command": "west",
+		"args": [
+			"debug",
+			"--build-dir",
+			"build/",
+			"--openocd",
+			"./modules/hal/atmosic_lib/tools/openocd/bin/Linux/openocd",
+			"--domain",
+			"${input:appName}"
+		],
+		"detail": "west debug for app (sysbuild)"
+	},
+	{
+		"label": "Debug-SPE",
+		"type": "shell",
+		"command": "west",
+		"args": [
+			"debug",
+			"--build-dir",
+			"build/",
+			"--openocd",
+			"./modules/hal/atmosic_lib/tools/openocd/bin/Linux/openocd",
+			"--domain",
+			"spe"
+		],
+		"detail": "west debug for spe (sysbuild)"
+	},
+	{
+		"label": "Debug-MCUBOOT",
+		"type": "shell",
+		"command": "west",
+		"args": [
+			"debug",
+			"--build-dir",
+			"build/",
+			"--openocd",
+			"./modules/hal/atmosic_lib/tools/openocd/bin/Linux/openocd",
+			"--domain",
+			"mcuboot"
+		],
+		"detail": "west debug for mcuboot (sysbuild)"
+	},
+        {
+            "label": "Build- All",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build-ONLY-MCUBOOT",
+                "Build-ONLY-SPE",
+                "Build-ONLY-APPLICATION"
+            ],
+            "detail": "Build MCUboot,SPE and APPLICATION sequentially"
+        },
+        {
+            "label": "Flash-All",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Flash-ONLY-MCUBOOT",
+                "Flash-ONLY-APPLICATION",
+                "Flash-ATM BLE STK"
+            ],
+            "detail": "Flash MCUBOOT and application sequentially"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "sampleName",
+            "type": "promptString",
+            "description": "Enter the Zephyr sample path (e.g. zephyr/samples/hello_world)"
+        },
+        {
+            "id": "extraConfigs",
+            "type": "promptString",
+            "description": "(Optional)Enter extra Config Arguments"
+        },
+        {
+            "id": "ATMWSTK",
+            "type": "promptString",
+            "description": "Flash bluetooth stack (LL/PD50LL)"
+        },
+        {
+            "id": "boardName",
+            "type": "promptString",
+            "description": "Enter the board name"
+        },
+        {
+            "id": "sysbuildArg",
+            "type": "promptString",
+            "description": "Enter the sysbuild argument (e.g: samples.hello_world.atm.mcuboot"
+        },
+        {
+            "id": "boardNum",
+            "type": "promptString",
+            "description": "Enter the board number"
+        },
+        {
+            "id": "gitRepo",
+            "type": "promptString",
+            "description": "Enter the git Repository",
+            "default": "https://github.com/Atmosic/openair.git"
+        },
+        {
+            "id": "gitBranch",
+            "type": "promptString",
+            "default": "main",
+            "description": "Enter the git branch"
+        },
+	{
+            "id": "appName",
+            "type": "promptString",
+            "description": "Enter the sample name"
+        }
+    ]
+}

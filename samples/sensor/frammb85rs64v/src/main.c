@@ -8,7 +8,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/device.h>
-#include <drivers/fram.h>
+#include <zephyr/drivers/fram.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>

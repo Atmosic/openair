@@ -4,6 +4,7 @@
 
 rsource "lib/Kconfig"
 rsource "modules/hal_atmosic/Kconfig"
+rsource "drivers/Kconfig"
 rsource "tools/Kconfig"
 rsource "subsys/Kconfig"
 

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if AUDIO
+if AUDIO_CODEC
+
+rsource "Kconfig.sma1303"
+
+endif # AUDIO_CODEC
+endif # AUDIO

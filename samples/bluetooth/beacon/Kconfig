@@ -22,6 +22,7 @@ config REFBCN_POWER_PROFILE
 	bool "hibernate beacon demo"
 	select ADV_OPTS_USE_IDENTITY
 	select ADV_OPTS_SCANNABLE
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
 	help
 	  Select this option to enable power profile.
 
@@ -45,6 +46,7 @@ endchoice
 #
 
 rsource "Kconfig.adv_opts"
+rsource "Kconfig.adv_flags"
 
 # for Create
 config ADV_INTV
@@ -54,12 +56,12 @@ config ADV_INTV
 	default 0x640 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 1s
 	default 0x20
 
-
-config ADV_DISC
+config ADV_FLAGS
 	hex
-	range 0 0x7
-	default 0x6 if REFBCN_POWER_PROFILE # Generic
-	default 0 # non-disc
+	default 0x4 if ADV_FLAGS_LE_ONLY_NON_DISC
+	default 0x5 if ADV_FLAGS_LE_ONLY_LIMITED_DISC
+	default 0x6 if ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	default 0
 
 # for Start
 config ADV_TOUT

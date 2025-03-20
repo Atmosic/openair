@@ -1,0 +1,24 @@
+sample:
+  description: Atmosic HCI vendor sample
+  name: Atmosic HCI vendor sample
+common:
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Test Success!"
+tests:
+  sample.bluetooth.hci_vendor:
+    tags: bluetooth
+  samples.bluetooth.hci_vendor.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - Booting Zephyr OS
+    tags: bluetooth atm33 atm34
+    extra_args:
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y

@@ -1,0 +1,16 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# the following options are used to select the default value of ADV_FLAGS
+# default 0 if none of them are selected.
+# if multiple options are selected, the first matched default value will be applied.
+
+config ADV_FLAGS_LE_ONLY_NON_DISC
+	bool "set flags to 0x04"
+
+config ADV_FLAGS_LE_ONLY_LIMITED_DISC
+	bool "set flags to 0x05"
+
+config ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	bool "set flags to 0x06"

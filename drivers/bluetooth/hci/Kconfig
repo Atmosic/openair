@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config BT_ATMOSIC_HCI
+	bool "Atmosic HCI Interface"
+	default y
+	depends on DT_HAS_ATMOSIC_ATM_HCI_ENABLED
+	help
+	  Atmosic HCI interface to the local link layer (LL). The driver
+	  is provided by the Atmosic HAL.

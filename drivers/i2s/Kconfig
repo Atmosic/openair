@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if I2S
+
+rsource "Kconfig.*"
+
+endif # I2S

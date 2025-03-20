@@ -32,7 +32,7 @@
 #endif
 
 static struct bt_data const ad[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, CONFIG_ADV_DISC),
+	BT_DATA_BYTES(BT_DATA_FLAGS, CONFIG_ADV_FLAGS),
 #if CONFIG_ADV_DATA_BCN201 || CONFIG_ADV_DATA_SIMPLE_BCN
 	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
 	BT_DATA_BYTES(BT_DATA_SVC_DATA16, 0xaa, 0xfe,     /* Eddystone ID */
@@ -152,6 +152,7 @@ static void bt_ready(int err)
 #endif
 	);
 	printk("CONFIG_ADV_OPTS = %#" PRIx32 "\n", CONFIG_ADV_OPTS);
+	printk("CONFIG_ADV_FLAGS = %#" PRIx32 "\n", CONFIG_ADV_FLAGS);
 
 	/* Start advertising */
 	err = bt_le_ext_adv_create(

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if SPI
+
+rsource "Kconfig.atm"
+
+endif # SPI

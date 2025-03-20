@@ -3,7 +3,7 @@
 
 @brief West extension for managing secure journal
 
-Copyright (c) Atmosic 2024
+Copyright (c) Atmosic 2024-2025
 '''
 
 import binascii
@@ -122,11 +122,17 @@ class SecJrnlCommand(WestCommand):
         '''
         self.openocd.reset_target()
         if (self.sec_jrnl is None) or (force):
-            tf = tempfile.NamedTemporaryFile('w+b')
-            cmd_ret, _, _ = self.openocd.execute_cmd([f'atm_dump_sec_jrnl_nvds {tf.name}'])
-            self.sec_jrnl = tf.read()
-            tf.close()
-            return cmd_ret
+            with tempfile.NamedTemporaryFile('w+b', delete=False) as tf:
+                temp_path = tf.name.replace("\\", "/")  # Fix path for Windows
+                try:
+                    cmd_ret, _, _ = \
+                        self.openocd.execute_cmd([f'atm_dump_sec_jrnl_nvds {temp_path}'])
+                    tf.close()
+                    with open(temp_path, "rb") as tf_read:
+                        self.sec_jrnl = tf_read.read()
+                    return cmd_ret
+                finally:
+                    os.remove(temp_path)
 
     def push_sec_jrnl(self, bin):
         '''Push secure journal from device

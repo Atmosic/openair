@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if BT_DRIVERS
+if BT_HCI
+
+rsource "hci/Kconfig"
+
+endif
+endif # BT_DRIVERS
+

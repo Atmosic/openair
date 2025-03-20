@@ -115,11 +115,16 @@ def get_atm_openocd():
     openocd_search = None
     if atm_openocd_base is not None:
         plat = platform.system()
-        if plat.startswith('MSYS'):
-            plat = 'Windows'
+        if plat.startswith('MSYS') or plat.startswith('Windows'):
+            plat = 'Windows_NT'
         elif plat == 'Darwin':
             arch = platform.machine().lower()
             plat = f'Darwin/{arch}'
+        elif plat == 'Linux':
+            pass
+        else:
+            raise ValueError(f"Unrecognized platform: {plat}")
+
         openocd = os.path.join(atm_openocd_base, 'bin', plat, 'openocd')
         openocd_search = os.path.join(atm_openocd_base, 'tcl')
         print("Using ATM OpenOCD '{}'".format(openocd))

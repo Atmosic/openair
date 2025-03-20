@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if HWINFO
+
+config HWINFO_ATM
+	bool "Atmosic device ID"
+	default y
+	depends on SOC_SERIES_ATM33
+	help
+	  Enable Atmosic hwinfo driver
+
+endif

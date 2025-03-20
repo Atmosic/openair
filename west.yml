@@ -1,7 +1,7 @@
 manifest:
   group-filter:
-  - -optional
   - -babblesim
+  - -optional
   projects:
   - name: hal_atmosic
     url: https://github.com/Atmosic/hal_atmosic
@@ -21,7 +21,7 @@ manifest:
     path: modules/crypto/micro-ecc
   - name: zephyr
     url: https://github.com/Atmosic/zephyr
-    revision: de3fe11b928ae3139c49ec373e646f500be32e12
+    revision: 305eeb06086fc61556f94f9eec715cf8e47d22de
     west-commands: scripts/west-commands.yml
   - name: cmsis
     url: https://github.com/zephyrproject-rtos/cmsis

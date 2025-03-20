@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if I2C
+
+rsource "Kconfig.atm"
+
+endif # I2C

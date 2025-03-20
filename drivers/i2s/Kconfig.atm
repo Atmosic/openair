@@ -1,0 +1,22 @@
+# I2S driver configuration options
+
+# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig I2S_ATM
+	bool "Atmosic I2S driver"
+	default y
+	depends on DT_HAS_ATMOSIC_ATM_I2S_ENABLED
+	select CONFIG_ATM_DMA
+	help
+	  Enable I2S support on the ATM family of processors.
+
+if I2S_ATM
+
+config I2S_WSCNT
+	int "force I2S word select count"
+	default 0
+	help
+	  Force the number of word select count. 0 means no force.
+
+endif # I2S_ATM
