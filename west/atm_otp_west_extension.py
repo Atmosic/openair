@@ -43,7 +43,7 @@ class AtmOtpCommand(WestCommand):
             help_str (str): help string
         """
         s_parser = subparsers.add_parser(subcmd_str, help=help_str)
-        s_parser.add_argument('--jlink', default=True, required=False, action='store_true',
+        s_parser.add_argument('--jlink', required=False, action='store_true',
                               help='if using JLINK')
         s_parser.add_argument('--device', required=True,
                               help='selects FTDI interface, e.g: ATRDIxxxx, or JLINK')
