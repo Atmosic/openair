@@ -89,7 +89,7 @@ struct i2c_atm_config {
 	set_callback_t resume_device;
 #endif
 	uint32_t mode;
-	uint32_t speed;
+	uint32_t bitrate;
 #ifdef I2C_CLK_STRETCH_SUPPORTED
 	bool clk_stretch_enabled;
 #endif
@@ -337,7 +337,8 @@ static int i2c_atm_transfer(struct device const *dev, struct i2c_msg *msgs, uint
 			if (config->clk_stretch_enabled) {
 				WRPR_CTRL_SET(config->base, WRPR_CTRL__SRESET);
 				WRPR_CTRL_SET(config->base, WRPR_CTRL__CLK_ENABLE);
-				i2c_atm_set_speed(dev, config->speed);
+				uint32_t speed = I2C_SPEED_GET(i2c_map_dt_bitrate(config->bitrate));
+				i2c_atm_set_speed(dev, speed);
 			}
 #endif
 			break;
@@ -458,12 +459,12 @@ static struct i2c_driver_api const i2c_atm_driver_api = {
 static int i2c_atm_init(struct device const *dev)
 {
 	struct i2c_atm_config const *config = dev->config;
-	uint32_t bitrate = i2c_map_dt_bitrate(config->speed);
+	uint32_t cfgspeed = i2c_map_dt_bitrate(config->bitrate);
 	struct i2c_atm_data *data = dev->data;
 
 	k_sem_init(&data->xfer_sem, 1, 1);
 
-	return i2c_atm_configure(dev, config->mode | bitrate);
+	return i2c_atm_configure(dev, config->mode | cfgspeed);
 }
 
 #define I2C_SCK(n)  CONCAT(CONCAT(I2C, DT_INST_PROP(n, instance)), _SCK)
@@ -524,7 +525,7 @@ static int i2c_atm_init(struct device const *dev)
 		)) /* CONFIG_PM */                                                                 \
 		)) /* I2C_GPIO_REQUIRED */                                                         \
 		.mode = I2C_MODE_CONTROLLER,                                                       \
-		.speed = DT_INST_PROP(n, clock_frequency),                                         \
+		.bitrate = DT_INST_PROP(n, clock_frequency),                                       \
 		IF_ENABLED(I2C_CLK_STRETCH_SUPPORTED, (                                            \
 		.clk_stretch_enabled = DT_INST_PROP(n, clk_stretch),                               \
 		))                                                                                 \
