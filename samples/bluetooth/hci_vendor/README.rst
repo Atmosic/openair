@@ -63,9 +63,9 @@ in modules/hal/atmosic/ATM33xx-5/drivers/ble for information on the controller
 images and library options.
 
 A convenient support script is provided in the Zephyr repository to build and
-program this application. Please refer to::
-
-   openair/boards/arm/atm33evk/doc/index.rst
+program this application. Please refer to the documentation on `programming and
+debugging an ATM33xx
+</boards/atmosic/atm33evk/doc/index.rst#programming-and-debugging>`_ EVK.
 
 Below are the steps for building and programming this application without
 MCUBoot using ``west build`` and ``west flash`` directly.
