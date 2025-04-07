@@ -485,7 +485,7 @@ class Tools:
     def get_zephyr_ver(version):
         # git tag => github_atmosic/24.04.0 or 24.04.0
         git_cmd = "git for-each-ref --sort=creatordate --format='%(refname)'"
-        pattern = r'refs/tags/(?:github_atmosic/)(\d+)\.(\d+)\.(\d+)'
+        pattern = r'refs/tags/(?:github_atmosic/|release/)?(\d+)\.(\d+)\.(\d+)'
         try:
             process = subprocess.Popen(git_cmd, shell=True,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
