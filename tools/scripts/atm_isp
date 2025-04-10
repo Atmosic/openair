@@ -315,7 +315,7 @@ def iter_archive_aux(cmdName, cmd, handler):
     return True
 
 # Executes all commands in the archive
-def iter_archive(archive, handler):
+def iter_archive(archive, handler, burn=False):
     platform = archive.meta.platform
     board = None
     revision = None
@@ -324,6 +324,8 @@ def iter_archive(archive, handler):
     if hasattr(platform, 'revision'):
         revision =  platform.revision
     handler.Platform(platform.family, platform.name, board, revision)
+    if burn:
+        handler.init_script()
     for cmdUnion in archive.script:
         cmdName = cmdUnion.WhichOneof("cmdUnion")
         cmd = getattr(cmdUnion, cmdName)
@@ -419,6 +421,17 @@ class Tools:
             platforms_dir = os.path.join(openocd_pkg_root, 'platform')
             return os.path.join(platforms_dir, platform_family, platform_name)
     @staticmethod
+    def openocd_cfg_dir():
+        if "atm34" in Tools.platform_family:
+            if Tools.revision:
+                revision = Tools.revision
+            else:
+                # compatible with old atm file, use default for atm34
+                revision = 'rev-2'
+            return os.path.join(Tools.platform_dir(), revision, 'openocd')
+        else:
+            return os.path.join(Tools.platform_dir(), 'openocd')
+    @staticmethod
     def openocd_flags():
         platform_family = Tools.platform_family
         # family name of sydney on bare metal is atm2 or atm3 and atmx2 on
@@ -428,20 +441,9 @@ class Tools:
             platform_family = "atm2x_openocd.cfg"
         else:
             platform_family = 'atmx3_openocd.cfg'
-        openocd_dir = Tools.openocd_dir()
-        if "atm34" in Tools.platform_family:
-            if Tools.revision:
-                revision = Tools.revision
-            else:
-                # compatible with old atm file, use default for atm34
-                revision = 'rev-2'
-            openocd_cfg_dir = os.path.join(Tools.platform_dir(), revision,
-                                           'openocd')
-        else:
-            openocd_cfg_dir = os.path.join(Tools.platform_dir(), 'openocd')
         flags = [
-            '-s', os.path.join(openocd_dir, 'tcl'),
-            '-s', openocd_cfg_dir,
+            '-s', os.path.join(Tools.openocd_dir(), 'tcl'),
+            '-s', Tools.openocd_cfg_dir(),
             '-f', '{}'.format(platform_family),
         ]
         return flags
@@ -543,6 +545,8 @@ class WriteOpenOcdScript:
     fl_op_wr = 0x01
     fl_op_er = 0x02
     fl_op_erwr = 0x03
+    fl_op_verify = 0x04
+    fl_flash_baseaddr = 0x200000
     def __init__(self, dirpath, must_be_empty=True, verbose=True, check_image=True, tcl_script=None, program_only=False, is_atmx2=False, basename_subst=[], fast_load=False, fl_bin_path=None):
         self.dirpath = dirpath
         self.verbose = verbose
@@ -561,41 +565,42 @@ class WriteOpenOcdScript:
         elif must_be_empty and os.listdir(dirpath):
             raise Exception('"%s" is not empty')
         elif fast_load:
-            if not fl_bin_path :
-                raise Exception(f"fast_load required fl_bin_path file path")
-            if not os.path.exists(fl_bin_path):
+            if fl_bin_path and not os.path.exists(fl_bin_path):
                 raise Exception(f"fl_bin_path file {fl_bin_path} not exist")
-            if check_image:
-                print("fast_load ignore check_image")
         if tcl_script:
             script_path = tcl_script
         else:
             script_path = self.path('atm.tcl')
         self.script = open(script_path, 'w')
-        if not tcl_script:
+        self.image_counts = {
+            'atm_extend': 0,
+        }
+        self.basename_subst = basename_subst
+
+    def init_script(self):
+        if self.fast_load:
+            if not self.fl_bin_path:
+                self.fl_bin_path = os.path.join(Tools.openocd_cfg_dir(), 'fast_load', 'fast_load.bin')
+        if not self.tcl_script:
             self.script.write('init\n')
             self.script.write('verify_rom_version\n')
-            if fast_load:
+            if self.fast_load:
                 self.script.write('set ::env(FAST_LOAD) 1\n')
-                if not is_atmx2:
+                if not self.is_atmx2:
                     self.script.write('atmx3_load_ram_image {%s}\n'%self.fl_bin_path)
                 else:
                     self.script.write('set ::env(ERASE_WHOLE) 1\n')
                     self.script.write('sydney_erase_flash 0x04\n')
                     self.script.write('atm2x_load_ram_image {%s}\n'%self.fl_bin_path)
             else:
-                if is_atmx2:
+                if self.is_atmx2:
                     self.script.write('set ::env(ERASE_UPGRADE_DATA) 1\n')# Make this opt'l?
-        self.image_counts = {
-            'atm_extend': 0,
-        }
-        self.basename_subst = basename_subst
 
     def finalize_script(self, erase_workarounds = False):
         if self.sydney_burn_nvm in self.image_counts:
             self.read_n_modify_otp(erase_workarounds)
             self.print_cmd(self.sydney_burn_nvm, self.path(self.otp_nvds))
-            if self.check_image:
+            if self.check_image and not self.fast_load:
                 self.print_cmd(self.sydney_verify_nvm, self.path(self.otp_nvds))
         if not self.tcl_script:
             if not self.program_only:
@@ -710,8 +715,17 @@ class WriteOpenOcdScript:
         tokens = [openocd_fcn]
         if imagepath:
             tokens.append('{%s}'%imagepath)
-        if self.fast_load and openocd_fcn == 'atm_fast_load':
-            tokens.append(f"0x{self.fl_op_wr}")
+        if self.fast_load:
+            if openocd_fcn == 'atm_fast_load':
+                # atm_fast_load {image} 0x01 {region_start}
+                fl_op_code = self.fl_op_wr
+                if self.check_image:
+                    # atm_fast_load {image} 0x05 {region_start}
+                    fl_op_code = fl_op_code | self.fl_op_verify
+                tokens.append(f"0x{fl_op_code}")
+            elif openocd_fcn == 'atm_fast_load_erase':
+                # atm_fast_load {region_size} 0x02 {region_start}
+                tokens = ['atm_fast_load']
         op_specific_data_rev = list(op_specific_data)
         op_specific_data_rev.reverse()
         tokens_op_spec_rev = []
@@ -780,7 +794,7 @@ class WriteOpenOcdScript:
         if image:
             imagepath = self.save_image(openocd_fcn, image, extrainfo)
         self.print_cmd(openocd_fcn, imagepath, *op_specific_data)
-        if self.check_image and do_check_image:
+        if self.check_image and do_check_image and not self.fast_load:
             openocd_fcn_verify = openocd_fcn.replace('load', 'verify')
             if len(op_specific_data) > 1:
                 addr = op_specific_data[2]
@@ -794,6 +808,10 @@ class WriteOpenOcdScript:
         self.save_image('sydney_burn_nvm', image)
     def LoadFlashNvds(self, image, region_start, region_size, extrainfo):
         if self.fast_load:
+            if not self.is_atmx2:
+                if region_start < self.fl_flash_baseaddr:
+                    region_start += self.fl_flash_baseaddr
+                self.save_img_n_print_cmd('atm_fast_load_erase', None, False, None, region_size, self.fl_op_er, region_start)
             self.save_img_n_print_cmd('atm_fast_load', image, False, extrainfo, region_start)
         else:
             if not self.is_atmx2:
@@ -802,6 +820,10 @@ class WriteOpenOcdScript:
                 self.save_img_n_print_cmd('sydney_load_nvds', image, False, extrainfo, region_start, region_size)
     def LoadFlash(self, image, region_start, region_size, address, extrainfo):
         if self.fast_load:
+            if not self.is_atmx2:
+                if region_start < self.fl_flash_baseaddr:
+                    region_start += self.fl_flash_baseaddr
+                self.save_img_n_print_cmd('atm_fast_load_erase', None, False, None, region_size, self.fl_op_er, region_start)
             self.save_img_n_print_cmd('atm_fast_load', image, False, extrainfo, region_start)
         else:
             if not self.is_atmx2:
@@ -816,9 +838,23 @@ class WriteOpenOcdScript:
         else:
             self.save_img_n_print_cmd('atm_load_rram', image, True, extrainfo, region_start)
     def EraseRram(self, region_start, region_size, base_address):
-        self.save_img_n_print_cmd('atm_erase_rram', None, False, None, region_start, region_size)
+        if self.is_atmx2:
+            print("Erase Command atmx2 not support")
+            return
+        if self.fast_load:
+            self.save_img_n_print_cmd('atm_fast_load_erase', None, False, None, region_size, self.fl_op_er, region_start)
+        else:
+            self.save_img_n_print_cmd('atm_erase_rram', None, False, None, region_start, region_size)
     def EraseFlash(self, region_size, address, base_address):
-        self.save_img_n_print_cmd('atm_erase_flash', None, False, None, region_size, address)
+        if self.is_atmx2:
+            print("Erase Command atmx2 not support")
+            return
+        if self.fast_load:
+            if address < base_address:
+                address += base_address
+            self.save_img_n_print_cmd('atm_fast_load_erase', None, False, None, region_size, self.fl_op_er, address)
+        else:
+            self.save_img_n_print_cmd('atm_erase_flash', None, False, None, region_size, address)
     def CmdExtend(self, image, type, extrainfo) :
         self.save_extend_image('atm_extend', image, type)
     def Platform(self, family, name, board, revision):
@@ -850,7 +886,7 @@ def burn_archive(archive, openocd_opts, verbose=False, check_image=False, tcl_sc
     should_exec_oocd_script_and_cleanup = not (openocd_opts.openocd_script_only or tcl_script or dst_dir)
     d = dst_dir if dst_dir else tempfile.mkdtemp(None, 'burn_arch_', Tools.openocd_pkg_root)
     w = WriteOpenOcdScript(d, should_exec_oocd_script_and_cleanup, verbose, check_image, tcl_script, program_only, atmx2_family, basename_subst, fast_load, fl_bin_path)
-    iter_archive(archive, w)
+    iter_archive(archive, w, burn=True)
     w.finalize_script(openocd_opts.erase_workarounds)
     if should_exec_oocd_script_and_cleanup:
         w.exec_script(reset_target=(not openocd_opts.no_reset_target))
