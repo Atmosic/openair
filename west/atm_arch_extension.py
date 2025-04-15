@@ -27,6 +27,9 @@ TYPE_ATMWSTK = 4
 TYPE_EXTRA_FILE = 5
 TYPE_FACTORY_DATA = 6
 
+RRAM_ALIGNMENT = 0x100
+FLASH_ALIGNMENT = 0x400
+
 ARCH_USAGE = ''' \
 west atm_arch [-h] [-i {input file name} | --append] [-s] [-d]
            [-o {output file name}]
@@ -43,6 +46,12 @@ west atm_arch [-h] [-i {input file name} | --append] [-s] [-d]
            [--sec_dbg_static_unlock]
            [--sec_boot_enable]
            [--sec_boot_key {sec_boot_key file}]
+           [--erase_all]
+           [--erase_flash_all]
+           [--erase_flash {address,size}]
+           [--erase_rram_all]
+           [--erase_rram {address,size}]
+           [--load_bin {bin_file,address}]
 '''
 
 class AtmPartInfo:
@@ -93,7 +102,7 @@ class AtmIsp:
         return self.exe_cmd(cmd_arg)
 
     def burn_atm(self, input_file, openocd_pkg_root, device=None, dst_dir=None,
-                 openocd_script_only=False):
+                 openocd_script_only=False, fast_load=False):
         # atm_isp decode [-h] [-i ARCHIVE]
         cmd_arg = ['python', self.atm_isp_exe_path, 'burn', '-i', input_file, '-z',
                    '--openocd_pkg_root', openocd_pkg_root]
@@ -102,6 +111,8 @@ class AtmIsp:
             cmd_arg.append(dst_dir)
         if openocd_script_only:
             cmd_arg.append('-E')
+        if fast_load:
+            cmd_arg.append('-f')
         return self.exe_cmd(cmd_arg)
 
     def update_partInfo(self, partInfo):
@@ -134,6 +145,88 @@ class AtmIsp:
         if hasattr(self.partInfo, 'REV_PFX'):
             cmd_arg.append('--revision')
             cmd_arg.append(self.partInfo.REV_PFX)
+        return self.exe_cmd(cmd_arg)
+
+    def append_erase_flash(self, region_start, region_size, input_file,
+                           output_file):
+        if not self.partInfo.EXT_FLASH_START or \
+            not self.partInfo.EXT_FLASH_SIZE:
+            print(f"Cannot find EXT_FLASH_START and EXT_FLASH_SIZE info")
+            sys.exit(1)
+        ext_flash_start = ast.literal_eval(self.partInfo.EXT_FLASH_START)
+        ext_flash_size = ast.literal_eval(self.partInfo.EXT_FLASH_SIZE)
+        if not region_start and not region_size:
+            region_size = ext_flash_size
+            region_start = 0x0
+        elif region_start < ext_flash_start or \
+            region_size > ext_flash_size or \
+            region_start > (ext_flash_start + ext_flash_size) or \
+            (region_start + region_size ) > (ext_flash_start + ext_flash_size):
+            print(f"region_start,region_size [{hex(region_start)},"
+                  f"{hex(region_size)}] exceed flash range")
+            sys.exit(1)
+        cmd_arg = ['python', self.atm_isp_exe_path, 'eraseFlash', '-i',
+                   input_file, '-o', output_file]
+        cmd_arg.append(hex(region_size))
+        cmd_arg.append(hex(region_start))
+        cmd_arg.append(hex(ext_flash_start))
+        return self.exe_cmd(cmd_arg)
+
+    def append_erase_rram(self, region_start, region_size, input_file,
+                          output_file):
+        if not self.partInfo.RRAM_START or not self.partInfo.RRAM_SIZE:
+            print(f"Cannot find RRAM_START and RRAM_SIZE info")
+            sys.exit(1)
+        rram_start = ast.literal_eval(self.partInfo.RRAM_START)
+        rram_size = ast.literal_eval(self.partInfo.RRAM_SIZE)
+        if not region_start and not region_size:
+            region_size = rram_size
+            region_start = rram_start
+        elif region_start < rram_start or region_size > rram_size or \
+            region_start > (rram_start + rram_size) or \
+            (region_start + region_size ) > (rram_start + rram_size):
+            print(f"region_start,region_size [{hex(region_start)},"
+                  f"{hex(region_size)}] exceed rram range")
+            sys.exit(1)
+        cmd_arg = ['python', self.atm_isp_exe_path, 'eraseRram', '-i',
+                   input_file, '-o', output_file]
+        cmd_arg.append(hex(region_start))
+        cmd_arg.append(hex(region_size))
+        cmd_arg.append(hex(BASE_ADDR))
+        return self.exe_cmd(cmd_arg)
+
+    def append_load(self, filepath, region_start, input_file,
+                    output_file):
+        if hasattr(self.partInfo, 'RRAM_START'):
+            rram_start = ast.literal_eval(self.partInfo.RRAM_START)
+            rram_size = ast.literal_eval(self.partInfo.RRAM_SIZE)
+        else:
+            rram_size = 0
+        if hasattr(self.partInfo, 'EXT_FLASH_START'):
+            ext_flash_start = ast.literal_eval(self.partInfo.EXT_FLASH_START)
+            ext_flash_size = ast.literal_eval(self.partInfo.EXT_FLASH_SIZE)
+        else:
+            ext_flash_size = 0
+        extrainfo = 'USER_BIN_FILE'
+        if rram_size and region_start >= rram_start and \
+            region_start < rram_start + rram_size:
+            region_size = self.get_aligned_size(filepath, RRAM_ALIGNMENT)
+            cmd_arg = ['python', self.atm_isp_exe_path, 'loadRram', '-i',
+                       input_file, '-o', output_file, '-extrainfo', extrainfo]
+            cmd_arg.append(filepath)
+            cmd_arg.append(hex(region_start))
+            cmd_arg.append(hex(region_size))
+            cmd_arg.append(hex(BASE_ADDR))
+        else:
+            if ext_flash_size and region_start >= ext_flash_start and \
+                region_start < ext_flash_start + ext_flash_size:
+                region_start = region_start - ext_flash_start
+            region_size = self.get_aligned_size(filepath, FLASH_ALIGNMENT)
+            cmd_arg = ['python', self.atm_isp_exe_path, 'loadFlashNvds', '-i',
+                       input_file, '-o', output_file, '-extrainfo', extrainfo]
+            cmd_arg.append(filepath)
+            cmd_arg.append(hex(region_start))
+            cmd_arg.append(hex(region_size))
         return self.exe_cmd(cmd_arg)
 
     def append(self, load_type, filepath, input_file, output_file):
@@ -305,6 +398,15 @@ class AtmIsp:
         if exit_code != 0:
             raise Exception(f"[{cmd}]command returned status [{exit_code}]")
 
+    def get_aligned_size(self, filepath, alignment):
+        file_size = os.path.getsize(filepath)
+        # check alignment
+        remainder = file_size % alignment
+        is_aligned = (remainder == 0)
+        if remainder == 0:
+            return file_size
+        return (file_size + (alignment - remainder))
+
 
 class AtmArchCommand(WestCommand):
     def __init__(self):
@@ -340,6 +442,8 @@ class AtmArchCommand(WestCommand):
         group.add_argument("-p", "--partition_info_file",
                         required=False, default=None,
                         help="partition info file path")
+        group.add_argument("-f", "--fast_load", action='store_true',
+                        help="fast_load enabled, default false")
         group.add_argument("-storage_data_file", "--storage_data_file",
                         required=False, default=None,
                         help="storage data file path, binary format only")
@@ -383,6 +487,24 @@ class AtmArchCommand(WestCommand):
                         help="Use this directory to dump openocd script in")
         group.add_argument('-e', '--openocd_script_only', action='store_true',
                            help='Stop after preparing OpenOCD script')
+        group.add_argument('-erase_all', '--erase_all', action='store_true',
+                           help="Erase whole flash and rram before load binary "
+                           "files")
+        group.add_argument('-erase_flash_all', '--erase_flash_all',
+                           action='store_true', help="Erase whole flash before "
+                           "load binary files")
+        group.add_argument("-erase_flash", "--erase_flash", required=False,
+                           default=None, help="customized flash erase, ex: "
+                           "--erase_flash=address,size")
+        group.add_argument('-erase_rram_all', '--erase_rram_all',
+                           action='store_true',
+                           help='Erase whole rram before load binary files')
+        group.add_argument("-erase_rram", "--erase_rram", required=False,
+                           default=None, help="customized rram erase, ex: "
+                           "--erase_rram=address,size")
+        group.add_argument("-load_bin", "--load_bin", required=False,
+                           default=None, help="customized load bin file, ex: "
+                           "--load_bin=bin_file,address")
         return parser
 
     def check_sec_key_checksum(self, args):
@@ -411,6 +533,12 @@ class AtmArchCommand(WestCommand):
                 sys.exit(1)
             sb_cs  = hashlib.md5(open(sec_boot_key,'rb').read()).hexdigest()
         return sd_cs, sb_cs, sd_static_unlock
+
+    def check_erase_commands(self, args):
+        if args.erase_all or args.erase_flash_all or args.erase_flash or \
+            args.erase_rram_all or args.erase_rram:
+            return True
+        return False
 
     def do_run(self, args, remainder):
         atm_isp_path = os.path.join(str(Path(__file__).resolve().parents[1]),
@@ -446,7 +574,8 @@ class AtmArchCommand(WestCommand):
                 print(f"{args.openocd_pkg_root} not exist")
                 sys.exit(1)
             return atmisp.burn_atm(args.input_atm_file, args.openocd_pkg_root,
-                                   None, dst_dir, args.openocd_script_only)
+                                   None, dst_dir, args.openocd_script_only,
+                                   args.fast_load)
 
         if not args.partition_info_file:
             print(f"Required partition_info_file")
@@ -458,6 +587,10 @@ class AtmArchCommand(WestCommand):
             print(f"{args.partition_info_file} not exist")
             sys.exit(1)
         if args.append:
+            # erase command cannot be append
+            if self.check_erase_commands(args):
+                print(f"append not support erase commands")
+                sys.exit(1)
             if not os.path.exists(args.input_atm_file):
                 print(f"{args.input_atm_file} not exist")
                 sys.exit(1)
@@ -472,6 +605,49 @@ class AtmArchCommand(WestCommand):
                     self.check_sec_key_checksum(args)
             atmisp.init_atm(args.output_atm_file, sd_key_checksum,
                             sb_key_checksum, sd_static_unlock)
+        # add erase command first:
+        if self.check_erase_commands(args):
+            if partInfo.PLATFORM_FAMILY == 'atmx2':
+                print(f"{partInfo.PLATFORM_FAMILY} not support erase command")
+                sys.exit(1)
+            # when erase_all, the other erase could be ignored
+            if args.erase_all:
+                atmisp.append_erase_flash(None, None, input_file,
+                                          args.output_atm_file)
+                atmisp.append_erase_rram(None, None, input_file,
+                                         args.output_atm_file)
+            else:
+                if args.erase_flash_all or args.erase_flash:
+                    # when erase_flash_all, the other flash erase could be
+                    # ignored
+                    if args.erase_flash_all:
+                        region_start = None
+                        region_size = None
+                    else:
+                        erase_args = args.erase_flash.split(',')
+                        if len(erase_args) != 2:
+                            print(f"{args.erase_flash} should be address,size")
+                            sys.exit(1)
+                        region_start = ast.literal_eval(erase_args[0])
+                        region_size = ast.literal_eval(erase_args[1])
+                    atmisp.append_erase_flash(region_start, region_size,
+                                              input_file, args.output_atm_file)
+                if args.erase_rram_all or args.erase_rram:
+                    # when erase_rram_all, the other rram erase could be
+                    # ignored
+                    if args.erase_rram_all:
+                        region_start = None
+                        region_size = None
+                    else:
+                        erase_args = args.erase_rram.split(',')
+                        if len(erase_args) != 2:
+                            print(f"{args.erase_rram} should be address,size")
+                            sys.exit(1)
+                        region_start = ast.literal_eval(erase_args[0])
+                        region_size = ast.literal_eval(erase_args[1])
+                    atmisp.append_erase_rram(region_start, region_size,
+                                             input_file, args.output_atm_file)
+
         if args.storage_data_file:
             if not os.path.exists(args.storage_data_file):
                 print(f"{args.storage_data_file} not exist")
@@ -516,5 +692,17 @@ class AtmArchCommand(WestCommand):
                     sys.exit(1)
             atmisp.append(TYPE_ATMWSTK, args.atmwstk_file, input_file,
                             args.output_atm_file)
+        if args.load_bin:
+            load_args = args.load_bin.split(',')
+            if len(load_args) != 2:
+                print(f"{args.load_bin} should be bin_flie,address")
+                sys.exit(1)
+            bin_file = load_args[0]
+            region_start = ast.literal_eval(load_args[1])
+            if not os.path.exists(bin_file):
+                print(f"{bin_file} not exist")
+                sys.exit(1)
+            atmisp.append_load(bin_file, region_start, input_file,
+                               args.output_atm_file)
         atmisp.add_extra(args.partition_info_file, input_file,
                          args.output_atm_file)
