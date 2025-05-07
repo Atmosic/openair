@@ -14,11 +14,11 @@
 	};
 };
 
-&i2c1 {
+&i2c0 {
 	status = "okay";
 	bme280@0 {
 		compatible = "bosch,bme280";
-		reg = <0>;
+		reg = <0x19>;
 		label = "BME280_I2C";
 	};
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Atmosic
+ * Copyright (c) 2021-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,6 +8,12 @@
 
 #ifndef FLASH_SIZE
 #define FLASH_SIZE 0x80000
+#endif
+
+#if defined(ATM_SPE_SIZE) && (ATM_SPE_SIZE == 0)
+#define SRAM_SIZE 0x20000
+#else
+#define SRAM_SIZE 0x4000
 #endif
 
 / {
@@ -46,27 +52,44 @@
 	};
 
 	sec_jrnl: sec_jrnl@1008F800 {
-		compatible = "atmosic,sec_jrnl";
+		compatible = "atmosic,sec-jrnl";
 
 		#address-cells = <1>;
 		#size-cells = <1>;
 
 		reg = <0x1008F800 0x6f0>;
+		status = "okay";
 	};
 
-	sec_cntr_keys: sec_cntr_keys@1008FEF0 {
-		compatible = "atmosic,sec_cntr_keys";
+	sec_cntr: sec_cntr@1008FEF0 {
+		compatible = "atmosic,sec-cntr";
 
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		reg = <0x1008FEF0 0x110>;
+		reg = <0x1008FEF0 0x10>;
+		status = "okay";
+	};
+
+	sec_sideload_keys: sec_sideload_keys@1008FF00 {
+		compatible = "atmosic,sec-sideload-keys";
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		reg = <0x1008FF00 0x100>;
+		status = "okay";
+	};
+
+	sec_debug: sec_debug {
+		compatible = "atmosic,sec-debug";
+		status = "okay";
 	};
 
 	sram0: memory@30000000 {
 		device_type = "memory";
 		compatible = "mmio-sram";
-		reg = <0x30000000 0x4000>;
+		reg = <0x30000000 SRAM_SIZE>;
 	};
 };
 

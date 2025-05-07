@@ -1,0 +1,37 @@
+# Copyright (c) Atmosic 2024-2025
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_HCI_UART
+	bool "Atmosic HCI UART module"
+	default y if ATM_VENDOR
+
+if ATM_HCI_UART
+
+module = ATM_HCI_UART
+module-str = atm_hci_uart
+source "subsys/logging/Kconfig.template.log_config"
+
+config ATM_VENDOR_TX_STACK_SIZE
+	int "ATM hci uart tx thread stack size"
+	default 2048 if COVERAGE
+	default 400
+
+config ATM_VENDOR_RX_STACK_SIZE
+	int "ATM hci uart rx thread stack size"
+	default 2048 if COVERAGE
+	default 800
+
+choice
+	prompt "Atmosic HCI UART DEVICE"
+	default ATM_HCI_UART0_DEVICE
+
+config ATM_HCI_UART0_DEVICE
+	bool "Use uart0 as HCI uart"
+
+config ATM_HCI_UART1_DEVICE
+	bool "Use uart1 as HCI uart"
+
+endchoice
+
+endif # ATM_HCI_UART

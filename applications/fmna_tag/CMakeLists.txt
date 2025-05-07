@@ -6,5 +6,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(fmna_tag)
 
 target_sources(app PRIVATE
+  src/battery.c
   src/main.c
+  src/motion.c
+  src/sound.c
 )

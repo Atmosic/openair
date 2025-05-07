@@ -11,8 +11,6 @@ tests:
       - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
       - SB_CONFIG_SPE=y
-      - SB_CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
     extra_configs:
       - CONFIG_ATMWSTKLIB=""
       - CONFIG_USE_ATMWSTK=y
-      - CONFIG_COMPILER_WARNINGS_AS_ERRORS=n

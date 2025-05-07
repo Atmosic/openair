@@ -29,6 +29,21 @@ tests:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+  samples.sysbuild.hello_world.atm.no_tz:
+    sysbuild: true
+    tags: introduction atm33 atm34
+    extra_args:
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+  samples.sysbuild.hello_world.atm.mcuboot.no_tz:
+    sysbuild: true
+    tags: introduction atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_no_TZ_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
   samples.sysbuild.hello_world.atm.mcuboot.atmx2:
     sysbuild: true
     tags: introduction atmx2

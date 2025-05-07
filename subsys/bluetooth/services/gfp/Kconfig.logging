@@ -1,0 +1,21 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+module = ATM_GFPS
+module-str = gfps
+source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
+module = ATM_FP
+module-str = fp
+parent-module = ATM_GFPS
+source "subsys/logging/Kconfig.template.log_config_inherit"
+
+if ATM_FMDN
+
+module = ATM_FMDN
+module-str = fmdn
+parent-module = ATM_GFPS
+source "subsys/logging/Kconfig.template.log_config_inherit"
+
+endif # ATM_FMDN

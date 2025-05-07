@@ -1,0 +1,26 @@
+sample:
+  description: Simple Management Protocol sample
+  name: smp svr
+common:
+  harness: bluetooth
+  tags: bluetooth
+tests:
+  samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - PROJECT EXECUTION SUCCESSFUL
+    tags: atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB=""

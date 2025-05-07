@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifdef CONFIG_POWER_OFF_SBRK
+#define _GNU_SOURCE
+#include <unistd.h>
+#endif
+
 #include <zephyr/kernel.h>
 #include <soc.h>
 #include <zephyr/init.h>
@@ -27,6 +32,10 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #include "power.h"
 #include "calibration.h"
 #include "atm_otp.h"
+#ifdef CONFIG_BT
+#include "reg_ipcore.h"
+#include "rwip.h"
+#endif
 
 #define PSEQ_INTERNAL_DIRECT_INCLUDE_GUARD
 #include "pseq_internal.h"
@@ -63,8 +72,12 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 	}
 
 	static uint32_t __noinit_named(ssrs_block) ssrs_block[PSEQ_SYSRAM_SSRS_BLOCK_SIZE];
+#ifdef CONFIG_POWER_OFF_SBRK
+	uint32_t block_sysram = RAM_BANK2MASK(RAM_ADDR2BANK((uintptr_t)sbrk(0) - 1));
+#else
 	// Retain all RAM
 	uint32_t block_sysram = ~0;
+#endif
 	pseq_core_config_retain(duration, block_sysram, (uintptr_t)ssrs_block, false, false);
 
 	pseq_core_enter_retain(false, false);
@@ -333,6 +346,13 @@ void atm_pseq_soc_off(uint32_t ticks)
 void atm_pseq_hibernate(uint32_t ticks)
 {
 	__disable_irq();
+
+#ifdef CONFIG_BT
+	// Force BLE to sleep
+	ip_deepslwkup_set(0);
+	rwip_rf.sleep();
+#endif
+
 	atm_power_pseq_setup(atm_power_mode_hibernate, ticks);
 }
 

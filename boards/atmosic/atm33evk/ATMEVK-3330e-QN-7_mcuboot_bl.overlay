@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Atmosic
+ * Copyright (c) 2022-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,7 +13,7 @@
 	sram0: memory@30000000 {
 		device_type = "memory";
 		compatible = "mmio-sram";
-		reg = <0x30000000 0x20000>;
+		reg = <0x30010000 0x10000>;
 	};
 };
 

@@ -1,0 +1,18 @@
+# Copyright 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: Atmosic secure journal
+
+compatible: "atmosic,sec-jrnl"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+properties:
+  otp-starts-journal:
+    type: boolean
+    description: |
+      Indicates that OTP contains part of the secure journal.

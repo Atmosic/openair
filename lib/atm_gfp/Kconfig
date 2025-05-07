@@ -1,0 +1,19 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_GFP
+	bool "Atmosic Google Fast Pair Library"
+	select ATM_SETTINGS
+	select ATM_GFPS
+	select ATM_GFP_DIRECT_UECC_INTERFACE
+
+if ATM_GFP
+module = ATM_GFP
+module-str = atm_gfp
+source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
+config ATM_GFP_MUTLIMODE_TAG
+	bool "Enable Atmosic Google Fast Pair as once of Multimode Tag"
+
+endif # ATM_GFP

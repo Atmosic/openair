@@ -5,14 +5,16 @@
  *
  * @brief Secure cache driver implementation
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
 #ifdef CFG_NO_SPE
 // for no-SPE the base for the ICACHE control registers must be a secure address
+#ifndef SECURE_MODE
 #define SECURE_MODE
 #endif
+#endif // CFG_NO_SPE
 #include "arch.h"
 #include "sec_service.h"
 #include "sec_cache.h"

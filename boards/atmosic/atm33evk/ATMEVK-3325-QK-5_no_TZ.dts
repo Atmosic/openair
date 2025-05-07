@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#define ATM_SPE_SIZE 0
+#include "ATMEVK-3325-QK-5.dts"
+
+/ {
+	chosen {
+		zephyr,code-partition = &app_partition;
+	};
+};

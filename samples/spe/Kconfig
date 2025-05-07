@@ -16,3 +16,19 @@ config ATM_ENABLE_NSC_EXAMPLE
 
 config ATM_SPE_DEBUG_TZ
 	bool "Enable verbose TrustZone configuration debug"
+
+config ATM_SPE_RP_BOOT_ROM
+	bool "Read protect the boot ROM"
+
+config ATM_SPE_WP_ATMWSTK
+	bool "Write protect the ATMWSTK image, if used"
+
+config ATM_SPE_RP_MCUBOOT
+	bool "Read protect the MCUBOOT image, if used"
+
+config ATM_SPE_SECURE_MEM_AREAS
+	bool "Secure memory areas"
+	default y
+	select ATM_SPE_WP_ATMWSTK
+	select ATM_SPE_RP_MCUBOOT
+	select ATM_SPE_RP_BOOT_ROM

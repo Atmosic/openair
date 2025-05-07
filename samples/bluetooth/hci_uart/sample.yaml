@@ -180,8 +180,6 @@ tests:
     tags: introduction atmx2
     platform_allow:
       - ATMEVK-M2251-02/ATMx2xx-x1x
-      - ATMEVK-M3201-02/ATMx2xx-x1x
-      - ATMEVK-M3231-02/ATMx2xx-x1x
     extra_args:
       - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
       - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf

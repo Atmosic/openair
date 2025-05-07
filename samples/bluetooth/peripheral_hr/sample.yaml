@@ -1,0 +1,79 @@
+tests:
+  samples.bluetooth.peripheral_hr.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Advertising successfully started"
+    tags: bluetooth atm33 atm34
+    extra_args:
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
+  samples.bluetooth.peripheral_hr.atm.mcuboot:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Advertising successfully started"
+    tags: bluetooth atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+  samples.bluetooth.peripheral_hr.atm.mcuboot.atmwstk.pd50ll:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Advertising successfully started"
+    tags: introduction atm33
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL;-DDFU_IN_FLASH"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL;-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL;-DDFU_IN_FLASH"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+    extra_configs:
+      - CONFIG_ATMWSTK="PD50LL"
+      - CONFIG_USE_ATMWSTK=y
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
+  samples.bluetooth.peripheral_hr.atm.mcuboot.atmwstklib.pd50:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Advertising successfully started"
+    tags: bluetooth atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB="PD50"

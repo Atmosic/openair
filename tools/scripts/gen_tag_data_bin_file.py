@@ -4,7 +4,7 @@
 
 @Parse the content of partition_info.map and generate tag data bin file
 
-Copyright (C) Atmosic 2024
+Copyright (C) Atmosic 2024-2025
 """
 
 import sys
@@ -116,7 +116,7 @@ def main(args=None):
         os.remove(args.bin_file)
 
     # Generate bin file
-    cmd = f"{zsg_full_path} write {args.yaml_file} {part_sector_size} 0x0 " \
+    cmd = f"{zsg_full_path} write {args.yaml_file} {part_sector_size} " \
           f"{part_size} {args.bin_file}"
     rc = run_with_timeout(cmd)
     if rc != 0:

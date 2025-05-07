@@ -21,4 +21,7 @@ ExternalZephyrProject_Add(
 # Place spe first in list to ensure it is configured and flashed before other images.
 add_dependencies(${DEFAULT_IMAGE} spe)
 sysbuild_add_dependencies(CONFIGURE ${DEFAULT_IMAGE} spe)
-sysbuild_add_dependencies(FLASH ${DEFAULT_IMAGE} spe)
+
+if(NOT build_only)
+  sysbuild_add_dependencies(FLASH spe ${DEFAULT_IMAGE})
+endif()

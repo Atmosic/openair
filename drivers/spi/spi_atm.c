@@ -64,6 +64,11 @@ struct spi_atm_data {
 	} io[SPI_PAYLOAD_WIDTH];
 	uint32_t num_bytes;
 	bool read;
+	struct k_sem completion_sem;
+	spi_callback_t sync_cb;
+#ifdef CONFIG_SPI_ASYNC
+	struct k_timer async_timeout_timer;
+#endif
 };
 
 typedef void (*set_callback_t)(void);
@@ -72,6 +77,7 @@ struct spi_atm_config {
 	int dummy_cycles;
 	CMSDK_AT_APB_SPI_TypeDef *base;
 	set_callback_t config_pins;
+	void (*irq_connect)(void);
 };
 
 static int spi_atm_process_data(struct device const *dev)
@@ -143,13 +149,13 @@ static int spi_atm_process_data(struct device const *dev)
 	return ret;
 }
 
-static int spi_atm_execute_transaction(struct device const *dev, uint16_t clkdiv, uint8_t dcycles,
-				       bool csn, bool loopback)
+static void spi_atm_start_transaction(struct device const *dev, uint16_t clkdiv, uint8_t dcycles,
+				      bool csn, bool loopback)
 {
 	struct spi_atm_data *data = DEV_DATA(dev);
-	LOG_DBG("%s(%d): %#x %#x %#x %d %d %d %d %d", __func__, __LINE__, SPI_OPCODE(data),
-		SPI_DATA_LOWER(data), SPI_DATA_UPPER(data), SPI_DATA_SIZE(data), clkdiv, dcycles,
-		csn, loopback);
+	LOG_DBG("SPI txn: %#x %#x %#x %d %d %d %d %d", SPI_OPCODE(data), SPI_DATA_LOWER(data),
+		SPI_DATA_UPPER(data), SPI_DATA_SIZE(data), clkdiv, dcycles, csn, loopback);
+
 	uint32_t transaction = SPI_TRANSACTION_SETUP__DUMMY_CYCLES__WRITE(dcycles) |
 			       SPI_TRANSACTION_SETUP__CSN_STAYS_LOW__WRITE(csn) |
 			       SPI_TRANSACTION_SETUP__OPCODE__WRITE(SPI_OPCODE(data)) |
@@ -170,78 +176,99 @@ static int spi_atm_execute_transaction(struct device const *dev, uint16_t clkdiv
 
 	config->base->DATA_BYTES_LOWER = SPI_DATA_LOWER(data);
 	config->base->DATA_BYTES_UPPER = SPI_DATA_UPPER(data);
+	config->base->RESET_INTERRUPT = SPI_RESET_INTERRUPT__RESET_INTERRUPT0__MASK;
+	config->base->RESET_INTERRUPT = 0;
 	config->base->TRANSACTION_SETUP = transaction;
 	config->base->TRANSACTION_SETUP |= SPI_TRANSACTION_SETUP__START__MASK;
+}
 
-	int timeout = CONFIG_SPI_ATM_TIMEOUT;
-	while (config->base->TRANSACTION_STATUS & SPI_TRANSACTION_STATUS__RUNNING__MASK) {
-		if (--timeout) {
-			k_busy_wait(1);
-		} else {
-			config->base->TRANSACTION_SETUP = 0;
-			LOG_ERR("SPI communication timed out: %#x",
-				config->base->TRANSACTION_STATUS);
-			return -EIO;
+static int spi_atm_process_rx(struct device const *dev)
+{
+	struct spi_atm_data *data = DEV_DATA(dev);
+	if (!data->read) {
+		return 0;
+	}
+
+	return spi_atm_process_data(dev);
+}
+
+static int spi_atm_transfer(struct device const *dev)
+{
+	struct spi_atm_data *data = DEV_DATA(dev);
+	struct spi_config const *config = data->ctx.config;
+	bool last = false;
+	data->read = false;
+	data->num_bytes = SPI_DATA_WIDTH;
+	for (int i = 0; i < SPI_PAYLOAD_WIDTH; i++) {
+		data->io[i].tx = 0;
+		data->io[i].rx = NULL;
+		if (last) {
+			continue;
+		}
+
+		if (spi_context_tx_buf_on(&data->ctx)) {
+			data->io[i].tx = UNALIGNED_GET(data->ctx.tx_buf);
+		}
+		spi_context_update_tx(&data->ctx, 1, 1);
+
+		if (spi_context_rx_buf_on(&data->ctx)) {
+			data->io[i].rx = data->ctx.rx_buf;
+			data->read = true;
+		}
+		spi_context_update_rx(&data->ctx, 1, 1);
+
+		if (!(spi_context_tx_on(&data->ctx) || spi_context_rx_on(&data->ctx))) {
+			last = true;
+			data->num_bytes = i;
 		}
 	}
 
-	if (data->read) {
-		return spi_atm_process_data(dev);
-	}
+	struct spi_atm_config const *aconfig = DEV_CFG(dev);
+	uint8_t dcycles = (data->read) ? aconfig->dummy_cycles : 0;
+	bool loopback = (config->operation & SPI_MODE_LOOP);
+	spi_atm_start_transaction(dev, SPI_CLK_DIV(config->frequency), dcycles, !last, loopback);
+	aconfig->base->INTERRUPT_MASK = SPI_INTERRUPT_MASK__PASSTHRU0__MASK;
 
 	return 0;
 }
 
-static int spi_atm_transfer(struct device const *dev, struct spi_config const *config)
+static void spi_atm_isr(const struct device *dev)
 {
+	struct spi_atm_config const *aconfig = DEV_CFG(dev);
+	aconfig->base->INTERRUPT_MASK = 0;
+
+	/* Process read data from the previous transfer */
+	spi_atm_process_rx(dev);
+
 	struct spi_atm_data *data = DEV_DATA(dev);
-	int ret = 0;
-	bool last = false;
-
-	spi_context_lock(&data->ctx, 0, NULL, NULL, config);
-
-	do {
-		data->read = false;
-		data->num_bytes = SPI_DATA_WIDTH;
-		for (int i = 0; i < SPI_PAYLOAD_WIDTH; i++) {
-			data->io[i].tx = 0;
-			data->io[i].rx = NULL;
-			if (last) {
-				continue;
-			}
-
-			if (spi_context_tx_buf_on(&data->ctx)) {
-				data->io[i].tx = UNALIGNED_GET(data->ctx.tx_buf);
-			}
-			spi_context_update_tx(&data->ctx, 1, 1);
-
-			if (spi_context_rx_buf_on(&data->ctx)) {
-				data->io[i].rx = data->ctx.rx_buf;
-				data->read = true;
-			}
-			spi_context_update_rx(&data->ctx, 1, 1);
-
-			if (!(spi_context_tx_on(&data->ctx) || spi_context_rx_on(&data->ctx))) {
-				last = true;
-				data->num_bytes = i;
-			}
+	if (spi_context_tx_on(&data->ctx) || spi_context_rx_on(&data->ctx)) {
+		spi_atm_transfer(dev);
+	} else {
+		/* No more data, complete the ongoing transfer */
+#ifdef CONFIG_SPI_ASYNC
+		if (!data->sync_cb) {
+			k_timer_stop(&data->async_timeout_timer);
+		} else
+#endif
+		{
+			data->sync_cb(dev, 0, NULL);
+			data->sync_cb = NULL;
 		}
-
-		struct spi_atm_config const *aconfig = DEV_CFG(dev);
-		uint8_t dcycles = (data->read) ? aconfig->dummy_cycles : 0;
-		bool loopback = (config->operation & SPI_MODE_LOOP) ? true : false;
-		ret = spi_atm_execute_transaction(dev, SPI_CLK_DIV(config->frequency), dcycles,
-						  !last, loopback);
-	} while (!ret && (spi_context_tx_on(&data->ctx) || spi_context_rx_on(&data->ctx)));
-
-	spi_context_complete(&data->ctx, dev, 0);
-	spi_context_unlock_unconditionally(&data->ctx);
-
-	return ret;
+		spi_context_complete(&data->ctx, dev, 0);
+		spi_context_unlock_unconditionally(&data->ctx);
+	}
 }
 
-static int spi_atm_transceive(struct device const *dev, struct spi_config const *config,
-			      struct spi_buf_set const *tx_bufs, struct spi_buf_set const *rx_bufs)
+static void spi_atm_transceive_sync_cb(const struct device *dev, int result, void *ctxt)
+{
+	struct spi_atm_data *data = DEV_DATA(dev);
+	k_sem_give(&data->completion_sem);
+}
+
+static int spi_atm_transceive(struct device const *dev,
+			      struct spi_config const *config,
+			      struct spi_buf_set const *tx_bufs,
+			      struct spi_buf_set const *rx_bufs)
 {
 	if (SPI_WORD_SIZE_GET(config->operation) != SPI_WORD_SIZE) {
 		LOG_ERR("Invalid word size. Received: %d", SPI_WORD_SIZE_GET(config->operation));
@@ -272,7 +299,61 @@ static int spi_atm_transceive(struct device const *dev, struct spi_config const 
 	struct spi_atm_data *data = DEV_DATA(dev);
 	data->ctx.config = config;
 	spi_context_buffers_setup(&data->ctx, tx_bufs, rx_bufs, 1);
-	return spi_atm_transfer(dev, config);
+
+	return spi_atm_transfer(dev);
+}
+
+static int64_t spi_atm_compute_tx_duration(struct device const *dev,
+					   struct spi_config const *config,
+					   struct spi_buf_set const *tx_bufs,
+					   struct spi_buf_set const *rx_bufs)
+{
+	size_t total_bytes = 0;
+	if (tx_bufs) {
+		for (size_t i = 0; i < tx_bufs->count; i++) {
+			total_bytes += tx_bufs->buffers[i].len;
+		}
+	} else if (rx_bufs) { // Only sum rx_bufs if tx_bufs is NULL
+		for (size_t i = 0; i < rx_bufs->count; i++) {
+			total_bytes += rx_bufs->buffers[i].len;
+		}
+	}
+	int64_t expected_us = (int64_t)DIV_ROUND_UP((uint64_t)total_bytes * CHAR_BIT * 1000000,
+		config->frequency);
+
+	return expected_us;
+}
+
+static int spi_atm_transceive_sync(struct device const *dev,
+				   struct spi_config const *config,
+				   struct spi_buf_set const *tx_bufs,
+				   struct spi_buf_set const *rx_bufs)
+{
+	struct spi_atm_data *data = DEV_DATA(dev);
+	spi_context_lock(&data->ctx, false, NULL, NULL, config);
+	k_sem_reset(&data->completion_sem);
+	data->sync_cb = spi_atm_transceive_sync_cb;
+	int ret = spi_atm_transceive(dev, config, tx_bufs, rx_bufs);
+	if (ret) {
+		spi_context_unlock_unconditionally(&data->ctx);
+		return ret;
+	}
+
+	// Wait for the expected transfer time
+	int64_t expected_us = spi_atm_compute_tx_duration(dev, config, tx_bufs, rx_bufs);
+	if (!expected_us) {
+		LOG_ERR("Transaction duration invalid");
+		return -EINVAL;
+	}
+	ret = k_sem_take(&data->completion_sem, K_USEC(expected_us * 10)); // Keep extra margin
+	if (ret) {
+		struct spi_atm_config const *aconfig = DEV_CFG(dev);
+		aconfig->base->TRANSACTION_SETUP = 0;
+		LOG_ERR("SPI communication timed out: %#x", aconfig->base->TRANSACTION_STATUS);
+		return -EIO;
+	}
+
+	return 0;
 }
 
 #ifdef CONFIG_SPI_ASYNC
@@ -282,9 +363,25 @@ static int spi_atm_transceive_async(struct device const *dev,
 				    struct spi_buf_set const *rx_bufs,
 				    spi_callback_t cb, void *userdata)
 {
-	return -ENOTSUP;
+	struct spi_atm_data *data = DEV_DATA(dev);
+	spi_context_lock(&data->ctx, true, cb, userdata, config);
+	int ret = spi_atm_transceive(dev, config, tx_bufs, rx_bufs);
+	if (ret) {
+		spi_context_unlock_unconditionally(&data->ctx);
+		return ret;
+	}
+
+	// Wait for the expected transfer time
+	int64_t expected_us = spi_atm_compute_tx_duration(dev, config, tx_bufs, rx_bufs);
+	if (!expected_us) {
+		LOG_ERR("Transaction duration invalid");
+		return -EINVAL;
+	}
+	k_timer_start(&data->async_timeout_timer, K_USEC(expected_us * 10), K_NO_WAIT);
+
+	return 0;
 }
-#endif /* CONFIG_SPI_ASYNC */
+#endif
 
 static int spi_atm_release(struct device const *dev, struct spi_config const *config)
 {
@@ -300,10 +397,10 @@ static int spi_atm_release(struct device const *dev, struct spi_config const *co
 }
 
 static struct spi_driver_api const spi_atm_driver_api = {
-	.transceive = spi_atm_transceive,
+	.transceive = spi_atm_transceive_sync,
 #ifdef CONFIG_SPI_ASYNC
 	.transceive_async = spi_atm_transceive_async,
-#endif /* CONFIG_SPI_ASYNC */
+#endif
 	.release = spi_atm_release,
 };
 
@@ -330,6 +427,28 @@ static struct pm_notifier notifier = {
 	.state_exit = notify_pm_state_exit,
 };
 #endif
+#endif // PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
+
+#ifdef CONFIG_SPI_ASYNC
+static void spi_atm_async_timeout(struct k_timer *timer)
+{
+	struct device const *dev = k_timer_user_data_get(timer);
+	struct spi_atm_data *data = DEV_DATA(dev);
+	struct spi_atm_config const *aconfig = DEV_CFG(dev);
+
+	LOG_ERR("SPI asynchronous transaction timed out");
+
+	// Disable further interrupts from the SPI peripheral
+	aconfig->base->INTERRUPT_MASK = 0;
+
+	// Reset the transaction setup to stop any ongoing hardware activity
+	aconfig->base->TRANSACTION_SETUP = 0;
+
+	if (data->ctx.callback) {
+		data->ctx.callback(dev, -ETIMEDOUT, data->ctx.callback_data);
+	}
+	spi_context_unlock_unconditionally(&data->ctx);
+}
 #endif
 
 static int spi_atm_init(struct device const *dev)
@@ -351,7 +470,13 @@ static int spi_atm_init(struct device const *dev)
 #ifdef CONFIG_PM
 	pm_notifier_register(&notifier);
 #endif
+#endif // PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
+	k_sem_init(&data->completion_sem, 0, 1);
+#ifdef CONFIG_SPI_ASYNC
+	k_timer_init(&data->async_timeout_timer, spi_atm_async_timeout, NULL);
+	k_timer_user_data_set(&data->async_timeout_timer, (void *)dev);
 #endif
+	config->irq_connect();
 
 	return 0;
 }
@@ -370,10 +495,22 @@ static int spi_atm_init(struct device const *dev)
 			PIN_SELECT(DT_INST_PROP(n, miso_pin), SPI_SIG(n, MISO)));          	   \
 		WRPR_CTRL_SET(SPI_BASE(n), WRPR_CTRL__CLK_ENABLE);                                 \
 	}                                                                                          \
+	ISR_DIRECT_DECLARE(spi_atm_isr##n)                                                         \
+	{                                                                                          \
+		struct device const *dev = DEVICE_DT_INST_GET(n);                                  \
+		spi_atm_isr(dev);                                                                  \
+		return 1;                                                                          \
+	}                                                                                          \
+	static void spi_atm_config_irq_##n(void)                                                   \
+	{                                                                                          \
+		IRQ_DIRECT_CONNECT(DT_INST_IRQN(n), DT_INST_IRQ(n, priority), spi_atm_isr##n, 0);  \
+		irq_enable(DT_INST_IRQN(n));                                                       \
+	}											   \
 	static struct spi_atm_config const spi_atm_config_##n = {                                  \
 		.base = SPI_BASE(n),                                                               \
 		.config_pins = spi_atm_config_pins_##n,                                            \
 		.dummy_cycles = DT_INST_PROP(n, dummy_cycles),                                     \
+		.irq_connect = spi_atm_config_irq_##n,                                             \
 	};                                                                                         \
 	static struct spi_atm_data spi_atm_data_##n = {						   \
 		SPI_CONTEXT_INIT_LOCK(spi_atm_data_##n, ctx),	 				   \

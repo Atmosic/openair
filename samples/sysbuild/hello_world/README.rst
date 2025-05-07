@@ -1,91 +1,95 @@
-.. sysbuild:
+.. _sysbuild-hello-world-sample:
 
-Sysbuild Hello World
-####################
+Sysbuild: Hello World
+#####################
 
 Overview
 ********
 
-The sample demonstrates how to build a Hello World application with MCUBOOT or
-NO_MUCBOOT with sysbuild. When building with Zephyr Sysbuild, the build system
-adds spe and mcuboot images based on the options SB_CONFIG_SPE and
-SB_CONFIG_BOOTLOADER_MCUBOOT selected in the project's additional basic spe,
-mcuboot and application rerlated configuration and build files.
+This sample demonstrates how to build a Hello World application with or without
+MCUboot using Zephyr's sysbuild.
+When building with Zephyr sysbuild, the build system adds
+SPE and MCUboot images based on the options ``SB_CONFIG_SPE`` and
+``SB_CONFIG_BOOTLOADER_MCUBOOT``, selected in the project's additional basic SPE,
+MCUboot, and application-related configuration and build files.
 
-Both the application with or without MUCBOOT use the same `main.c` that
-prints the name of the DK on which the application is programmed.
+- ``SB_CONFIG_BOOTLOADER_MCUBOOT`` Enable sysbuild to build with a bootloader image.
+- ``SB_CONFIG_SPE`` Enable sysbuild to build with an SPE image.
 
-Building and running
+Requirements
+************
+
+Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
+
+Building and Running
 ********************
 
-.. |sample path| replace:: `openair/samples/sysbuild/hello_world`
+This sample can be found under ``samples/sysbuild/hello_world`` in the openair tree.
 
-The sysbuild with or without mcuboot needs to be specified using
-``SB_CONFIG_SPE`` and ``SB_CONFIG_BOOTLOADER_MCUBOOT``. It is recommended to use
-configuration setups from `sample.yaml` using the ``-T`` option to build
-the sample and related configuration will be included.
+Sysbuild with or without MCUboot is specified by setting
+``SB_CONFIG_SPE`` and ``SB_CONFIG_BOOTLOADER_MCUBOOT``.
+It is recommended to use the configuration setups from the test items defined in `sample.yaml` via the ``-T`` option,
+so that the corresponding configurations are automatically included.
 
-This sample relies on building application and spe with MCUBOOT or without
-MCUBOOT to build at the same time.
+Build the sample using:
 
-  To build the sample for application and spe without MUCBOOT that support atm33 and atm34 only:
+.. code-block:: bash
 
-  .. code-block:: bash
+    west build -p always -b <board>//ns <application> --sysbuild -T <test_item>
 
-    west build -p always openair/samples/sysbuild/hello_world --sysbuild -b ATMEVK-3325-LQK//ns -T samples.sysbuild.hello_world.atm
+- ``board`` Atmosic device. See :ref:`board <atmosic_evk>`.
+- ``application`` Sample folder path.
+- ``test_item`` Test item defined in `sample.yaml`.
 
-    west build -p always openair/samples/sysbuild/hello_world --sysbuild -b ATMEVK-3430e-WQN-2//ns -T samples.sysbuild.hello_world.atm
+This sample builds both the application and SPE images, with or without MCUboot.
 
-  To build the sample for application and spe with MUCBOOT that support all atmosic EVKs:
+Build command:
 
-  .. code-block:: bash
+.. code-block:: bash
 
-    west build -p always openair/samples/sysbuild/hello_world --sysbuild -b ATMEVK-3325-LQK@mcuboot//ns -T samples.sysbuild.hello_world.atm.mcuboot
+    west build -p always -b <board>//ns openair/samples/sysbuild/hello_world --sysbuild -T samples.sysbuild.hello_world.atm
 
-    west build -p always openair/samples/sysbuild/hello_world --sysbuild -b ATMEVK-3430e-WQN-2@mcuboot//ns -T samples.sysbuild.hello_world.atm.mcuboot
+Build with MCUboot command:
 
-    west build -p always openair/samples/sysbuild/hello_world --sysbuild -b ATMEVK-M3202-02 -T samples.sysbuild.hello_world.atm.mcuboot.atmx2
+.. code-block:: bash
 
-  To Program all the built images with sysbuild as follows:
+    west build -p always -b <board>@mcuboot//ns openair/samples/sysbuild/hello_world --sysbuild -T samples.sysbuild.hello_world.atm.mcuboot
 
-  For atmx2:
 
-  .. code-block:: bash
+Flash command:
 
-    west flash --skip-rebuild --verify --device=${ATRDI_SN}
+.. code-block:: bash
 
-  For atm33 and atm34:
-
-  .. code-block:: bash
-
-    west flash --skip-rebuild --verify --device=${JLINK_SN} --jlink
+    west flash --skip-rebuild --verify --device=<serial> [--jlink] --fast_load [--erase_flash]
 
 .. note::
-  * If the `west build` command does not specify a ``-d build_dir``, the default build directory will be the `build` folder under current directory. So that since the ``-d build_dir`` has been specified with `west build` command, the `west flash` command should specify the same build_dir with ``-d build_dir`` as well.
-
-  * For atm33 and atm34, if ``-d build_dir`` has been specified, the CONFIG_SPE_PATH in `${BOARD_DIR}/sysbuild/app.conf` and `${BOARD_DIR}/sysbuild/app_mcuboot.conf` must be updated accordingly that used by sysbuild test item in sample.yaml.
+  * The default build directory is the `build` folder under the current directory.
+  * If the ``-d build_dir`` option is specified with `west build`, the same ``-d build_dir`` must also be specified with `west flash`.
+  * If a custom ``build_dir`` is specified, the `CONFIG_SPE_PATH` in `${BOARD_DIR}/sysbuild/app.conf` and `${BOARD_DIR}/sysbuild/app_mcuboot.conf` must be updated accordingly, since sysbuild test items defined in `sample.yaml` depend on them.
 
 
 Sample Output
-=============
+*************
 
-  When device bootup, the device console will show with ``Atmosic Sysbuild Hello World of <BOARD_TARGET>``
+When the device boots up, the console output shows:
 
-  ex:
-    with MUCBOOT that support all atmosic EVKs:
+.. code-block:: bash
 
-    .. code-block:: bash
+    Atmosic Sysbuild Hello World of <BOARD_TARGET>
 
-      Atmosic Sysbuild Hello World of ATMEVK-3325-LQK@mcuboot/ATM33xx-5/ns
+- ``BOARD_TARGET`` refers to a specific hardware platform or SoC-based configuration. The full syntax is typically <board>@<revision>/<soc>/<variant>, if applicable.
+- ``soc`` ATM33/e and ATM34/e series of Atmosic devices are supported. See :ref:`soc <atmosic_evk>`.
 
-      Atmosic Sysbuild Hello World of ATMEVK-3430e-WQN-2@mcuboot/ATM34xx-2/ns
+Examples:
 
-      Atmosic Sysbuild Hello World of ATMEVK-M3202-02/ATMx2xx-x1x
+With MCUboot:
 
-    without MCUBOOT that support atm33 and atm34 only:
+.. code-block:: bash
 
-    .. code-block:: bash
+    Atmosic Sysbuild Hello World of <board>@mcuboot/<soc>/ns
 
-      Atmosic Sysbuild Hello World of ATMEVK-3325-LQK/ATM33xx-5/ns
+Without MCUboot:
 
-      Atmosic Sysbuild Hello World of ATMEVK-3430e-WQN-2/ATM34xx-2/ns
+.. code-block:: bash
+
+    Atmosic Sysbuild Hello World of <board>/<soc>/ns

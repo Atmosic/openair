@@ -13,3 +13,7 @@ config GEN_PARTITION_INFO_SCRIPT
 config GEN_TAG_DATA_BIN_FILE_SCRIPT
 	string "Generate tag data bin file script path"
 	default "${ZEPHYR_OPENAIR_MODULE_DIR}/tools/scripts/gen_tag_data_bin_file.py"
+
+config GEN_LAYOUT_INFO_SCRIPT
+	string "Generate layout info script path"
+	default "${ZEPHYR_OPENAIR_MODULE_DIR}/tools/scripts/layout_info/layout_info.py"

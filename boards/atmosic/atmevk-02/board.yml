@@ -1,14 +1,4 @@
 boards:
-- name: ATMEVK-M2201-02
-  vendor: atmosic
-  socs:
-    - name: ATMx2xx-x1x
-
-- name: ATMEVK-M3201-02
-  vendor: atmosic
-  socs:
-    - name: ATMx2xx-x1x
-
 - name: ATMEVK-M2202-02
   vendor: atmosic
   socs:
@@ -30,11 +20,6 @@ boards:
     - name: ATMx2xx-x1x
 
 - name: ATMEVK-M2251-02
-  vendor: atmosic
-  socs:
-    - name: ATMx2xx-x1x
-
-- name: ATMEVK-M3231-02
   vendor: atmosic
   socs:
     - name: ATMx2xx-x1x

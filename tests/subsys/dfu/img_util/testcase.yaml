@@ -1,0 +1,33 @@
+common:
+  platform_allow:
+    - nrf52840dk/nrf52840
+    - native_sim
+    - native_sim/native/64
+  integration_platforms:
+    - nrf52840dk/nrf52840
+tests:
+  dfu.image_util:
+    tags: dfu_image_util
+  dfu.image_util.progressive:
+    extra_args: EXTRA_CONF_FILE=progressively_overlay.conf
+    tags: dfu_image_util
+  tests.subsys.dfu.img_util.atm.mcuboot:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - PROJECT EXECUTION SUCCESSFUL
+    tags: atm33 atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB=""
+      - CONFIG_USE_ATMWSTK=y

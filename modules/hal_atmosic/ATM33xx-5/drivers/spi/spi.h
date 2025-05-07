@@ -5,7 +5,7 @@
  *
  * @brief SPI driver
  *
- * Copyright (C) Atmosic 2018-2024
+ * Copyright (C) Atmosic 2018-2025
  *
  *******************************************************************************
  */
@@ -204,14 +204,10 @@ uint32_t spi_pmuradio_read_word(const spi_dev_t *spi, uint8_t block, uint8_t add
  */
 void spi_pmuradio_write_word(const spi_dev_t *spi, uint8_t block, uint8_t addr, uint32_t data);
 
-#ifndef VERIFY_SPI_CAL
-#define VERIFY_SPI_CAL PLF_DEBUG
-#endif
-
 #define SPR_READ(__d, __m, __reg) \
     spi_pmuradio_read_word(__d, __m ## __REG_BLADDR, __m ## __ ##  __reg)
 
-#if VERIFY_SPI_CAL
+#if PLF_DEBUG
 #define SPR_VERIFY(__d, __m, __reg, __val) do { \
     uint32_t read_back = SPR_READ(__d, __m, __reg); \
     ASSERT_INFO((__val) == read_back, (__val), read_back); \

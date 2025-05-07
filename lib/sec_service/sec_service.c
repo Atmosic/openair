@@ -5,13 +5,15 @@
  *
  * @brief Secure services
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  ******************************************************************************
  */
 #ifdef CFG_NO_SPE
+#ifndef SECURE_MODE
 #define SECURE_MODE
 #endif
+#endif // CFG_NO_SPE
 #include "arch.h"
 #include "compiler.h"
 #include <inttypes.h>

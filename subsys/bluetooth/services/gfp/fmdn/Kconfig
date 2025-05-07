@@ -1,0 +1,63 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ATM_FMDN
+    bool "Find My Device Network extension of Google Fast Pair (FMDN)"
+    depends on FAST_PAIR_FMDN
+    help
+        "Find My Device Network extension (FMDN)"
+
+if ATM_FMDN
+
+choice FMDN_ECC_TYPE
+    prompt "Elliptic Curve selection"
+    default FMDN_ECC_SECP160R1
+    help
+	Select the encryption of Elliptic Curve to be used.
+
+config FMDN_ECC_SECP160R1
+    bool "FMDN with the SECP160R1 Elliptic Curve"
+    help
+	Select the SECP160R1 Elliptic Curve for FMDN. This curve type is less
+	secure than the SECP256R1 variant, but it can be used with Bluetooth
+	Legacy Advertising because of its limited size (160 bits).
+
+config FMDN_ECC_SECP256R1
+    bool "FMDN with the SECP256R1 Elliptic Curve"
+    help
+	Select the SECP256R1 Elliptic Curve for FMDN. This curve type is more
+	secure than the SECP160R1 variant but requires using Bluetooth Extended
+	Advertising due to its extended size (256 bits).
+
+endchoice
+
+config FMDN_HASH_FLAGS
+    bool "Advertising data with hash flags"
+    default y
+
+config FMDN_MAX_CONN
+    int "FMDN maximum concurrent connected client"
+    default 2
+
+choice FMDN_RING_COMP
+    prompt "Ringing component selection"
+    default FMDN_RING_COMP_NONE
+    help
+	Select the number of components capable of ringing.
+
+config FMDN_RING_COMP_NONE
+    bool "No component capable of ringing"
+
+config FMDN_RING_COMP_ONE
+    bool "Single component capable of ringing"
+
+config FMDN_RING_COMP_TWO
+    bool "Two components (left and right buds) capable of ringing"
+
+config FMDN_RING_COMP_THREE
+    bool "Three components (left and right buds and case) capable of ringing"
+
+endchoice
+
+endif #  ATM_FMDN

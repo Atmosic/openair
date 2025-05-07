@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 Nordic Semiconductor ASA
- * Copyright (c) 2024 Atmosic
+ * Copyright (c) 2024-2025 Atmosic
  *
  * Based on boot/zephyr/hook_sample.c
  *
@@ -17,7 +17,9 @@
 #include "bootutil/bootutil.h"
 #include "bootutil/mcuboot_status.h"
 #include "atm_mcuboot_ext.h"
+#ifdef CONFIG_ATM_MCUBOOT_LOCK_PRIMARY_SLOT
 #include "rram_rom_prot.h"
+#endif
 #include "bootutil/bootutil_log.h"
 
 #ifdef CONFIG_ATM_MCUBOOT_SECURE_DEBUG

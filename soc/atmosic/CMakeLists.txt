@@ -6,4 +6,6 @@ zephyr_include_directories(
     include
 )
 
-add_subdirectory(${SOC_SERIES})
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${SOC_SERIES})
+  add_subdirectory(${SOC_SERIES})
+endif()

@@ -80,7 +80,6 @@ LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 static K_SEM_DEFINE(ble_sem, 0, 1);
 struct k_thread ble_thread_data;
 static K_KERNEL_STACK_DEFINE(ble_thread_stack, BLE_THREAD_STACK_SIZE);
-static bool is_open;
 
 static rep_vec_err_t
 ble_appm_last_init(void)
@@ -122,6 +121,8 @@ static bool is_hci_event_discardable(const uint8_t *evt_data)
 	    return false;
     }
 }
+
+static bool is_open;
 
 static void
 ble_write(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t),
@@ -491,7 +492,9 @@ static uint8_t user_param_get(uint8_t param_id, uint8_t *lengthPtr,
 	return RWIP_PARAM_INVALID;
     }
 
+#ifdef CONFIG_ATM_EUI
     uint8_t eui48[BD_ADDR_LEN];
+#endif
     switch (param_id) {
 	case PARAM_ID_BD_ADDRESS: {
 	    if (*lengthPtr < BD_ADDR_LEN) {

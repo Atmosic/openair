@@ -1,0 +1,10 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menu "GATT Services"
+	depends on BT_CONN
+
+rsource "*/Kconfig"
+
+endmenu

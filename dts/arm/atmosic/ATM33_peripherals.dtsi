@@ -289,3 +289,8 @@ brownout: brownout {
 	interrupts = <92 2>;
 	status = "okay";
 };
+
+pinctrl: pin-controller {
+	compatible = "atmosic,atm-pinctrl";
+	num-pins = <31>;
+};

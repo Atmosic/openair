@@ -386,7 +386,7 @@ class Tools:
     @staticmethod
     def openocd_dir():
         if Tools.zephyr:
-            openocd_pkg_root = os.path.join(Tools.zephyr_base(), '..', 'modules', 'hal', 'atmosic_lib')
+            openocd_pkg_root = os.path.join(Tools.openair_base(), '..', 'modules', 'hal', 'atmosic_lib')
         else:
             openocd_pkg_root = Tools.openocd_pkg_root
         return os.path.join(openocd_pkg_root, 'tools', 'openocd')
@@ -452,25 +452,25 @@ class Tools:
         openocd_dir = Tools.openocd_dir()
         return os.path.join(openocd_dir, 'bin', Tools.pfx(), 'openocd')
     @staticmethod
-    def zephyr_base():
-        ZEPHYR_BASE = os.getenv("ZEPHYR_BASE")
-        if not ZEPHYR_BASE:
-            # set ZEPHYR_BASE.
-            ZEPHYR_BASE = os.path.join(str(Path(__file__).resolve().parents[3]),
-                'zephyr')
-            # Propagate this decision to child processes.
-            os.environ['ZEPHYR_BASE'] = ZEPHYR_BASE
-        return ZEPHYR_BASE
+    def openair_base():
+        return str(Path(__file__).resolve().parents[2])
 
     @staticmethod
     def sdk_version(zephyr=False):
         version =  "unknown"
         if zephyr:
-            ZEPHYR_BASE = Tools.zephyr_base()
-            cur_dir = os.getcwd()
-            os.chdir(ZEPHYR_BASE)
-            version = Tools.get_zephyr_ver(version)
-            os.chdir(cur_dir)
+            openair_base = Tools.openair_base()
+            ver_file = os.path.join(openair_base, "SDK_VERSION")
+            if os.path.exists(ver_file):
+                with open(ver_file, "r") as f:
+                    for line in f.readlines():
+                        version = line.strip()
+                        break
+            else:
+                cur_dir = os.getcwd()
+                os.chdir(openair_base)
+                version = Tools.get_zephyr_ver(version)
+                os.chdir(cur_dir)
         else:
             ver_file = os.path.join(Tools.openocd_pkg_root, "version.h")
             if os.path.exists(ver_file):

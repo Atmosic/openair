@@ -1,0 +1,12 @@
+# Copyright 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: Atmosic secure sideload keys
+
+compatible: "atmosic,sec-sideload-keys"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true

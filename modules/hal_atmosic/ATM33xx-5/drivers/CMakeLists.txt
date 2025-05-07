@@ -4,7 +4,6 @@
 
 add_subdirectory(atm_aes)
 add_subdirectory(atm_otp)
-add_subdirectory(atm_sha2)
 add_subdirectory(atm_vendor_drv)
 add_subdirectory(atmwstk)
 add_subdirectory(at_tz_mpc)
@@ -43,13 +42,7 @@ if(CONFIG_ATM_PLF_DEBUG)
   )
 endif()
 
-if(CONFIG_ATM_UECC)
-  zephyr_include_directories(
-    ${ZEPHYR_BASE}/../modules/crypto/micro-ecc
-  )
-endif()
-
-if(CONFIG_ATM_AES_HW OR CONFIG_ATM_SHA2_HW OR CONFIG_ATM_UECC)
+if(CONFIG_ATM_AES_HW OR CONFIG_ATM_UECC)
   zephyr_include_directories(
     ../config
   )

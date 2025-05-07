@@ -5,7 +5,7 @@
  *
  * @brief Atmosic ATM33 image partition definitions for use with mcuboot
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2025
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -22,6 +22,8 @@
 #undef ATM_SPE_OFFSET
 #undef ATM_NSPE_OFFSET
 #undef ATM_NSPE_SIZE
+#undef ATM_APP_OFFSET
+#undef ATM_APP_SIZE
 #undef ATM_FACTORY_OFFSET
 #undef ATM_STORAGE_OFFSET
 
@@ -118,11 +120,17 @@
 
 // MCUBOOT slots must be of equal size
 #define ATM_SLOT1_SIZE ATM_SLOT0_SIZE
+#if (ATM_SPE_SIZE)
 #define ATM_SPE_OFFSET ATM_SLOT0_OFFSET
 #define ATM_NSPE_OFFSET (ATM_SPE_OFFSET + ATM_SPE_SIZE)
 #define ATM_NSPE_SIZE \
     (ATM_SLOT0_SIZE - ATM_SPE_SIZE - ATM_SLOT0_TRAILER_RSVD_SIZE)
 #define ATM_SLOT0_TRAILER_RSVD_OFFSET (ATM_NSPE_OFFSET + ATM_NSPE_SIZE)
+#else
+#define ATM_APP_OFFSET ATM_SLOT0_OFFSET
+#define ATM_APP_SIZE (ATM_SLOT0_SIZE - ATM_SLOT0_TRAILER_RSVD_SIZE)
+#define ATM_SLOT0_TRAILER_RSVD_OFFSET (ATM_APP_OFFSET + ATM_APP_SIZE)
+#endif
 
 // sanity check the trailer reservation
 #if ATM_SLOT0_TRAILER_RSVD_SIZE

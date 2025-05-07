@@ -7,6 +7,7 @@
 /dts-v1/;
 #include <arm/atmosic/ATM33xx_ns.dtsi>
 #include <dt-bindings/gpio/gpio.h>
+#include "pinctrl.dtsi"
 
 / {
 	model = "Atmosic EVK 3330e-QN-7";
@@ -81,8 +82,8 @@
 };
 
 &i2c0 {
-        sda-pin = <17>;
-        scl-pin = <16>;
+	pinctrl-0 = <&i2c0_sda_default &i2c0_scl_default>;
+	pinctrl-names = "default";
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 };
 

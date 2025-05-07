@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Atmosic
+ * Copyright (c) 2021-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -351,6 +351,11 @@
 		brownout: brownout {
 			compatible = "atmosic,brownout";
 			status = "okay";
+		};
+
+		pinctrl: pin-controller {
+			compatible = "atmosic,atm-pinctrl";
+			num-pins = <34>;
 		};
 	};
 

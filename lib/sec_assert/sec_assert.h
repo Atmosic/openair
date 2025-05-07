@@ -42,18 +42,39 @@
 #include "at_tz_ppc.h"
 
 /**
+ * @brief Change the security domain of the UART
+ * @param secure make it secure
+ */
+static inline void sec_switch_uart_domain(bool secure)
+{
+#if !defined(CONFIG_MCUBOOT) && DT_HAS_CHOSEN(zephyr_console) && \
+    DT_NODE_HAS_STATUS_OKAY(DT_CHOSEN(zephyr_console))
+    at_tz_ppc_configure((void *)DT_REG_ADDR(DT_CHOSEN(zephyr_console)),
+	secure ? ATM_PPC_SECURE : ATM_PPC_NONSECURE);
+#endif
+}
+
+/**
  * @brief Switch the console to the secure side to allow console printks
  *
  * @note This assumes the PPC controller is not locked out
  */
 static inline void sec_switch_console(void)
 {
-#if !defined(CONFIG_MCUBOOT) && DT_HAS_CHOSEN(zephyr_console) && \
-    DT_NODE_HAS_STATUS_OKAY(DT_CHOSEN(zephyr_console))
-    at_tz_ppc_configure((void *)DT_REG_ADDR(DT_CHOSEN(zephyr_console)),
-	ATM_PPC_SECURE);
-#endif
+    sec_switch_uart_domain(true);
 }
+
+/**
+ * @brief Switch the console to the non-secure side
+ *
+ * @note This assumes the PPC controller is not locked out
+ *       Should only be used for testing.
+ */
+static inline void sec_switch_console_ns(void)
+{
+    sec_switch_uart_domain(false);
+}
+
 #endif // CONFIG_SOC_FAMILY_ATM
 
 /**

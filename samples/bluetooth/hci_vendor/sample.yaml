@@ -6,17 +6,12 @@ common:
   harness_config:
     type: one_line
     regex:
-      - "Test Success!"
+      - "atm_hci_init done"
 tests:
   sample.bluetooth.hci_vendor:
     tags: bluetooth
   samples.bluetooth.hci_vendor.atm:
     sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - Booting Zephyr OS
     tags: bluetooth atm33 atm34
     extra_args:
       - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf

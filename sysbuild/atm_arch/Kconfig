@@ -1,0 +1,20 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+
+config ATM_ARCH
+	bool "ATM ARCH generated automatically with sysbuild"
+
+if ATM_ARCH
+
+config ATM_ARCH_ERASE_ALL
+	bool "Add erase whole flash and rram command to atm isp file"
+
+config ATM_ARCH_ERASE_FLASH_ALL
+	bool "Add erase whole flash command to atm isp file"
+
+config ATM_ARCH_ERASE_RRAM_ALL
+	bool "Add erase whole rram command to atm isp file"
+
+endif # ATM_ARCH

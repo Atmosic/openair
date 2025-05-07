@@ -1,45 +1,48 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
+if MCUBOOT
+
 config ATM_MCUBOOT_HOOKS
 	bool
-	depends on MCUBOOT
 	# enable Zephyr mcuboot action hooks
 	select MCUBOOT_ACTION_HOOKS
 	# enable standard mcuboot hooks
 	select BOOT_IMAGE_ACCESS_HOOKS
 
+if DT_HAS_ATMOSIC_SEC_MEM_PROT_ENABLED
+
 config ATM_MCUBOOT_LOCK_PRIMARY_SLOT
 	bool
-	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
 	select ATM_MCUBOOT_HOOKS
 	# enable extension use in hooks to lock the slot
 	select ATM_MCUBOOT_EXT
 
 config ATM_MCUBOOT_PROTECT_PRIMARY_SLOT
 	bool "Protect primary image slot"
-	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
 	select ATM_MCUBOOT_LOCK_PRIMARY_SLOT
 
 config ATM_MCUBOOT_SKIP_PRIMARY_VALIDATE_HIBER
 	bool "Skip primary slot validation on resume from hibernate"
-	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
 	# requires locking the primary slot with hooks+extensions
 	select ATM_MCUBOOT_LOCK_PRIMARY_SLOT
 
+endif # DT_HAS_ATMOSIC_SEC_MEM_PROT_ENABLED
+
 config ATM_MCUBOOT_SECURE_DEBUG
 	bool "Enable secure debug authentication"
-	depends on MCUBOOT && (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	depends on DT_HAS_ATMOSIC_SEC_DEBUG_ENABLED
 	select ATM_MCUBOOT_HOOKS
 	# enable extension use in hooks to lock the slot
 	select ATM_MCUBOOT_EXT
 	select ATM_MCUBOOT_UART_DEBUG_AUTH
 	# exposes SERIAL adapter configs
 	select MCUBOOT_SERIAL_INTF
-	select ATM_SEC_COUNTER
+	select ATM_SEC_COUNTER if DT_HAS_ATMOSIC_SEC_CNTR_ENABLED
 	select ATM_SEC_DEBUG
 	select ATM_SEC_DEBUG_AUTH
 	select BASE64
 	select SERIAL
 
+endif # MCUBOOT

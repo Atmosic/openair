@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Atmosic
+ * Copyright (c) 2021-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,10 +8,15 @@
 
 &rram0 {
 	partitions {
+#if ATM_SPE_SIZE
 		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+#else
+		compatible = "fixed-partitions";
+#endif
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+#if ATM_SPE_SIZE
 		spe_partition: partition@ATM_SPE_NODE_ID {
 			label = "spe_partition";
 			secure;
@@ -21,15 +26,26 @@
 			label = "nspe_partition";
 			reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
 		};
+#endif
+#if ATM_APP_SIZE
+		app_partition: partition@ATM_APP_NODE_ID {
+			label = "app_partition";
+			reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
+		};
+#endif
+#if ATM_FACTORY_SIZE
 		factory_partition: partition@ATM_FACTORY_NODE_ID {
 			label = "factory";
 			reg = <ATM_FACTORY_OFFSET ATM_FACTORY_SIZE>;
 		};
+#endif
 #ifndef TEST_STORAGE_IN_FLASH
+#if ATM_STORAGE_SIZE
 		storage_partition: partition@ATM_STORAGE_NODE_ID {
 			label = "storage";
 			reg = <ATM_STORAGE_OFFSET ATM_STORAGE_SIZE>;
 		};
+#endif
 #endif
 #if ATMWSTK_SIZE
 		slot2_partition: partition@ATMWSTK_NODE_ID {

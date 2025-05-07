@@ -1,0 +1,151 @@
+# Copyright (c) Atmosic 2024-2025
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_VENDOR
+	bool "Atmosic Vendor command core and parser library"
+
+config ATM_VENDOR_API
+	bool "Atmosic Vendor command API"
+
+if ATM_VENDOR
+
+module = ATM_VENDOR
+module-str = atm_vendor
+source "subsys/logging/Kconfig.template.log_config"
+
+config RUNTIME_EN_HCI_VENDOR
+	bool "Runtime Enable HCI vendor"
+
+config VND_DBG_MMR
+	bool "[0xFC01] DBG Read Memory."
+	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	default y
+
+config VND_DBG_MMW
+	bool "[0xFC02] DBG Write Memory."
+	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	default y
+
+config VND_BLE_REGR
+	bool "[0xFC30] BLE Register Read."
+	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	default y
+
+config VND_BLE_REGW
+	bool "[0xFC31] BLE Register Write."
+	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	default y
+
+config VND_EN_TXCW
+	bool "[0xF802] Tx CW mode control - Enable TX CW mode on specific BLE RF Channel(0~39), RF Channel 255 is used to disable Tx CW mode."
+	default y
+
+config VND_CAP_V1
+	bool "[0xF803] 16MXtal cap. control - set cap. value."
+	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	default y
+
+config VND_CAP_V2
+	bool "[0xF803] 16MXtal cap. control - set cap. value."
+	depends on SOC_SERIES_ATM34
+	default y
+
+config VND_SYS_MMR
+	bool "[0xF804] Memory read - read system memory value by address."
+	default y
+
+config VND_PV_TEST
+	bool "[0xF80C] PV Test"
+	default y if SOC_SERIES_ATMX2
+
+config VND_PSM
+	bool "[0xF80F] PSM - set power save mode."
+
+config VND_TAG_RD_V1
+	bool "[0xF805] Read Flash NVDS Tag - read tag value."
+	depends on SOC_SERIES_ATMX2
+
+config VND_TAG_RD_V2
+	bool "[0xF805] Read Flash NVDS Tag - read tag value."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_SET_BDDR
+	bool "[0xF806] Set Public BD Address."
+
+config VND_SET_ADV_CH
+	bool "[0xF807] Set Advertising Channels."
+
+config VND_OTP_PUSH
+	bool "[0xF808] OTP Push."
+	depends on SOC_SERIES_ATMX2
+
+config VND_MALLOC
+	bool "[0xF809] Memory Allocate - Allocate n bytes memory (little endian)."
+	default y
+
+config VND_IO_CTRL
+	bool "[0xF80A] IO Control - set io pin."
+
+config VND_GADC_V1
+	bool "[0xF80B] GADC - set gadc value."
+	depends on SOC_SERIES_ATMX2
+
+config VND_GADC_V2
+	bool "[0xF80B] GADC - set gadc value."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_GPIO_TEST
+	bool "[0xF80E] GPIO Self Test."
+
+config VND_COREMARK
+	bool "[0xF810] coremark - get coremark score multiplied by 100."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_WFI
+	bool "[0xF811] wfi - do wfi to be used for power measure tests."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_NO_CLOCK
+	bool "[0xF812] no_clock - turn off mpc clock to be used for power measure tests."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_WHILE_ONE
+	bool "[0xF813] while_one - do while_one to be used for power measure tests"
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_SET_TX_PWR
+	bool "[0xF814] set max Tx power."
+
+config VND_PMU_RADIO_REGR
+	bool "[0xFC32] PMU Radio Register Read."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_PMU_RADIO_REGW
+	bool "[0xFC33] PMU Radio Register Write."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_XTAL_32K_PIN_OUT
+	bool "[0xFC34] 32KHz XTAL Pin Out assignment in runtime."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+endif # ATM_VENDOR
+
+if ATM_VENDOR_API
+
+module = ATM_VENDOR_API
+module-str = atm_vendor_api
+source "subsys/logging/Kconfig.template.log_config"
+
+config VND_API_SET_PREF_SLAVE_LAT
+	bool "[0xFC13] Set Prefer Slave latency."
+
+config VND_API_SET_ADV_TX_POWER
+	bool "Set Advertising Transmitter Power."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_API_SET_CON_TX_POWER
+	bool "[0xFC1A] Set Transmitter Power."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+endif # ATM_VENDOR_API

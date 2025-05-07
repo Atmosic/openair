@@ -17,4 +17,5 @@ runners:
           - qualifiers:
               - ATM33xx-5
               - ATM33xx-5/ns
+              - ATM33xx-5/no_TZ
               - ATMx2xx-x1x

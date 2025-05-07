@@ -5,7 +5,7 @@
  *
  * @brief  Atmosic MCUBOOT extensions
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2025
  *
  *******************************************************************************
  */
@@ -21,7 +21,9 @@
 #include "atm_mcuboot_ext.h"
 #include "at_apb_wrpr_pins_regs_core_macro.h"
 #include "bootutil/bootutil.h"
+#ifdef MCUBOOT_LOCK_PRIMARY_SLOT
 #include "rram_rom_prot.h"
+#endif
 #include "sec_assert.h"
 
 #if (defined(MCUBOOT_LOCK_PRIMARY_SLOT) && \
@@ -141,6 +143,7 @@ bool atm_mcuboot_ext_skip_img_validation(void)
 #endif
 }
 
+#ifdef MCUBOOT_LOCK_PRIMARY_SLOT
 void atm_mcuboot_ext_lock_img_slots(sec_slot_desc_t const *desc)
 {
     uint32_t s_protect_sz = desc->slot0_size;
@@ -152,3 +155,4 @@ void atm_mcuboot_ext_lock_img_slots(sec_slot_desc_t const *desc)
     DEBUG_TRACE("Slot0 WR-Lock: 0x%" PRIx32 ":0x%" PRIx32 ",0x%" PRIx32,
 	desc->slot0_offset, s_protect_sz, desc->slot0_size);
 }
+#endif

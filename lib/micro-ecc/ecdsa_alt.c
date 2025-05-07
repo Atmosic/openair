@@ -5,7 +5,7 @@
  *
  * @brief mbedtls glue for uECC library
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2025
  *
  *******************************************************************************
  */
@@ -47,6 +47,12 @@ static int default_RNG(uint8_t *dest, unsigned size)
 #endif
 #define uECC_SUPPORT_COMPRESSED_POINT 0
 
+#ifdef CONCAT
+#undef CONCAT
+#endif
+#ifdef EMPTY
+#undef EMPTY
+#endif
 #include "uECC.c"
 
 #ifdef MBEDTLS_ECDSA_GENKEY_ALT

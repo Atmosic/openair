@@ -1,0 +1,132 @@
+sample:
+  description: Google Find My Device Network Tag
+  name: Google Find My Device Network Tag
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Press button to start paring"
+tests:
+  applications.fp_tag.atm:
+    tags: fp_tag atm33 atm34
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+  applications.fp_tag.atm.mcuboot:
+    tags: fp_tag atm33 atm34
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+  applications.fp_tag.atm.mcuboot.ota:
+    tags: fp_tag atm33 atm34
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE="${BOARD_DIR}/sysbuild/app_mcuboot.conf;basic_ota_bt.conf"
+      - DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+  applications.fp_tag.atm.atmwstk.ll:
+    tags: fp_tag atm33
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL;-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL;-DDFU_IN_FLASH"
+    extra_configs:
+      - CONFIG_ATMWSTK="LL"
+      - CONFIG_USE_ATMWSTK=y
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
+  applications.fp_tag.atm.mcuboot.atmwstk.ll:
+    tags: fp_tag atm33
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL;-DDFU_IN_FLASH"
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL;-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL;-DDFU_IN_FLASH"
+    extra_configs:
+      - CONFIG_ATMWSTK="LL"
+      - CONFIG_USE_ATMWSTK=y
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
+  applications.fp_tag.atm.atmwstklib.full:
+    tags: fp_tag atm34
+    extra_args:
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB=""
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.fp_tag.atm.atmwstklib.cpd200:
+    tags: fp_tag atm34
+    extra_args:
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB="CPD200"
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.fp_tag.atm.mcuboot.atmwstklib.cpd200:
+    tags: fp_tag atm34
+    extra_args:
+      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
+      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB="CPD200"
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.fp_tag.atm.atmwstk.ll.validator:
+    tags: fp_tag atm33
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL;-DDFU_IN_FLASH"
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL;-DDFU_IN_FLASH"
+    extra_configs:
+      - CONFIG_ATMWSTK="LL"
+      - CONFIG_USE_ATMWSTK=y
+      - CONFIG_FP_FMDN_VALIDATOR_TEST=y
+      - CONFIG_BT_MAX_CONN=4
+      - CONFIG_BT_BUF_ACL_RX_COUNT=5
+      - CONFIG_BT_EXT_ADV_MAX_ADV_SET=3
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
+  applications.fp_tag.atm.atmwstklib.cpd200.validator:
+    tags: fp_tag atm34
+    extra_args:
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB="CPD200"
+      - CONFIG_FP_FMDN_VALIDATOR_TEST=y
+      - CONFIG_BT_MAX_CONN=4
+      - CONFIG_BT_BUF_ACL_RX_COUNT=5
+      - CONFIG_BT_EXT_ADV_MAX_ADV_SET=3
+      - CONFIG_ATM_SOC_ALLOW="ATM34"

@@ -1,0 +1,31 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_FMNA
+	bool "Atmosic Apple FindMy Network service"
+
+config ATM_FMNA_LIB
+	bool "Atmosic FMNA static library"
+	default y if ATM_FMNA
+	depends on ATM_FMNA
+	select APP_WORK_Q
+	select ATM_UECC
+	select ENTROPY_ATM_TRNG
+	select ENTROPY_GENERATOR
+	select MBEDTLS
+	select MBEDTLS_CIPHER
+	select MBEDTLS_CIPHER_AES_ENABLED
+	select MBEDTLS_CIPHER_GCM_ENABLED
+	select MBEDTLS_ECDH_C
+	select MBEDTLS_ECDSA_C
+	select MBEDTLS_ECP_C
+	select MBEDTLS_ECP_DP_SECP224R1_ENABLED
+	select MBEDTLS_ECP_DP_SECP256R1_ENABLED
+	select MBEDTLS_MD
+	select MBEDTLS_SHA256
+
+config ATM_FMNA_LIB_DEBUG
+	bool "Atmosic FMNA static library enable debug log"
+	default y if ATM_FMNA_LIB
+	depends on ATM_FMNA_LIB

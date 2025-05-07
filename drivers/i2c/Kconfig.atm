@@ -7,6 +7,7 @@ menuconfig I2C_ATM
 	bool "Atmosic I2C driver"
 	default y
 	depends on DT_HAS_ATMOSIC_ATM_I2C_ENABLED
+	select PINCTRL
 	help
 	  Enables the ATM I2C driver
 
@@ -21,7 +22,7 @@ config I2C_1
 	bool "Enable I2C Port 1"
 
 config I2C_ATM_TIMEOUT
-	int "I2C busy wait timeout to receive a data bit"
+	int "Timeout in microseconds for a transaction to complete"
 	default 100000
 
 if I2C_0

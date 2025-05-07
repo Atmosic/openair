@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Atmosic
+ * Copyright (c) 2023-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,6 +7,7 @@
 /dts-v1/;
 #include <arm/atmosic/ATMx2xx-x1x.dtsi>
 #include <dt-bindings/gpio/gpio.h>
+#include "pinctrl-x221.dtsi"
 
 / {
 	model = "Atmosic EVK M2221-02";
@@ -62,8 +63,8 @@
 };
 
 &i2c1 {
-        sda-pin = <13>;
-        scl-pin = <12>;
+	pinctrl-0 = <&i2c1_sda_default &i2c1_scl_default>;
+	pinctrl-names = "default";
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 };
 

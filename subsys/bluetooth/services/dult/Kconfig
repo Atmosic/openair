@@ -1,0 +1,76 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ATM_DULT
+    bool "Detecting Unwanted Location Trackers (DULT)"
+    depends on BT
+    select APP_WORK_Q
+    help
+	"Detecting Unwanted Location Trackers (DULT) Service"
+	See https://www.ietf.org/archive/id/draft-detecting-unwanted-location-trackers-01.html#name-applicability.
+
+if ATM_DULT
+
+module = ATM_DULT
+module-str = dult
+source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
+config DULT_MANUFACTURER_NAME
+    string "Manufacturer name"
+    default "Atmosic Tech."
+    help
+	The name should match the value provided in the Google Nearby Console.
+
+config DULT_MODEL_NAME
+    string "Model name"
+    default "Google Fast Pair"
+    help
+	The name should match the value provided in the Google Nearby Console.
+
+config DULT_ACCESSORY_CATEGORY_TYPE
+    int "The category value from DULT specification the accessory most closely resembles"
+    range 1 167
+    default 1 # NO_ACC_CAT_LOC_TRACKER
+    help
+	See https://www.ietf.org/archive/id/draft-detecting-unwanted-location-trackers-01.html#name-accessory-category-value for specific category value.
+
+config DULT_FIRMWARE_VERSION_MAJOR
+    int "DULT Firmware major version"
+    default 1
+    range 0 65535
+    help
+	Default is set to 1, because Major.Minor.Revision value of 0.0.0 is not
+        supported by the Fast Pair Validator Android app.
+
+config DULT_FIRMWARE_VERSION_MINOR
+    int "DULT Firmware major version"
+    default 0
+    range 0 255
+
+config DULT_FIRMWARE_VERSION_REVISION
+    int "DULT Firmware revision version"
+    default 0
+    range 0 255
+
+config DULT_PROTOCOL_IMPLEMENTATION_VERSION
+    hex "DULT implementation version"
+    default 0x00010000
+
+config DULT_ACCESSORY_CAPABILITIES
+    hex "The capability value from DULT specification the accessory most closely resembles"
+    default 0x9 # Supports play sound (REQUIRED) and upports identifier lookup by BLE
+    help
+	See https://www.ietf.org/archive/id/draft-detecting-unwanted-location-trackers-01.html#name-accessory-category-value for specific category value.
+
+config DULT_NETWORK_ID
+    hex "DULT NETWORK ID"
+    default 0x2 # google network id
+
+config DULT_BATTERY_TYPE
+    hex "DULT battery type"
+    default 0x2 # Rechargeable battery
+    help
+	See https://www.ietf.org/archive/id/draft-detecting-unwanted-location-trackers-01.html#name-accessory-category-value for specific category value.
+
+endif # ATM_DULT

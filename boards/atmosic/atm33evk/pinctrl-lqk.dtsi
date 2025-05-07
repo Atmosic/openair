@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2024-2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <atm33_pinmux.h>
+
+&pinctrl {
+	i2c0_sda_default: i2c0_sda_default {
+		pinmux = <5 PINMUX_I2C0_SDA>;
+	};
+
+	i2c0_scl_default: i2c0_scl_default {
+		pinmux = <4 PINMUX_I2C0_SCL>;
+	};
+};

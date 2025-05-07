@@ -13,3 +13,6 @@ build:
     board_root: .
     dts_root: .
     soc_root: .
+
+runners:
+  - file: scripts/runners/atmisp.py

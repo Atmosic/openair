@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,6 +9,7 @@ config ATM_PMU
 	default y if ENTROPY_ATM_TRNG
 	default y if PM
 	default y if ATM_BROWNOUT
+	default y if ATM_RESET
 
 config PMU_WDOG_TIMEOUT
 	int "PMU watchdog timeout"

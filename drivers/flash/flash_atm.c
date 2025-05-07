@@ -48,11 +48,16 @@ LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
 #if defined(QSPI_REMOTE_AHB_SETUP_9__ESL__WRITE) && defined(CONFIG_SOC_FLASH_ATM_USE_BREAK_IN)
 // enable break in for SOCs that support erase/write breakin
 // this allows the CPU to break in during a long running operation
+// NOTE: when using flash execute in place (XIP), only enable breakin on
+// supported chips.
+#if !EXECUTING_IN_PLACE || defined(QSPI_BURST_PP_CTRL__WRD_CNT__MASK)
 #define FLASH_BREAK_IN
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
 #include "atm_bp_clock.h"
 #endif
+#endif // QSPI_REMOTE_AHB_SETUP_9__ESL__WRITE &&
+       // CONFIG_SOC_FLASH_ATM_USE_BREAK_IN
 
 #if !EXECUTING_IN_PLACE
 #include "at_pinmux.h"

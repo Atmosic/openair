@@ -13,6 +13,7 @@
 
 void soc_reset_hook(void)
 {
+	ICACHE->ICCTRL = ICACHE_ICCTRL_CACHEEN_Msk;
 	sec_hw_cfg_init();
 }
 #endif

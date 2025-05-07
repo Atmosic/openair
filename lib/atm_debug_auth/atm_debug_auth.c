@@ -5,7 +5,7 @@
  *
  * @brief Secure debug authentication library
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2025
  *
  *******************************************************************************
  */
@@ -27,11 +27,19 @@
 
 #ifdef DEBUG_AUTH_STATIC_CHALLENGE
 #include "sec_jrnl.h"
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_SEC_COUNTER)
 #include "sec_counter.h"
-
+// counter value will be included in the static challenge
+#define STATIC_CHALLENGE_INCLUDE_SEC_CTR
+#endif // !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_SEC_COUNTER)
+#ifdef CONFIG_SOC_FAMILY_ATM
+#define SEC_JRNL_START DT_REG_ADDR(DT_NODELABEL(sec_jrnl))
+#define SEC_JRNL_SIZE DT_REG_SIZE(DT_NODELABEL(sec_jrnl))
+#else
 #define SEC_JRNL_START 0x1008f800
 #define SEC_JRNL_SIZE 1776
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
+#endif // DEBUG_AUTH_STATIC_CHALLENGE
 
 #define CHALLENGE_WORDS 16
 #define ENCODED_CHALLENGE_LEN \
@@ -313,7 +321,6 @@ static void generate_static_challenge(void)
     // start sha enginge
     // for each area in static_challenge, add to sha engine
     bool success = true;
-    uint16_t counter;
     atm_sha256_params_t sha_params = {.mode = ATM_SHA256_SHA_MODE,
 	.byte_endianess = ATM_SHA256_ENDIANESS_BIG,
 	.digest_endianess = ATM_SHA256_ENDIANESS_BIG};
@@ -327,6 +334,9 @@ static void generate_static_challenge(void)
     success = success &&
 	(atm_sha256_update_pio((void *)SEC_JRNL_START, SEC_JRNL_SIZE) ==
 	    ATM_SHA256_RES_SUCCESS);
+
+#ifdef STATIC_CHALLENGE_INCLUDE_SEC_CTR
+    uint16_t counter;
 #ifdef SECURE_MODE
     success = success && (sec_counter_read(7, &counter) == SEC_CNTR_OK);
 #else
@@ -335,6 +345,8 @@ static void generate_static_challenge(void)
     success = success &&
 	(atm_sha256_update_pio(&counter, sizeof(uint16_t)) ==
 	    ATM_SHA256_RES_SUCCESS);
+#endif // STATIC_CHALLENGE_INCLUDE_SEC_CTR
+
     if (success) {
 	atm_sha256_final(static_challenge);
 	static_challenge_valid = true;

@@ -1,0 +1,18 @@
+sample:
+  name: Bluetooth Extended Advertising Advertiser
+tests:
+  samples.bluetooth.extended_adv.advertiser.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - Starting Extended Advertising Demo
+    tags: bluetooth atm33 atm34
+    extra_args:
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB=""
+      - CONFIG_USE_ATMWSTK=y

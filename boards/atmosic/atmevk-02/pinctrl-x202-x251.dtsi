@@ -1,0 +1,20 @@
+/*
+ * For ATMx202 and ATMx251 boards
+ *
+ * Copyright (c) 2024-2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <atmx2_pinmux.h>
+
+&pinctrl {
+	i2c0_sda_default: i2c0_sda_default {
+		pinmux = <10 P10_I2C0_SDA>;
+	};
+
+	i2c0_scl_default: i2c0_scl_default {
+		pinmux = <9 P9_I2C0_SCL>;
+	};
+};
+

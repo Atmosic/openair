@@ -1,0 +1,41 @@
+<Database>
+  <Device>
+   <ChipInfo Vendor="Atmosic" Name="ATM33" WorkRAMAddr="0x20000000" WorkRAMSize="0x00020000" Core="JLINK_CORE_CORTEX_M33"/>
+  </Device>
+  <Device>
+   <ChipInfo Vendor="Atmosic" Name="ATM3330" WorkRAMAddr="0x20000000" WorkRAMSize="0x00020000" Core="JLINK_CORE_CORTEX_M33"/>
+   <FlashBankInfo Name="Rram" BaseAddr="0x00010000"  MaxSize="0x00080000" AlwaysPresent="1">
+       <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM33_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+   </FlashBankInfo>
+   <FlashBankInfo Name="Flash" BaseAddr="0x00200000"  MaxSize="0x00100000" AlwaysPresent="1">
+       <LoaderInfo Name="Flash" MaxSize="0x00100000" Loader="ATM3330_EXTFLASH.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+   </FlashBankInfo>
+  </Device>
+  <Device>
+   <ChipInfo Vendor="Atmosic" Name="ATM3330e" WorkRAMAddr="0x20000000" WorkRAMSize="0x00020000" Core="JLINK_CORE_CORTEX_M33"/>
+   <FlashBankInfo Name="Rram" BaseAddr="0x00010000"  MaxSize="0x00080000" AlwaysPresent="1">
+       <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM33_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+   </FlashBankInfo>
+   <FlashBankInfo Name="Flash" BaseAddr="0x00200000"  MaxSize="0x00100000" AlwaysPresent="1">
+       <LoaderInfo Name="Flash" MaxSize="0x00100000" Loader="ATM3330_EXTFLASH.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+   </FlashBankInfo>
+  </Device>
+  <Device InheritFrom="ATM3330">
+   <ChipInfo Vendor="Atmosic" Name="ATM3325_StackFlash" WorkRAMAddr="0x20000000" WorkRAMSize="0x00020000" Core="JLINK_CORE_CORTEX_M33"/>
+   <FlashBankInfo Name="Rram" BaseAddr="0x00010000"  MaxSize="0x00080000" AlwaysPresent="1">
+       <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM33_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+   </FlashBankInfo>
+   <FlashBankInfo Name="Flash" BaseAddr="0x00200000"  MaxSize="0x00100000" AlwaysPresent="1">
+       <LoaderInfo Name="Flash" MaxSize="0x00100000" Loader="ATM3325_STACKFLASH.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+   </FlashBankInfo>
+  </Device>
+  <Device InheritFrom="ATM3330">
+   <ChipInfo Vendor="Atmosic" Name="ATM3325" WorkRAMAddr="0x20000000" WorkRAMSize="0x00020000" Core="JLINK_CORE_CORTEX_M33"/>
+   <FlashBankInfo Name="Rram" BaseAddr="0x00010000"  MaxSize="0x00080000" AlwaysPresent="1">
+       <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM33_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+   </FlashBankInfo>
+   <FlashBankInfo Name="Flash" BaseAddr="0x00200000"  MaxSize="0x00100000" AlwaysPresent="1">
+       <LoaderInfo Name="Flash" MaxSize="0x00100000" Loader="ATM3325_EXTFLASH.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+   </FlashBankInfo>
+  </Device>
+</Database>

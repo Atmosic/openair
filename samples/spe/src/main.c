@@ -345,13 +345,15 @@ static void pre_sau_security_lockdown(void)
 #endif // factory_partition
 
 #if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
-    // lock out the ROM
+#ifdef CONFIG_ATM_SPE_RP_BOOT_ROM
+    // lock out the boot ROM
     uint32_t rom_offset = ROM_ADDR_TO_OFFSET(CMSDK_FLASH_BASE);
     printk("ROM RP: 0x%x, 0x%lx \n", rom_offset, ROM_SIZE);
     sec_s = rom_prot_sticky_read_disable(rom_offset, ROM_SIZE);
     SEC_ASSERT(sec_s);
-
-#if DT_NODE_EXISTS(DT_NODELABEL(boot_partition))
+#endif
+#if DT_NODE_EXISTS(DT_NODELABEL(boot_partition)) && \
+    defined(CONFIG_ATM_SPE_RP_MCUBOOT)
     // read/write protect MCUBOOT partition
     uint32_t mcuboot_offset = PART_OFFSET(boot_partition);
     uint32_t mcuboot_size = DT_REG_SIZE(DT_NODELABEL(boot_partition));
@@ -363,7 +365,8 @@ static void pre_sau_security_lockdown(void)
 #endif
 
 #if DT_NODE_EXISTS(DT_NODELABEL(slot2_partition)) && \
-    !DT_NODE_EXISTS(DT_NODELABEL(slot3_partition))
+    !DT_NODE_EXISTS(DT_NODELABEL(slot3_partition)) && \
+    defined(CONFIG_ATM_SPE_WP_ATMWSTK)
     // sticky lock atmwstk
     uint32_t atmwstk_offset = PART_OFFSET(slot2_partition);
     uint32_t atmwstk_size = DT_REG_SIZE(DT_NODELABEL(slot2_partition));
@@ -384,8 +387,6 @@ static void post_sau_security_lockdown(void)
 
 FUNC_NORETURN void spe_main(void)
 {
-    ICACHE->ICCTRL = ICACHE_ICCTRL_CACHEEN_Msk;
-
     printk("*** Zephyr SPE ***\n");
     printk("* SPE range: [0x%08x - 0x%08x]\n", (unsigned int)PART_SPE_ADDR(),
 	(unsigned int)PART_SPE_ADDR() + (unsigned int)PART_SPE_SIZE() - 1);

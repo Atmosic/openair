@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2024 Atmosic
+# Copyright (c) 2021-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -10,6 +10,8 @@ if(CONFIG_TRUSTED_EXECUTION_SECURE)
     -DSECURE_MODE=1
   )
 endif()
+
+zephyr_compile_options_ifdef(CONFIG_ATM_NO_SPE -DCFG_NO_SPE=1)
 
 # Import SPE-related configurations
 function(import_spe_kconfig prefix kconfig_fragment)
@@ -115,11 +117,11 @@ function(atm_partition_info)
   if(EXISTS "${CONFIG_GEN_PARTITION_INFO_SCRIPT}")
     # Extensionless prefix of any output file.
     if(CONFIG_TRUSTED_EXECUTION_NONSECURE AND CONFIG_SPE_PATH)
-	set(output_file ${ZEPHYR_BINARY_DIR}/partition_info.map.app)
-	set(spe_output_file ${spe_path}/zephyr/partition_info.map)
-	set(output_file_merge ${ZEPHYR_BINARY_DIR}/partition_info.map)
+      set(output_file ${ZEPHYR_BINARY_DIR}/partition_info.map.app)
+      set(spe_output_file ${spe_path}/zephyr/partition_info.map)
+      set(output_file_merge ${ZEPHYR_BINARY_DIR}/partition_info.map)
     else()
-	set(output_file ${ZEPHYR_BINARY_DIR}/partition_info.map)
+      set(output_file ${ZEPHYR_BINARY_DIR}/partition_info.map)
     endif()
     set(dt_file ${ZEPHYR_BINARY_DIR}/zephyr.dts)
     set(EXT_ARGS)
@@ -154,14 +156,28 @@ function(atm_partition_info)
       COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_PARTITION_INFO_SCRIPT} gen -i ${dt_file} -o ${output_file}
         -p ${CONFIG_SOC} -f ${CONFIG_SOC_SERIES} -b ${BOARD} ${EXT_ARGS}
     )
+    set_property(GLOBAL APPEND PROPERTY extra_post_build_byproducts ${output_file})
     if(CONFIG_TRUSTED_EXECUTION_NONSECURE AND CONFIG_SPE_PATH)
-	message("Merge Partition Info Map File to ${output_file_merge}")
-	set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
-	COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_PARTITION_INFO_SCRIPT} merge -i1 ${spe_output_file} -i2 ${output_file} -o ${output_file_merge}
-	)
+      message("Merge Partition Info Map File to ${output_file_merge}")
+      set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
+        COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_PARTITION_INFO_SCRIPT} merge -i1 ${spe_output_file} -i2 ${output_file} -o ${output_file_merge}
+      )
+      set_property(GLOBAL APPEND PROPERTY extra_post_build_byproducts ${output_file_merge})
     endif()
   else()
     message("west build can't find ${CONFIG_GEN_PARTITION_INFO_SCRIPT}, ignore generate partition info")
+  endif()
+endfunction()
+
+# Generate layout_info.map
+function(layout_info)
+  set(partition_file ${ZEPHYR_BINARY_DIR}/partition_info.map)
+  if(EXISTS "${CONFIG_GEN_LAYOUT_INFO_SCRIPT}")
+    message("Generate Layout Information File to ${layout_info_file}")
+    set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
+    COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_LAYOUT_INFO_SCRIPT} --layout-file ${partition_file} > ${layout_info_file}
+    )
+    set_property(GLOBAL APPEND PROPERTY extra_post_build_byproducts ${layout_info_file})
   endif()
 endfunction()
 
@@ -193,9 +209,16 @@ endfunction()
 # copy ATMWSTK file to ZEPHYR_BINARY_DIR and tranfer to bin and hex format
 function(atmswstk_image)
   if(NOT CONFIG_ATMWSTK_PATH)
-      message(FATAL_ERROR "atmwstk overwrite requireds CONFIG_ATMWSTK_PATH")
+    message(FATAL_ERROR "atmwstk overwrite requires CONFIG_ATMWSTK_PATH")
   endif()
-  set(ATMWSTK_FILENAME "atmwstk_${CONFIG_ATMWSTK}")
+  if(CONFIG_ATMWSTK_PD50)
+    set(ATMWSTK_FILENAME "atmwstk_PD50LL")
+  elseif(CONFIG_ATMWSTK_FULL)
+    set(ATMWSTK_FILENAME "atmwstk_LL")
+  else()
+    message(DEPRECATION "CONFIG_ATMWSTK will be deprecated in the future, please choose one of CONFIG_ATMWSTK_PD50 or CONFIG_ATMWSTK_FULL.")
+    set(ATMWSTK_FILENAME "atmwstk_${CONFIG_ATMWSTK}")
+  endif()
   set(ATMWSTK_FILE_PATH "${CONFIG_ATMWSTK_PATH}/${ATMWSTK_FILENAME}.elf")
   if(NOT EXISTS "${ATMWSTK_FILE_PATH}")
     message(FATAL_ERROR "west build can't find ${ATMWSTK_FILE_PATH}")
@@ -243,14 +266,22 @@ function(zephyr_atmosic_tasks)
       merge_spe(${spe_path} ${S_LOAD_OFFSET})
     endif()
   endif()
+  if(CONFIG_USE_ATMWSTK)
+    atmswstk_image()
+  endif()
   if(CONFIG_GEN_PARTITION_INFO)
     atm_partition_info()
+    if(CONFIG_TRUSTED_EXECUTION_NONSECURE)
+      set(layout_info_file ${ZEPHYR_BINARY_DIR}/layout.info)
+      layout_info()
+    endif()
     if(CONFIG_ATM_SETTINGS AND NOT CONFIG_AUTO_TEST)
       atm_generate_tag_data_bin_file()
     endif()
-  endif()
-  if(CONFIG_USE_ATMWSTK AND CONFIG_ATMWSTK)
-    atmswstk_image()
+    if(DEFINED SYSBUILD AND SYSBUILD)
+      include(${ZEPHYR_OPENAIR_MODULE_DIR}/sysbuild/cmake/atm_arch.cmake)
+      atm_arch_sh_gen()
+    endif()
   endif()
 endfunction()
 
