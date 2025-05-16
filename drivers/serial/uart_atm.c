@@ -1052,6 +1052,7 @@ ATMOSIC_UART_IRQ_HANDLER_DECL(inst)					\
 									\
 static void uart_atm_config_pins##inst(void)				\
 {									\
+	WRPR_CTRL_SET(UART_BASE(inst), WRPR_CTRL__SRESET);		\
 	WRPR_CTRL_SET(UART_BASE(inst), CLK_ENABLE);			\
 	IF_ENABLED(CONFIG_PM, (						\
 		IF_ENABLED(UART_TX_GLITCH, (PIN_SELECT_GPIO_HIGH(DT_INST_PROP(inst, tx_pin));)) \

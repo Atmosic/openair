@@ -10,6 +10,7 @@
 #include <zephyr/drivers/i2s.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/ring_buffer.h>
 
 #ifdef CONFIG_PM
 #include <zephyr/pm/pm.h>
@@ -22,10 +23,11 @@
 #include "at_pinmux.h"
 #include "at_i2s_regs_core_macro.h"
 #include "atm_utils_math.h"
+#include "i2s_atm.h"
+#include "dma.h"
 LOG_MODULE_REGISTER(i2s_atm, CONFIG_I2S_LOG_LEVEL);
 
 BUILD_ASSERT(IS_ENABLED(CONFIG_ATM_DMA), "I2S requires ATM DMA");
-#include "dma.h"
 
 #define PINGPONG_BUF_SIZE 16
 #define SRC_CNT_DEFAULT   1
@@ -62,7 +64,7 @@ typedef enum {
 
 #define IRQ_SOURCE_EP_THRSHLD ATI2S_I2S_IRQM0__PP_EP_THRSHLD__MASK
 
-#define IRQ_SOURCE_TX (IRQ_SOURCE_UF | IRQ_SOURCE_EP_THRSHLD)
+#define IRQ_SOURCE_TX IRQ_SOURCE_UF
 
 #define IRQ_STATUS_UF                                                                              \
 	(ATI2S_I2S_IRQ0__PP0_UF__MASK | ATI2S_I2S_IRQ0__PP1_UF__MASK |                             \
@@ -70,7 +72,7 @@ typedef enum {
 
 #define IRQ_STATUS_EP_THRSHLD ATI2S_I2S_IRQ0__PP_EP_THRSHLD__MASK
 
-#define IRQ_STATUS_TX (IRQ_STATUS_UF | IRQ_STATUS_EP_THRSHLD)
+#define IRQ_STATUS_TX IRQ_STATUS_UF
 typedef struct i2s_cfg_txrx_s {
 	uint16_t sck2ws_rt; // serial clock (sck) to word select (ws) ratio
 	uint16_t ck2sck_rt; // clock to serial clock ratio
@@ -97,7 +99,10 @@ struct trx_block {
 struct i2s_atm_stream {
 	enum i2s_state state;
 	struct k_mem_slab *mem_slab;
-	struct k_msgq *queue;
+	struct ring_buf *act_q; // Queue of data blocks currently being transmitted.
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+	struct ring_buf *rdy_q;
+#endif
 	struct trx_block cur_block;
 	bool stop_drain;
 };
@@ -106,21 +111,28 @@ struct i2s_atm_config {
 	void (*fn_cfg_tx_pin)(void);
 	uint32_t sys_clk_freq;
 };
-
 struct i2s_atm_data {
-	enum i2s_dir dir;
 	i2s_cfg_t cfg;
 	struct i2s_config const *i2s_cfg;
 	struct i2s_atm_stream tx;
-	struct i2s_atm_stream rx;
 	struct device const *dev;
+	struct k_work tx_work;
+	bool dma_stop;
+	bool uf_err;
+	void (*tx_write_cb)(struct device const *dev, void *arg);
+	void *tx_write_cb_arg;
+	bool in_write_cb;
+	uint16_t uf_err_count;
 #ifdef CONFIG_PM
 	bool pm_tx_constraint_on;
 #endif
 };
 
+#define RING_BUF_GET(ring, out) ring_buf_get((ring), (uint8_t *)&out, sizeof(out))
+#define RING_BUF_PUT(ring, in)  ring_buf_put((ring), (uint8_t *)&(in), sizeof(in))
+
 #ifdef CONFIG_PM
-static void i2s_atm_pm_tx_constraint_set(const struct device *dev)
+static void i2s_atm_pm_tx_constraint_set(struct device const *dev)
 {
 	struct i2s_atm_data *data = dev->data;
 
@@ -131,7 +143,7 @@ static void i2s_atm_pm_tx_constraint_set(const struct device *dev)
 	}
 }
 
-static void i2s_atm_pm_tx_constraint_release(const struct device *dev)
+static void i2s_atm_pm_tx_constraint_release(struct device const *dev)
 {
 	struct i2s_atm_data *data = dev->data;
 
@@ -143,12 +155,17 @@ static void i2s_atm_pm_tx_constraint_release(const struct device *dev)
 }
 #endif
 
-#define I2S_ATM_MAX_TX_BLOCK 20
-#define I2S_ATM_MAX_RX_BLOCK 0
-K_MSGQ_DEFINE(tx_queue, sizeof(struct trx_block), I2S_ATM_MAX_TX_BLOCK, sizeof(void *));
-K_MSGQ_DEFINE(rx_queue, sizeof(struct trx_block), I2S_ATM_MAX_TX_BLOCK, sizeof(void *));
+RING_BUF_DECLARE(tx_act_q, sizeof(struct trx_block) * CONFIG_I2S_TX_BLOCK_NUM);
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+RING_BUF_DECLARE(tx_rdy_q, sizeof(void *) * CONFIG_I2S_TX_BLOCK_NUM);
+static __noinit char __aligned(WB_UP(32)) _k_mem_slab_buf_tx_0_mem[(CONFIG_I2S_TX_BLOCK_NUM)
+    * WB_UP(CONFIG_I2S_BLOCK_SIZE)];
+static STRUCT_SECTION_ITERABLE(k_mem_slab, tx_0_mem_slab) = Z_MEM_SLAB_INITIALIZER(
+	tx_0_mem_slab, _k_mem_slab_buf_tx_0_mem, WB_UP(CONFIG_I2S_BLOCK_SIZE),
+	CONFIG_I2S_TX_BLOCK_NUM);
+#endif
 
-static int i2s_config_convert(const struct device *dev, const struct i2s_config *cfg,
+static int i2s_config_convert(struct device const *dev, const struct i2s_config *cfg,
 			      i2s_cfg_t *cfg_atm)
 {
 	i2s_cfg_txrx_t *trx = &cfg_atm->trx;
@@ -225,8 +242,9 @@ static int i2s_config_convert(const struct device *dev, const struct i2s_config 
 							    cfg->frame_clk_freq);
 			uint32_t real_frame_freq = i2s_clks[i] / ck2sck / (ws_cnt[j] * 2);
 			uint32_t diff = ATM_ABS(real_frame_freq - cfg->frame_clk_freq);
-			LOG_DBG("i2s_clks[%d] = %d, ws_cnt[%d] = %d, ck2sck = %d, real_frame_freq "
-				"= %d, diff = %d\n",
+			LOG_DBG("i2s_clks[%d] = %" PRIu32 ", ws_cnt[%d] = %" PRIu16
+				", ck2sck = %" PRIu16 ", real_frame_freq = %" PRIu32
+				", diff = %" PRIu32,
 				i, i2s_clks[i], j, ws_cnt[j], ck2sck, real_frame_freq, diff);
 			if (diff < nearest_diff) {
 				nearest_diff = diff;
@@ -236,8 +254,8 @@ static int i2s_config_convert(const struct device *dev, const struct i2s_config 
 			}
 		}
 	}
-	LOG_DBG("ck2ws_rt = %d, ck2sck_rt = %d, aud_ctrl_i2s = %d\n", trx->sck2ws_rt,
-		trx->ck2sck_rt, cfg_atm->aud_ctrl_i2s);
+	LOG_DBG("ck2ws_rt = %" PRIu16 ", ck2sck_rt = %" PRIu16 ", aud_ctrl_i2s = %" PRIu32,
+		trx->sck2ws_rt, trx->ck2sck_rt, cfg_atm->aud_ctrl_i2s);
 
 	if (nearest_diff == 0xffffffff) {
 		LOG_ERR("Unsupported frame clock frequency");
@@ -246,14 +264,13 @@ static int i2s_config_convert(const struct device *dev, const struct i2s_config 
 	return 0;
 }
 
-static int i2s_atm_configure(const struct device *dev, enum i2s_dir dir,
+static int i2s_atm_configure(struct device const *dev, enum i2s_dir dir,
 			     const struct i2s_config *cfg)
 {
 
 	struct i2s_atm_config const *i2s_config = dev->config;
 	struct i2s_atm_data *i2s_data = dev->data;
 	i2s_cfg_t *cfg_atm = &i2s_data->cfg;
-
 	// Support TX currently
 	if ((dir != I2S_DIR_TX) || i2s_data->i2s_cfg || i2s_config_convert(dev, cfg, cfg_atm) < 0) {
 		return -EINVAL;
@@ -299,28 +316,53 @@ static int i2s_atm_configure(const struct device *dev, enum i2s_dir dir,
 			ATI2S_I2S_CTRL2_TX__WSSD_MD__WRITE(cfg_atm->mode);
 
 		ATI2S_I2S_CTRL3__USE_MSB_SMPL__CLR(CMSDK_I2S_NONSECURE->I2S_CTRL3);
+		CMSDK_I2S_NONSECURE->I2S_IRQM1 = 0;
 
 		i2s_config->fn_cfg_tx_pin();
+
 		i2s_data->tx.state = I2S_STATE_READY;
 
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+		if (cfg->mem_slab) {
+			LOG_ERR("Set mem_slab to NULL and use i2s_get_tx_buffer() instead.");
+			ASSERT_ERR(0);
+		}
+		i2s_data->tx.mem_slab = &tx_0_mem_slab;
+#else
+		ASSERT_ERR(cfg->mem_slab);
+		ASSERT_ERR(cfg->mem_slab->info.num_blocks <= CONFIG_I2S_TX_BLOCK_NUM);
 		i2s_data->tx.mem_slab = cfg->mem_slab;
-		CMSDK_I2S_NONSECURE->I2S_IRQM0 = IRQ_SOURCE_TX;
-	} else {
-		return -EINVAL;
-	}
+#endif
+		ASSERT_ERR(!ring_buf_size_get(i2s_data->tx.act_q));
 
-	i2s_data->dir = dir;
+		if (i2s_data->uf_err_count) {
+			LOG_INF("last uf_cnt = %" PRIu32, i2s_data->uf_err_count);
+		}
+
+		i2s_data->uf_err = true;
+		i2s_data->uf_err_count = 0;
+		i2s_data->dma_stop = true;
+
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+		/* preallocate and put into rdy_q */
+		void *mem_block;
+		while (!k_mem_slab_alloc(i2s_data->tx.mem_slab, &mem_block, K_NO_WAIT)) {
+			ASSERT_ERR(sizeof(mem_block) ==
+				   RING_BUF_PUT(i2s_data->tx.rdy_q, mem_block));
+		}
+#endif
+	}
 
 	return 0;
 }
 
-static void dma_i2s_tx_free_cur(struct i2s_atm_stream *stream)
+static bool is_mem_in_slab(struct k_mem_slab *slab, void *mem)
 {
-	if (stream->cur_block.buffer) {
-		k_mem_slab_free(stream->mem_slab, stream->cur_block.buffer);
-		stream->cur_block.buffer = NULL;
-		stream->cur_block.size = 0;
-	}
+	uintptr_t base = (uintptr_t)slab->buffer;
+	uintptr_t end = base + (slab->info.num_blocks * slab->info.block_size);
+	uintptr_t ptr = (uintptr_t)mem;
+
+	return (ptr >= base) && (ptr < end);
 }
 
 static void i2s_queue_drop(struct device const *dev)
@@ -328,58 +370,124 @@ static void i2s_queue_drop(struct device const *dev)
 	struct i2s_atm_data *i2s_data = dev->data;
 	struct i2s_atm_stream *stream = &i2s_data->tx;
 	struct trx_block block;
-
-	while (!k_msgq_get(stream->queue, &block, K_NO_WAIT)) {
-		k_mem_slab_free(stream->mem_slab, block.buffer);
+	int ret;
+	while ((ret = RING_BUF_GET(stream->act_q, block))) {
+		ASSERT_ERR(ret == sizeof(struct trx_block));
+		if (is_mem_in_slab(stream->mem_slab, block.buffer)) {
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+			RING_BUF_PUT(stream->rdy_q, block.buffer);
+#else
+			k_mem_slab_free(stream->mem_slab, block.buffer);
+#endif
+		}
 	}
+}
+
+static void i2s_back_to_ready(struct device const *dev);
+
+static void arrange_queue_for_stop(struct i2s_atm_data *i2s_data)
+{
+	struct i2s_atm_stream *stream = &i2s_data->tx;
+
+	if (stream->stop_drain) {
+		while (!ring_buf_is_empty(i2s_data->tx.act_q)) {
+			k_yield();
+		}
+	}
+	i2s_back_to_ready(i2s_data->dev);
+}
+
+static bool dma_tx_get_buffer(void **src, size_t *len, void const *ctx)
+{
+	struct device const *dev = ctx;
+	struct i2s_atm_data *i2s_data = dev->data;
+	struct i2s_atm_stream *stream = &i2s_data->tx;
+
+	/* put to ready queue*/
+	if (stream->cur_block.buffer) {
+		if (is_mem_in_slab(stream->mem_slab, stream->cur_block.buffer)) {
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+			int ret = RING_BUF_PUT(i2s_data->tx.rdy_q, stream->cur_block.buffer);
+			ASSERT_INFO(ret == sizeof(void *), ret, stream->cur_block.buffer);
+#else
+			k_mem_slab_free(stream->mem_slab, stream->cur_block.buffer);
+#endif
+			stream->cur_block.buffer = NULL;
+		}
+	}
+
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+	/* Ask application for data*/
+	if (ring_buf_is_empty(stream->act_q)) {
+		if (i2s_data->tx_write_cb) {
+			i2s_data->in_write_cb = true;
+			i2s_data->tx_write_cb(i2s_data->dev, i2s_data->tx_write_cb_arg);
+			i2s_data->in_write_cb = false;
+		}
+	}
+#endif
+
+	/* get next block */
+	if (!src || !len || !RING_BUF_GET(stream->act_q, stream->cur_block)) {
+		return false;
+	}
+
+	/* return the block to DMA ISR */
+	*src = stream->cur_block.buffer;
+	*len = stream->cur_block.size;
+
+	if (i2s_data->uf_err) {
+		i2s_data->uf_err = false;
+		CMSDK_I2S_NONSECURE->I2S_IRQM0 = IRQ_SOURCE_TX;
+	}
+	return true;
 }
 
 static void dma_i2s_tx_callback(void const *ctx)
 {
-	const struct device *dev = ctx;
-	struct i2s_atm_data const *i2s_data = dev->data;
-	struct i2s_atm_stream *stream = (struct i2s_atm_stream *)&i2s_data->tx;
-	if (!stream->cur_block.buffer) {
-		if (stream->state != I2S_STATE_READY) {
-			LOG_ERR("TX block NULL. state: %u", stream->state);
-		}
-		return;
-	}
+	struct device const *dev = ctx;
+	struct i2s_atm_data *i2s_data = dev->data;
+	i2s_data->dma_stop = true;
 
-	dma_i2s_tx_free_cur(stream);
-
-	if (stream->state == I2S_STATE_STOPPING) {
-		if (!stream->stop_drain) {
-			i2s_queue_drop(dev);
-			return;
-		}
-	}
-
-	int ret = k_msgq_get(stream->queue, &stream->cur_block, K_NO_WAIT);
-	if (ret < 0) {
-		if (stream->state == I2S_STATE_STOPPING && stream->stop_drain) {
-			return;
-		}
-		stream->state = I2S_STATE_ERROR;
-		return;
-	}
-
-	dma_fifo_tx_async(DMA_FIFO_TX_I2S, stream->cur_block.buffer, stream->cur_block.size,
-			  dma_i2s_tx_callback, dev);
+#ifndef CONFIG_ATM_FIFO_TX_ISR
+	k_work_submit(&i2s_data->tx_work);
 }
 
-static int i2s_tx_start_transfer(const struct device *dev)
+static void dma_i2s_tx_callback_work(struct k_work *work)
 {
-	struct i2s_atm_data *i2s_data = dev->data;
-	struct i2s_atm_stream *stream = &i2s_data->tx;
-	int ret = k_msgq_get(stream->queue, &stream->cur_block, K_NO_WAIT);
-	if (ret < 0) {
-		LOG_ERR("TX queue empty");
-		return ret;
+	struct i2s_atm_data *i2s_data = CONTAINER_OF(work, struct i2s_atm_data, tx_work);
+	struct device const *dev = i2s_data->dev;
+#endif
+	void *src;
+	size_t len;
+	if (dma_tx_get_buffer(&src, &len, dev)) {
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+		if (i2s_data->dma_stop) {
+			i2s_data->dma_stop = false;
+		}
+#else
+		i2s_data->dma_stop = false;
+#endif
+		dma_fifo_tx_async(DMA_FIFO_TX_I2S, src, len, dma_i2s_tx_callback, dev);
+		return;
 	}
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+	if (i2s_data->tx.state == I2S_STATE_STOPPING) {
+		ASSERT_ERR(ring_buf_is_empty(i2s_data->tx.act_q));
+		i2s_back_to_ready(i2s_data->dev);
+	}
+#else
+	if (i2s_data->tx.state == I2S_STATE_STOPPING) {
+		arrange_queue_for_stop(i2s_data);
+	} else if(!ring_buf_is_empty(i2s_data->tx.act_q)) {
+		k_work_submit(&i2s_data->tx_work);
+	}
+#endif
+}
 
-	dma_fifo_tx_async(DMA_FIFO_TX_I2S, stream->cur_block.buffer, stream->cur_block.size,
-			  dma_i2s_tx_callback, dev);
+static int i2s_tx_start_transfer(struct device const *dev)
+{
+	dma_i2s_tx_callback(dev);
 
 	NVIC_ClearPendingIRQ(I2S_IRQn);
 	CMSDK_I2S_NONSECURE->I2S_CTRL0 |= ATI2S_I2S_CTRL0__SRC_SNK_EN__WRITE(I2S_TX_MASK);
@@ -390,7 +498,7 @@ static int i2s_tx_start_transfer(const struct device *dev)
 	return 0;
 }
 
-static int i2s_tx_stop_transfer(const struct device *dev)
+static int i2s_tx_stop_transfer(struct device const *dev)
 {
 	NVIC_DisableIRQ(I2S_IRQn);
 	CMSDK_I2S_NONSECURE->I2S_CTRL0 &= ~ATI2S_I2S_CTRL0__SRC_SNK_EN__WRITE(I2S_TX_MASK);
@@ -400,7 +508,26 @@ static int i2s_tx_stop_transfer(const struct device *dev)
 	return 0;
 }
 
-static int i2s_atm_trigger(const struct device *dev, enum i2s_dir dir, enum i2s_trigger_cmd cmd)
+static void i2s_back_to_ready(struct device const *dev)
+{
+	struct i2s_atm_data *i2s_data = dev->data;
+	struct i2s_atm_stream *stream = &i2s_data->tx;
+	i2s_queue_drop(dev);
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+	void *mem_block;
+	int size;
+	/* free all mem_slab */
+	while ((size = RING_BUF_GET(stream->rdy_q, mem_block))) {
+		ASSERT_ERR(size == sizeof(void *));
+		k_mem_slab_free(stream->mem_slab, mem_block);
+	}
+#endif
+	i2s_data->i2s_cfg = NULL;
+	i2s_tx_stop_transfer(i2s_data->dev);
+	stream->state = I2S_STATE_READY;
+}
+
+static int i2s_atm_trigger(struct device const *dev, enum i2s_dir dir, enum i2s_trigger_cmd cmd)
 {
 	struct i2s_atm_data *i2s_data = dev->data;
 	struct i2s_atm_stream *stream;
@@ -418,30 +545,28 @@ static int i2s_atm_trigger(const struct device *dev, enum i2s_dir dir, enum i2s_
 			LOG_ERR("START - Invalid state: %u", stream->state);
 			return -EIO;
 		}
+		stream->state = I2S_STATE_RUNNING;
+		stream->stop_drain = false;
 		int ret = i2s_tx_start_transfer(dev);
 		if (ret < 0) {
+			stream->state = I2S_STATE_READY;
 			LOG_ERR("Failed to start TX transfer: %d", ret);
 			return ret;
 		}
-		stream->state = I2S_STATE_RUNNING;
-		stream->stop_drain = false;
 		break;
 	case I2S_TRIGGER_STOP:
-		if (stream->state != I2S_STATE_RUNNING) {
-			LOG_ERR("STOP - Invalid state: %u", stream->state);
-			return -EIO;
-		}
-		stream->state = I2S_STATE_STOPPING;
-		break;
 	case I2S_TRIGGER_DRAIN:
 		if (stream->state != I2S_STATE_RUNNING) {
-			LOG_ERR("DRAIN - Invalid state: %u", stream->state);
+			LOG_ERR("Invalid state: %u", stream->state);
 			return -EIO;
 		}
-		if (k_msgq_num_used_get(stream->queue) > 0) {
+		if (ring_buf_size_get(stream->act_q) && (cmd == I2S_TRIGGER_DRAIN)) {
 			stream->stop_drain = true;
 		}
 		stream->state = I2S_STATE_STOPPING;
+		if (i2s_data->dma_stop) {
+			arrange_queue_for_stop(i2s_data);
+		}
 		break;
 	case I2S_TRIGGER_DROP:
 		if (stream->state == I2S_STATE_NOT_READY) {
@@ -451,49 +576,95 @@ static int i2s_atm_trigger(const struct device *dev, enum i2s_dir dir, enum i2s_
 		stream->state = I2S_STATE_STOPPING;
 		break;
 	case I2S_TRIGGER_PREPARE:
-		if (stream->state != I2S_STATE_ERROR && stream->state != I2S_STATE_READY) {
+		if ((stream->state != I2S_STATE_ERROR) && (stream->state != I2S_STATE_READY) &&
+		    (stream->state != I2S_STATE_RUNNING)) {
 			return -EIO;
 		}
-		i2s_queue_drop(dev);
-		i2s_data->i2s_cfg = NULL;
-		i2s_tx_stop_transfer(i2s_data->dev);
-		stream->state = I2S_STATE_READY;
+		/* The I2S_TRIGGER_PREPARE clears the error. */
+		i2s_data->uf_err_count = 0;
+		i2s_back_to_ready(dev);
 	}
 	return 0;
 }
 
-static int i2s_atm_read(const struct device *dev, void **mem_block, size_t *size)
+static int i2s_atm_read(struct device const *dev, void **mem_block, size_t *size)
 {
 	return -ENOTSUP;
 }
 
-static int i2s_atm_write(const struct device *dev, void *mem_block, size_t size)
+static int i2s_atm_write(struct device const *dev, void *mem_block, size_t size)
 {
 	struct i2s_atm_data *dev_data = dev->data;
-	if (dev_data->tx.state != I2S_STATE_RUNNING && dev_data->tx.state != I2S_STATE_READY) {
+
+	if ((dev_data->tx.state != I2S_STATE_RUNNING) && (dev_data->tx.state != I2S_STATE_READY)) {
 		LOG_ERR("invalid state %u", dev_data->tx.state);
-		ASSERT_ERR(0);
-		return -EIO;
+		return -EINVAL;
 	}
+
 	struct trx_block entry = {.buffer = mem_block, .size = size};
 
-	int err = k_msgq_put(dev_data->tx.queue, &entry, K_MSEC(500));
-	if (err < 0) {
-		LOG_ERR("TX queue full");
-		ASSERT_ERR(0);
-		return err;
+	if (!is_mem_in_slab(dev_data->tx.mem_slab, mem_block)) {
+		if (!ring_buf_is_empty(dev_data->tx.act_q)) {
+			LOG_ERR("Self memory only supports when ring buf is empty.");
+			ASSERT_ERR(0);
+		}
+	} else if (IS_ENABLED(CONFIG_ATM_FIFO_TX_ISR)) {
+		if (dev_data->tx.state == I2S_STATE_READY) {
+			LOG_ERR("i2s_write in CONFIG_ATM_FIFO_TX_ISR mode should happen after "
+				"i2s trigger start, through the tx_write_cb callback.");
+			ASSERT_ERR(0);
+		}
+		if (!dev_data->in_write_cb) {
+			LOG_ERR("i2s_write in high prio mode should be in write cb");
+			ASSERT_ERR(0);
+		}
 	}
 
+	if (RING_BUF_PUT(dev_data->tx.act_q, entry) != sizeof(entry)) {
+		return -ENOBUFS;
+	}
+
+#ifndef CONFIG_ATM_FIFO_TX_ISR
+	// If the DMA is not running, start it
+	if (dev_data->tx.state == I2S_STATE_RUNNING && dev_data->dma_stop) {
+		dma_i2s_tx_callback(dev);
+	}
+#endif
 	return 0;
 }
-static const struct i2s_config *i2s_atm_config_get(const struct device *dev, enum i2s_dir dir)
+
+static struct i2s_config const *i2s_atm_config_get(struct device const *dev, enum i2s_dir dir)
 {
 	struct i2s_atm_data *i2s_data = dev->data;
 
 	return i2s_data->i2s_cfg;
 }
 
-static const struct i2s_driver_api i2s_atm_driver_api = {
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+const int i2s_atm_get_tx_buffer_size(struct device const *dev)
+{
+	return CONFIG_I2S_BLOCK_SIZE;
+}
+
+void *i2s_atm_get_tx_buffer(struct device const *dev)
+{
+	struct i2s_atm_data *i2s_data = dev->data;
+	void *mem_block;
+
+	return RING_BUF_GET(i2s_data->tx.rdy_q, mem_block) == sizeof(mem_block) ? mem_block : NULL;
+}
+
+void i2s_atm_reg_tx_write_cb(struct device const *dev,
+			     void (*cb)(struct device const *dev, void *ctx), void *ctx)
+{
+	struct i2s_atm_data *i2s_data = dev->data;
+
+	i2s_data->tx_write_cb = cb;
+	i2s_data->tx_write_cb_arg = ctx;
+}
+#endif
+
+static struct i2s_driver_api const i2s_atm_driver_api = {
 	.config_get = i2s_atm_config_get,
 	.configure = i2s_atm_configure,
 	.trigger = i2s_atm_trigger,
@@ -504,47 +675,50 @@ static const struct i2s_driver_api i2s_atm_driver_api = {
 #define I2S_DATA_INIT(n) static struct i2s_atm_data atm_data;
 
 DT_INST_FOREACH_STATUS_OKAY(I2S_DATA_INIT)
-
 static void I2S_Handler(void)
 {
 	struct i2s_atm_stream *stream = &atm_data.tx;
 	uint32_t irq_status_tx = CMSDK_I2S_NONSECURE->I2S_IRQ0;
-	if (irq_status_tx & IRQ_STATUS_TX) {
-		if (irq_status_tx & ATI2S_I2S_IRQ0__PP_EP_THRSHLD__MASK) {
-			ATI2S_I2S_IRQC0__PP_EP_THRSHLD__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-			ATI2S_I2S_IRQC0__PP_EP_THRSHLD__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-		} else if (irq_status_tx & IRQ_STATUS_UF) {
-			if (stream->state == I2S_STATE_STOPPING) {
-				stream->state = I2S_STATE_READY;
-				i2s_tx_stop_transfer(atm_data.dev);
-				atm_data.i2s_cfg = NULL;
-			} else if (stream->state == I2S_STATE_RUNNING) {
-				stream->state = I2S_STATE_ERROR;
+	if (irq_status_tx & IRQ_STATUS_UF) {
+		if ((stream->state == I2S_STATE_RUNNING) || (stream->state == I2S_STATE_STOPPING)) {
+			CMSDK_I2S_NONSECURE->I2S_IRQM0 = 0;
+			atm_data.uf_err = true;
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+			if (stream->cur_block.size == CONFIG_I2S_BLOCK_SIZE) {
+#else
+			if (stream->cur_block.size == atm_data.i2s_cfg->block_size) {
+#endif
+				atm_data.uf_err_count++;
 			}
-			if (irq_status_tx & ATI2S_I2S_IRQ0__PP0_UF__MASK) {
-				ATI2S_I2S_IRQC0__PP0_UF__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-				ATI2S_I2S_IRQC0__PP0_UF__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-			} else if (irq_status_tx & ATI2S_I2S_IRQ0__PP1_UF__MASK) {
-				ATI2S_I2S_IRQC0__PP1_UF__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-				ATI2S_I2S_IRQC0__PP1_UF__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-			} else if (irq_status_tx & ATI2S_I2S_IRQ0__PP2_UF__MASK) {
-				ATI2S_I2S_IRQC0__PP2_UF__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-				ATI2S_I2S_IRQC0__PP2_UF__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-			} else if (irq_status_tx & ATI2S_I2S_IRQ0__PP3_UF__MASK) {
-				ATI2S_I2S_IRQC0__PP3_UF__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-				ATI2S_I2S_IRQC0__PP3_UF__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
-			}
+		}
+		if (irq_status_tx & ATI2S_I2S_IRQ0__PP0_UF__MASK) {
+			ATI2S_I2S_IRQC0__PP0_UF__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
+			ATI2S_I2S_IRQC0__PP0_UF__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
+		} else if (irq_status_tx & ATI2S_I2S_IRQ0__PP1_UF__MASK) {
+			ATI2S_I2S_IRQC0__PP1_UF__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
+			ATI2S_I2S_IRQC0__PP1_UF__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
+		} else if (irq_status_tx & ATI2S_I2S_IRQ0__PP2_UF__MASK) {
+			ATI2S_I2S_IRQC0__PP2_UF__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
+			ATI2S_I2S_IRQC0__PP2_UF__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
+		} else if (irq_status_tx & ATI2S_I2S_IRQ0__PP3_UF__MASK) {
+			ATI2S_I2S_IRQC0__PP3_UF__SET(CMSDK_I2S_NONSECURE->I2S_IRQC0);
+			ATI2S_I2S_IRQC0__PP3_UF__CLR(CMSDK_I2S_NONSECURE->I2S_IRQC0);
 		}
 	}
 }
 
-static int i2s_atm_init(const struct device *dev)
+static int i2s_atm_init(struct device const *dev)
 {
 	struct i2s_atm_data *i2s_data = dev->data;
-	i2s_data->tx.queue = &tx_queue;
-	i2s_data->rx.queue = &rx_queue;
+	i2s_data->tx.act_q = &tx_act_q;
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+	i2s_data->tx.rdy_q = &tx_rdy_q;
+#endif
 	i2s_data->dev = dev;
 	Z_ISR_DECLARE(I2S_IRQn, 0, I2S_Handler, NULL);
+#ifndef CONFIG_ATM_FIFO_TX_ISR
+	k_work_init(&i2s_data->tx_work, dma_i2s_tx_callback_work);
+#endif
 	LOG_INF("I2S ATM initialized\n");
 	return 0;
 }

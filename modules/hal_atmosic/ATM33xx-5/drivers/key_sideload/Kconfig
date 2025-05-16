@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic-2025
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_KEY_SIDELOAD
+	bool "Atmosic Key sideloading driver"
+	depends on TRUSTED_EXECUTION_SECURE

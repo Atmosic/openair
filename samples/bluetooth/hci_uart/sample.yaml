@@ -96,11 +96,8 @@ tests:
       - ATMEVK-3325-LQK@mcuboot/ATM33xx-5/ns
       - ATMEVK-3330-QN-5@mcuboot/ATM33xx-5/ns
       - ATMEVK-3330e-QN-5@mcuboot/ATM33xx-5/ns
-      - ATMEVK-3405-PQK-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3425-PQK-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3425-YQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3430e-WQN-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3430e-YQN-5@mcuboot/ATM34xx-5/ns
       - ATMEVK-3405-YBV-5@mcuboot/ATM34xx-5/ns
     extra_args:
@@ -123,11 +120,8 @@ tests:
         - "Booting Zephyr OS"
     tags: introduction atm34
     platform_allow:
-      - ATMEVK-3405-PQK-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3425-PQK-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3425-YQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3430e-WQN-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3430e-YQN-5@mcuboot/ATM34xx-5/ns
       - ATMEVK-3405-YBV-5@mcuboot/ATM34xx-5/ns
     extra_args:
@@ -151,11 +145,8 @@ tests:
         - "Booting Zephyr OS"
     tags: introduction atm34
     platform_allow:
-      - ATMEVK-3405-PQK-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3425-PQK-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3425-YQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3430e-WQN-2@mcuboot/ATM34xx-2/ns
       - ATMEVK-3430e-YQN-5@mcuboot/ATM34xx-5/ns
       - ATMEVK-3405-YBV-5@mcuboot/ATM34xx-5/ns
     extra_args:

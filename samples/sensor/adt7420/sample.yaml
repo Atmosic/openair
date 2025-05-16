@@ -1,0 +1,25 @@
+sample:
+  name: ADT7420 Sensor Sample
+tests:
+  sample.sensor.adt7420:
+    harness: sensor
+    tags:
+      - samples
+      - sensor
+    depends_on:
+      - i2c
+  samples.sensor.adt7420.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - Polling at 0.5 Hz
+    tags: atm33 atm34
+    extra_args:
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
+    extra_configs:
+      - CONFIG_ATMWSTKLIB=""
+      - CONFIG_USE_ATMWSTK=y

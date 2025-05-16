@@ -2,7 +2,6 @@
 
 if SENSOR
 
-rsource "frammb85rs64v/Kconfig"
 rsource "mcp3221/Kconfig"
 
 endif # SENSOR

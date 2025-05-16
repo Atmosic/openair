@@ -4,3 +4,4 @@
 
 add_subdirectory(bluetooth)
 add_subdirectory(settings)
+add_subdirectory(audio)

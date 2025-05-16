@@ -227,6 +227,9 @@ static bool is_em_addr(void const *addr)
 static volatile dma_cb_t chan2_cb;
 static void const *chan2_ctx;
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+static K_SEM_DEFINE(dma_rx_sem, 1, 1);
+#endif
 void DMA2_Handler(void)
 {
     uint32_t int_stat = CMSDK_AT_DMA->CHAN2_INTERRUPT_STATUS;
@@ -238,9 +241,19 @@ void DMA2_Handler(void)
 
     ASSERT_INFO(!AT_DMA_CHAN2_INTERRUPT_STATUS__DMA_ERR__READ(int_stat),
 	int_stat, CMSDK_AT_DMA->CHAN2_ERR_STAT);
-    chan2_cb(chan2_ctx);
+    dma_cb_t cb = chan2_cb;
+    void const *ctx = chan2_ctx;
     CMSDK_AT_DMA->CHAN2_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
     chan2_cb = NULL;
+#ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_PM
+    pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+    k_sem_give(&dma_rx_sem);
+#endif // CONFIG_SOC_FAMILY_ATM
+    if (cb) {
+	cb(ctx);
+    }
 }
 #endif
 
@@ -248,6 +261,7 @@ static volatile dma_cb_t chan3_cb;
 static void const *chan3_ctx;
 
 #ifdef CONFIG_SOC_FAMILY_ATM
+static bool in_dma3_isr, dma3_isr_tx_set;
 static K_SEM_DEFINE(dma_tx_sem, 1, 1);
 #endif
 void DMA3_Handler(void)
@@ -262,17 +276,26 @@ void DMA3_Handler(void)
     ASSERT_INFO(!AT_DMA_CHAN3_INTERRUPT_STATUS__DMA_ERR__READ(int_stat),
 	int_stat, CMSDK_AT_DMA->CHAN3_ERR_STAT);
     dma_cb_t cb = chan3_cb;
+    void const *ctx = chan3_ctx;
     CMSDK_AT_DMA->CHAN3_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
     chan3_cb = NULL;
 #ifdef CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_PM
     pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 #endif
-    k_sem_give(&dma_tx_sem);
 #endif // CONFIG_SOC_FAMILY_ATM
     if (cb) {
-	cb(chan3_ctx);
+#ifdef CONFIG_SOC_FAMILY_ATM
+	in_dma3_isr = true;
+#endif
+	cb(ctx);
+#ifdef CONFIG_SOC_FAMILY_ATM
+	in_dma3_isr = false;
+#endif
     }
+#ifdef CONFIG_SOC_FAMILY_ATM
+    dma3_isr_tx_set ? dma3_isr_tx_set = false : k_sem_give(&dma_tx_sem);
+#endif
 }
 
 static void dma_dummy_callback(void const *ctx)
@@ -343,8 +366,13 @@ void dma_fifo_rx_async(enum dma_fifo_rx_port port, void *dst, size_t len,
 	cb = dma_dummy_callback;
     }
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+    k_sem_take(&dma_rx_sem, K_FOREVER);
+    chan2_cb = cb;
+#else
     // Wait for any previous transaction and award exactly one winner
     WFI_COND(!chan2_cb && ((chan2_cb = cb), true));
+#endif
 
     chan2_ctx = ctx;
 #if CFG_DMA_COPY
@@ -362,6 +390,57 @@ void dma_fifo_rx_async(enum dma_fifo_rx_port port, void *dst, size_t len,
     CMSDK_AT_DMA->CHAN2_FIFO_PORT_SEL =
 	AT_DMA_FIFO_PORT_SEL__SRC_PORT_SEL__WRITE(port);
 
+#if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_PM)
+    pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+    CMSDK_AT_DMA->CHAN2_OPMODE = AT_DMA_OPMODE__GO__MASK;
+}
+
+void dma_spi_rx_async(uint8_t spi_port, void *dst, size_t len,
+    dma_cb_t cb, void const *ctx)
+{
+    ASSERT_ERR(spi_port <= 1);
+#if defined(WRPRPINS_PIPE_LINE_CTRL__PIPE_LINE_EN__READ) && \
+    !defined(AT_DMA_OPMODE__BURST_MODE_N__MASK)
+    ASSERT_ERR(!WRPRPINS_PIPE_LINE_CTRL__PIPE_LINE_EN__READ(
+	CMSDK_WRPR0_NONSECURE->PIPE_LINE_CTRL));
+#endif
+
+    if (!cb) {
+	cb = dma_dummy_callback;
+    }
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+    if (k_is_in_isr()) {
+	ASSERT_ERR(!chan2_cb);
+    } else {
+	k_sem_take(&dma_rx_sem, K_FOREVER);
+    }
+    chan2_cb = cb;
+#else
+    // Wait for any previous transaction and award exactly one winner
+    WFI_COND(!chan2_cb && ((chan2_cb = cb), true));
+#endif
+
+    chan2_ctx = ctx;
+#if CFG_DMA_COPY
+    chan2_min_freq = is_em_addr(dst) ? EM_MIN_FREQ : 0;
+#else
+    chan2_min_freq = 0;
+#endif
+
+    CMSDK_AT_DMA->CHAN2_SRC_ADDR = 0;
+    CMSDK_AT_DMA->CHAN2_TAR_ADDR = (uint32_t)dst;
+    CMSDK_AT_DMA->CHAN2_SIZE = len;
+    CMSDK_AT_DMA->CHAN2_SRC_CTRL = AT_DMA_SRC_CTRL__SRC_BUS_SIZE__WRITE(1) |
+	AT_DMA_SRC_CTRL__SRC_TYPE__WRITE(2);
+    CMSDK_AT_DMA->CHAN2_TAR_CTRL = 0;
+    CMSDK_AT_DMA->CHAN2_SPI_PORT_SEL =
+	AT_DMA_SPI_PORT_SEL__SPI_SEL__WRITE(spi_port);
+
+#if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_PM)
+    pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
     CMSDK_AT_DMA->CHAN2_OPMODE = AT_DMA_OPMODE__GO__MASK;
 }
 #endif // CONFIG_ATM_DMA_FIFO_RX
@@ -422,7 +501,14 @@ void dma_fifo_tx_async(enum dma_fifo_tx_port port, const void *src, size_t len,
     }
 
 #ifdef CONFIG_SOC_FAMILY_ATM
-    k_sem_take(&dma_tx_sem, K_FOREVER);
+    dma3_isr_tx_set = in_dma3_isr;
+    if (k_is_in_isr()) {
+	ASSERT_ERR(in_dma3_isr);
+	ASSERT_ERR(!dma_tx_sem.count);
+	ASSERT_ERR(!chan3_cb);
+    } else {
+	k_sem_take(&dma_tx_sem, K_FOREVER);
+    }
     chan3_cb = cb;
 #else
     // Wait for any previous transaction and award exactly one winner
@@ -444,6 +530,54 @@ void dma_fifo_tx_async(enum dma_fifo_tx_port port, const void *src, size_t len,
     CMSDK_AT_DMA->CHAN3_FIFO_DPTH_ADDR = dma_tx_port[port].fifo_dpth_addr;
     CMSDK_AT_DMA->CHAN3_FIFO_PORT_SEL =
 	AT_DMA_FIFO_PORT_SEL__TAR_PORT_SEL__WRITE(port);
+
+#if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_PM)
+    pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+    CMSDK_AT_DMA->CHAN3_OPMODE = AT_DMA_OPMODE__GO__MASK;
+}
+
+void dma_spi_tx_async(uint8_t spi_port, void const *src, size_t len,
+    dma_cb_t cb, void const *ctx)
+{
+    ASSERT_ERR(spi_port <= 1);
+#if defined(WRPRPINS_PIPE_LINE_CTRL__PIPE_LINE_EN__READ) && \
+    !defined(AT_DMA_OPMODE__BURST_MODE_N__MASK)
+    ASSERT_ERR(!WRPRPINS_PIPE_LINE_CTRL__PIPE_LINE_EN__READ(
+	CMSDK_WRPR0_NONSECURE->PIPE_LINE_CTRL));
+#endif
+
+    if (!cb) {
+	cb = dma_dummy_callback;
+    }
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+    if (k_is_in_isr()) {
+	ASSERT_ERR(!chan3_cb);
+    } else {
+	k_sem_take(&dma_tx_sem, K_FOREVER);
+    }
+    chan3_cb = cb;
+#else
+    // Wait for any previous transaction and award exactly one winner
+    WFI_COND(!chan3_cb && ((chan3_cb = cb), true));
+#endif
+
+    chan3_ctx = ctx;
+#if CFG_DMA_COPY
+    chan3_min_freq = is_em_addr(src) ? EM_MIN_FREQ : 0;
+#else
+    chan3_min_freq = 0;
+#endif
+
+    CMSDK_AT_DMA->CHAN3_SRC_ADDR = (uint32_t)src;
+    CMSDK_AT_DMA->CHAN3_TAR_ADDR = 0;
+    CMSDK_AT_DMA->CHAN3_SIZE = len;
+    CMSDK_AT_DMA->CHAN3_SRC_CTRL = 0;
+    CMSDK_AT_DMA->CHAN3_TAR_CTRL = AT_DMA_TAR_CTRL__TAR_BUS_SIZE__WRITE(1) |
+	AT_DMA_TAR_CTRL__TAR_TYPE__WRITE(2);
+    CMSDK_AT_DMA->CHAN3_SPI_PORT_SEL =
+	AT_DMA_SPI_PORT_SEL__SPI_SEL__WRITE(spi_port);
 
 #if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_PM)
     pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
@@ -610,6 +744,19 @@ static rep_vec_err_t dma_schedule(void)
 }
 #endif // DEBUG_DMA
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+#if DT_NODE_EXISTS(DT_NODELABEL(dma3))
+#define DMA3_IRQ_PRI DT_IRQ(DT_NODELABEL(dma3), priority)
+#define DMA3_IRQ_NUM DT_IRQN(DT_NODELABEL(dma3))
+#else
+#define DMA3_IRQ_PRI IRQ_PRI_MID
+#define DMA3_IRQ_NUM DMA3_IRQn
+#endif
+#else
+#define DMA3_IRQ_PRI IRQ_PRI_MID
+#define DMA3_IRQ_NUM DMA3_IRQn
+#endif
+
 #ifndef CONFIG_SOC_FAMILY_ATM
 __attribute__((constructor))
 #endif
@@ -631,11 +778,11 @@ static void dma_constructor(void)
     CMSDK_AT_DMA->CHAN3_INTERRUPT_MASK = AT_DMA_INTERRUPT_MASK__WRITE;
 
     NVIC_ClearPendingIRQ(DMA2_IRQn);
-    NVIC_ClearPendingIRQ(DMA3_IRQn);
+    NVIC_ClearPendingIRQ(DMA3_IRQ_NUM);
     NVIC_SetPriority(DMA2_IRQn, IRQ_PRI_MID);
-    NVIC_SetPriority(DMA3_IRQn, IRQ_PRI_MID);
+    NVIC_SetPriority(DMA3_IRQ_NUM, DMA3_IRQ_PRI);
     NVIC_EnableIRQ(DMA2_IRQn);
-    NVIC_EnableIRQ(DMA3_IRQn);
+    NVIC_EnableIRQ(DMA3_IRQ_NUM);
 
 #ifndef CONFIG_SOC_FAMILY_ATM
     RV_PLF_PREVENT_RETENTION_ADD(dma_prevent_retention);
@@ -661,7 +808,7 @@ static int dma_sys_init(void)
 #ifdef CONFIG_ATM_DMA_FIFO_RX
     Z_ISR_DECLARE(DMA2_IRQn, 0, DMA2_Handler, NULL);
 #endif
-    Z_ISR_DECLARE(DMA3_IRQn, 0, DMA3_Handler, NULL);
+    Z_ISR_DECLARE(DMA3_IRQ_NUM, 0, DMA3_Handler, NULL);
     dma_constructor();
     return 0;
 }

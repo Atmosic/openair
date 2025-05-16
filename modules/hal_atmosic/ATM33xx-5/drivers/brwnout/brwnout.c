@@ -5,7 +5,7 @@
  *
  * @brief Brownout Driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  ******************************************************************************
  */
@@ -162,7 +162,7 @@ brwnout_prevent_hib(bool *prevent, int32_t *pseq_dur, int32_t ble_dur)
 static void batt_process_vbat(float result, struct gadc_fifo_s raw_fifo,
     struct gadc_cal_s cal, gadc_cb_ctx_t const *ctx)
 {
-    brwnout_check_ts = atm_lpc_to_ms(atm_get_sys_time());
+    brwnout_check_ts = atm_get_sys_time();
     if (result < BRWNOUT_THR_VBATLI) {
 	brwnout_detect = true;
 #ifndef CONFIG_SOC_FAMILY_ATM
@@ -186,8 +186,8 @@ __FAST static rep_vec_err_t brwnout_back_from_retain_all(void)
 	return (RV_NEXT);
     }
 
-    uint32_t cur = atm_lpc_to_ms(atm_get_sys_time());
-    if ((cur - brwnout_check_ts) >
+    uint32_t cur = atm_get_sys_time();
+    if (atm_lpc_to_ms(cur - brwnout_check_ts) >
 	(BRWNOUT_MON_INTV_ACTIVE_MIN * MS_PER_SEC * SEC_PER_MIN)) {
 	sw_event_set(brwnout_check_id);
     }

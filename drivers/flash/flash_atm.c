@@ -25,7 +25,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <errno.h>
-#include <zephyr/drivers/flash.h>
+#include <zephyr/drivers/flash/atm_flash_api_extensions.h>
 #include <soc.h>
 
 #include <zephyr/logging/log.h>
@@ -77,6 +77,52 @@ LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
 #define EXT_FLASH_CPU_CACHE_SYNC() ICACHE_FLUSH()
 #else
 #define EXT_FLASH_CPU_CACHE_SYNC() do {} while(0)
+#endif
+
+#define EXIT_PERF_MODE() \
+do {\
+	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(\
+		CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {\
+		qspi_drive_start();\
+		qspi_drive_serial_cmd(SPI_FLASH_RRE);\
+		qspi_drive_stop();\
+	} \
+} while(0)
+
+#ifdef QSPI_REMOTE_AHB_SETUP_3__OPCODE_PERFORMANCE_MODE__READ
+#define RESTORE_PERF_MODE() \
+do {\
+	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(\
+		    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {\
+		qspi_drive_start();\
+		qspi_drive_serial_cmd(SPI_FLASH_4READ);\
+		for (int i = 0; i < 6; i++) {\
+			qspi_drive_nibble(0);\
+		}\
+		uint8_t ind = QSPI_REMOTE_AHB_SETUP_3__OPCODE_PERFORMANCE_MODE__READ(\
+			CMSDK_QSPI->REMOTE_AHB_SETUP_3);\
+		qspi_drive_byte(ind);\
+		qspi_dummy(4);\
+		qspi_capture_byte();\
+		qspi_drive_stop();\
+	}\
+} while(0)
+#else
+#define RESTORE_PERF_MODE() \
+do {\
+	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(\
+		    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {\
+		qspi_drive_start();\
+		qspi_drive_serial_cmd(SPI_FLASH_4READ);\
+		for (int i = 0; i < 6; i++) {\
+			qspi_drive_nibble(0);\
+		}\
+		qspi_drive_byte(COMPAT_PERF_MODE_IND);\
+		qspi_dummy(4);\
+		qspi_capture_byte();\
+		qspi_drive_stop();\
+	}\
+} while(0)
 #endif
 
 #ifdef CONFIG_PM
@@ -163,8 +209,33 @@ typedef enum {
 // Performance enhance indicator compatible with Macronix, GIGA, Puya
 #define COMPAT_PERF_MODE_IND 0xa5
 
+// Defines in RUID command
+// NOTE: The RUID command for PUYA and GIGA is compatible.
+#define UID_PUYA_GIGA_LEN  16
+#define UID_DUMMY_LEN 4
+
 static uint8_t man_id;
 static uint32_t flash_size;
+
+#ifdef CONFIG_FLASH_ATM_RUID
+static bool uid_read;
+static uint8_t uid[UID_PUYA_GIGA_LEN];
+#endif
+
+#if defined(CONFIG_MULTITHREADING)
+/*
+ * semaphore for multithread safe operation
+ * Used in read, write and erase operations
+ */
+static K_SEM_DEFINE(flash_atm_sync_sem, 1, 1);
+#endif
+
+#ifdef CONFIG_FLASH_EX_OP_ENABLED
+/*
+ * Semaphore for operations that impact system latency, such as erases
+ */
+static K_SEM_DEFINE(flash_atm_latency_sem, 1, 1);
+#endif
 
 #ifdef FLASH_BREAK_IN
 
@@ -325,6 +396,26 @@ static int flash_atm_read(struct device const *dev, off_t addr, void *data, size
 	return 0;
 }
 
+static int flash_atm_read_sync(struct device const *dev, off_t addr,
+		void *data, size_t len)
+{
+#if defined(CONFIG_MULTITHREADING)
+	int err;
+
+	err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
+	if (err) {
+		LOG_ERR("  Flash read sem wait error: %d", err);
+		return err;
+	}
+	err = flash_atm_read(dev, addr, data, len);
+	k_sem_give(&flash_atm_sync_sem);
+
+	return err;
+#else
+	return flash_atm_read(dev, addr, data, len);
+#endif
+}
+
 typedef struct {
 	uint16_t d;
 } __PACKED misaligned_uint16_t;
@@ -421,6 +512,26 @@ static int flash_atm_write(struct device const *dev, off_t addr, void const *dat
 	return 0;
 }
 
+static int flash_atm_write_sync(struct device const *dev, off_t addr,
+		void const *data, size_t len)
+{
+#if defined(CONFIG_MULTITHREADING)
+	int err;
+
+	err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
+	if (err) {
+		LOG_ERR("  Flash write sem wait error: %d", err);
+		return err;
+	}
+	err = flash_atm_write(dev, addr, data, len);
+	k_sem_give(&flash_atm_sync_sem);
+
+	return err;
+#else
+	return flash_atm_write(dev, addr, data, len);
+#endif
+}
+
 static int flash_atm_erase(struct device const *dev, off_t addr, size_t size)
 {
 	LOG_DBG("flash_atm_erase(0x%08lx, %zu)", (unsigned long)addr, size);
@@ -438,6 +549,9 @@ static int flash_atm_erase(struct device const *dev, off_t addr, size_t size)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_FLASH_EX_OP_ENABLED
+	k_sem_take(&flash_atm_latency_sem, K_FOREVER);
+#endif
 	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
 	ext_flash_enable_AHB_erases();
 	int err = 0;
@@ -456,8 +570,31 @@ static int flash_atm_erase(struct device const *dev, off_t addr, size_t size)
 	// flash state is now changed, invalidate cache
 	ext_flash_inval_cache();
 	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+#ifdef CONFIG_FLASH_EX_OP_ENABLED
+	k_sem_give(&flash_atm_latency_sem);
+#endif
 
 	return err;
+}
+
+static int flash_atm_erase_sync(struct device const *dev, off_t addr,
+		size_t size)
+{
+#if defined(CONFIG_MULTITHREADING)
+	int err;
+
+	err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
+	if (err) {
+		LOG_ERR("  Flash Erase sem wait error: %d", err);
+		return err;
+	}
+	err = flash_atm_erase(dev, addr, size);
+	k_sem_give(&flash_atm_sync_sem);
+
+	return err;
+#else
+	return flash_atm_erase(dev, addr, size);
+#endif
 }
 
 static struct flash_parameters const *flash_atm_get_parameters(struct device const *dev)
@@ -471,6 +608,74 @@ static struct flash_parameters const *flash_atm_get_parameters(struct device con
 
 	return &flash_atm_parameters;
 }
+
+#ifdef CONFIG_FLASH_ATM_RUID
+static void flash_read_ruid(uint8_t *ruid, uint8_t len);
+static int flash_atm_ex_op_ruid(const struct device *dev, void *out)
+{
+	struct flash_atm_ex_op_uid_out *ret = (struct flash_atm_ex_op_uid_out *)out;
+	// only support PUYA and GIGA now.
+	if ((man_id != FLASH_MAN_ID_PUYA) && (man_id != FLASH_MAN_ID_GIGA)) {
+		return -ENOTSUP;
+	}
+	if (!uid_read) {
+		flash_read_ruid(uid, UID_PUYA_GIGA_LEN);
+		uid_read = true;
+	}
+	memcpy(ret->uid8, uid, UID_PUYA_GIGA_LEN);
+	return 0;
+}
+#endif /* CONFIG_FLASH_ATM_RUID */
+
+#ifdef CONFIG_FLASH_EX_OP_ENABLED
+static int flash_atm_ex_op_latency_lock(const struct device *dev, const uintptr_t in)
+{
+	struct flash_atm_ex_op_latency_lock_in const *req =
+		(struct flash_atm_ex_op_latency_lock_in const *)in;
+
+	static uint32_t latency_lock;
+	if (req->get) {
+		if (!latency_lock++) {
+			k_sem_take(&flash_atm_latency_sem, K_FOREVER);
+		}
+		return 0;
+	}
+
+	__ASSERT(latency_lock, "latency_lock underflow");
+	if (!--latency_lock) {
+		k_sem_give(&flash_atm_latency_sem);
+	}
+	return 0;
+}
+
+static int flash_atm_ex_op(const struct device *dev, uint16_t code, const uintptr_t in, void *out)
+{
+	int rv = -EINVAL;
+
+#if defined(CONFIG_MULTITHREADING)
+	k_sem_take(&flash_atm_sync_sem, K_FOREVER);
+#endif
+
+	switch (code) {
+#ifdef CONFIG_FLASH_ATM_RUID
+	case FLASH_ATM_EX_OP_RUID:
+		rv = flash_atm_ex_op_ruid(dev, out);
+		break;
+#endif
+	case FLASH_ATM_EX_OP_LATENCY_LOCK:
+		rv = flash_atm_ex_op_latency_lock(dev, in);
+		break;
+	default:
+		break;
+	}
+
+#if defined(CONFIG_MULTITHREADING)
+	k_sem_give(&flash_atm_sync_sem);
+#endif
+
+	return rv;
+}
+#endif // CONFIG_FLASH_EX_OP_ENABLED
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
 static void flash_atm_pages_layout(struct device const *dev,
@@ -487,10 +692,13 @@ static void flash_atm_pages_layout(struct device const *dev,
 #endif // CONFIG_FLASH_PAGE_LAYOUT
 
 static struct flash_driver_api const flash_atm_api = {
-	.read = flash_atm_read,
-	.write = flash_atm_write,
-	.erase = flash_atm_erase,
+	.read = flash_atm_read_sync,
+	.write = flash_atm_write_sync,
+	.erase = flash_atm_erase_sync,
 	.get_parameters = flash_atm_get_parameters,
+#ifdef CONFIG_FLASH_EX_OP_ENABLED
+	.ex_op = flash_atm_ex_op,
+#endif
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
 	.page_layout = flash_atm_pages_layout,
 #endif
@@ -712,13 +920,7 @@ static void flash_write_page(struct device const *dev, off_t addr,
 
 	// !!! from this point forward the QSPI bridge will be disabled
 
-	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(
-		    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {
-		// Exit performance mode
-		qspi_drive_start();
-		qspi_drive_serial_cmd(SPI_FLASH_RRE);
-		qspi_drive_stop();
-	}
+	EXIT_PERF_MODE();
 
 	// Set WEL
 	qspi_drive_start();
@@ -754,25 +956,7 @@ static void flash_write_page(struct device const *dev, off_t addr,
 		qspi_drive_stop();
 	} while (status & 0x1);
 
-	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(
-		    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {
-		// Perform 4READ to enter performance enhance mode
-		qspi_drive_start();
-		qspi_drive_serial_cmd(SPI_FLASH_4READ);
-		for (int i = 0; i < 6; i++) { // 6 address cycles
-			qspi_drive_nibble(0);
-		}
-#ifdef QSPI_REMOTE_AHB_SETUP_3__OPCODE_PERFORMANCE_MODE__READ
-		uint8_t ind = QSPI_REMOTE_AHB_SETUP_3__OPCODE_PERFORMANCE_MODE__READ(
-			CMSDK_QSPI->REMOTE_AHB_SETUP_3);
-		qspi_drive_byte(ind); // Performance enhance indicator
-#else
-		qspi_drive_byte(COMPAT_PERF_MODE_IND);
-#endif
-		qspi_dummy(4);       // 4 dummy cycles
-		qspi_capture_byte(); // data
-		qspi_drive_stop();
-	}
+	RESTORE_PERF_MODE();
 
 	// Switch control from QSPI to AHB bridge
 	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
@@ -822,6 +1006,42 @@ static void flash_write_pages(struct device const *dev, off_t addr, size_t lengt
 		length -= next_len;
 	}
 }
+
+#ifdef CONFIG_FLASH_ATM_RUID
+#if EXECUTING_IN_PLACE
+__ramfunc
+#endif
+static void flash_read_ruid(uint8_t *ruid, uint8_t len)
+{
+	GLOBAL_INT_DISABLE();
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
+
+	// !!! from this point forward the QSPI bridge will be disabled
+	EXIT_PERF_MODE();
+
+	// RUID command
+	qspi_drive_start();
+	qspi_drive_serial_cmd(SPI_FLASH_RUID);
+	// 4 dummy bytes
+	for (int i = 0; i < UID_DUMMY_LEN; i++) {
+		qspi_read_serial_byte();
+	}
+	for (int i = 0; i < len; i++) {
+		ruid[i] = qspi_read_serial_byte();
+	}
+	qspi_drive_stop();
+
+	RESTORE_PERF_MODE();
+
+	// Switch control from QSPI to AHB bridge
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
+					QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+
+	// QSPI bridge is restored this point forward
+	GLOBAL_INT_RESTORE();
+}
+#endif // CONFIG_FLASH_ATM_RUID
 
 #if !EXECUTING_IN_PLACE
 static uint8_t spi_flash_wait_for_no_wip(const spi_dev_t *spi)

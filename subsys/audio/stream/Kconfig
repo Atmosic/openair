@@ -1,0 +1,24 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig AUDIO_STREAM
+    bool "Audio stream subsystem (I2S + codec abstraction)"
+    depends on I2S
+    help
+      Enable the audio stream subsystem, providing playback/capture APIs
+      on top of I2S and audio codec drivers.
+
+if AUDIO_STREAM
+
+config AUDIO_STREAM_ATM_API
+	bool "Use ATM proprietary APIs for I2S transfer"
+	select ATM_FIFO_TX_ISR
+	default y
+
+config AUDIO_DEFAULT_VOLUME
+	int "Default volume"
+	default 64
+	  help
+	    Set the default volume for the audio stream.
+endif

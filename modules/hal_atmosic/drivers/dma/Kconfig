@@ -10,7 +10,7 @@ config ATM_DMA
 if ATM_DMA
 
 config ATM_DMA_MINIMAL
-	bool
+	bool "Minimal DMA driver"
 	default y if MCUBOOT
 	default y if !BT && !ATM_ATLC && !ENTROPY_ATM_TRNG && !I2S_ATM
 

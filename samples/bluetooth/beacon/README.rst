@@ -6,7 +6,7 @@ Bluetooth: beacon
 Overview
 ********
 
-A simple application demonstrating the GAP Broadcaster role functionality by
+A simple application demonstrates the GAP Broadcaster role functionality by
 advertising an Eddystone URL (the Zephyr website). The beacon sample is
 configurable via Kconfig, enabling quick development and testing of beacon
 parameters.

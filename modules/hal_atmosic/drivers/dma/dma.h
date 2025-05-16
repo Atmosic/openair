@@ -5,7 +5,7 @@
  *
  * @brief DMA driver
  *
- * Copyright (C) Atmosic 2020-2024
+ * Copyright (C) Atmosic 2020-2025
  *
  *******************************************************************************
  */
@@ -76,6 +76,11 @@ void *dma_memset(void *m, int c, size_t n);
 void dma_fifo_rx_async(enum dma_fifo_rx_port port, void *dst, size_t len,
     dma_cb_t cb, void const *ctx);
 void dma_fifo_tx_async(enum dma_fifo_tx_port port, const void *src, size_t len,
+    dma_cb_t cb, void const *ctx);
+
+void dma_spi_rx_async(uint8_t spi_port, void *dst, size_t len,
+    dma_cb_t cb, void const *ctx);
+void dma_spi_tx_async(uint8_t spi_port, void const *src, size_t len,
     dma_cb_t cb, void const *ctx);
 
 #if CFG_DMA_COPY

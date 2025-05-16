@@ -7,16 +7,33 @@ menuconfig I2S_ATM
 	bool "Atmosic I2S driver"
 	default y
 	depends on DT_HAS_ATMOSIC_ATM_I2S_ENABLED
-	select CONFIG_ATM_DMA
+	select ATM_DMA
+	select RING_BUFFER
 	help
 	  Enable I2S support on the ATM family of processors.
 
 if I2S_ATM
+
+config ATM_FIFO_TX_ISR
+	bool "Enable very high IRQ on TX DMA"
 
 config I2S_WSCNT
 	int "force I2S word select count"
 	default 0
 	help
 	  Force the number of word select count. 0 means no force.
+
+config I2S_TX_BLOCK_NUM
+	int "Maximum number of TX blocks"
+	default 20
+	help
+	  Number of blocks in the TX buffer.
+
+config I2S_BLOCK_SIZE
+	int "Size of each block in bytes"
+	default 128
+	depends on ATM_FIFO_TX_ISR
+	help
+	  Size of a single TX block in bytes.
 
 endif # I2S_ATM

@@ -1,9 +1,3 @@
-sample:
-  description: Simple Management Protocol sample
-  name: smp svr
-common:
-  harness: bluetooth
-  tags: bluetooth
 tests:
   samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot:
     sysbuild: true
@@ -11,7 +5,7 @@ tests:
     harness_config:
       type: one_line
       regex:
-        - PROJECT EXECUTION SUCCESSFUL
+        - smp_sample
     tags: atm33 atm34
     extra_args:
       - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"

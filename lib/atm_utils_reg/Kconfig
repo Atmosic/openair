@@ -5,6 +5,7 @@
 config ATM_UTILS_REG
 	bool "Atmosic lib atm_utils_reg module"
 	default y if ATM_ATLC
+	default y if ATM_AES
 	default y if ATM_AES_HW
 	default y if ATM_SHA2_HW
 	default y if ATM_SHA2_HW_BOOTUTIL

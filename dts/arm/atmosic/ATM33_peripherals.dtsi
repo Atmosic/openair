@@ -284,6 +284,11 @@ i2s: i2s@165000 {
 	status = "disabled";
 };
 
+dma3: dma3@170000 {
+	reg = <0x00170000 0x1000>;
+	interrupts = <71 6>;
+};
+
 brownout: brownout {
 	compatible = "atmosic,brownout";
 	interrupts = <92 2>;

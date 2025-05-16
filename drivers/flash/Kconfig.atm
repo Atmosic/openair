@@ -2,6 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+config FLASH_ATM_RUID
+	bool "Read Unique API"
+	depends on SOC_FLASH_ATM
+	select FLASH_HAS_EX_OP
+	select FLASH_EX_OP_ENABLED
+
 config SOC_FLASH_ATM
 	bool "Atmosic external flash driver"
 	depends on DT_HAS_ATMOSIC_EXTERNAL_FLASH_CONTROLLER_ENABLED

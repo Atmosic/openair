@@ -12,8 +12,11 @@ menuconfig SPI_ATM
 
 if SPI_ATM
 
-config SPI_ATM_TIMEOUT
-	int "SPI IO timeout in usec"
-	default 100000
+config SPI_ATM_WATCHDOG
+	bool "Enable sw watchdog for SPI transactions"
+
+config SPI_ATM_DMA
+	bool "When possible, use DMA for SPI transfers"
+	depends on ATM_DMA && !ATM_DMA_MINIMAL
 
 endif # SPI_ATM

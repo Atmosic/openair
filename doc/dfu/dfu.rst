@@ -37,15 +37,15 @@ For most configurations, additional (external) flash is not required but is supp
 When additional flash is used, the ``-DDFU_IN_FLASH`` flag should be added to ``-DDTS_EXTRA_CPPFLAGS``.
 
 * On the ATMx2 platform additional flash is not required.
-* On the ATM33 platform additional flash **IS** required when using BLE OTA with ``ATMWSTKLIB`` but is not required when using ``ATMWSTK``.
+* On the ATM33 platform additional flash **IS** required when using BLE OTA with ``CONFIG_USE_ATMWSTK=n`` (default) but is not required when ``CONFIG_USE_ATMWSTK=y``.
 * On the ATM34 platform additional flash is always required. ``DFU_IN_FLASH`` is the default and does not need to be specified.
 
-Here is an example build command for the ATM33 platform that uses the ``LL`` BLE stack with external flash, which uses `method 2 <#using-the-overlay-files>`_ to provide both overlay files to enable BLE and UART based DFU::
+Here is an example build command for the ATM33 platform that uses the ``CONFIG_ATMWSTK_FULL=y`` and ``CONFIG_USE_ATMWSTK=y`` BLE stack with external flash, which uses `method 2 <#using-the-overlay-files>`_ to provide both overlay files to enable BLE and UART based DFU::
 
     west build -p -s ${APP} -b ${BOARD}@mcuboot//ns -d build/${BOARD}_ns/${APP} -- \
         -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" \
         -DCONFIG_SPE_PATH=\"build/${BOARD}/${SPE}\" \
-        -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=LL;-DDFU_IN_FLASH" -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATMWSTK=\"LL\" \
+        -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=FULL;-DDFU_IN_FLASH" -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATMWSTK_FULL=y \
         -DEXTRA_CONF_FILE="overlay-bt-dfu.conf;overlay-serial-dfu.conf"
 
 To perform a BLE OTA update the Atmosic Mobile Application may be used, and for Serial DFU the ``mcumgr`` utility may be used.

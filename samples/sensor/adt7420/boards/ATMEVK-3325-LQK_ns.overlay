@@ -1,0 +1,12 @@
+&i2c0_scl_default {
+	bias-pull-up;
+};
+
+&i2c0 {
+	status = "okay";
+	adt7420@4b {
+		compatible = "adi,adt7420";
+		reg = <0x4b>;
+		label = "ADT7420";
+	};
+};

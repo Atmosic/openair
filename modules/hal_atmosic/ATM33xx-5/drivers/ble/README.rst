@@ -36,17 +36,17 @@ Configures the default BLE link controller sleep adjustment. The default value s
 BLE Link Controller Options
 ---------------------------
 
-Fixed BLE Link Controller image (ATMWSTK)
-`````````````````````````````````````````
+Fixed BLE Link Controller image (CONFIG_USE_ATMWSTK=y)
+````````````````````````````````````````````````````````````````````````````````````
 
-This controller option utilizes a separately flashed BLE controller image.  This controller image is non-upgradeable and occupies a fixed region of code memory. The use of the fixed BLE image is controlled by CONFIG_USE_ATMWSTK=y and CONFIG_ATMWSTK=<flavor> options.  The default flavor of ATMWSTK is "LL" representing a full controller with both central/peripheral and observer/advertiser role features.
+This controller option utilizes a separately flashed BLE controller image.  This controller image is non-upgradeable and occupies a fixed region of code memory. The use of the fixed BLE image is controlled by CONFIG_USE_ATMWSTK=y and CONFIG_ATMWSTK_<flavor>=y options.  The flavor of ``CONFIG_ATMWSTK_FULL=y`` represents a full controller with both central/peripheral and observer/advertiser role features.
 
 Additional stack flavors may be available in the future with reduced feature sets in order to increase available memory to the user application.  See the section below on DTS flags to partition memory to host the fixed BLE controller image.
 
-Statically linked BLE Link Controller library (ATMWSTKLIB)
-``````````````````````````````````````````````````````````
+Statically linked BLE Link Controller library (CONFIG_USE_ATMWSTK=n, default)
+```````````````````````````````````````````````````````````````````````````````````
 
-This option statically links a BLE controller library with the application image. This offers the ability to fully upgrade the link controller with the application.  This option is controlled by: CONFIG_USE_ATMWSTK=n and CONFIG_ATMWSTKLIB=<flavor>.  The flavor defaults to "PD50" which is a designation of a peripheral-only device (PD) with a reduced feature set (50).  The PD50 controller offers basic BLE 4.2/5.0 features that can support most peripheral-only applications.  The use of static linkage and reduced feature sets can help reduce the total code memory footprint of the application.
+This option statically links a BLE controller library with the application image. This offers the ability to fully upgrade the link controller with the application.  This option is controlled by: ``CONFIG_USE_ATMWSTK=n`` and ``CONFIG_ATMWSTK_<flavor>=y``.  The flavor defaults to ``CONFIG_ATMWSTK_PD50=y`` which is a designation of a peripheral-only device (PD) with a reduced feature set (50).  The PD50 controller offers basic BLE 4.2/5.0 features that can support most peripheral-only applications.  The use of static linkage and reduced feature sets can help reduce the total code memory footprint of the application.
 
 Additional stack flavors may be available in the future that balance feature sets and code size. See section below on DTS flags.
 
@@ -54,11 +54,11 @@ Additional stack flavors may be available in the future that balance feature set
 BLE Link Controller Flavors
 ---------------------------
 
-LL
-``
+CONFIG_ATMWSTK_FULL
+```````````````````
 
 
-Full controller features less LE Audio. This flavor is selected by the configuration CONFIG_ATMWSTK=LL
+Full controller features less LE Audio. This flavor is selected by the configuration ``CONFIG_ATMWSTK_FULL=y``.
 
 Features:
 
@@ -71,11 +71,11 @@ Features:
 * No ISO (LE Audio) support.
 
 
-PD50 / PD50LL
-`````````````
+CONFIG_ATMWSTK_PD50
+```````````````````
 
 
-Compact feature set, peripheral only. This flavor is selected by the configurations CONFIG_ATMWSTKLIB=PD50 or CONFIG_ATMWSTK=PD50LL
+Compact feature set, peripheral only. This flavor is selected by the configuration ``CONFIG_ATMWSTK_PD50=y``.
 
 Features:
 
@@ -92,14 +92,16 @@ DTS Flags
 ---------
 
 
-When using the statically linked BLE controller (CONFIG_ATMWSTKLIB) there are no additional DTS settings.  Since the BLE stack is statically linked to the application it will reside in the same memory partition.
+When using the statically linked BLE controller (``CONFIG_USE_ATMWSTK=n``) there are no additional DTS settings.  Since the BLE stack is statically linked to the application it will reside in the same memory partition.
 
-When using the fixed BLE controller image (CONFIG_ATMWSTK), the DTSI configuration needs to create a partition to host the ATMWSTK image. This can be reserved using the following DTS flag:
+When using the fixed BLE controller image (``CONFIG_USE_ATMWSTK=y``), the DTSI configuration needs to create a partition to host the ATMWSTK image. This can be reserved using the following DTS flag:
 
-    DTS_EXTRA_CPPFLAGS += -DATMWSTK=LL
+If ``CONFIG_ATMWSTK_FULL=y``:
 
-When using the "PD50LL" flavor set the following:
+    DTS_EXTRA_CPPFLAGS += -DATMWSTK=FULL
 
-    DTS_EXTRA_CPPFLAGS += -DATMWSTK=PD50LL
+If ``CONFIG_ATMWSTK_PD50=y``:
+
+    DTS_EXTRA_CPPFLAGS += -DATMWSTK=PD50
 
 The partition is sized appropriately for the stack flavor.
