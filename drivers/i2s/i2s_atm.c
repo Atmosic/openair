@@ -326,6 +326,7 @@ static int i2s_atm_configure(struct device const *dev, enum i2s_dir dir,
 		if (cfg->mem_slab) {
 			LOG_ERR("Set mem_slab to NULL and use i2s_get_tx_buffer() instead.");
 			ASSERT_ERR(0);
+			return -EINVAL;
 		}
 		i2s_data->tx.mem_slab = &tx_0_mem_slab;
 #else
@@ -607,16 +608,19 @@ static int i2s_atm_write(struct device const *dev, void *mem_block, size_t size)
 		if (!ring_buf_is_empty(dev_data->tx.act_q)) {
 			LOG_ERR("Self memory only supports when ring buf is empty.");
 			ASSERT_ERR(0);
+			return -EINVAL;
 		}
 	} else if (IS_ENABLED(CONFIG_ATM_FIFO_TX_ISR)) {
 		if (dev_data->tx.state == I2S_STATE_READY) {
 			LOG_ERR("i2s_write in CONFIG_ATM_FIFO_TX_ISR mode should happen after "
 				"i2s trigger start, through the tx_write_cb callback.");
 			ASSERT_ERR(0);
+			return -EINVAL;
 		}
 		if (!dev_data->in_write_cb) {
 			LOG_ERR("i2s_write in high prio mode should be in write cb");
 			ASSERT_ERR(0);
+			return -EINVAL;
 		}
 	}
 

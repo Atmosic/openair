@@ -21,15 +21,20 @@ config ATM_TEST_AUTO_PASS_TIME
 	default 600 if ATM_IS_FOR_SIM
 	default 10000
 
+if ATM_TEST_UTIL_HAS_OVR
+config ATM_TEST_UTIL_BOOL1
+	bool "bool value to overwrite configuration value"
+
 config ATM_TEST_UTIL_INT1
 	int "Int value to overwrite configuration value"
-	depends on ATM_TEST_UTIL_HAS_OVR
 
 config ATM_TEST_UTIL_INT2
 	int "Int value to overwrite configuration value"
-	depends on ATM_TEST_UTIL_HAS_OVR
+
+config ATM_TEST_UTIL_INT3
+	int "Int value to overwrite configuration value"
 
 config ATM_TEST_UTIL_HEX1
 	hex "hex value to overwrite configuration value"
-	depends on ATM_TEST_UTIL_HAS_OVR
+endif
 endif

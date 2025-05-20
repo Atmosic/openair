@@ -99,13 +99,15 @@ config SCAN_RESP_DATA_SIMPLE_BCN
 
 # for Low power
 config SOFT_OFF
-    bool
+	bool
 	depends on PM
 	select EXT_WAKEUP_ENABLE_INDEFINITE
+	default ATM_TEST_UTIL_BOOL1 if ATM_TEST_UTIL_HAS_OVR # for testing
 	default y if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON
 
 # for hibnernation
 config SOFT_OFF_SUBID
 	int
-	depends on SOFT_OFF && REFBCN_POWER_PROFILE
-	default 0 # hib.tds
+	depends on SOFT_OFF
+	default ATM_TEST_UTIL_INT3 if ATM_TEST_UTIL_HAS_OVR  # for testing
+	default 1 if REFBCN_POWER_PROFILE

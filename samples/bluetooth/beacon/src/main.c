@@ -193,6 +193,16 @@ static void bt_ready(int err)
 
 int main(void)
 {
+#if CONFIG_AUTO_TEST
+	printk("Interval: %d Ms, Max events: %d\n", (CONFIG_ADV_INTV * 625) / 1000, CONFIG_ADV_MAX_EVT);
+	printk("Low power:");
+#ifdef CONFIG_SOFT_OFF
+	printk(" %s", CONFIG_SOFT_OFF_SUBID ? "socoff" : "hib");
+#else
+	printk(" ret");
+#endif
+	printk(", Restart: %d Sec\n",CONFIG_ADV_RSTRT_DUR);
+#endif
 	/* Initialize the Bluetooth Subsystem */
 	int err = bt_enable(bt_ready);
 

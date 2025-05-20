@@ -7,7 +7,7 @@ tests:
     harness_config:
       type: one_line
       regex:
-        - Scanning successfully started
+        - Device found
     tags: bluetooth atm33 atm34
     extra_args:
       - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
