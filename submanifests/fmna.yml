@@ -1,0 +1,10 @@
+manifest:
+  version: "0.10"
+  group-filter: [-fmna]
+  projects:
+    - name: fmna
+      url: git@github.com:Atmosic/fmna.git
+      revision: rc/25.05.0
+      path: vendor/fmna
+      groups:
+        - fmna

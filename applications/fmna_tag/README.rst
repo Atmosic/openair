@@ -25,6 +25,8 @@ ADK Integration Guide
 The ADK core is provided as the binary library ``libatm_fmna.a``, making it easy for users to integrate the Apple FindMy function into their applications without needing the source code.
 For access to the Atmosic ADK Zephyr source code, please contact Atmosic and provide the MFi Program ID.
 
+Once you have access to git@github.com:Atmosic/fmna.git, run ``west config manifest.group-filter -- +fmna`` to add the fmna project group to the west manifest, then execute ``west update`` to fetch the project;
+To build the application using the ADK source code instead of the precompiled library, disable the Kconfig option ``-DCONFIG_ATM_FMNA_LIB=n``.
 
 Device Manufacturer Settings
 ****************************
