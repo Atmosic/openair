@@ -93,7 +93,6 @@ struct uart_atm {
 #define UART_RX_B_OV (1 << 3)
 #define UART_nRTS (1 << 4)
 #define UART_nCTS (1 << 5)
-#define UART_TX_RDY (1 << 7)
 
 /* INTSTATUS Register */
 #define UART_TX_IN (1 << 0)
@@ -396,10 +395,10 @@ static void baudrate_set(const struct device *dev)
 		if (bauddiv == dev_cfg->uart->bauddiv) {
 			return;
 		}
-#ifdef CMSDK_AT_UART_STATE__TX_IDLE__MASK
+#ifdef CMSDK_AT_UART_STATE__TX_IDLE__READ
 		uint32_t save_hw_flow_ovrd = dev_cfg->uart->hw_flow_ovrd;
 		dev_cfg->uart->hw_flow_ovrd |= UART_nCTS_OVRD;
-		while (!(dev_cfg->uart->state & UART_TX_RDY));
+		while (!CMSDK_AT_UART_STATE__TX_IDLE__READ(dev_cfg->uart->state));
 		dev_cfg->uart->hw_flow_ovrd = save_hw_flow_ovrd;
 #endif
 		dev_cfg->uart->bauddiv = bauddiv;
@@ -842,15 +841,20 @@ static void uart_atm_irq_rx_disable(const struct device *dev)
 }
 
 /**
- * @brief Verify if Tx complete interrupt has been raised
+ * @brief Verify if UART TX block was fully transmitted and TX block is idle
  *
  * @param dev UART device struct
  *
- * @return 1 if an interrupt is ready, 0 otherwise
+ * @return 1 if TX block is idle, 0 otherwise
  */
 static int uart_atm_irq_tx_complete(const struct device *dev)
 {
-	return uart_atm_irq_tx_ready(dev);
+	const struct uart_atm_config *const dev_cfg = dev->config;
+#ifdef CMSDK_AT_UART_STATE__TX_IDLE__READ
+	return CMSDK_AT_UART_STATE__TX_IDLE__READ(dev_cfg->uart->state);
+#else
+	return (dev_cfg->uart->tx_fifo_spaces == UART_FIFO_SIZE);
+#endif
 }
 
 /**
