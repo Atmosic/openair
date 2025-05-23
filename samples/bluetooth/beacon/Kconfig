@@ -105,9 +105,9 @@ config SOFT_OFF
 	default ATM_TEST_UTIL_BOOL1 if ATM_TEST_UTIL_HAS_OVR # for testing
 	default y if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON
 
-# for hibnernation
+# for hibernation
 config SOFT_OFF_SUBID
 	int
 	depends on SOFT_OFF
 	default ATM_TEST_UTIL_INT3 if ATM_TEST_UTIL_HAS_OVR  # for testing
-	default 1 if REFBCN_POWER_PROFILE
+	default 0 if REFBCN_POWER_PROFILE
