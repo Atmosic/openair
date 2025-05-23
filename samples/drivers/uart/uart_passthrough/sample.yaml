@@ -2,5 +2,10 @@ sample:
   description: UART0 to UART1 Passthrough
   name: UART Passthrough sample
 tests:
-  sample.drivers.uart.uart_passthrough:
-    tags: introduction
+  samples.drivers.uart.uart_passthrough:
+    sysbuild: true
+    tags: introduction atm33 atm34
+    extra_args:
+      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
+      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+      - SB_CONFIG_SPE=y
