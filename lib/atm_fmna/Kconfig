@@ -29,3 +29,9 @@ config ATM_FMNA_LIB_DEBUG
 	bool "Atmosic FMNA static library enable debug log"
 	default y if ATM_FMNA_LIB
 	depends on ATM_FMNA_LIB
+
+config USE_UARP
+	bool "OTA with Apple UARP"
+	select STREAM_FLASH
+	select IMG_MANAGER
+	depends on BOOTLOADER_MCUBOOT
