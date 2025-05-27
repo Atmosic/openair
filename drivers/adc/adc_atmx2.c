@@ -112,7 +112,7 @@ struct gadc_atm_data {
 	/** Active channels */
 	size_t active_channels;
 	/** Current results */
-	uint16_t *buffer;
+	int16_t *buffer;
 	/** Offset for the active channels */
 	uint8_t offset[GADC_CHANNEL_MAX];
 };
@@ -338,10 +338,8 @@ static struct adc_driver_api const api_atm_driver_api = {
 	.ref_internal = ATM_GADC_VREF_VOL,
 };
 
-static uint16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch)
+static int16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch)
 {
-	static float vbatt; /* Measured value using GADC */
-
 	CMSDK_GADC->CTRL = 0;
 
 	uint16_t sample_x4 = gadc_read_ch_data();
@@ -403,14 +401,16 @@ static uint16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID c
 		result = -0.001171875f * (sample_x4 - 3799.04f);
 	}
 
-	if (ch == VBATT) {
-		vbatt = result;
+	if (ch == TEMP) {
+		LOG_DBG("TEMP: result: %f°C", (double)result);
+		// return value in 0.01°C units
+		return (int16_t)(result * 100.0f);
 	}
 
 	LOG_DBG("channel: %d, sample_x4: %u, zerovolt: %u, result: %f V", ch, sample_x4,
 		gadc_zerovolt_meas_x4, (double)result);
 
-	return (uint16_t)((result * 1000.0f) + 0.5f);
+	return (int16_t)((result * 1000.0f) + 0.5f);
 }
 
 static void gadc_atm_isr(void const *arg)
