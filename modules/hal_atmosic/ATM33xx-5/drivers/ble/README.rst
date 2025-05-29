@@ -16,7 +16,7 @@ Configures the sleep option level.  Each level gets progressively better at redu
    1 - Allow link controller to sleep
    2 - (Default) Allow system sleep while link controller is sleeping
 
-Note that Zephyr has System level Sleep state adjustment and Device level sleep adjustment. The descritpion above is for BLE device level sleep adjustment.
+Note that Zephyr has System level Sleep state adjustment and Device level sleep adjustment. The description above is for BLE device level sleep adjustment.
 
 System level Sleep state adjustment is done automatically by Zephyr kernel if enabled via CONFIG_PM Kconfig option, and if device setting above allows it. For ATM33 platform, System level dts definition supports five sleep modes such as idle, sleep, retain, hibernate and soc_off. Look at zephyr/dts/atm/atmosic/ATM33.dtsi for power-states settings.
 
@@ -37,19 +37,17 @@ BLE Link Controller Options
 ---------------------------
 
 Fixed BLE Link Controller image (CONFIG_USE_ATMWSTK=y)
-````````````````````````````````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````
 
-This controller option utilizes a separately flashed BLE controller image.  This controller image is non-upgradeable and occupies a fixed region of code memory. The use of the fixed BLE image is controlled by CONFIG_USE_ATMWSTK=y and CONFIG_ATMWSTK_<flavor>=y options.  The flavor of ``CONFIG_ATMWSTK_FULL=y`` represents a full controller with both central/peripheral and observer/advertiser role features.
+This controller option utilizes a separately flashed BLE controller image.  This controller image is non-upgradeable and occupies a fixed region of code memory. The use of the fixed BLE image is controlled by CONFIG_USE_ATMWSTK=y and CONFIG_ATMWSTK_<flavor>=y options.
+See the section below on Link Controller Flavors and section on DTS flags to partition memory to host the fixed BLE controller image.
 
-Additional stack flavors may be available in the future with reduced feature sets in order to increase available memory to the user application.  See the section below on DTS flags to partition memory to host the fixed BLE controller image.
 
 Statically linked BLE Link Controller library (CONFIG_USE_ATMWSTK=n, default)
-```````````````````````````````````````````````````````````````````````````````````
+`````````````````````````````````````````````````````````````````````````````
 
-This option statically links a BLE controller library with the application image. This offers the ability to fully upgrade the link controller with the application.  This option is controlled by: ``CONFIG_USE_ATMWSTK=n`` and ``CONFIG_ATMWSTK_<flavor>=y``.  The flavor defaults to ``CONFIG_ATMWSTK_PD50=y`` which is a designation of a peripheral-only device (PD) with a reduced feature set (50).  The PD50 controller offers basic BLE 4.2/5.0 features that can support most peripheral-only applications.  The use of static linkage and reduced feature sets can help reduce the total code memory footprint of the application.
-
-Additional stack flavors may be available in the future that balance feature sets and code size. See section below on DTS flags.
-
+This option statically links a BLE controller library with the application image. This offers the ability to fully upgrade the link controller with the application.  This option is controlled by: ``CONFIG_USE_ATMWSTK=n`` and ``CONFIG_ATMWSTK_<flavor>=y``. The use of static linkage and reduced feature sets can help reduce the total code memory footprint of the application.
+PD50 is the only flavor supported in the statically linked BLE Link Controller library configuration.
 
 BLE Link Controller Flavors
 ---------------------------
@@ -69,6 +67,8 @@ Features:
 * BLE 5.1 support for CTE (constant tone extensions)
 * BLE 5.2 LE Power control
 * No ISO (LE Audio) support.
+* Up to 6 Advertisement sets
+* Up to 6 Connections
 
 
 CONFIG_ATMWSTK_PD50
@@ -79,13 +79,15 @@ Compact feature set, peripheral only. This flavor is selected by the configurati
 
 Features:
 
-* Peripheral/Advertiser roles only
+* Peripheral/Advertiser roles only. No Scanner or Central functionality
 * BLE 4.2 support
 * BLE 5.0 support for Extended Advertising (No Periodic advertising)
 * BLE 5.0 support for Data Length extensions, 2M and CODED PHYs
 * No BLE 5.1 support for CTE (No AoA/AoD application support).
 * No BLE 5.2 LE Power control
 * No ISO (LE Audio) support.
+* Up to 4 Advertisement sets
+* Up to 3 connections
 
 
 DTS Flags
