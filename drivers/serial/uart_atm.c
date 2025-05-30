@@ -670,7 +670,10 @@ static int uart_atm_fifo_read(const struct device *dev, uint8_t *rx_data, const 
 		if (!(dev_cfg->uart->state & UART_RX_BF)) {
 			/* RX Buffer is empty, nothing more to read */
 			dev_cfg->uart->intclear = UART_RX_IN;
-			return num_rx;
+			// Check one more time to avoid race
+			if (!(dev_cfg->uart->state & UART_RX_BF)) {
+				return num_rx;
+			}
 		}
 		rx_data[num_rx++] = (unsigned char)dev_cfg->uart->data;
 	}
