@@ -32,32 +32,30 @@ endchoice
 # ATM TRNG HW should be used as an entropy source for a
 # secure PRNG implementation.  Use the default AES-CTR mode drbg.
 choice CSPRNG_GENERATOR_CHOICE
+	depends on MBEDTLS
 	default CTR_DRBG_CSPRNG_GENERATOR
 endchoice
-
-# CTR_DRBG_CSPRNG requires MBEDTLS
-config ATM_REQUIRES_MBEDTLS
-	bool
-	default y
-	select MBEDTLS
 
 config BT_RX_STACK_SIZE
 	int
 	default 1856 if ATM_BLE && ATM_AES_HW
 	default 1792
-	depends on ATM_REQUIRES_MBEDTLS
+	depends on MBEDTLS
 	depends on BT
 
 config MAIN_STACK_SIZE
 	int
 	default 2560 if COVERAGE_GCOV
-	default 1856 if ATM_BLE && ATM_AES_HW
-	default 1792 if ATM_REQUIRES_MBEDTLS
+	default 2048 if ATM_BLE && ATM_AES_HW
+	default 1792 if MBEDTLS
+
+config BT_LONG_WQ_STACK_SIZE
+	default 2048
 
 config ZTEST_STACK_SIZE
 	int
 	default 2048 if COVERAGE_GCOV
-	default 1792 if ATM_REQUIRES_MBEDTLS
+	default 1792 if MBEDTLS
 
 config THREAD_NAME
 	bool

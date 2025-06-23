@@ -1,7 +1,7 @@
 .. _uart_passthrough:
 
-UART Passthrough
-################
+Drivers: uart_passthrough
+#########################
 
 Overview
 ********
@@ -21,7 +21,7 @@ USB to Serial adapter
 Building and Running
 ********************
 
-This sample can be found under ``samples/drivers/uart/uart_passthrough`` in the OpenAir tree.
+This sample is built from ``openair/samples/drivers/uart/uart_passthrough``.
 
 Build command:
 

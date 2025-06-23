@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -14,3 +14,21 @@ config ATM_SHA2_HW
 
 config ATM_SHA2_HW_BOOTUTIL
 	bool "Hardware accelerator for SHA256 hash supporting bootutil API (only used by MCUBOOT)"
+
+config ATM_SHA2_KEY_SIDELOAD
+	bool "Enable key sideload for HMAC key"
+	depends on TRUSTED_EXECUTION_SECURE
+	depends on ATM_KEY_SIDELOAD
+
+choice
+    prompt "ATM SHA2 API mode"
+    default ATM_SHA2_API_SINGLE
+    help
+      Select whether to use single or multiple context API.
+
+config ATM_SHA2_API_SINGLE
+    bool "Single context mode"
+
+config ATM_SHA2_API_MULTI
+    bool "Multiple context mode"
+endchoice

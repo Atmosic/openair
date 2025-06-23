@@ -31,7 +31,6 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/buf.h>
 #include <zephyr/bluetooth/hci_raw.h>
-#include <zephyr/drivers/bluetooth/hci_driver.h>
 #include <zephyr/sys/reboot.h>
 #ifdef CONFIG_BT_HCI_RAW_CMD_EXT
 #include "atm_vendor_internal.h"

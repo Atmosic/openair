@@ -1,0 +1,15 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Atmosic Shell"
+
+config ATM_SHELL
+	bool "Enable Atmosic shell commands"
+	select CRC
+	select FLASH
+	select SHELL
+	help
+	  Enable Atmosic shell commands.
+endmenu
+

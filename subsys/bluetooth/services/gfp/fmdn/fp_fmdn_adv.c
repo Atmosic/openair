@@ -30,7 +30,7 @@
 
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 
-#ifdef FP_FMDN_VALIDATOR_TEST
+#ifdef CONFIG_FP_FMDN_VALIDATOR_TEST
 // Advertising interval within 500 ms to test in open air
 #define FP_FMDN_ADV_DISCOVER_MS 500
 #else

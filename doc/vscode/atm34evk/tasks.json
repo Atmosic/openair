@@ -109,7 +109,7 @@
                 "-DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\\\"bootloader/mcuboot/root-ec-p256.pem\\\"",
                 "-DCONFIG_SPE_PATH=\"build/${input:boardName}/openair/samples/spe\" ",
                 "-DCONFIG_ATM_EUI_ALLOW_RANDOM=y",
-                "-DCONFIG_ATMWSTKLIB=\\\"${input:ATMWSTK}\\\"",
+                "-DCONFIG_ATMWSTK_${input:ATMWSTK}=y",
                 "${input:extraConfigs}"
             ],
             "detail": "Build Zephyr application"
@@ -130,7 +130,7 @@
                 "--",
                 "-DCONFIG_SPE_PATH=\\\"build/${input:boardName}/openair/samples/spe\\\"",
                 "-DCONFIG_ATM_EUI_ALLOW_RANDOM=y",
-                "-DCONFIG_ATMWSTKLIB=\\\"${input:ATMWSTK}\\\"",
+                "-DCONFIG_ATMWSTK_${input:ATMWSTK}=y",
                 "${input:extraConfigs}"
             ],
             "detail": "Build application without mcuboot"
@@ -299,7 +299,7 @@
         {
             "id": "ATMWSTK",
             "type": "promptString",
-            "description": "Flash bluetooth stack (PD50/CPD200/Skip if LL)"
+            "description": "Flash bluetooth stack (PD50/CPD200/FULL)"
         },
         {
             "id": "boardName",

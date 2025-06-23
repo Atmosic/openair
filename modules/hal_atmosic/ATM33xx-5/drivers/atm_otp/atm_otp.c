@@ -5,7 +5,7 @@
  *
  * @brief Atmosic OTP driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -76,8 +76,7 @@ bool atm_otp_read(atm_otp_t *otp_value)
 }
 
 #ifdef SECURE_PROC_ENV
-__attribute__((cmse_nonsecure_entry)) __attribute__((used)) bool
-nsc_atm_otp_read(atm_otp_t *otp_value)
+__SPE_NSC bool nsc_atm_otp_read(atm_otp_t *otp_value)
 {
     if (mem_check_has_access(otp_value, sizeof(atm_otp_t), true, true)) {
 	return atm_otp_read(otp_value);

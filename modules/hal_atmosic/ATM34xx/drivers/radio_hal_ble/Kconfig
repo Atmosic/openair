@@ -1,0 +1,10 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_RADIO_HAL_BLE
+	bool "Atmosic radio_hal_ble module"
+	default y if ATM_BLE
+
+config ATM_LDO_MODE
+	bool "Atmosic LDO MODE Enable"

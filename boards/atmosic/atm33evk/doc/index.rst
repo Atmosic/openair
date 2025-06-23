@@ -20,11 +20,11 @@ SoC Part #          EVK Part #         Board List         On-chip             Pa
                                        <BOARD>            Flash                         Harvesting
 ==================  =================  =================  ==================  ========  ==========
 ATM3330e-5DCAQN     ATMEVK-3330e-QN-7  ATMEVK-3330e-QN-7  512KB               QFN 7x7   x
-ATM3330e-5DCAQN     ATMEVK-3330e-QN-6  ATMEVK-3330e-QN-5  512KB               QFN 7x7   x
-ATM3330-5DCAQN      ATMEVK-3330-QN-6   ATMEVK-3330-QN-5   512KB               QFN 7x7
-ATM3325-5DCAQK      ATMEVK-3325-QK-6   ATMEVK-3325-QK-5   512KB               QFN 5x5
-ATM3325-5LCAQK      ATMEVK-3325-LQK-6  ATMEVK-3325-LQK    512KB + 1MB         QFN 5x5
-ATM3325-5DCACM      ATMEVK-3325-CM-6   Not Supported      512KB               WLCSP
+ATM3330e-5DCAQN     ATMEVK-3330e-QN-6  ATMEVK-3330e-QN-6  512KB               QFN 7x7   x
+ATM3330-5DCAQN      ATMEVK-3330-QN-6   ATMEVK-3330-QN-6   512KB               QFN 7x7
+ATM3325-5DCAQK      ATMEVK-3325-QK-6   ATMEVK-3325-QK-6   512KB               QFN 5x5
+ATM3325-5LCAQK      ATMEVK-3325-LQK-6  ATMEVK-3325-LQK-6  512KB + 1MB         QFN 5x5
+ATM3325-5DCACM      ATMEVK-3325-CM-6   ATMEVK-3325-CM-6   512KB               WLCSP
 ==================  =================  =================  ==================  ========  ==========
 
 ================
@@ -347,7 +347,7 @@ On macOS, the serial console will appear as a USB device (``/dev/tty.usbmodem<UN
 Windows
 =======
 
-The console output for the Atmosic ATM33xx is sent to the J-Link CDC UART port. When connected, two UART ports will be displayed.
+The console output for the Atmosic ATM33/e is sent to the J-Link CDC UART port. When connected, two UART ports will be displayed.
 The user must test each one to determine where the message output appears.
 To view the console output, use a serial terminal program such as PuTTY (available from https://www.chiark.greenend.org.uk/~sgtatham/putty) to connect to the J-Link CDC UART port. Set the UART configuration to 115200/N/8/1.
 

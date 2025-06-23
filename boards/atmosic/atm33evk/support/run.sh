@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -254,12 +254,17 @@ DTS_BL_EXTRAS=""
 
 is_undef ATMWSTKLIB || {
     [[ -z $ATMWSTK ]] || die 'ATMWSTK and ATMWSTKLIB cannot both be set'
-    NS_EXTRAS="$NS_EXTRAS -DCONFIG_USE_ATMWSTK=n -DCONFIG_ATMWSTKLIB=\"$ATMWSTKLIB\""
+    NS_EXTRAS="$NS_EXTRAS -DCONFIG_USE_ATMWSTK=n -DCONFIG_ATMWSTK_${ATMWSTKLIB}=y"
 }
 
 is_undef ATMWSTK || {
-    NS_EXTRAS="$NS_EXTRAS -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATMWSTK=\"$ATMWSTK\""
-    DTS_EXTRAS="$DTS_EXTRAS;-DATMWSTK=$ATMWSTK;"
+    if [ "$ATMWSTK" == "LL" ]; then
+        NS_EXTRAS="$NS_EXTRAS -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATMWSTK_FULL=y "
+        DTS_EXTRAS="$DTS_EXTRAS;-DATMWSTK=FULL;"
+    elif [ "$ATMWSTK" == "PD50LL" ]; then
+        NS_EXTRAS="$NS_EXTRAS -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATMWSTK_PD50=y"
+        DTS_EXTRAS="$DTS_EXTRAS;-DATMWSTK=PD50;"
+    fi
 }
 
 is_unset DFU_IN_FLASH || {

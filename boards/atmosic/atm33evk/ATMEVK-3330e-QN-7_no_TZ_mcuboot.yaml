@@ -1,5 +1,5 @@
 identifier: ATMEVK-3330e-QN-7@mcuboot/ATM33xx-5/no_TZ
-name: ATMEVK-3330e-QN-7_no_TZ
+name: ATMEVK-3330e-QN-7_mcuboot_no_TZ
 type: mcu
 arch: arm
 toolchain:

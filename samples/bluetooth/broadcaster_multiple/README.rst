@@ -18,7 +18,7 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/bluetooth/broadcaster_multiple`` in the OpenAir tree.
+This sample is built from ``openair/samples/bluetooth/broadcaster_multiple``.
 The source code can be found under ``zephyr/samples/bluetooth/broadcaster_multiple``.
 
 Build command:

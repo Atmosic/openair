@@ -2,6 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+config ATM_BLE
+    bool "Atmosic BLE driver"
+    default y
+    depends on BT
+    select ATM_RWLC
+    select ATM_EUI
+    select ATM_BTHCI_UTILS
+    select MBEDTLS
+
 config ATM_RWLC
     bool "Atmosic RWLC driver"
     default y if BT || ENTROPY_ATM_TRNG
@@ -33,12 +42,5 @@ config ATM_SLEEP_ENABLE
 config ATM_SLEEP_ADJ
 	int "Sleep adjustment value"
 	default 0
-
-config ATM_BLE
-    bool "Atmosic BLE driver"
-    default y
-    depends on BT
-    select ATM_EUI
-    select ATM_BTHCI_UTILS
 
 endif

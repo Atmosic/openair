@@ -123,6 +123,12 @@ properties:
     description:
         This option is only available with BATT_TYPE=BATT_TYPE_LI_ION, and PV harvesting (CFG_NONRF_HARV and corresponding VHARV_RANGE option). Please refer to the application notes for the applicable scenarios, hardware connections and performance.
 
+  boost-from-vstore-two-diode:
+    type: boolean
+    required: false
+    description:
+        This option is only available with BATT_TYPE=BATT_TYPE_LI_ION, and PV harvesting (CFG_NONRF_HARV and corresponding VHARV_RANGE option). Please refer to the application notes for the applicable scenarios, hardware connections and performance.
+
   rf-harv:
     type: boolean
     required: false

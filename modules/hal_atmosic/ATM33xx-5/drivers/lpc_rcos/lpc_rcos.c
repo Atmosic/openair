@@ -153,8 +153,8 @@ lpc_rcos_prevent_ble_sleep(bool *prevent)
 
     lpc_rcos_need_remeasure = true;
     // Wakeup will be forced for remeasure, so extend wakeup time
-    ip_enbpreset_pack(atm_us_to_lpc(LPC_RCOS_CAL_WAKEUP_US),
-	atm_us_to_lpc(LPC_RCOS_CAL_WAKEUP_US), ip_enbpreset_twrm_getf());
+    uint32_t wakeup_lpc = atm_us_to_lpc(LPC_RCOS_CAL_WAKEUP_US);
+    ip_enbpreset_pack(wakeup_lpc, wakeup_lpc, ip_enbpreset_twrm_getf());
     return RV_NEXT;
 }
 
@@ -162,7 +162,7 @@ static rep_vec_err_t
 lpc_rcos_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
     int32_t ble_sleep_duration)
 {
-    // Don't mess with retn if BLE didn't just enter deep sleep
+    // Don't mess with rcos cal if BLE didn't just enter deep sleep
     if (ble_asleep) {
 	stat.ble_asleep++;
 	return (RV_NEXT);
@@ -180,6 +180,12 @@ lpc_rcos_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
     }
 
     // Wake up right away - recompute sleep durations
+
+    // Note that a forced BLE wakeup follows without posting a ke_event.
+    // To avoid confusing ble_to_deep_sleep(), the wakeup needs to be
+    // reflected in rwip_sleep()'s ble_sleep_duration result.
+    ip_deepslwkup_set(atm_us_to_lpc(LPC_RCOS_CAL_WAKEUP_US) + 4);
+
     // External wakeup must be enabled for WREQ to work
     ASSERT_ERR(!ip_deepslcntl_extwkupdsb_getf());
     // Assert WREQ signal

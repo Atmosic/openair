@@ -17,7 +17,7 @@
 #define _ATMOSIC_ATM_APP_PARTITION_DEFS_H_
 
 #ifndef ATM_FACTORY_SIZE
-#define ATM_FACTORY_SIZE 0x1000
+#define ATM_FACTORY_SIZE 0x2000
 #else
 #error "ATM_FACTORY_SIZE redefinition conflict occurs"
 #endif

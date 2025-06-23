@@ -4,5 +4,6 @@ if ADC
 
 rsource "Kconfig.atmx2"
 rsource "Kconfig.atmx3"
+rsource "Kconfig.atm34"
 
 endif # ADC

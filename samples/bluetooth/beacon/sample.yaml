@@ -11,8 +11,6 @@ tests:
       type: one_line
       regex:
         - Booting Zephyr OS
-    tags: bluetooth atm33 atm34
+    tags: bluetooth atm33 atm34 no_mcuboot
     extra_args:
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
       - SB_CONFIG_SPE=y

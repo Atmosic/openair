@@ -1,19 +1,26 @@
 manifest:
   group-filter:
-  - -babblesim
   - -optional
+  - -babblesim
+  - -fmna
   projects:
+  - name: fmna
+    url: git@github.com:Atmosic/fmna.git
+    revision: 229279157d3b9a978f60e5de5221d1de58cff122
+    path: vendor/fmna
+    groups:
+    - fmna
   - name: hal_atmosic
     url: https://github.com/Atmosic/hal_atmosic
-    revision: a6f89045e863eea98bbd7a271b0280ea2fd1e1e9
+    revision: 62e4f59b9c24db3203575efafce5c0b071b54564
     path: modules/hal/atmosic
   - name: hal_atmosic_lib
     url: https://github.com/Atmosic/hal_atmosic_lib
-    revision: 72030f3985251493c093a35b4d7dccdf88851be4
+    revision: d67fcefdf53482005b09fd11cfe64c62ad8ce365
     path: modules/hal/atmosic_lib
   - name: mcuboot
     url: https://github.com/Atmosic/mcuboot
-    revision: fdce3d3e5fb0e64d4e0981e1e2bbeefe82a5a46b
+    revision: 7d0fbe8d5722b222ab84b954d5f3d9f768123d8f
     path: bootloader/mcuboot
   - name: micro-ecc
     url: https://github.com/Atmosic/micro-ecc
@@ -21,23 +28,23 @@ manifest:
     path: modules/crypto/micro-ecc
   - name: zephyr
     url: https://github.com/Atmosic/zephyr
-    revision: 03a6a9c2892a5b16efb33df95ce49a62b0315e09
+    revision: af03f0f69895938494eee4f1d51cf0a7d75cfc7f
     west-commands: scripts/west-commands.yml
   - name: cmsis
     url: https://github.com/zephyrproject-rtos/cmsis
-    revision: 4b96cbb174678dcd3ca86e11e1f24bc5f8726da0
+    revision: d1b8b20b6278615b00e136374540eb1c00dcabe7
     path: modules/hal/cmsis
     groups:
     - hal
   - name: littlefs
     url: https://github.com/zephyrproject-rtos/littlefs
-    revision: 009bcff0ed4853a53df8256039fa815bda6854dd
+    revision: ed0531d59ee37f5fb2762bcf2fc8ba4efaf82656
     path: modules/fs/littlefs
     groups:
     - fs
   - name: mbedtls
     url: https://github.com/zephyrproject-rtos/mbedtls
-    revision: a78176c6ff0733ba08018cba4447bd3f20de7978
+    revision: 4952e1328529ee549d412b498ea71c54f30aa3b1
     path: modules/crypto/mbedtls
     groups:
     - crypto
@@ -49,7 +56,7 @@ manifest:
     - crypto
   - name: zcbor
     url: https://github.com/zephyrproject-rtos/zcbor
-    revision: 47f34dd7f5284e8750b5a715dee7f77c6c5bdc3f
+    revision: 9b07780aca6fb21f82a241ba386ad9b379809337
     path: modules/lib/zcbor
   self:
     path: openair

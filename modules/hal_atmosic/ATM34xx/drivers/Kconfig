@@ -1,0 +1,11 @@
+# Copyright (c) 2023-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+rsource "*/Kconfig"
+
+config MBEDTLS_USER_CONFIG_FILE
+	default "atm34-mbedtls-config.h" if ATM_AES_HW || ATM_SHA2_HW || ATM_UECC
+
+config PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY
+	default y

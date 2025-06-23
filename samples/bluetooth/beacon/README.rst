@@ -19,7 +19,7 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/bluetooth/beacon`` in the OpenAir tree.
+This sample is built from ``openair/samples/bluetooth/beacon``.
 
 Build command:
 

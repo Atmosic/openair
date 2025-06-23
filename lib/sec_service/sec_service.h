@@ -5,7 +5,7 @@
  *
  * @brief Secure Services
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  ******************************************************************************
  */
@@ -20,10 +20,16 @@
  */
 
 #ifdef SECURE_PROC_ENV
-#define __SPE_NSC __attribute__((cmse_nonsecure_entry)) __attribute__((used))
+#define __NSC_BASE __attribute__((cmse_nonsecure_entry)) __attribute__((used))
+#ifdef ATM_NSC_ENTRY_IN_RAM
+// entrypoint needs to be in RAM to be reachable by the gateway
+#define __SPE_NSC __NSC_BASE __attribute__((noinline, section(".data_text")))
+#else
+#define __SPE_NSC __NSC_BASE
+#endif
 #else
 #define __SPE_NSC
-#endif
+#endif // SECURE_PROC_ENV
 
 #ifndef VERIFY_ATMWSTK
 #if defined(ATMWSTK) && (defined(CFG_PLF_DEBUG) || defined(USE_SECURE_BOOT))

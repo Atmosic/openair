@@ -74,10 +74,10 @@ config ADV_MAX_EVT
 	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s_adv (30 * 1s)
 	default 0
 
-config ADV_RSTRT_DUR
+config ADV_RSTRT_DUR_MS
 	int
 	default ATM_TEST_UTIL_INT2 if ATM_TEST_UTIL_HAS_OVR  # for testing
-	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s
+	default 30000 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s
 	default 0
 
 # for Data

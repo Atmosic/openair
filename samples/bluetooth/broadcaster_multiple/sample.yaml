@@ -8,11 +8,7 @@ tests:
       type: one_line
       regex:
         - Starting Multiple Broadcaster Demo
-    tags: bluetooth atm33 atm34
+    tags: bluetooth atm33 atm34 no_mcuboot
     extra_args:
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
       - SB_CONFIG_SPE=y
-    extra_configs:
-      - CONFIG_ATMWSTKLIB=""
-      - CONFIG_USE_ATMWSTK=y
+      - SB_CONFIG_ATMWSTK_FULL=y

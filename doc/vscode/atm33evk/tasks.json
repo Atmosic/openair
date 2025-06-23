@@ -48,7 +48,7 @@
                 "-DCONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y",
                 "-DCONFIG_BOOT_MAX_IMG_SECTORS=512",
                 "-DDTC_OVERLAY_FILE=\"${workspaceFolder}/zephyr/boards/atmosic/atm33evk/${input:boardName}_mcuboot_bl.overlay\"",
-                "-DDTS_EXTRA_CPPFLAGS=\"-DATMWSTK=LL;\""
+                "-DDTS_EXTRA_CPPFLAGS=\"-DATMWSTK=FULL;\""
             ],
             "detail": "Build MCUboot",
             "group": {
@@ -72,7 +72,7 @@
                 "--",
                 "-DCONFIG_BOOTLOADER_MCUBOOT=y",
                 "-DCONFIG_MCUBOOT_GENERATE_UNSIGNED_IMAGE=n",
-                "-DDTS_EXTRA_CPPFLAGS=-DATMWSTK=LL;"
+                "-DDTS_EXTRA_CPPFLAGS=-DATMWSTK=FULL;"
             ],
             "detail": "Build spe"
         },

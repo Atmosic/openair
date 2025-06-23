@@ -21,7 +21,7 @@ Building and Running
 ********************
 
 This sample is built from ``openair/samples/bluetooth/extended_adv/advertiser``.
-The source code can be found under ``zephyr/samples/bluetooth/extended_adv/advertiser/src``.
+The source code can be found under ``zephyr/samples/bluetooth/extended_adv/advertiser``.
 
 Build command:
 

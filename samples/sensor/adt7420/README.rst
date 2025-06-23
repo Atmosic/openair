@@ -23,7 +23,7 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/sensor/adt7420`` in the OpenAir tree.
+This sample is built from ``openair/samples/sensor/adt7420``.
 
 Build command:
 

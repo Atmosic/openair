@@ -584,11 +584,11 @@ static void uart_atm_poll_out(const struct device *dev, unsigned char c)
 	const struct uart_atm_config *const dev_cfg = dev->config;
 	unsigned int key;
 
-	/* Wait for transmitter to be ready */
+	/* Wait for FIFO to be empty */
 	for (;;) {
-		if (!(dev_cfg->uart->state & UART_TX_BF)) {
+		if (dev_cfg->uart->tx_fifo_spaces == UART_FIFO_SIZE) {
 			key = irq_lock();
-			if (!(dev_cfg->uart->state & UART_TX_BF)) {
+			if (dev_cfg->uart->tx_fifo_spaces == UART_FIFO_SIZE) {
 				break;
 			}
 			irq_unlock(key);
@@ -908,9 +908,14 @@ static int uart_atm_irq_is_pending(const struct device *dev)
 	 * but FIFO not empty. When RX_LWM is 1 (default) the RX_IN interrupt
 	 * is only asserted when FIFO was previously empty and a new byte is
 	 * received
+	 *
+	 * Don't have level trigger for UART TX so emulate a TX_FIFO_EMPTY
+	 * interrupt by checking FIFO spaces when UART TX INT is enabled
 	 */
 	return (dev_cfg->uart->intstatus & (UART_RX_IN | UART_TX_IN)) ||
-	       (dev_cfg->uart->state & UART_RX_BF);
+	       (dev_cfg->uart->state & UART_RX_BF) ||
+	       ((dev_cfg->uart->ctrl & UART_TX_IN_EN) &&
+	        (dev_cfg->uart->tx_fifo_spaces >= dev_cfg->uart->tx_lwm));
 }
 
 /**

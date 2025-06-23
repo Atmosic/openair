@@ -74,14 +74,13 @@ static void adv_sent_cb(struct bt_le_ext_adv *adv, struct bt_le_ext_adv_sent_inf
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, CONFIG_SOFT_OFF_SUBID);
 	}
 #endif
-	if (CONFIG_ADV_RSTRT_DUR) {
+	if (CONFIG_ADV_RSTRT_DUR_MS) {
 		static struct k_work_delayable work;
 		k_work_init_delayable(&work, restart_adv);
-		k_work_schedule(&work, K_SECONDS(CONFIG_ADV_RSTRT_DUR));
+		k_work_schedule(&work, K_MSEC(CONFIG_ADV_RSTRT_DUR_MS));
 	}
 #if CONFIG_AUTO_TEST
-	printk("CONFIG_ADV_RSTRT_DUR = %d\n", CONFIG_ADV_RSTRT_DUR);
-	if (!CONFIG_ADV_RSTRT_DUR) {
+	if (!CONFIG_ADV_RSTRT_DUR_MS) {
 	    ATM_TEST_PASSED();
 	}
 #endif
@@ -201,7 +200,7 @@ int main(void)
 #else
 	printk(" ret");
 #endif
-	printk(", Restart: %d Sec\n",CONFIG_ADV_RSTRT_DUR);
+	printk(", Restart: %d ms\n", CONFIG_ADV_RSTRT_DUR_MS);
 #endif
 	/* Initialize the Bluetooth Subsystem */
 	int err = bt_enable(bt_ready);

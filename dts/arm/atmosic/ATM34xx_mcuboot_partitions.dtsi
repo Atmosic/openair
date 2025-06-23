@@ -1,0 +1,162 @@
+/*
+ * Copyright (c) 2022-2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#if ATM_SPE_SIZE
+/delete-node/ &spe_partition;
+/delete-node/ &nspe_partition;
+#endif
+#if ATM_APP_SIZE
+/delete-node/ &app_partition;
+#endif
+
+#include <arm/atmosic/ATM34xx_mcuboot_partition_defs.h>
+
+#if ATM_FACTORY_SIZE
+/delete-node/ &factory_partition;
+#endif
+#if ATM_STORAGE_SIZE
+/delete-node/ &storage_partition;
+#endif
+#if ATM_FAST_CODE_SIZE
+/delete-node/ &fast_code_partition;
+#endif
+
+#ifdef RUN_IN_FLASH
+/ {
+        chosen {
+		zephyr,flash_image1 = &flash0;
+        };
+};
+#endif
+
+&rram0 {
+	partitions {
+#if ATM_SPE_SIZE
+		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+#else
+		compatible = "fixed-partitions";
+#endif
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@ATM_MCUBOOT_NODE_ID {
+			label = "mcuboot";
+#if ATM_SPE_SIZE
+			secure;
+#endif
+			reg = <ATM_MCUBOOT_OFFSET ATM_MCUBOOT_SIZE>;
+		};
+
+		// image 0 primary
+		slot0_partition: partition@ATM_SLOT0_NODE_ID {
+			label = "image-0";
+			reg = <ATM_SLOT0_OFFSET ATM_SLOT0_SIZE>;
+			partitions {
+				#address-cells = <1>;
+				#size-cells = <1>;
+#if ATM_SPE_SIZE
+				spe_partition: partition@ATM_SPE_NODE_ID {
+					label = "spe_partition";
+					secure;
+					reg = <ATM_SPE_OFFSET ATM_SPE_SIZE>;
+				};
+#endif
+#ifndef RUN_IN_FLASH
+#if ATM_SPE_SIZE
+				nspe_partition: partition@ATM_NSPE_NODE_ID {
+					label = "nspe_partition";
+					reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
+				};
+#endif
+#if ATM_APP_SIZE
+				app_partition: partition@ATM_APP_NODE_ID {
+					label = "app_partition";
+					reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
+				};
+#endif
+#elif ATM_FAST_CODE_SIZE
+				fast_code_partition: partition@ATM_FAST_CODE_NODE_ID {
+					label = "fast_code_partition";
+					reg = <ATM_FAST_CODE_OFFSET ATM_FAST_CODE_SIZE>;
+				};
+#endif
+#if ATM_SLOT0_TRAILER_RSVD_SIZE
+				slot0_trailer: partition@ATM_SLOT0_TRAILER_NODE_ID {
+					label = "slot_0_trailer";
+					reg = <ATM_SLOT0_TRAILER_RSVD_OFFSET ATM_SLOT0_TRAILER_RSVD_SIZE>;
+				};
+#endif
+			};
+		};
+#if ATM_FACTORY_SIZE
+		factory_partition: partition@ATM_FACTORY_NODE_ID {
+			label = "factory";
+			reg = <ATM_FACTORY_OFFSET ATM_FACTORY_SIZE>;
+		};
+#endif
+#if ATM_STORAGE_SIZE
+		storage_partition: partition@ATM_STORAGE_NODE_ID {
+			label = "storage";
+			reg = <ATM_STORAGE_OFFSET ATM_STORAGE_SIZE>;
+		};
+#endif
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+#ifdef RUN_IN_FLASH
+		// image 1 primary
+		slot2_partition: partition@ATM_SLOT2_NODE_ID {
+			label = "image-2";
+			reg = <ATM_SLOT2_OFFSET ATM_SLOT2_SIZE>;
+			partitions {
+				#address-cells = <1>;
+				#size-cells = <1>;
+#if ATM_SPE_SIZE
+				nspe_partition: partition@ATM_NSPE_NODE_ID {
+					label = "nspe_partition";
+					reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
+				};
+#endif
+#if ATM_APP_SIZE
+				app_partition: partition@ATM_APP_NODE_ID {
+					label = "app_partition";
+					reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
+				};
+#endif
+#if ATM_SLOT2_TRAILER_RSVD_SIZE
+				slot2_trailer: partition@ATM_SLOT2_TRAILER_NODE_ID {
+					label = "slot_2_trailer";
+					reg = <ATM_SLOT2_TRAILER_RSVD_OFFSET ATM_SLOT2_TRAILER_RSVD_SIZE>;
+				};
+#endif
+			};
+		};
+#endif
+#if ATM_MCUBOOT_SCRATCH_SIZE
+		scratch_partition: partition@ATM_MCUBOOT_SCRATCH_NODE_ID {
+			label = "image-scratch";
+			reg = <ATM_MCUBOOT_SCRATCH_OFFSET ATM_MCUBOOT_SCRATCH_SIZE>;
+		};
+#endif
+		// image 0 OTA staging area, size must equal slot0_partition
+		slot1_partition: partition@ATM_SLOT1_NODE_ID {
+			label = "image-1";
+			reg = <ATM_SLOT1_OFFSET ATM_SLOT1_SIZE>;
+		};
+#ifdef RUN_IN_FLASH
+		// image 1 OTA staging area, size must equal slot2_partition
+		slot3_partition: partition@ATM_SLOT3_NODE_ID {
+			label = "image-3";
+			reg = <ATM_SLOT3_OFFSET ATM_SLOT3_SIZE>;
+		};
+#endif
+	};
+};

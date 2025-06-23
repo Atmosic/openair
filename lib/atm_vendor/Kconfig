@@ -140,9 +140,15 @@ source "subsys/logging/Kconfig.template.log_config"
 config VND_API_SET_PREF_SLAVE_LAT
 	bool "[0xFC13] Set Prefer Slave latency."
 
+config VND_API_SET_MAX_TX_POWER
+	bool "Set Maximum Transmitter Power."
+	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
 config VND_API_SET_ADV_TX_POWER
 	bool "Set Advertising Transmitter Power."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	depends on SOC_SERIES_ATM34
+	help
+	  Direct configuration of advertising TX power is not supported on the ATM33 series. Instead, it can be set indirectly through the atm_vendor_set_max_tx_power() API.
 
 config VND_API_SET_CON_TX_POWER
 	bool "[0xFC1A] Set Transmitter Power."

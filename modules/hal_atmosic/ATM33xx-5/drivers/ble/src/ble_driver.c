@@ -28,7 +28,6 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/drivers/bluetooth.h>
-#include <zephyr/drivers/bluetooth/hci_driver.h>
 #ifdef CONFIG_BT_SMP
 #define BLE_THREAD_STACK_SIZE MAX(CONFIG_BT_RX_STACK_SIZE, 1600)
 #else
@@ -439,6 +438,16 @@ ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
 
 	p_itf = rwtl_itf_get();
 	open_once = true;
+
+	// Ensure that all entropy sources are ready before allowing BLE use.
+	// sys_csrand_get() and sys_rand_get() will block until the underlying
+	// generator is seeded and ready.
+	__UNUSED uint8_t dummy = sys_rand8_get();
+	int ret = sys_csrand_get(&dummy, sizeof(dummy));
+	if (ret) {
+	    __ASSERT(0, "sys_csrand_get failed: %d", ret);
+	    return ret;
+	}
     }
 
     is_open = true;

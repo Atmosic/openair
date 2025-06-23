@@ -1,6 +1,6 @@
 .. _hci_uart-sample:
 
-Bluetooth: HCI UART
+Bluetooth: hci_uart
 ###################
 
 Overview
@@ -33,7 +33,7 @@ By default the builds use ``uart0`` with the following settings:
 Building and Running
 ********************
 
-This sample can be found under ``samples/bluetooth/hci_uart`` in the OpenAir tree.
+This sample is built from ``openair/samples/bluetooth/hci_uart``.
 
 Build Command:
 

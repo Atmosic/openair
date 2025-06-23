@@ -1,0 +1,93 @@
+# Copyright (c) 2021-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_SERIES_ATM34
+
+config ROM_START_OFFSET
+	default 0 if MERGE_SPE_NSPE && BOOTLOADER_MCUBOOT && !ATM_SPLIT_IMG
+	default 0x800 if BOOTLOADER_MCUBOOT
+
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	int
+	default 16000000 if CORTEX_M_SYSTICK_EXTERNAL_REF
+	default 32000000
+
+config NUM_IRQS
+	int
+	default 448
+
+config BUILD_OUTPUT_HEX
+	default y
+
+if PM
+
+config IDLE_STACK_SIZE
+	int
+	default 1024
+
+endif # PM
+
+config ATM_NO_SPE
+	bool "Application uses ATM No-SPE feature in a single image"
+
+config ATM_NO_TZ
+	bool "Application uses ATM No-Trustzone feature in a single image"
+	select ATM_NO_SPE
+
+# MCUBOOT uses BOOT_MAX_IMG_SECTORS to size the sector swap map for both
+# SLOT1 and SLOT3 in a multi-image swap (a known limitation).
+# The value needs to be sufficiently large to handle the largest number of sectors
+# in either slot. Since the trailer must have a minimum size and alignment of 4K
+# to flash memory we can use a conservative value of 512 image sectors for the
+# non-volatile and in-memory swap maps.
+# The default value results in:
+#  -) slot2/slot3 (FLASH/FLASH) can have up to a 2MB slot size
+#  -) slot0/slot1 (RRAM/FLASH) can be up to 512KB slot sizes
+
+config BOOT_MAX_IMG_SECTORS
+	int
+	default 512
+	depends on MCUBOOT || BOOTLOADER_MCUBOOT
+
+if TRUSTED_EXECUTION_NONSECURE
+
+config SPE_PATH
+	string "Path to SPE build directory"
+
+config ATM_ARM_FIRMWARE_USES_SECURE_ENTRY_FUNCS
+	bool "ATM Non-Secure Firmware uses Secure Entry functions"
+	default y if SPE_PATH != ""
+	help
+	  Option as ARM_FIRMWARE_USES_SECURE_ENTRY_FUNCS.
+
+config ATM_ARM_ENTRY_VENEERS_LIB_NAME
+	string "ATM Entry Veneers symbol file"
+	depends on SPE_PATH != ""
+	default "libentryveneers.a"
+	help
+	  Library file as ARM_ENTRY_VENEERS_LIB_NAME.
+
+config MERGE_SPE_NSPE
+	bool "Merge SPE and application into single image"
+	depends on SPE_PATH != ""
+	default y if BOOTLOADER_MCUBOOT
+	default n
+	help
+	  Option to merge SPE and NSPE to a single image. This config must
+	  be set if building with MCUboot as the merged image is signed.
+	  However, it can also be set to allow a single `west flash` to flash
+	  both the spe and nspe.
+
+config ATM_SPLIT_IMG
+	depends on FLASH
+	bool "Image split across multiple memory regions"
+
+config MCUBOOT_EXTRA_IMGTOOL_ARGS
+	# Need to override header-size for image tool to the SPE header allocation
+	default "--header-size=0x800" if MERGE_SPE_NSPE || ATM_SPLIT_IMG
+	depends on BOOTLOADER_MCUBOOT
+
+endif # TRUSTED_EXECUTION_NONSECURE
+
+endif # SOC_SERIES_ATM34

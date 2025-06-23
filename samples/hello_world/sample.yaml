@@ -14,17 +14,13 @@ common:
 tests:
   samples.hello_world.atm:
     sysbuild: true
-    tags: introduction atm33 atm34
+    tags: introduction atm33 atm34 no_mcuboot
     extra_args:
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
       - SB_CONFIG_SPE=y
   samples.hello_world.atm.mcuboot.atmx2:
     sysbuild: true
     tags: introduction atmx2
     extra_args:
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y

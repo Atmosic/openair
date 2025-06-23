@@ -1,0 +1,25 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_BROWNOUT
+	bool "Enable brownout support"
+
+if ATM_BROWNOUT
+
+config BROWNOUT_THR_VBAT
+        int "VBAT brownout threshold"
+        default 0
+        help
+            Controls the VBAT(LI) brownout threshold.
+            For VBAT level <= 1.8V,
+                VBAT threshold = 0.9 + 0.025X, where 0 <= X <= 31
+            For VBAT level > 1.8V,
+                VBAT threshold = 1.4 + 0.05X, where
+                    0 <= X <= 31, for non-rechargeable battery type
+                    0 <= X <= 17, for rechargeable battery type
+	    For VBATLI,
+		VBATLI threshold = 2.4V + 0.050X, where 2 <= X <= 31
+            The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through CONFIG_BATT_LEVEL. Refer to the PMU configuration for additional details.
+
+endif

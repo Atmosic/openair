@@ -22,7 +22,7 @@ Building and Running
 ********************
 
 This sample is built from ``openair/samples/bluetooth/extended_adv/scanner``.
-The source code can be found under ``zephyr/samples/bluetooth/extended_adv/scanner/src``.
+The source code can be found under ``zephyr/samples/bluetooth/extended_adv/scanner``.
 
 Build command:
 

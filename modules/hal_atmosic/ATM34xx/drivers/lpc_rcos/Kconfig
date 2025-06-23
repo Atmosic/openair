@@ -1,0 +1,11 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_LPC_RCOS
+	bool "Atmosic Low Power Clock xtal omit module"
+	depends on BT
+
+config ATM_FORCE_LPC_RCOS
+	bool "Use RCOS for LPC even with xtal present"
+	depends on ATM_LPC_RCOS

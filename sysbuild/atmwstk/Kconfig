@@ -1,0 +1,26 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+choice ATM_WIRELESS_STACK_CHOICE
+	prompt "BLE link layer wireless stack flavor of sysbuild"
+	optional #TODO: Make ATMWSTK_PD50 default when deprecating CONFIG_ATMWSTK and CONFIG_ATMWSTKLIB.
+
+config ATMWSTK_PD50
+	bool "PD50 link controller"
+
+config ATMWSTK_FULL
+	bool "Full link controller"
+
+config ATMWSTK_CPD200
+	bool "CPD200 link controller"
+
+endchoice
+
+config USE_FIXED_ATMWSTK
+	bool "Use fixed BLE stack image of sysbuild"
+
+config ATMWSTK_FLAVOR
+	string "value of fixed BLE link layer wireless stack flavor of sysbuild"
+	default "PD50" if ATMWSTK_PD50
+	default "FULL" if ATMWSTK_FULL

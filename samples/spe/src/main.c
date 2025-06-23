@@ -14,6 +14,7 @@
 #include <zephyr/storage/flash_map.h>
 #include "vectors.h"
 #include <zephyr/irq.h>
+#include <zephyr/drivers/timer/system_timer.h>
 #include "at_tz_sau.h"
 #include "at_tz_ppc.h"
 #include "at_tz_mpc.h"
@@ -315,12 +316,16 @@ static void pre_sau_security_lockdown(void)
 {
     bool sec_s;
 
+#ifdef CONFIG_ATM_SPE_DISABLE_ROM_PATCH
     // lock out the ROM patch controller
     sec_s = sec_device_set_lockout(SEC_DEV_LOCKOUT_ROM_P_CFG);
     SEC_ASSERT(sec_s);
+#endif
+#ifdef CONFIG_ATM_SPE_DISABLE_OTP
     // lock out the OTP controller's write capability
     sec_s = sec_device_set_lockout(SEC_DEV_LOCKOUT_OTP_WR);
     SEC_ASSERT(sec_s);
+#endif
 
 #if SHUB_LOCKOUT_SUPPORT && defined(CONFIG_ATM_SPE_DISABLE_SHUB)
     // lock out shub
@@ -420,6 +425,13 @@ FUNC_NORETURN void spe_main(void)
     // Enable and configure security controllers (SAU and MPC)
     sau_cfg();
     mpc_cfg();
+
+#ifdef CONFIG_ATM_SPE_DISABLE_SYSTICK
+    // Disable secure SysTick
+    sys_clock_disable();
+#else
+    NVIC_SetPriority(SysTick_IRQn, IRQ_PRI_MID);
+#endif
 
     // Redirect interrupts to non-secure handlers
     IRQn_Type irq;

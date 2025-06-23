@@ -59,7 +59,7 @@ static void fp_tag_utp_mode_switch(fp_fmdn_utp_mode_t mode)
 static void fp_tag_utp_owner_disconn_timeout_handler(struct k_work *work)
 {
 	LOG_INF("DULT Owner Disconnected");
-#ifndef FP_FMDN_VALIDATOR_TEST
+#ifndef CONFIG_FP_FMDN_VALIDATOR_TEST
 	dult_mode_update(DULT_NO_MODE_SEPERATED);
 #endif
 }

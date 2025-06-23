@@ -1,0 +1,27 @@
+# Copyright (c) 2024-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_PC_LL_CFG
+	bool "Atmosic pc_ll_cfg module"
+	default y if ATM_BLE
+
+if ATM_PC_LL_CFG
+
+config ATM_ENA_LL_FEAT_PC
+	bool "When available, enable LL power control feature"
+	default n if SOC_SERIES_ATM34 && (ATMWSTKLIB = "PD50" || ATMWSTK_PD50)
+	default y
+
+config ATM_ENA_LL_FEAT_CS
+	bool "When available, enable LL channel sounding feature"
+	default n if SOC_SERIES_ATM34 && (ATMWSTKLIB = "PD50" || ATMWSTK_PD50)
+	default y
+
+config ATM_ENA_LL_FEAT_ISO
+	bool "When available, enable LL ISO feature"
+	default y if SOC_SERIES_ATM34 && (ATMWSTKLIB = "" || ATMWSTK_FULL)
+	default y if SOC_SERIES_ATM13
+	default n
+
+endif # ATM_PC_LL_CFG

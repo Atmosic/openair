@@ -1,0 +1,16 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_ANTENNA_SWITCH
+	bool "Atmosic antenna driver"
+	default y
+	depends on DT_HAS_ATMOSIC_ANTENNA_ENABLED
+
+if ATM_ANTENNA_SWITCH
+
+module = ATM_ANTENNA_SWITCH
+module-str = Atmosic antenna switch
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ATM_ANTENNA_SWITCH

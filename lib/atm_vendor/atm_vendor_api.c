@@ -20,17 +20,16 @@
 #include "atm_vendor_internal.h"
 #include "atm_vendor_api.h"
 
-#ifdef CONFIG_SOC_SERIES_ATM33
-#if defined(CFG_VND_API_SET_CON_TX_POWER) && !defined(CFG_LE_PWR_CTRL)
+#ifdef BLE_EMB_PRESENT
 #include "em_map.h"
 #endif
-#endif // CONFIG_SOC_SERIES_ATM33
-#ifndef CONFIG_SOC_SERIES_ATMX2
+#ifdef CONFIG_ATM_RF
 #include "rf_api.h"
 #endif
 
 LOG_MODULE_REGISTER(atm_vendor_api, CONFIG_ATM_VENDOR_API_LOG_LEVEL);
 
+#ifdef CFG_VND_API_SET_PREF_SLAVE_LAT
 /**
  * @brief send hci command
  *
@@ -63,7 +62,6 @@ static int atm_vendor_api_send_command(uint16_t opcode, uint8_t const *payload,
 	return 0;
 }
 
-#ifdef CFG_VND_API_SET_PREF_SLAVE_LAT
 /**
  * @brief Set Prefer Slave Latency
  *
@@ -85,6 +83,25 @@ int atm_vendor_set_pref_slave_lat(uint16_t conhdl, uint16_t latency)
 }
 #endif
 
+#ifdef CFG_VND_API_SET_MAX_TX_POWER
+/**
+ * @brief Set Maximum TX power
+ *
+ * @param tx_pwr transmitter power in dBm
+ * @return 0 on success, non-zero on failure.
+ */
+uint8_t atm_vendor_set_max_tx_power(int8_t tx_pwr)
+{
+	int8_t act_tx_pwr = rf_set_txpwr_maximum_val(tx_pwr);
+	if (act_tx_pwr == INVALID_TX_POWER_VALUE) {
+		LOG_ERR("Set max TX pwr fail");
+		return TX_POWER_VALUE_ADJUST_FAIL;
+	}
+	LOG_INF("Set max TX pwr:%d", act_tx_pwr);
+	return TX_POWER_VALUE_ADJUST_SUCCESS;
+}
+#endif
+
 #ifdef CFG_VND_API_SET_ADV_TX_POWER
 /**
  * @brief Set Advertising TX power
@@ -94,16 +111,11 @@ int atm_vendor_set_pref_slave_lat(uint16_t conhdl, uint16_t latency)
  */
 uint8_t atm_vendor_set_adv_tx_power(int8_t tx_pwr)
 {
-#ifdef CONFIG_SOC_SERIES_ATM33
-	LOG_WRN("Cannot adj");
-	return TX_POWER_VALUE_ADJUST_FAIL;
-#else
 	LOG_INF("Set adv TX pwr:%d", tx_pwr);
 	if (!rf_set_txpwr_advertising_val(tx_pwr)) {
 		return TX_POWER_VALUE_ADJUST_FAIL;
 	}
 	return TX_POWER_VALUE_ADJUST_SUCCESS;
-#endif
 }
 #endif // CFG_VND_API_SET_ADV_TX_POWER
 
@@ -117,29 +129,17 @@ uint8_t atm_vendor_set_adv_tx_power(int8_t tx_pwr)
  */
 uint8_t atm_vendor_set_con_tx_power(uint16_t conhdl, int8_t tx_pwr)
 {
-#ifdef CONFIG_SOC_SERIES_ATM33
-#ifdef CFG_LE_PWR_CTRL
-	LOG_INF("ATM33 send TX pwr cmd:%d", tx_pwr);
-	set_tx_power_cmt_t set_tx_pwr;
-	(void)memset(&set_tx_pwr, 0, VS_SET_TX_POWER_CMD_LEN);
-	atm_set_le16(&set_tx_pwr.conhdl, conhdl);
-	atm_set_le16(&set_tx_pwr.tx_pwr, tx_pwr);
-
-	atm_vendor_api_send_command(VND_OPCODE(VS_SET_TX_POWER_CMD_OGF,
-		VS_SET_TX_POWER_CMD_OCF), (uint8_t *)&set_tx_pwr,
-		VS_SET_TX_POWER_CMD_LEN);
-#else
-	LOG_INF("ATM33 set TX pwr reg:%d", tx_pwr);
+#ifdef BLE_EMB_PRESENT
+	LOG_INF("Set con TX pwr:%d", tx_pwr);
 	uint8_t act_id = BLE_CONHDL_TO_LINKID(conhdl);
 	uint8_t cs_idx = EM_BLE_CS_ACT_ID_TO_INDEX(act_id);
 	rf_set_cs_txpwr_val(cs_idx, tx_pwr);
-#endif
-#else // CONFIG_SOC_SERIES_ATM33
+#else
 	LOG_INF("Set con TX pwr:%d", tx_pwr);
 	if (rf_set_cs_txpwr_val(conhdl, tx_pwr) == INVALID_TX_POWER_VALUE) {
 		return TX_POWER_VALUE_ADJUST_FAIL;
 	}
-#endif // CONFIG_SOC_SERIES_ATM33
+#endif
 
     return TX_POWER_VALUE_ADJUST_SUCCESS;
 }

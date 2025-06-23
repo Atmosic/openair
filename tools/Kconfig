@@ -6,6 +6,10 @@ config GEN_PARTITION_INFO
 	bool "Generate partition info"
 	default y
 
+config GEN_TAG_DATA_BIN_FILE
+	bool "Generate tag data bin file"
+	default y
+
 config GEN_PARTITION_INFO_SCRIPT
 	string "Generate partition info script path"
 	default "${ZEPHYR_OPENAIR_MODULE_DIR}/tools/scripts/gen_atm_partition_info.py"

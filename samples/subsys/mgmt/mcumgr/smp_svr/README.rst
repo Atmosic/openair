@@ -1,7 +1,7 @@
 .. _smp_svr
 
-SMP Server
-##########
+Subsys: mgmt_mcumgr_smp_svr
+###########################
 
 Overview
 ********
@@ -27,7 +27,7 @@ A larger list of possible utilities can be found here: `MCUmgr tools and librari
 Building and Running
 ********************
 
-This sample can be found under ``samples/subsys/mgmt/mcumgr/smp_svr`` in the OpenAir tree.
+This sample is built from ``openair/samples/subsys/mgmt/mcumgr/smp_svr``.
 
 Build command:
 

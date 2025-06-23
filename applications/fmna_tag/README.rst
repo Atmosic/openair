@@ -86,10 +86,10 @@ Example::
 Building and Running
 ********************
 
-This sample can be found under ``applications/fmna_tag`` in the OpenAir tree.
+This application is built from ``openair/applications/fmna_tag``.
 
 .. note::
-    Use atmwstk for best memory optimization. However, atm34xx series boards only support atmstklib.
+    Use atmwstk for best memory optimization. However, ATM34/e series boards only support atmstklib.
 
 
 Without UARP Support
