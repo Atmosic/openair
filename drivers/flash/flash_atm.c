@@ -1934,9 +1934,11 @@ static int flash_atm_init(struct device const *dev)
 	external_flash_wakeup();
 	bool found = flash_discover();
 
-	if (found) {
-		LOG_INF("man_id:%#x", man_id);
+	if (!found) {
+		LOG_ERR("No flash found: man_id:%#x", man_id);
+		return 0;
 	}
+	LOG_INF("man_id:%#x", man_id);
 #else
 	recover_man_id();
 #endif
