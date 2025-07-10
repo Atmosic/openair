@@ -1,0 +1,23 @@
+# Copyright (c) 2024-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_SERIES_ATM34
+
+rsource "drivers/Kconfig"
+rsource "drivers/ble/Kconfig"
+rsource "lib/Kconfig"
+rsource "src/Kconfig"
+
+if TRUSTED_EXECUTION_SECURE
+
+config SOC_RESET_HOOK
+	# if bootloader is set and the SPE, leave bp_init to MCUBOOT
+	default n if BOOTLOADER_MCUBOOT && ARM_FIRMWARE_HAS_SECURE_ENTRY_FUNCS
+	# if bootloader is set and the ATM_NO_TZ, leave bp_init to MCUBOOT
+	default n if BOOTLOADER_MCUBOOT && ATM_NO_TZ
+	default y
+
+endif # TRUSTED_EXECUTION_SECURE
+
+endif # SOC_SERIES_ATM34

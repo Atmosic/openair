@@ -78,10 +78,51 @@ void dma_fifo_rx_async(enum dma_fifo_rx_port port, void *dst, size_t len,
 void dma_fifo_tx_async(enum dma_fifo_tx_port port, const void *src, size_t len,
     dma_cb_t cb, void const *ctx);
 
+/**
+ * @brief Receive data from a SPI interface using DMA (non blocking).
+ *
+ * When called from thread context, an internal semaphore will implement
+ * mutual exclusion.
+ * When called from ISR context, caller must guarantee mutual exclusion.
+ *
+ * @param[in]  spi_port  SPI interface (0 or 1)
+ * @param[out] dst       Destination memory address
+ * @param[in]  len       Size of data to move in octets
+ * @param[in]  cb        Function called when operation is complete
+ * @param[in]  ctx       Context passed to callback function
+ */
 void dma_spi_rx_async(uint8_t spi_port, void *dst, size_t len,
     dma_cb_t cb, void const *ctx);
+
+/**
+ * @brief Send data to a SPI interface using DMA (non blocking).
+ *
+ * When called from thread context, an internal semaphore will implement
+ * mutual exclusion.
+ * When called from ISR context, caller must guarantee mutual exclusion.
+ *
+ * @param[in] spi_port  SPI interface (0 or 1)
+ * @param[in] src       Source memory address
+ * @param[in] len       Size of data to move in octets
+ * @param[in] cb        Function called when operation is complete
+ * @param[in] ctx       Context passed to callback function
+ */
 void dma_spi_tx_async(uint8_t spi_port, void const *src, size_t len,
     dma_cb_t cb, void const *ctx);
+
+/**
+ * @brief Abort pending DMA FIFO/SPI rx_async operation.
+ *
+ * Previously registered callback may or may not be invoked.
+ */
+void dma_rx_async_stop(void);
+
+/**
+ * @brief Abort pending DMA FIFO/SPI tx_async operation.
+ *
+ * Previously registered callback may or may not be invoked.
+ */
+void dma_tx_async_stop(void);
 
 #if CFG_DMA_COPY
 /**
@@ -89,10 +130,10 @@ void dma_spi_tx_async(uint8_t spi_port, void const *src, size_t len,
  *
  * If this function is called while DMA channel is in use, function is blocked till DMA channel is released
  *
- * @param[in] channel       DMA channel used (@see enum dma_channels)
- * @param[in] p_dst_addr    Destination address of the memory copy
- * @param[in] p_src_addr    Source address of the memory copy
- * @param[in] size          Size of data to copy in octets.
+ * @param[in]  channel     DMA channel used (@see enum dma_channels)
+ * @param[out] p_dst_addr  Destination address of the memory copy
+ * @param[in]  p_src_addr  Source address of the memory copy
+ * @param[in]  size        Size of data to copy in octets.
  */
 void dma_copy(uint8_t channel, void* p_dst_addr, const void* p_src_addr, uint16_t size);
 

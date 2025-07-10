@@ -1,0 +1,7 @@
+identifier: ATMBTCSTAG-3405/ATM34xx-5/ns
+name: ATMBTCSTAG-3405_ns
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+vendor: atmosic

@@ -1,0 +1,61 @@
+# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: atmosic antenna
+
+compatible: "atmosic,antenna"
+
+include: [base.yaml]
+
+properties:
+  ant-out0-pin:
+    type: int
+    description: Pin for antenna out 0
+
+  ant-out1-pin:
+    type: int
+    description: Pin for antenna out 1
+
+  ant-out2-pin:
+    type: int
+    description: Pin for antenna out 2
+
+  ant-out3-pin:
+    type: int
+    description: Pin for antenna out 3
+
+  ant-out4-pin:
+    type: int
+    description: Pin for antenna out 4
+
+  ant-out5-pin:
+    type: int
+    description: Pin for antenna out 5
+
+  ant-out6-pin:
+    type: int
+    description: Pin for antenna out 6
+
+  ant-out7-pin:
+    type: int
+    description: Pin for antenna out 7
+
+  mdm-ant-rx-3to0:
+    type: int
+    description: Antenna 3 to 0 table when RX
+
+  mdm-ant-tx-3to0:
+    type: int
+    description: Antenna 3 to 0 table when TX
+
+  mdm-ant-rx-7to4:
+    type: int
+    description: Antenna 7 to 4 table when RX
+
+  mdm-ant-tx-7to4:
+    type: int
+    description: Antenna 7 to 4 table when TX
+
+  mdm-ant-idle:
+    type: int
+    description: Antenna table when Idle

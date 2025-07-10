@@ -1,0 +1,9 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+source "share/sysbuild/Kconfig"
+
+# Retained memory driver test specific sysbuild configuration
+# This test doesn't require additional sysbuild configuration
+# beyond the standard Atmosic sysbuild setup

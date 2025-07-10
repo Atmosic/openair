@@ -17,7 +17,7 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/bluetooth/peripheral_accept_list`` in the OpenAir tree.
+This sample is built from ``openair/samples/bluetooth/peripheral_accept_list``.
 The source code can be found under ``zephyr/samples/bluetooth/peripheral_accept_list``.
 
 Build command:

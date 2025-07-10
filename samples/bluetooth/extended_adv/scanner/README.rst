@@ -6,7 +6,7 @@ Bluetooth: extended_adv_scanner
 Overview
 ********
 
-A simple applicaion demonstrates Bluetooth Extended Scanning in the GAP Central
+A simple application demonstrates Bluetooth Extended Scanning in the GAP Central
 role: it continuously scans on the primary and secondary advertising channels,
 decodes every extended advertising report it receives, and automatically
 initiates a connection to the first advertiser whose “connectable” flag is set.
@@ -22,7 +22,7 @@ Building and Running
 ********************
 
 This sample is built from ``openair/samples/bluetooth/extended_adv/scanner``.
-The source code can be found under ``zephyr/samples/bluetooth/extended_adv/scanner/src``.
+The source code can be found under ``zephyr/samples/bluetooth/extended_adv/scanner``.
 
 Build command:
 

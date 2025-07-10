@@ -87,6 +87,10 @@
 
 			#include "ATM33_peripherals.dtsi"
 		};
+
+		retained_mem_hib: retained-memory {
+			compatible = "atmosic,retained-hib";
+		};
 	};
 
 	aliases {

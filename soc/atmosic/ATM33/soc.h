@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Atmosic
+ * Copyright (c) 2021-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,4 +23,12 @@
 
 #endif // !_ASMLANGUAGE
 
+/**
+ * @brief Is SOC currently in exception ?
+ * @return true if soc is taking on exception
+ */
+static inline bool atm_soc_in_exception(void)
+{
+    return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
+}
 #endif // __ATMOSIC_ATMX3_SOC_H__

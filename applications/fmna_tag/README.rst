@@ -25,8 +25,7 @@ ADK Integration Guide
 The ADK core is provided as the binary library ``libatm_fmna.a``, making it easy for users to integrate the Apple FindMy function into their applications without needing the source code.
 For access to the Atmosic ADK Zephyr source code, please contact Atmosic and provide the MFi Program ID.
 
-Once you have access to git@github.com:Atmosic/fmna.git, run ``west config manifest.group-filter -- +fmna`` to add the fmna project group to the west manifest, then execute ``west update`` to fetch the project;
-To build the application using the ADK source code instead of the precompiled library, disable the Kconfig option ``-DCONFIG_ATM_FMNA_LIB=n``.
+Once access to the private Atmosic Zephyr ADK GitHub repository is granted, follow the instructions in the repository's README to include the ADK source in the project build.
 
 Device Manufacturer Settings
 ****************************
@@ -86,10 +85,7 @@ Example::
 Building and Running
 ********************
 
-This sample can be found under ``applications/fmna_tag`` in the OpenAir tree.
-
-.. note::
-    Use atmwstk for best memory optimization. However, atm34xx series boards only support atmstklib.
+This application is built from ``openair/applications/fmna_tag``.
 
 
 Without UARP Support
@@ -101,12 +97,6 @@ Run the following command to build the SPE, application and factory data:
 
     west build -p always -b <board>//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm
 
-or
-
-.. code-block:: bash
-
-    west build -p always -b <board>//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.atmwstk.pd50ll
-
 
 With UARP Support
 =================
@@ -117,27 +107,21 @@ Run the following command to build the mcuboot, SPE, application and factory dat
 
     west build -p always -b <board>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstklib.pd50
 
-or
-
-.. code-block:: bash
-
-    west build -p always -b <board>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstk.pd50ll
-
 
 Run the following command to program all the built images and run the application:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild -d build --verify --device=<serial> --jlink --fast_load [--erase_flash]
+    west flash --skip-rebuild -d build --verify --device=<serial> --jlink --fast_load [--erase_all]
 
 .. note::
-    - Use the ``--erase_flash`` option cautiously, as it may erase critical updated token information.
+    - Use the ``--erase_all`` option cautiously, as it may erase critical updated token information.
 
 
 Button Functions
 ****************
 
-- Press and hold button1 on EVK for 3 seconds during reboot to unpair and enter pairing mode.
+- Press and hold button2 on EVK for 3 seconds during reboot to unpair and enter pairing mode.
 
 
 PWM Buzzer

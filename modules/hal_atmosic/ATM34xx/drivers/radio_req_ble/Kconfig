@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_RADIO_REQ_BLE
+	bool "Atmosic radio_req_ble module"
+	default y if ATM_BLE

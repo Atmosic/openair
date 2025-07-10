@@ -27,7 +27,6 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/drivers/bluetooth.h>
-#include <zephyr/drivers/bluetooth/hci_driver.h>
 
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>

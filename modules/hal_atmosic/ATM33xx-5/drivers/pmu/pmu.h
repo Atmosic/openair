@@ -5,7 +5,7 @@
  *
  * @brief Power Management Unit APIs
  *
- * Copyright (C) Atmosic 2021-2024
+ * Copyright (C) Atmosic 2021-2025
  *
  *
  ******************************************************************************
@@ -66,7 +66,8 @@ extern "C" {
 
 #define BOOST_SRC_NONE 0
 #define BOOST_SRC_VHARV_INDUCTOR 1
-#define BOOST_SRC_VHARV_TWO_DIODE 2
+#define BOOST_SRC_VSTORE_TWO_DIODE 2
+#define BOOST_SRC_VHARV_TWO_DIODE 3
 
 typedef enum {
     HARV_ERR_NO_ERROR,

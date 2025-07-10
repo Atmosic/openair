@@ -189,12 +189,12 @@ static int fp_adv_set_payload(void)
 	fp_mode_t mode = fp_mode_get();
 	if (mode == FP_MODE_PAIRING) {
 		fp_disc_fp_adv_data();
-		LOG_DBG("fp_adv_set_payload %p fp_disc_ad", fp_adv_set);
+		LOG_DBG("fp_adv_set_payload %p fp_disc_ad", (void *)fp_adv_set);
 		err = bt_le_ext_adv_set_data(fp_adv_set, fp_disc_ad, ARRAY_SIZE(fp_disc_ad), NULL,
 					     0);
 	} else {
 		fp_non_disc_fp_adv_data();
-		LOG_DBG("fp_adv_set_payload %p fp_non_disc_ad", fp_adv_set);
+		LOG_DBG("fp_adv_set_payload %p fp_non_disc_ad", (void *)fp_adv_set);
 		err = bt_le_ext_adv_set_data(fp_adv_set, fp_non_disc_ad, ARRAY_SIZE(fp_non_disc_ad),
 					     NULL, 0);
 	}

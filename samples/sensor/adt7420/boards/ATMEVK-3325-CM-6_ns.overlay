@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+&i2c1_scl_default {
+	bias-pull-up;
+};
+
+&i2c1 {
+	status = "okay";
+	adt7420@4b {
+		compatible = "adi,adt7420";
+		reg = <0x4b>;
+		label = "ADT7420";
+	};
+};

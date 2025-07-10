@@ -70,6 +70,7 @@
 	};
 };
 
+#if FLASH_SIZE
 &flash_controller {
 	clk-pin = <18>;
 	csn-pin = <19>;
@@ -78,6 +79,7 @@
 	d2-pin = <22>;
 	d3-pin = <23>;
 };
+#endif
 
 &i2c0 {
 	pinctrl-0 = <&i2c0_sda_default &i2c0_scl_default>;
@@ -105,8 +107,19 @@
 };
 
 &adc {
-    ch-cell = <1>;
-    ch-batt = <11>;
+	ch-cell = <1>;
+	ch-p1single1 = <8>;
+	ch-batt = <11>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@8 {
+		reg = <8>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
 };
 
 &uart1 {

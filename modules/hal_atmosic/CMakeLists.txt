@@ -6,3 +6,4 @@ add_subdirectory(drivers)
 
 add_subdirectory_ifdef(CONFIG_SOC_ATMX2XX_X1X ATMx2xx-x1x)
 add_subdirectory_ifdef(CONFIG_SOC_ATM33XX_5 ATM33xx-5)
+add_subdirectory_ifdef(CONFIG_SOC_SERIES_ATM34 ATM34xx)

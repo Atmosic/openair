@@ -5,7 +5,7 @@
  *
  * @brief Atmosic settings subsystem initialization and settings data handling
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  *******************************************************************************
  */
@@ -17,7 +17,9 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/storage/flash_map.h>
 #include "atm_settings.h"
+#ifdef FACTORY_IN_RRAM
 #include "rram_rom_prot.h"
+#endif
 
 #define LOG_MODULE_NAME atm_settings
 LOG_MODULE_REGISTER(LOG_MODULE_NAME, CONFIG_ATM_SETTINGS_LOG_LEVEL);
@@ -67,6 +69,7 @@ static int atm_settings_init(void)
     }
     LOG_INF("settings factory initialization: OK.");
 
+#ifdef FACTORY_IN_RRAM
     uint32_t factory_offset = factory_config.part_info.part_offset;
     uint32_t factory_size = factory_config.part_info.part_size;
     bool sec_s = rram_prot_sticky_write_disable(factory_offset, factory_size);
@@ -76,6 +79,10 @@ static int atm_settings_init(void)
 	return -EINVAL;
     }
     LOG_INF("settings factory data WP: OK.");
+#endif
+#ifdef FACTORY_IN_FLASH
+    // FIXME: Waiting for sticky lock for flash to be implemented
+#endif
 
     return 0;
 }

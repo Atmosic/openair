@@ -82,7 +82,7 @@ def parse_args():
                             required=True, default=None,
                             help="platform family, ex: ATM33xx-5 or ATM34xx-5")
     gen_parser.add_argument("-b", "--board", required=False, default=None,
-                            help="board name, ex: ATMEVK-3330e-QN")
+                            help="board name, ex: ATMEVK-3330e-QN-6")
     gen_parser.add_argument("-use_mcuboot", "--use_mcuboot",
                             action='store_true',
                             help="USE_MCUBOOT enabled, default false")
@@ -363,7 +363,7 @@ class DevStreeParser:
     def parsing_board(self):
         """ Parse Board Information """
         # transfer BOARD
-        # atmosic_sdk : ATMEVK_3330e_QN, Zephyr: ATMEVK-3330e-QN_ns
+        # atmosic_sdk : ATMEVK_3330e_QN, Zephyr: ATMEVK-3330e-QN-6_ns
         board_name_prefix = None
         if self.board:
             name_split = self.board.split('_')
@@ -728,6 +728,13 @@ class DevStreeParser:
                 hex(factory_data_start + flash0_start)
             self.part_info.FACTORY_DATA_OFFSET = hex(factory_data_start)
             self.part_info.FACTORY_DATA_SIZE = hex(factory_data_size)
+        if self.part_info.PLATFORM_FAMILY != 'atm33' \
+            and self.part_info.PLATFORM_FAMILY != 'atm34':
+            # erase block size from erase-block-size
+            erase_block_size = flash0.props.get('erase-block-size', 'Not found')
+            if erase_block_size:
+                self.part_info.ERASE_BLOCK_SIZE = \
+                    hex(dtlib.to_nums(erase_block_size.value)[0])
 
     def parsing_ext_flash(self):
         """ Parse External Flash Information """

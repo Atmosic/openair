@@ -32,7 +32,7 @@ static atm_gfp_hdlrs_t const *atm_gfp_hdlrs;
 
 static uint8_t atm_gfp_battery_status(void)
 {
-	if (atm_gfp_hdlrs->battery_status_cb) {
+	if (atm_gfp_hdlrs && atm_gfp_hdlrs->battery_status_cb) {
 		return atm_gfp_hdlrs->battery_status_cb();
 	}
 	return 0;
@@ -40,7 +40,7 @@ static uint8_t atm_gfp_battery_status(void)
 
 static void atm_gfp_sound_action(bool action)
 {
-	if (atm_gfp_hdlrs->sound_action_cb) {
+	if (atm_gfp_hdlrs && atm_gfp_hdlrs->sound_action_cb) {
 		return atm_gfp_hdlrs->sound_action_cb(action);
 	}
 }
@@ -59,7 +59,7 @@ static void fp_tag_utp_mode_switch(fp_fmdn_utp_mode_t mode)
 static void fp_tag_utp_owner_disconn_timeout_handler(struct k_work *work)
 {
 	LOG_INF("DULT Owner Disconnected");
-#ifndef FP_FMDN_VALIDATOR_TEST
+#ifndef CONFIG_FP_FMDN_VALIDATOR_TEST
 	dult_mode_update(DULT_NO_MODE_SEPERATED);
 #endif
 }
@@ -184,7 +184,7 @@ static void atm_gfp_mode_switch(fp_mode_t mode)
 		break;
 	}
 #ifdef CONFIG_ATM_GFP_MUTLIMODE_TAG
-	if (atm_gfp_hdlrs->mode_state_cb) {
+	if (atm_gfp_hdlrs && atm_gfp_hdlrs->mode_state_cb) {
 		atm_gfp_hdlrs->mode_state_cb(mode);
 	}
 #endif
@@ -202,7 +202,7 @@ static void atm_gfp_service_init(void)
 #endif
 	if (mode == FP_MODE_NONE) {
 #ifdef CONFIG_ATM_GFP_MUTLIMODE_TAG
-		if (atm_gfp_hdlrs->mode_state_cb) {
+		if (atm_gfp_hdlrs && atm_gfp_hdlrs->mode_state_cb) {
 			LOG_INF("Update FP_MODE_NONE");
 			atm_gfp_hdlrs->mode_state_cb(FP_MODE_NONE);
 		}

@@ -1,0 +1,60 @@
+# Copyright (c) 2023-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_BLE
+	bool "Atmosic BLE driver"
+	default y
+	depends on BT
+	select ATM_ATLC
+	select ATM_EUI
+	select ATM_BTHCI_UTILS
+	# Get crypto from ATM_UECC, which requires all of the below selections
+	select ATM_UECC
+	select MBEDTLS
+	select MBEDTLS_ECP_DP_SECP256R1_ENABLED
+	select MBEDTLS_ECP_C
+	select MBEDTLS_ECDSA_C
+
+config ATM_ATLC
+	bool "Atmosic ATLC driver"
+	default y if BT || IEEE802154_ATM34 || PM
+	depends on DT_HAS_ATMOSIC_BLE_ENABLED
+
+if ATM_ATLC
+
+config EXT_WAKEUP_ENABLE_INDEFINITE
+	bool "Symbol for backward compatibility"
+
+config ATM_BLE_DRIVER_SLEEP
+	bool "Atmosic BLE driver sleep"
+	default y
+
+config ATLC_DEEP_SLEEP
+	bool "ATLC deep sleep enable"
+	default y if ATM_BLE_DRIVER_SLEEP
+
+config ATM_BLE_STACK_SIZE
+	int "Size of the event loop thread stack"
+	default 1200
+
+config ATM_BLE_HIGH_PRIO
+	int
+	default 6
+
+config ATM_BLE_DUMP_HCI
+	bool "Dump HCI traffic in the BLE driver"
+	depends on ATM_BLE
+	select ATM_BTHCI_UTILS_DUMP_PKTS
+
+endif # ATM_ATLC
+
+if ATM_ATLC || DTOP_BYPASS || PM
+
+config ZERO_LATENCY_IRQS
+	default y
+
+config ZERO_LATENCY_LEVELS
+	default 2
+
+endif # ATM_ATLC || DTOP_BYPASS

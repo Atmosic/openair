@@ -10,11 +10,9 @@ This is the top-level repository for the Atmosic SDK.  It contains the west mani
 Supported Platforms
 *******************
 
-* ATMx2xx_
-* ATM33xx_
-
-.. _ATMx2xx: boards/atmosic/atmevk-02/doc/index.rst
-.. _ATM33xx: boards/atmosic/atm33evk/doc/index.rst
+* `ATM3/ATM3 </boards/atmosic/atmevk-02/doc/index.rst>`_
+* `ATM33/e </boards/atmosic/atm33evk/doc/index.rst>`_
+* `ATM34/e </boards/atmosic/atm34evk/doc/index.rst>`_
 
 Creating a Workspace
 ********************

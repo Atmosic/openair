@@ -1,6 +1,6 @@
 .. _sysbuild-hello-world-sample:
 
-Sysbuild: Hello World
+Sysbuild: hello_world
 #####################
 
 Overview
@@ -24,7 +24,7 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/sysbuild/hello_world`` in the openair tree.
+This sample is built from ``openair/samples/sysbuild/hello_world``.
 
 Sysbuild with or without MCUboot is specified by setting
 ``SB_CONFIG_SPE`` and ``SB_CONFIG_BOOTLOADER_MCUBOOT``.
@@ -65,7 +65,6 @@ Flash command:
 .. note::
   * The default build directory is the `build` folder under the current directory.
   * If the ``-d build_dir`` option is specified with `west build`, the same ``-d build_dir`` must also be specified with `west flash`.
-  * If a custom ``build_dir`` is specified, the `CONFIG_SPE_PATH` in `${BOARD_DIR}/sysbuild/app.conf` and `${BOARD_DIR}/sysbuild/app_mcuboot.conf` must be updated accordingly, since sysbuild test items defined in `sample.yaml` depend on them.
 
 
 Sample Output

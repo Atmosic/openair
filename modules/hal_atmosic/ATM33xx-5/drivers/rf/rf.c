@@ -514,12 +514,15 @@ void rf_set_txpwr_override(int8_t txpwr_dbm)
     rf_core_set_txpwr_override(gain_index);
 }
 
-int8_t rf_set_cs_txpwr_val(uint8_t cs_idx, int8_t txpwr_dbm)
+int8_t rf_set_cs_txpwr_val(uint16_t conhdl, int8_t txpwr_dbm)
 {
     if (rf_txpwr_cs_get_in_range(txpwr_dbm, TXPWR_CS_LOWER, 0,
 	RF_POWER_LVL_NUM - 1) > txpwr_max) {
 	return INVALID_TX_POWER_VALUE;
     }
+    uint8_t act_id = BLE_CONHDL_TO_LINKID(conhdl);
+    uint8_t cs_idx = EM_BLE_CS_ACT_ID_TO_INDEX(act_id);
+
     txpwr_con_dbm = txpwr_dbm;
     uint8_t gain_index = rwip_rf.txpwr_cs_get(txpwr_dbm, TXPWR_CS_LOWER);
     em_ble_txrxcntl_txpwr_setf(cs_idx, gain_index);

@@ -55,9 +55,29 @@ enum {
 int atm_vendor_set_pref_slave_lat(uint16_t conhdl, uint16_t latency);
 #endif
 
+#ifdef CFG_VND_API_SET_MAX_TX_POWER
+/**
+ * @brief Set Maximum TX power
+ *
+ * @note The RF driver will select the closest available value as the new TX
+ * power. The supported TX power levels are: -20, -10, -8, -4, -2, 0, 2, 4, 6,
+ * 8, and 10 dBm.
+ *
+ * @param tx_pwr transmitter power in dBm
+ *
+ * @return 0 on success, non-zero on failure.
+ */
+uint8_t atm_vendor_set_max_tx_power(int8_t tx_pwr);
+#endif
+
 #ifdef CFG_VND_API_SET_ADV_TX_POWER
 /**
  * @brief Set Advertising Transmitter Power
+ *
+ * @note The RF driver will select the closest available value as the new TX
+ * power. The supported TX power levels are: -20, -10, -8, -4, -2, 0, 2, 4, 6,
+ * 8, and 10 dBm.
+ *
  * @param tx_pwr Transmitter Power
  *
  * @return 0 on success, non-zero on failure.
@@ -68,6 +88,11 @@ uint8_t atm_vendor_set_adv_tx_power(int8_t tx_pwr);
 #ifdef CFG_VND_API_SET_CON_TX_POWER
 /**
  * @brief Set Connection Transmitter Power
+ *
+ * @note The RF driver will select the closest available value as the new TX
+ * power. The supported TX power levels are: -20, -10, -8, -4, -2, 0, 2, 4, 6,
+ * 8, and 10 dBm.
+ *
  * @param conhdl Connection Handle
  * @param tx_pwr Transmitter Power
  *

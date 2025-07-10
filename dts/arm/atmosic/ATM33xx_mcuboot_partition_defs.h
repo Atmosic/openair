@@ -44,9 +44,14 @@
 // larger scratch area for external flash
 #define ATM_MCUBOOT_SCRATCH_SIZE 0x4000
 #else
-#define ATM_MCUBOOT_SCRATCH_SIZE 0x2000
+#define ATM_MCUBOOT_SCRATCH_SIZE 0x0
 #endif // DFU_IN_FLASH
 #endif // ATM_MCUBOOT_SCRATCH_SIZE
+
+#if !defined(DFU_IN_FLASH) && ATM_MCUBOOT_SCRATCH_SIZE
+#error "MCUBOOT SWAP mode has been deprecated in RRAM only configuration"
+#endif
+
 #if ((ATM_MCUBOOT_SCRATCH_SIZE % ATM_RRAM_BLOCK_SIZE) != 0)
 #error "MCUBOOT scratch size must be aligned"
 #endif

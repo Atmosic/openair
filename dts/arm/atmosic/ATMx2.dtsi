@@ -357,6 +357,10 @@
 			compatible = "atmosic,atm-pinctrl";
 			num-pins = <34>;
 		};
+
+		retained_mem_hib: retained-memory {
+			compatible = "atmosic,retained-hib";
+		};
 	};
 
 	chosen {

@@ -44,6 +44,17 @@ if(CONFIG_ATM_VENDOR_API)
     zephyr_include_directories(api_include)
     zephyr_sources(atm_vendor_api.c)
     zephyr_compile_definitions_ifdef(CONFIG_VND_API_SET_PREF_SLAVE_LAT CFG_VND_API_SET_PREF_SLAVE_LAT)
+    zephyr_compile_definitions_ifdef(CONFIG_VND_API_SET_MAX_TX_POWER CFG_VND_API_SET_MAX_TX_POWER)
     zephyr_compile_definitions_ifdef(CONFIG_VND_API_SET_ADV_TX_POWER CFG_VND_API_SET_ADV_TX_POWER)
     zephyr_compile_definitions_ifdef(CONFIG_VND_API_SET_CON_TX_POWER CFG_VND_API_SET_CON_TX_POWER)
+
+    if(NOT CONFIG_VND_API_SET_PREF_SLAVE_LAT AND NOT CONFIG_VND_API_SET_ADV_TX_POWER AND NOT CONFIG_VND_API_SET_CON_TX_POWER)
+        message(FATAL_ERROR
+            "CONFIG_ATM_VENDOR_API is enabled, but none of the following options are set:\n"
+            "  CONFIG_VND_API_SET_PREF_SLAVE_LAT\n"
+            "  CONFIG_VND_API_SET_ADV_TX_POWER\n"
+            "  CONFIG_VND_API_SET_CON_TX_POWER\n"
+            "Please enable at least one."
+        )
+    endif()
 endif()

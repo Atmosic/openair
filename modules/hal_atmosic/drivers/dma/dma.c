@@ -443,6 +443,26 @@ void dma_spi_rx_async(uint8_t spi_port, void *dst, size_t len,
 #endif
     CMSDK_AT_DMA->CHAN2_OPMODE = AT_DMA_OPMODE__GO__MASK;
 }
+
+void dma_rx_async_stop(void)
+{
+    GLOBAL_INT_DISABLE();
+
+    if (chan2_cb) {
+	CMSDK_AT_DMA->CHAN2_OPMODE = AT_DMA_OPMODE__STOP__MASK;
+	CMSDK_AT_DMA->CHAN2_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
+	NVIC_ClearPendingIRQ(DMA2_IRQn);
+	chan2_cb = NULL;
+#ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_PM
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+	k_sem_give(&dma_rx_sem);
+#endif // CONFIG_SOC_FAMILY_ATM
+    }
+
+    GLOBAL_INT_RESTORE();
+}
 #endif // CONFIG_ATM_DMA_FIFO_RX
 
 static struct {
@@ -583,6 +603,39 @@ void dma_spi_tx_async(uint8_t spi_port, void const *src, size_t len,
     pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 #endif
     CMSDK_AT_DMA->CHAN3_OPMODE = AT_DMA_OPMODE__GO__MASK;
+}
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+#if DT_NODE_EXISTS(DT_NODELABEL(dma3))
+#define DMA3_IRQ_PRI DT_IRQ(DT_NODELABEL(dma3), priority)
+#define DMA3_IRQ_NUM DT_IRQN(DT_NODELABEL(dma3))
+#else
+#define DMA3_IRQ_PRI IRQ_PRI_MID
+#define DMA3_IRQ_NUM DMA3_IRQn
+#endif
+#else
+#define DMA3_IRQ_PRI IRQ_PRI_MID
+#define DMA3_IRQ_NUM DMA3_IRQn
+#endif
+
+void dma_tx_async_stop(void)
+{
+    GLOBAL_INT_DISABLE();
+
+    if (chan3_cb) {
+	CMSDK_AT_DMA->CHAN3_OPMODE = AT_DMA_OPMODE__STOP__MASK;
+	CMSDK_AT_DMA->CHAN3_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
+	NVIC_ClearPendingIRQ(DMA3_IRQ_NUM);
+	chan3_cb = NULL;
+#ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_PM
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+	dma3_isr_tx_set ? dma3_isr_tx_set = false : k_sem_give(&dma_tx_sem);
+#endif // CONFIG_SOC_FAMILY_ATM
+    }
+
+    GLOBAL_INT_RESTORE();
 }
 
 #if CFG_DMA_COPY
@@ -743,19 +796,6 @@ static rep_vec_err_t dma_schedule(void)
     return (RV_NEXT);
 }
 #endif // DEBUG_DMA
-
-#ifdef CONFIG_SOC_FAMILY_ATM
-#if DT_NODE_EXISTS(DT_NODELABEL(dma3))
-#define DMA3_IRQ_PRI DT_IRQ(DT_NODELABEL(dma3), priority)
-#define DMA3_IRQ_NUM DT_IRQN(DT_NODELABEL(dma3))
-#else
-#define DMA3_IRQ_PRI IRQ_PRI_MID
-#define DMA3_IRQ_NUM DMA3_IRQn
-#endif
-#else
-#define DMA3_IRQ_PRI IRQ_PRI_MID
-#define DMA3_IRQ_NUM DMA3_IRQn
-#endif
 
 #ifndef CONFIG_SOC_FAMILY_ATM
 __attribute__((constructor))

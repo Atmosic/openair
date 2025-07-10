@@ -1,0 +1,25 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Test-specific configuration for retained memory driver tests
+
+source "Kconfig.zephyr"
+
+config RETAINED_MEM_TEST_HIBERNATION_DURATION_MS
+	int "Hibernation duration for tests in milliseconds"
+	default 2000
+	help
+	  Duration in milliseconds for hibernation during tests.
+	  Longer durations provide more realistic testing but increase
+	  test execution time.
+
+config RETAINED_MEM_TEST_LOG_LEVEL
+	int "Log level for retained memory tests"
+	default 4
+	range 0 4
+	help
+	  Sets the log level for retained memory test module.
+	  Levels: 0=OFF, 1=ERR, 2=WRN, 3=INF, 4=DBG
+	  Use 4 (DBG) for detailed debug output including data patterns,
+	  checksums, and hibernation status. Use 3 (INF) for normal output.

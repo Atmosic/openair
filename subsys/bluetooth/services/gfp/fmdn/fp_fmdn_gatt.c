@@ -618,7 +618,7 @@ ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr
 		err = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 		LOG_INF("BCNA write: res=%zd conn=%p, "
 			"Return error because Fast Pair Mode %u not allow",
-			res, conn, mode);
+			res, (void *)conn, mode);
 		goto finish;
 	}
 
@@ -764,7 +764,7 @@ K_WORK_DEFINE(fp_fmdn_gatt_disconn_action, fp_fmdn_gatt_disconn_invoke_action);
 
 static void fp_fmdn_gatt_connected(struct bt_conn *conn, uint8_t err)
 {
-	LOG_DBG("Connected conn(%p) err(0x%02x) ", conn, err);
+	LOG_DBG("Connected conn(%p) err(0x%02x) ", (void *)conn, err);
 	if (!fp_conn_validate(conn)) {
 		return;
 	}
@@ -777,7 +777,7 @@ static void fp_fmdn_gatt_connected(struct bt_conn *conn, uint8_t err)
 
 static void fp_fmdn_gatt_disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	LOG_DBG("Discon conn(%p) res(0x%02x) ", conn, reason);
+	LOG_DBG("Discon conn(%p) res(0x%02x) ", (void *)conn, reason);
 	if (!fp_conn_validate(conn)) {
 		return;
 	}

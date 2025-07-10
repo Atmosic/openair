@@ -1,8 +1,8 @@
 .. _atmevk-02:
 
-###############
-Atmosic ATMx2xx
-###############
+#################
+Atmosic ATM2/ATM3
+#################
 
 ********
 Overview
@@ -141,7 +141,7 @@ The user will need to test each one to determine where the message output is dis
 Windows
 =======
 
-The console output for the Atmosic ATMx2xx is sent to the USB Serial port. When connected, two UART ports will be displayed.
+The console output for the Atmosic ATM2/ATM3 is sent to the USB Serial port. When connected, two UART ports will be displayed.
 The user must test each one to determine where the message output appears.
 To view the console output, use a serial terminal program such as PuTTY (available from
 https://www.chiark.greenend.org.uk/~sgtatham/putty) to connect to the USB Serial port. Set the UART configuration to 115200/N/8/1.
@@ -151,5 +151,5 @@ Note on UART1 RX
 ================
 
 To use P32 for UART1 RX, set the MODE2 switch (SW1) on the EVK to the OFF position. This switch is connected to a 1k pull-down resistor and, when ON, prevents the FTDI interface board from driving the UART1 RX line.
-To connect the ATMx2 part to the FTDI interface board, change the J3 jumper on the FTDI board from its default position (pins 3 and 4 connected) to pins 5 and 6 (third position from the right).
-However, when loading the application, remove the J3 jumper to prevent benign boot being active that could stop the ATMx2 from booting into the application.
+To connect the ATM2/ATM3 part to the FTDI interface board, change the J3 jumper on the FTDI board from its default position (pins 3 and 4 connected) to pins 5 and 6 (third position from the right).
+However, when loading the application, remove the J3 jumper to prevent benign boot being active that could stop the ATM2/ATM3 from booting into the application.

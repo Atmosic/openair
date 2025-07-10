@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024, Atmosic
+ * Copyright (c) 2021-2025, Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -100,25 +100,27 @@ static void pwm_pseq_latch_close(void)
 #endif
 
 #ifdef CONFIG_PM
-static bool pm_constraint_on;
-static void pwm_atm_pm_constraint_set(const struct device *dev)
+static atomic_t pm_constraint_mask;
+static void pwm_atm_pm_constraint_set(const struct device *dev, uint8_t channel)
 {
-	if (!pm_constraint_on) {
-		pm_constraint_on = true;
+	atomic_t old_mask = atomic_or(&pm_constraint_mask, BIT(channel));
+
+	if (!old_mask) {
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
 }
 
-static void pwm_atm_pm_constraint_release(const struct device *dev)
+static void pwm_atm_pm_constraint_release(const struct device *dev, uint8_t channel)
 {
-	if (pm_constraint_on) {
-		pm_constraint_on = false;
+	atomic_t old_mask = atomic_and(&pm_constraint_mask, ~BIT(channel));
+
+	if (old_mask && !pm_constraint_mask) {
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
 }
-#endif /* CONFIG_PM */
+#endif
 
 static void pinmux_config(uint8_t instance, uint8_t polarity, pwm_mode_t mode)
 {
@@ -190,6 +192,40 @@ static void pwm_set_duration(uint8_t instance, uint32_t hi_dur, uint32_t lo_dur)
 	}
 }
 
+void pwm_disable(uint8_t instance)
+{
+	switch (instance) {
+	case 0:
+		PWM_PWM0_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM0_CTRL);
+		break;
+	case 1:
+		PWM_PWM1_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM1_CTRL);
+		break;
+	case 2:
+		PWM_PWM2_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM2_CTRL);
+		break;
+	case 3:
+		PWM_PWM3_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM3_CTRL);
+		break;
+	case 4:
+		PWM_PWM4_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM4_CTRL);
+		break;
+	case 5:
+		PWM_PWM5_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM5_CTRL);
+		break;
+	case 6:
+		PWM_PWM6_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM6_CTRL);
+		break;
+	case 7:
+		PWM_PWM7_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM7_CTRL);
+		break;
+	default:
+		ASSERT_INFO(0, instance, 0);
+		break;
+	}
+	return;
+}
+
 void pwm_enable(uint8_t instance)
 {
 	switch (instance) {
@@ -241,7 +277,16 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 		return -EINVAL;
 	}
 
-	if ((period_cycles == 0U) || (pulse_cycles > period_cycles)) {
+	if (!pulse_cycles) {
+		pwm_set_duration(channel, 0, 0);
+		pwm_disable(channel);
+#ifdef CONFIG_PM
+		pwm_atm_pm_constraint_release(dev, channel);
+#endif
+		return 0;
+	}
+
+	if (pulse_cycles > period_cycles) {
 		LOG_ERR("Invalid combination of pulse and period cycles. Received: %d %d",
 			pulse_cycles, period_cycles);
 		return -EINVAL;
@@ -307,12 +352,8 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 #endif // PWM_PMW0_CTRL__TOT_DUR__READ
 
 #ifdef CONFIG_PM
-	if (pulse_cycles) {
-		pwm_atm_pm_constraint_set(dev);
-	} else {
-		pwm_atm_pm_constraint_release(dev);
-	}
-#endif // CONFIG_PM
+	pwm_atm_pm_constraint_set(dev, channel);
+#endif
 
 	pinmux_config(channel, 0, PWM_CONTINUOUS_MODE);
 	pwm_set_duration(channel, hi_dur, lo_dur);

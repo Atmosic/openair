@@ -1,0 +1,11 @@
+tests:
+  tests.lib.atm_shell.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "atm shell test! (.*)"
+    tags: atm33 atm34 no_mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y

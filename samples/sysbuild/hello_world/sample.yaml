@@ -12,44 +12,52 @@ common:
 tests:
   samples.sysbuild.hello_world.atm:
     sysbuild: true
-    tags: introduction atm33 atm34
+    tags: introduction atm33 atm34 no_mcuboot
     extra_args:
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
       - SB_CONFIG_SPE=y
   samples.sysbuild.hello_world.atm.mcuboot:
     sysbuild: true
-    tags: introduction atm33 atm34
+    tags: introduction atm33 atm34 mcuboot
     extra_args:
-      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+  samples.sysbuild.hello_world.atm.mcuboot.rram_only:
+    sysbuild: true
+    tags: introduction atm33 mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
   samples.sysbuild.hello_world.atm.no_tz:
     sysbuild: true
-    tags: introduction atm33 atm34
-    extra_args:
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
+    tags: introduction atm33 atm34 no_tz
   samples.sysbuild.hello_world.atm.mcuboot.no_tz:
     sysbuild: true
-    tags: introduction atm33 atm34
+    tags: introduction atm34 mcuboot mcuboot_no_tz
     extra_args:
-      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_no_TZ_mcuboot_bl.overlay"
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+  samples.sysbuild.hello_world.atm.mcuboot.no_tz.rram_only:
+    sysbuild: true
+    tags: introduction atm33 mcuboot mcuboot_no_tz
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
   samples.sysbuild.hello_world.atm.mcuboot.atmx2:
     sysbuild: true
     tags: introduction atmx2
     extra_args:
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y

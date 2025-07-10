@@ -654,9 +654,21 @@ static void txn_watchdog_timeout(struct k_timer *timer)
 	// Reset the transaction setup to stop any ongoing hardware activity
 	aconfig->base->TRANSACTION_SETUP = 0;
 
+#ifdef CONFIG_SPI_ATM_DMA
+	SPI_CTRL__DMA_MODE__CLR(aconfig->base->CTRL);
+
+#ifdef CONFIG_ATM_DMA_FIFO_RX
+	dma_rx_async_stop();
+#endif
+
+	dma_tx_async_stop();
+	struct spi_atm_data *data = DEV_DATA(dev);
+	k_work_cancel(&data->tx_dma_work);
+#endif // CONFIG_SPI_ATM_DMA
+
 	spi_atm_context_unlock(dev, true, -ETIMEDOUT);
 }
-#endif
+#endif // CONFIG_SPI_ATM_WATCHDOG
 
 static int spi_atm_init(struct device const *dev)
 {

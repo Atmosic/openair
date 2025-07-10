@@ -2,13 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-if(CONFIG_ATM_RWLC)
+if(CONFIG_ATM_RWLC OR CONFIG_PM)
   zephyr_include_directories(
-    ../../include/ble
     ../../include/reg_ble
   )
   zephyr_sources(
     src/ble_driver.c
+  )
+endif()
+
+if(CONFIG_ATM_RWLC)
+  zephyr_include_directories(
+    ../../include/ble
   )
 
   set(BLE_FULL_STACK_C_FLAGS
@@ -62,25 +67,15 @@ if(CONFIG_ATM_RWLC)
     -DCFG_ATMWSTKLIB
   )
 
-  if(CONFIG_USE_ATMWSTK)
-    if(CONFIG_ATMWSTK_PD50)
-      zephyr_compile_definitions(${BLE_PD50_STACK_C_FLAGS})
-      set(ATMWSTK_FLAVOR "PD50LL")
-    elseif(CONFIG_ATMWSTK_FULL)
+  if(CONFIG_USE_FIXED_ATMWSTK)
+    if(CONFIG_ATMWSTK_FULL)
       zephyr_compile_definitions(${BLE_FULL_STACK_C_FLAGS})
-      set(ATMWSTK_FLAVOR "LL")
-    elseif(CONFIG_ATMWSTK STREQUAL "LL")
-      zephyr_compile_definitions(${BLE_FULL_STACK_C_FLAGS})
-      set(ATMWSTK_FLAVOR "LL")
-    elseif(CONFIG_ATMWSTK STREQUAL "PD50LL")
-      zephyr_compile_definitions(${BLE_PD50_STACK_C_FLAGS})
-      set(ATMWSTK_FLAVOR "PD50LL")
+      zephyr_link_libraries(
+        ${LINKERFLAGPREFIX},-R${CMAKE_CURRENT_SOURCE_DIR}/atmwstk_FULL.elf
+      )
     else()
-      message(FATAL_ERROR "Invalid CONFIG_ATMWSTK.")
+      message(FATAL_ERROR "Fixed BLE stack only supports FULL for atm33. Please set CONFIG_ATMWSTK_FULL=y.")
     endif()
-    zephyr_link_libraries(
-      ${LINKERFLAGPREFIX},-R${CMAKE_CURRENT_SOURCE_DIR}/atmwstk_${ATMWSTK_FLAVOR}.elf
-    )
   else()
     if(CONFIG_ATMWSTK_PD50)
       zephyr_compile_definitions(${BLE_PD50_STACK_C_FLAGS})
@@ -89,19 +84,8 @@ if(CONFIG_ATM_RWLC)
         -L${CMAKE_CURRENT_SOURCE_DIR}
       )
       zephyr_link_libraries(blellPD50)
-    elseif(CONFIG_ATMWSTK_FULL)
-      message(FATAL_ERROR "CONFIG_ATMWSTK_FULL only supports fixed wireless stack image for atm33. Set CONFIG_USE_ATMWSTK=y to use fixed wireless stack image.")
-    elseif(CONFIG_ATMWSTKLIB STREQUAL "PD50")
-      message(DEPRECATION "CONFIG_ATMWSTKLIB will be deprecated in the future, please choose one of CONFIG_ATMWSTK_PD50 or CONFIG_ATMWSTK_FULL.")
-      zephyr_compile_definitions(${BLE_PD50_STACK_C_FLAGS})
-      zephyr_compile_definitions(${ATMWSTKLIB_C_FLAGS})
-      zephyr_link_libraries(
-        -L${CMAKE_CURRENT_SOURCE_DIR}
-      )
-      zephyr_link_libraries(blellPD50)
     else()
-      message(DEPRECATION "CONFIG_ATMWSTKLIB will be deprecated in the future, please choose one of CONFIG_ATMWSTK_PD50 or CONFIG_ATMWSTK_FULL.")
-      message(FATAL_ERROR "Invalid CONFIG_ATMWSTKLIB. \"PD50\" is the only option for CONFIG_ATMWSTKLIB for ATM33.")
+      message(FATAL_ERROR "BLE stack library only supports PD50 for atm33. Please set CONFIG_ATMWSTK_PD50=y.")
     endif()
   endif()
 endif()

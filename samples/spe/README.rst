@@ -1,7 +1,7 @@
 .. _spe:
 
-Security: Secure Processing Environment sample
-###############################################
+Basic: spe
+##########
 
 Overview
 ********
@@ -103,11 +103,11 @@ Below are the steps for building and programming this application, without MCUBo
 Example environment variables setup::
 
   APP=openair/hci_vendor
-  BOARD=<board base name, i.e. ATMEVK-3330e-QN-5>
+  BOARD=<board base name, i.e. ATMEVK-3330e-QN-6>
   JLINK_SN=<serial number>
   SPE=openair/samples/spe
 
-The SPE application build uses the default `secure` board file without the ``_ns`` suffix (ex: ``ATMEVK-3330e-QN-5``).  The NSPE uses the non-secure board file with the ``_ns`` suffix (ex: ``ATMEVK-3330e-QN-5_ns``). The SPE and NSPE are separate Zephyr applications requiring different board and system resources (secure versus non-secure).  The MCUBOOT application image also uses the same `secure` board file since the resource requirements are similar to the SPE.  MCUBOOT specific board overlays are provided to configure resource settings.
+The SPE application build uses the default `secure` board file without the ``_ns`` suffix (ex: ``ATMEVK-3330e-QN-6``).  The NSPE uses the non-secure board file with the ``_ns`` suffix (ex: ``ATMEVK-3330e-QN-6_ns``). The SPE and NSPE are separate Zephyr applications requiring different board and system resources (secure versus non-secure).  The MCUBOOT application image also uses the same `secure` board file since the resource requirements are similar to the SPE.  MCUBOOT specific board overlays are provided to configure resource settings.
 
 Build commands for SPE and NSPE::
 

@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# Include sysbuild module.
+sysbuild_add_subdirectory(module)
+
 # Include SPE if enabled.
 if(SB_CONFIG_SPE)
   sysbuild_add_subdirectory(spe)

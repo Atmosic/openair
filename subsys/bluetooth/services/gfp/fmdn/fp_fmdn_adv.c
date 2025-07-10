@@ -30,7 +30,7 @@
 
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 
-#ifdef FP_FMDN_VALIDATOR_TEST
+#ifdef CONFIG_FP_FMDN_VALIDATOR_TEST
 // Advertising interval within 500 ms to test in open air
 #define FP_FMDN_ADV_DISCOVER_MS 500
 #else
@@ -128,7 +128,7 @@ static void fp_fmdn_adv_connected(struct bt_le_ext_adv *instance,
 static int fp_fmdn_adv_set_payload(void)
 {
 	fp_fmdn_adv_data();
-	LOG_DBG("fp_fmdn_adv_set_payload %p fmdn_ad", fmdn_adv_set);
+	LOG_DBG("fp_fmdn_adv_set_payload %p fmdn_ad", (void *)fmdn_adv_set);
 	int err = bt_le_ext_adv_set_data(fmdn_adv_set, fmdn_ad, ARRAY_SIZE(fmdn_ad), NULL, 0);
 	if (err) {
 		LOG_ERR("Failed to set advertising data (err %d)", err);
