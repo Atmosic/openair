@@ -37,7 +37,7 @@ void fp_conn_init(void)
 	size_t count = CONFIG_BT_ID_MAX;
 	bt_id_get(addr, &count);
 	LOG_INF("bt id count %zd", count);
-	__ASSERT((CONFIG_FP_BT_ID_NUM + count) < CONFIG_BT_ID_MAX,
+	__ASSERT((CONFIG_FP_BT_ID_NUM + count) <= CONFIG_BT_ID_MAX,
 		 "CONFIG_BT_ID_MAX should be greater than CONFIG_FP_BT_ID_NUM");
 	bt_id_base = count;
 	bt_addr_le_t static_addr;

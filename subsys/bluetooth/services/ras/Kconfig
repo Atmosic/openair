@@ -1,0 +1,84 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config BT_RAS
+	bool "Support for GATT Ranging Service"
+	select BT_CHANNEL_SOUNDING
+	select APP_WORK_Q
+
+if BT_RAS
+
+config RAS_MAX_ANTENNA_PATH_NUM
+	int "Maximum Antenna Path Number"
+	range 1 4
+	default 4
+
+config RAS_REAL_TIME_RD
+	bool "Support for Real-time Ranging Data"
+	default y
+
+config RAS_SECURE_LVL
+	int "Connection Secure level for Ranging Profile"
+	range 2 4
+	default 2
+	help
+	    Connection Secure, BT_SECURITY_L2 ~ BT_SECURITY_L4
+
+config RAS_RD_BUFFER_NUM
+	int "The amount of Buffer for RAS Raging Data"
+	range 1 2
+	default 1
+
+config RAS_SECURE_FORCE_DISCONN
+	bool "Force disconnect if secure level change too low"
+
+config RAS_ACTIVE_SECURE_CHANGE
+	bool "Server would send secure request as connected"
+
+module = BT_RAS
+module-str = BT_RAS
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # BT_RAS
+
+config BT_RAS_CLIENT
+	bool "Support for GATT Ranging Service Client"
+	select BT_GATT_CLIENT
+	select BT_CHANNEL_SOUNDING
+
+if BT_RAS_CLIENT
+
+config RAS_CLIENT_MAX_ANTENNA_PATH_NUM
+	int "Maximum Antenna Path Number"
+	range 1 4
+	default 4
+
+config RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC
+	int "Timeout for No Ranging Data Received"
+	range 0 5
+	default 5
+
+config RAS_CLIENT_REAL_TIME_RD
+	bool "Support Real-time Ranging Data Mode"
+	default y
+
+module = BT_RAS_CLIENT
+module-str = BT_RAS_CLIENT
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # BT_RAS_CLIENT
+
+if BT_RAS || BT_RAS_CLIENT
+config BT_BUF_ACL_TX_SIZE
+	range 251 $(UINT16_MAX)
+	default 502
+
+config BT_BUF_ACL_RX_SIZE
+	range 251 $(UINT16_MAX)
+	default 502
+
+config BT_L2CAP_TX_MTU
+	range 247 2000
+	default 498
+endif # BT_RAS || BT_RAS_CLIENT

@@ -1,0 +1,62 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+source "Kconfig.zephyr"
+
+config BTN_ON_OFF
+	bool "Power on/off device with Button"
+
+config BTN_BATT_REPORT
+	bool "Trigger Battery report with Button"
+	select ADC
+	select BATT_MODEL_COIN
+	depends on BTN_ON_OFF
+
+config RRSP_ADV_TIMEOUT_CS
+	int "Advertising timeout time(cs)"
+	range 0 360000
+	default 0
+
+config BATT_FACTORY_RESET
+	bool "Factory reset with insert/remove battery"
+	select ATM_SETTINGS
+	help
+	  Inserting and removing the battery five times will trigger a factory
+	  reset.
+
+config RRSP_LED_IND
+	bool "Enable LED indication for state and button"
+	select LED
+	help
+	  Power on: Green LED blinks 3 times
+	  Power off: Red LED blinks 3 times
+	  Pairing mode: Green blink -> Red blink every 5 secs
+	  Operation mode: Green LED blinks every 20 secs
+	  CS operation mode: Green LED blinks every 1 sec
+	  Battery Status:
+	    >3.0V 5 GREEN blinks
+	    >2.9V 4 GREEN blinks
+	    >2.8V 3 GREEN blinks
+	    >2.6V 2 GREEN blinks
+	    <= 2.6V single RED blink
+
+module = RRSP
+module-str = rrsp
+source "subsys/logging/Kconfig.template.log_config"
+
+module = RRSP_MMI
+module-str = rrsp_mmi
+source "subsys/logging/Kconfig.template.log_config"
+
+module = RRSP_BTN
+module-str = rrsp_btn
+source "subsys/logging/Kconfig.template.log_config"
+
+module = RRSP_BAT
+module-str = rrsp_bat
+source "subsys/logging/Kconfig.template.log_config"
+
+module = RRSP_LED
+module-str = rrsp_led
+source "subsys/logging/Kconfig.template.log_config"

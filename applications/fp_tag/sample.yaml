@@ -49,21 +49,14 @@ tests:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
     extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM33"
-  applications.fp_tag.atm.atmwstklib.full:
-    tags: fp_tag atm34 no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_ATMWSTK_FULL=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
-  applications.fp_tag.atm.atmwstklib.cpd200:
+  applications.fp_tag.atm.atmwstk.cpd200:
     tags: fp_tag atm34 no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
       - SB_CONFIG_ATMWSTK_CPD200=y
     extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM34"
-  applications.fp_tag.atm.mcuboot.atmwstklib.cpd200:
+  applications.fp_tag.atm.mcuboot.atmwstk.cpd200:
     tags: fp_tag atm34 mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
@@ -84,7 +77,7 @@ tests:
       - CONFIG_BT_MAX_CONN=4
       - CONFIG_BT_EXT_ADV_MAX_ADV_SET=3
       - CONFIG_ATM_SOC_ALLOW="ATM33"
-  applications.fp_tag.atm.atmwstklib.cpd200.validator:
+  applications.fp_tag.atm.atmwstk.cpd200.validator:
     tags: fp_tag atm34 no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y

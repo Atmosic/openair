@@ -31,8 +31,8 @@
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 
 #ifdef CONFIG_FP_FMDN_VALIDATOR_TEST
-// Advertising interval within 500 ms to test in open air
-#define FP_FMDN_ADV_DISCOVER_MS 500
+// Advertising interval to test in open air
+#define FP_FMDN_ADV_DISCOVER_MS CONFIG_FP_FMDN_VALIDATOR_TEST_ADV_INT
 #else
 // Advertising interval within 2 seconds
 #define FP_FMDN_ADV_DISCOVER_MS 2000
@@ -164,8 +164,17 @@ static bool fp_fmdn_adv_rpa_expired(struct bt_le_ext_adv *adv)
 		LOG_DBG("FMDN: setting RPA timeout to %u [s]", next_timeout);
 	}
 	if (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) {
-		LOG_DBG("FMDN: UTP_MODE enabled, skip rotate the current RPA");
-		rpa_expired = false;
+		static int64_t last_utp_rotation;
+		int64_t current_time = k_uptime_get();
+		/* 24 hours = 86400 seconds = 86400000 milliseconds */
+		if (current_time - last_utp_rotation < (24 * 60 * 60 * 1000)) {
+			LOG_DBG("FMDN: UTP_MODE enabled, skip rotate the current RPA "
+			"(24h not elapsed)");
+			rpa_expired = false;
+		} else {
+			LOG_DBG("FMDN: UTP_MODE enabled, allowing RPA rotation after 24h");
+			last_utp_rotation = current_time;
+		}
 	}
 
 	LOG_DBG("FMDN: update adv payload");
@@ -249,12 +258,12 @@ static void fp_fmdn_adv_invoke_stop(struct k_work *work)
 }
 K_WORK_DEFINE(fp_fmdn_adv_stop_action, fp_fmdn_adv_invoke_stop);
 
-void fp_fmdn_adv_recreate(bool force_stop)
+void fp_fmdn_adv_recreate(bool force_stop, bool stop_only)
 {
 	if (!fp_mode_is_provisioned() || force_stop) {
 		atm_work_submit_to_app_work_q(&fp_fmdn_adv_stop_action);
 	}
-	if (fp_mode_is_provisioned()) {
+	if (fp_mode_is_provisioned() && !stop_only) {
 		atm_work_submit_to_app_work_q(&fp_fmdn_adv_start_action);
 	}
 }

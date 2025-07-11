@@ -35,8 +35,9 @@ extern "C" {
  * @brief FP FMDN adv recreate
  *
  * @param [in] force_stop forcely stop before start
+ * @param [in] stop_only stop only do not start
  */
-void fp_fmdn_adv_recreate(bool force_stop);
+void fp_fmdn_adv_recreate(bool force_stop, bool stop_only);
 
 #ifdef __cplusplus
 }

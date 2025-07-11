@@ -165,6 +165,9 @@ ATM_VS_HDLR(MALLOC_CMD)
 #ifdef CONFIG_VND_WFI
 ATM_VS_HDLR(WFI_CMD)
 #endif
+#ifdef CONFIG_VND_NO_CLOCK
+ATM_VS_HDLR(NO_CLOCK_CMD)
+#endif
 ATM_VS_HDLR(EN_TXCW_CMD)
 ATM_VS_HDLR(FREQCAL_CMD)
 ATM_VS_HDLR(MM_R_CMD)
@@ -188,6 +191,9 @@ static struct bt_hci_raw_cmd_ext cmd_ext[] = {
 #endif
 #ifdef CONFIG_VND_WFI
     ATM_VS_SET(WFI_CMD),
+#endif
+#ifdef CONFIG_VND_NO_CLOCK
+    ATM_VS_SET(NO_CLOCK_CMD),
 #endif
     ATM_VS_SET(EN_TXCW_CMD),
     ATM_VS_SET(FREQCAL_CMD),

@@ -69,7 +69,7 @@ static void gfps_init_service(void)
 	fp_mode_init();
 	fp_gatt_init();
 	fp_adv_recreate();
-	fp_fmdn_adv_recreate(true);
+	fp_fmdn_adv_recreate(true, false);
 }
 
 int gfps_init(void)

@@ -21,7 +21,8 @@ rsource "Kconfig.logging"
 
 config FAST_PAIR_MAX_ACCOUNT_KEY_COUNT
     int "account key number support"
-    default 5
+    default 5 if FP_FMDN_VALIDATOR_TEST
+    default 1
 
 config FAST_PAIR_MODEL_ID
     hex "Google Fast Pair Model ID"
@@ -70,5 +71,13 @@ config FP_BT_ID_NUM
     int "FP BT ID number"
     default 3 if FAST_PAIR_FMDN_DULT
     default 2
+
+if FP_FMDN_VALIDATOR_TEST
+
+config FP_FMDN_VALIDATOR_TEST_ADV_INT
+    int "Optimize FMDN advertisement interval in ms for EDDYSTONE test"
+    default 250
+
+endif
 
 endif # ATM_GFPS

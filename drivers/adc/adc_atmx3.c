@@ -38,12 +38,8 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 
 #define ATM_GADC_RESOLUTION 11
 
-/* Reference voltage values */
-#define VOLT_3_3 3300
-#define VOLT_1_8 1800
-
 /* GADC internal reference voltage (Unit:mV) */
-#define ATM_GADC_VREF_VOL VOLT_3_3
+#define ATM_GADC_VREF_VOL 600
 
 #define GADC_AVERAGE_AMOUNT 8
 
@@ -159,7 +155,7 @@ struct gadc_atm_data {
 	/** Active channels */
 	size_t active_channels;
 	/** Current results */
-	int16_t *buffer;
+	int32_t *buffer;
 	/** Offset for the active channels */
 	uint8_t offset[CHANNEL_NUM_MAX];
 };
@@ -342,7 +338,7 @@ static int gadc_atm_read_async(struct device const *dev, struct adc_sequence con
 		}
 	}
 
-	size_t exp_size = data->active_channels * sizeof(uint16_t);
+	size_t exp_size = data->active_channels * sizeof(int32_t);
 	if (sequence->options) {
 		exp_size *= (1 + sequence->options->extra_samplings);
 	}
@@ -441,7 +437,7 @@ static struct adc_driver_api const api_atm_driver_api = {
 	.ref_internal = ATM_GADC_VREF_VOL,
 };
 
-static int16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch)
+static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch)
 {
 	CMSDK_GADC->CTRL = 0;
 
@@ -557,13 +553,39 @@ static int16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 	if (ch == TEMP) {
 		LOG_DBG("TEMP: raw: %#x, result: %f°C", raw_fifo.value, (double)result);
 		// return value in 0.01°C units
-		return (int16_t)(result * 100.0f);
+		return (int32_t)(result * 100.0f);
 	}
 
-	LOG_DBG("channel: %d, raw: %#x, sample_x2: %u, result: %f V", ch, raw_fifo.value,
-		sample_x2_signed, (double)result);
+	// Map hardware gain extension to ADC gain value used by adc_raw_to_millivolts()
+	float gain_value;
+	switch (gext[ch]) {
+	case GAIN_EXT_QUARTER:  // ADC_GAIN_1_4 -> gain = 0.25
+		gain_value = 0.25f;
+		break;
+	case GAIN_EXT_HALF:     // ADC_GAIN_1_2 -> gain = 0.5
+		gain_value = 0.5f;
+		break;
+	case GAIN_EXT_X1:       // ADC_GAIN_1 -> gain = 1.0
+		gain_value = 1.0f;
+		break;
+	case GAIN_EXT_X2:       // ADC_GAIN_2 -> gain = 2.0
+		gain_value = 2.0f;
+		break;
+	default:
+		gain_value = 1.0f;
+		break;
+	}
 
-	return (int16_t)(result * 1000.0f);
+	// Convert result back to raw value that adc_raw_to_millivolts() expects
+	// Reverse: raw = (millivolts * (1 << resolution) * gain) / ref_mv
+	float millivolts = result * 1000.0f;
+	uint32_t full_scale = (1 << ATM_GADC_RESOLUTION);
+	int32_t raw_value = (int32_t)((millivolts * full_scale * gain_value) / ATM_GADC_VREF_VOL);
+
+	LOG_DBG("channel: %d, gain_value: %f, raw: %#x, sample_x2: %u, raw_value: %ld\n", ch,
+		(double)gain_value, raw_fifo.value, sample_x2_signed, (long)raw_value);
+
+	return raw_value;
 }
 
 static void gadc_atm_isr(void const *arg)

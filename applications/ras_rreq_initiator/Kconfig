@@ -1,0 +1,21 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+source "Kconfig.zephyr"
+
+config BTN_DISABLE_CS_PROC
+	bool "Enable/Disable CS Procedure with Button"
+
+config CS_PROC_ANT_CFG_SEL
+	int "CS Tone Antenna Selection 0:1_1 1:2_1 2:3_1 3:4_1 4:1-2 5:1_3 6:1_4 7:2_2"
+	range 0 7
+	default 7
+
+module = RREQ
+module-str = RREQ
+source "subsys/logging/Kconfig.template.log_config"
+
+module = RREQ_SMF
+module-str = RREQ_SMF
+source "subsys/logging/Kconfig.template.log_config"
