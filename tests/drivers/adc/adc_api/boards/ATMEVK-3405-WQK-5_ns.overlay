@@ -19,7 +19,7 @@
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@3 {
@@ -27,7 +27,7 @@
 		zephyr,gain = "ADC_GAIN_1_2";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@4 {
@@ -35,7 +35,7 @@
 		zephyr,gain = "ADC_GAIN_1";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@5 {
@@ -43,7 +43,7 @@
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@6 {
@@ -51,7 +51,7 @@
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@7 {
@@ -59,7 +59,7 @@
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@8 {
@@ -67,7 +67,7 @@
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@9 {
@@ -75,7 +75,7 @@
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@a {
@@ -83,7 +83,7 @@
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 
 	channel@c {
@@ -91,6 +91,6 @@
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-		zephyr,resolution = <16>;
+		zephyr,resolution = <15>;
 	};
 };

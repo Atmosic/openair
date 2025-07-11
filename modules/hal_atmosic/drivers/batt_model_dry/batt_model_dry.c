@@ -102,7 +102,7 @@ static bool batt_dry_gadc_sample(void (*cb)(uint16_t, int32_t))
     gadc_sample_channel(PORT1_SINGLE_ENDED_1, batt_dry_calc_lvl,
 	PORT1_SINGLE_ENDED_1_GEXT_DEFAULT, NULL);
 #else
-    int16_t m_sample_buffer[ADC_BUFFER_SIZE];
+    int32_t m_sample_buffer[ADC_BUFFER_SIZE];
     struct adc_sequence const sequence = {
 	.channels = BIT(ADC_CHANNEL_ID),
 	.buffer = m_sample_buffer,
@@ -118,7 +118,13 @@ static bool batt_dry_gadc_sample(void (*cb)(uint16_t, int32_t))
 
     ret = k_poll(&async_evt, 1, K_FOREVER);
     ASSERT_INFO(ret == 0, ret, 0);
-    batt_dry_calc_lvl(m_sample_buffer[0] / 1000.0f);
+
+    /* Convert raw ADC value to millivolts, then to volts */
+    int32_t mv = m_sample_buffer[0];
+    uint16_t ref = adc_ref_internal(dry);
+    ret = adc_raw_to_millivolts(ref, channel_cfg.gain, ADC_RESOLUTION, &mv);
+    ASSERT_INFO(ret == 0, ret, 0);
+    batt_dry_calc_lvl(mv / 1000.0f);
 #endif
     return true;
 }

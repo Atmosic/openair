@@ -38,12 +38,8 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 #include "timer.h"
 #include "sec_jrnl.h"
 
-/* Reference voltage values */
-#define VOLT_3_3 3300
-#define VOLT_1_8 1800
-
 /* GADC internal reference voltage (Unit:mV) */
-#define ATM_GADC_VREF_VOL VOLT_3_3
+#define ATM_GADC_VREF_VOL 600
 
 #define GADC_MOD_SELECT    0
 #define GADC_WARMUP_CYCLES 3
@@ -136,7 +132,7 @@ struct gadc_atm_data {
 	/** Active channels */
 	size_t active_channels;
 	/** Current results */
-	int16_t *buffer;
+	int32_t *buffer;
 	/** Offset for the active channels */
 	uint8_t offset[CHANNEL_NUM_MAX_USER];
 };
@@ -402,9 +398,9 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 	CMSDK_GADC->INTERRUPT_MASK = DGADC_INTERRUPT_MASK__MASK_INTRPT2__MASK;
 }
 
-static void gadc_calibrate_offset(gadc_gain_ext_t gainext, int16_t sample)
+static void gadc_calibrate_offset(gadc_gain_ext_t gainext, int32_t sample)
 {
-	int16_t result = -sample;
+	int32_t result = -sample;
 	LOG_DBG("%s: %u %d", __func__, gainext, result);
 	switch (gainext) {
 	case GAIN_EXT_X1:
@@ -479,7 +475,7 @@ static int gadc_atm_read_async(struct device const *dev, struct adc_sequence con
 		}
 	}
 
-	size_t exp_size = data->active_channels * sizeof(uint16_t);
+	size_t exp_size = data->active_channels * sizeof(int32_t);
 	if (sequence->options) {
 		exp_size *= (1 + sequence->options->extra_samplings);
 	}
@@ -580,8 +576,7 @@ static struct adc_driver_api const api_atm_driver_api = {
 	.ref_internal = ATM_GADC_VREF_VOL,
 };
 
-static int16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch,
-				     int16_t *sample_raw)
+static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch)
 {
 	ASSERT_ERR(ch && (ch < CHANNEL_NUM_MAX));
 	CMSDK_GADC->CTRL = 0;
@@ -593,11 +588,7 @@ static int16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 	WRPR_CTRL_SET(CMSDK_GADC, WRPR_CTRL__SRESET);
 
 	// raw_fifo:  4 bit channel + 16 bit data = 20 bits
-	int16_t sample_signed = raw_fifo.sample;
-	*sample_raw = sample_signed;
-
-	float sample_scaling = (32767.0f / 0.6f) / (1 << gext[ch]);
-	float result = sample_signed / sample_scaling;
+	int32_t sample_signed = raw_fifo.sample;
 	if (ch == LI_ION_BATT) {
 		WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
 		{
@@ -606,19 +597,21 @@ static int16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 			PMU_WRITE(GADC, GADC_CTRL_REG_ADDR, gadc_ctrl);
 		}
 		WRPR_CTRL_POP();
-		result *= 6;
+		sample_signed *= 6;
 	} else if ((ch == PORT0_SINGLE_ENDED_1) || (ch == PORT1_SINGLE_ENDED_1)
 #ifdef GADC_GADC_CTRL__EXT_VDD1_SEL__SET
 	|| (ch == PORT2_SINGLE_ENDED) || (ch == PORT3_SINGLE_ENDED) || (ch == PORT4_SINGLE_ENDED)
 #endif
 	) {
 		// need to invert sign
-		result *= -1;
+		sample_signed *= -1;
 	} else if (ch == TEMP) {
 #define DEF_REF_TEMP 25.0f
 #define TMP117_LSB 0.0078125f
 #define CELSIUS_PER_VOLT 1000.0f
 #define DEF_REF_VOLT 0.350f
+		float sample_scaling = (32767.0f / 0.6f) / (1 << gext[ch]);
+		float result = sample_signed / sample_scaling;
 		float reference_temp = DEF_REF_TEMP;
 		if (CAL_PRESENT(chipinfo, test_temperature) &&
 			(chipinfo.version > 15)) {
@@ -628,12 +621,12 @@ static int16_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 		LOG_DBG("channel: %d, raw: %#x, result: %f C", ch, raw_fifo.value,
 			(double)result);
 		// return value in 0.01°C units
-		return (int16_t)(result * 100.0f);
+		return (int32_t)(result * 100.0f);
 	}
 
-	LOG_DBG("channel: %d, raw: %#x, result: %f V", ch, raw_fifo.value,
-		(double)result);
-	return (int16_t)(result * 1000.0f);
+	printk("channel: %d, raw: %#x, sample_signed: %d\n", ch, raw_fifo.value, sample_signed);
+
+	return sample_signed;
 }
 
 static void gadc_atm_isr(void const *arg)
@@ -646,12 +639,11 @@ static void gadc_atm_isr(void const *arg)
 
 	NVIC_DisableIRQ(DT_INST_IRQN(0));
 
-	int16_t sample_raw;
-	int16_t sample = gadc_process_samples(dev, data->ch, &sample_raw);
+	int32_t sample = gadc_process_samples(dev, data->ch);
 	data->chmask &= ~BIT(data->ch);
 	if (data->ch == CALIBRATION) {
 		data->ch = __builtin_ffs(data->chmask) - 1;
-		gadc_calibrate_offset(gext[data->ch], sample_raw);
+		gadc_calibrate_offset(gext[data->ch], sample);
 		gadc_start_measurement(dev, data->ch);
 		return;
 	}

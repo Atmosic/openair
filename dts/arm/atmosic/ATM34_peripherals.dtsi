@@ -292,7 +292,7 @@ adc: adc@15a000 {
 	interrupts = <53 8>;
 	status = "okay";
 	#io-channel-cells = <1>;
-	resolution = <16>;
+	resolution = <15>;
 	clock-freq = <2>;
 	sample-avg = <5>;
 	osr-select = <0>;
