@@ -291,7 +291,7 @@ static bool batt_gadc_sample(void (*cb)(uint16_t, int32_t))
     ASSERT_INFO(ret == 0, ret, 0);
 
     /* Convert raw ADC value to millivolts, then to volts */
-    int16_t mv = m_sample_buffer[0];
+    int32_t mv = m_sample_buffer[0];
     uint16_t ref = adc_ref_internal(hsc_liion);
     ret = adc_raw_to_millivolts(ref, channel_cfg.gain, ADC_RESOLUTION, &mv);
     ASSERT_INFO(ret == 0, ret, 0);
