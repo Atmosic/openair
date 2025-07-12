@@ -31,13 +31,13 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/samples/bluetooth/hci_vendor --sysbuild -T samples.bluetooth.hci_vendor.atm
+   west build -p always -b <BOARD>//ns openair/samples/bluetooth/hci_vendor --sysbuild -T samples.bluetooth.hci_vendor.atm
 
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
 
 
 Debug log(UART1)

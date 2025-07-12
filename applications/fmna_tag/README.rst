@@ -95,7 +95,7 @@ Run the following command to build the SPE, application and factory data:
 
 .. code-block:: bash
 
-    west build -p always -b <board>//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm
+    west build -p always -b <BOARD>//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm
 
 
 With UARP Support
@@ -105,14 +105,14 @@ Run the following command to build the mcuboot, SPE, application and factory dat
 
 .. code-block:: bash
 
-    west build -p always -b <board>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstklib.pd50
+    west build -p always -b <BOARD>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstklib.pd50
 
 
 Run the following command to program all the built images and run the application:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild -d build --verify --device=<serial> --jlink --fast_load [--erase_all]
+    west flash --skip-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
 
 .. note::
     - Use the ``--erase_all`` option cautiously, as it may erase critical updated token information.
@@ -130,7 +130,7 @@ PWM Buzzer
 **********
 
 - To enable the PWM Buzzer for FMNA sound implementation, please add **CONFIG_PWM_BUZZER=y** to the prj.conf file.
-- Since Atmosic EVK does not include an onboard buzzer, kindly refine the overlay file at boards/<board>_ns.overlay to map the corresponding pin and PWM channel.
+- Since Atmosic EVK does not include an onboard buzzer, kindly refine the overlay file at boards/<BOARD>_ns.overlay to map the corresponding pin and PWM channel.
 
 
 Mobile Applications

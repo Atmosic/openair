@@ -28,10 +28,10 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/samples/bluetooth/extended_adv/scanner --sysbuild -T samples.bluetooth.extended_adv.scanner.atm
+   west build -p always -b <BOARD>//ns openair/samples/bluetooth/extended_adv/scanner --sysbuild -T samples.bluetooth.extended_adv.scanner.atm
 
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]

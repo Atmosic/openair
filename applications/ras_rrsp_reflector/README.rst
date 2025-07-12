@@ -75,24 +75,24 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm
+   west build -p always -b <BOARD>//ns openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm
 
 Build with MCUboot command:
 Run the following command to build the MCUboot, SPE, application with ``CONFIG_ATMWSTK_PD50=y``
 
 .. code-block:: bash
 
-   west build -p always -b <board>@mcuboot//ns openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.mcuboot.atmwstklib.pd50
+   west build -p always -b <BOARD>@mcuboot//ns openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.mcuboot.atmwstklib.pd50
 
 Build with OTA command:
 Run the following command to build the SPE, application and MCUboot with ``-DEXTRA_CONF_FILE="basic_ota_bt.conf"`` to enable OTA function
 
 .. code-block:: bash
 
-   west build -p always -b <board>@mcuboot//ns openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.mcuboot.ota
+   west build -p always -b <BOARD>@mcuboot//ns openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.mcuboot.ota
 
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_all]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]
