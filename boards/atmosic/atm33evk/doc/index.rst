@@ -95,10 +95,10 @@ as such rather than the "J-Link driver".  (In Device Manager, expand the categor
 Programming and Debugging
 *************************
 
-It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.8 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
+It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.4 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
 
  export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
- export ZEPHYR_SDK_INSTALL_DIR=<$HOME/zephyr-sdk-0.16.8>
+ export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-0.16.4
 
 Applications for the Atmosic EVK boards can be built, flashed, and debugged using the familiar `west build` and `west flash`.
 
@@ -119,14 +119,29 @@ In the remainder of this document, substitute for ``<ZEPHYR_TOOLCHAIN_VARIANT>``
  <MCUBOOT>: bootloader/mcuboot/boot/zephyr
  <ATMWSTK>: PD50 or FULL
  <BOARD>: ATMEVK-3330e-QN-7
- <DEVICE_ID>: 900036846
+ <DEVICE_ID>: 000900036846
 
 * Use any board from the `board`_ list as ``<BOARD>``.
-* <DEVICE_ID> is the unique ID from the J-Link device used to program. For FTDI, the format will be ATRDIXXXX.
+* ``<DEVICE_ID>`` is the unique ID from the J-Link device used to program. For FTDI, the format will be ATRDIXXXX.
 
 =====================
 Building and Flashing
 =====================
+
+----------------------------
+Enabling a Random BD Address
+----------------------------
+
+Some non-production ATM33 EVKs in the field may have no BD address programmed in the secure journal.  On such boards, upon loading a BLE application, an assert error occurs with a message appearing on the console similar to the one below::
+
+  ASSERT ERR(0) at <zephyrproject-root>/openair/modules/hal_atmosic/drivers/eui/eui.c:132
+
+To avoid this error, the BLE application must be built with an option to allocate a random BD address.  This can be done by adding ``-DCONFIG_ATM_EUI_ALLOW_RANDOM=y`` to the build options.
+
+
+---------------
+Build and Flash
+---------------
 
 Applications can be built with MCUboot or without the MCUboot option. If a device firmware update (DFU) is not needed, you can choose the option without MCUboot. If you require DFU, then the MCUboot option is required.
 
@@ -168,14 +183,14 @@ For an atmevk33 board, this is typically a J-Link serial number, but it can also
 
 If the application requires Bluetooth (configured with ``CONFIG_BT`` in the prj.conf file) and uses the fixed BLE link controller image option, then the controller image requires programming.  This is typically done before programming the application and resetting (omitting the ``--noreset`` option to ``west flash``). For example::
 
-  west flash --verify --device=${DEVICE_ID} --jlink --fast_load --skip-rebuild -d build/${BOARD}/${SPE} --use-elf --elf-file openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_<ATMWSTK>.elf --noreset
+  west flash --verify --device <DEVICE_ID> --jlink --fast_load --skip-rebuild -d build/<BOARD>/<SPE> --use-elf --elf-file openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_<ATMWSTK>.elf --noreset
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.
 
 Flash the SPE and the application separately if ``CONFIG_MERGE_SPE_NSPE`` was not enabled::
 
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
 
 Alternatively, if ``CONFIG_MERGE_SPE_NSPE`` was enabled in building the application, the first step (programming the SPE) can be skipped.
 
@@ -209,8 +224,8 @@ Atmosic provides a mechanism to increase the legacy programming time called FAST
 
 Flash the SPE and the application separately if ``CONFIG_MERGE_SPE_NSPE`` was not enabled::
 
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
 
 Alternatively, if ``CONFIG_MERGE_SPE_NSPE`` was enabled in building the application, the first step (programming the SPE) can be skipped.
 
@@ -250,13 +265,13 @@ Flash MCUboot
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
 
-   west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
+   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
 
 Note that adding ``--erase_flash`` is an option to erase Flash if needed.
 
 Flash the signed application image (merged with SPE)::
 
-   west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
+   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Using Statically Linked BLE Link Controller Library for PD50 Atmosic Wireless Stack (Suboption #2, ``<ATMWSTK>=PD50``, ``-DCONFIG_ATMWSTK_PD50=y`` (default))
@@ -288,13 +303,13 @@ Flash MCUboot
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
 
-  west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
+  west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
 
 Note that adding ``--erase_flash`` is an option to erase Flash if needed.
 
 Flash the signed application image (merged with SPE)::
 
-  west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
+  west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
 
 ---------------------------
 BLE Link Controller Options

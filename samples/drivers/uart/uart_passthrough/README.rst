@@ -27,10 +27,10 @@ Build command:
 
 .. code-block:: bash
 
-    west build -p always -b ${BOARD}//ns openair/samples/drivers/uart/uart_passthrough --sysbuild -T samples.drivers.uart.uart_passthrough
+    west build -p always -b <BOARD>//ns openair/samples/drivers/uart/uart_passthrough --sysbuild -T samples.drivers.uart.uart_passthrough
 
 Flash command:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild --device <serial> --jlink [--fast_load]
+    west flash --skip-rebuild --device <DEVICE_ID> --jlink [--fast_load]

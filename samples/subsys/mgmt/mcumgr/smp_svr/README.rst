@@ -33,10 +33,10 @@ Build command:
 
 .. code-block:: bash
 
-    west build -p always -b ${BOARD}@mcuboot//ns openair/samples/subsys/mgmt/mcumgr/smp_svr --sysbuild -T samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot
+    west build -p always -b <BOARD>@mcuboot//ns openair/samples/subsys/mgmt/mcumgr/smp_svr --sysbuild -T samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot
 
 Flash command:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild --device <serial> --jlink [--fast_load] [--erase_flash]
+    west flash --skip-rebuild --device <DEVICE_ID> --jlink [--fast_load] [--erase_flash]
