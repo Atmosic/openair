@@ -875,8 +875,8 @@ static void rreq_start_scan(void)
 
 static void rreq_scan_entry(void *obj)
 {
-	LOG_INF("scan entry");
 	rreq_start_scan();
+	LOG_INF("scan entry");
 }
 
 static void rreq_scan_run(void *obj)
