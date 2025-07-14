@@ -21,7 +21,6 @@ config ATM_ENA_LL_FEAT_CS
 config ATM_ENA_LL_FEAT_ISO
 	bool "When available, enable LL ISO feature"
 	default y if SOC_SERIES_ATM34 && ATMWSTK_FULL
-	default y if SOC_SERIES_ATM13
 	default n
 
 endif # ATM_PC_LL_CFG
