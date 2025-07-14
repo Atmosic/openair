@@ -13,13 +13,15 @@ tests:
     tags: atm34 no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
-      - spe_DTC_OVERLAY_FILE=${ZEPHYR_ATMOSIC_PRIVATE_MODULE_DIR}/applications/ras_rreq_initiator/boards/${BOARD}_spe_uart0.overlay
+      - SB_CONFIG_ATMWSTK_FULL=y
+      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/boards/${BOARD}_spe_uart0.overlay
     extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM34"
   applications.ras_rreq_initiator.atm.atmwstklib.full.uart1:
     tags: atm34 no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
+      - SB_CONFIG_ATMWSTK_FULL=y
       - EXTRA_DTC_OVERLAY_FILE=boards/${BOARD}_ns_uart1.overlay
     extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM34"
