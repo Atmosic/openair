@@ -87,7 +87,7 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_all]
 
 Notes and Recommendations
 *************************
