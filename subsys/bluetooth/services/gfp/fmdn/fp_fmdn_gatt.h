@@ -58,7 +58,7 @@ void fp_fmdn_bcna_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t valu
 
 /**
  * @brief The callback function of utp mode notify
- * @param[in] mode fast paring itp mode
+ * @param[in] mode fast pairing itp mode
  */
 typedef void (*fp_fmdn_utp_mode_cb)(fp_fmdn_utp_mode_t mode);
 

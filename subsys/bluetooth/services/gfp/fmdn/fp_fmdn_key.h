@@ -124,7 +124,7 @@ void fp_fmdn_key_update_eid(void);
 
 /**
  * @brief The callback function of battery status
- * @param[in] mode fast paring itp mode
+ * @param[in] mode fast pairing itp mode
  */
 typedef uint8_t (*fp_fmdn_battery_cb)(void);
 

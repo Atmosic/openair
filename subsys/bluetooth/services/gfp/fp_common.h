@@ -54,9 +54,9 @@ enum {
 typedef enum {
 	/// Index of Google Fast Pair initial mode
 	FP_MODE_NONE = 0x00,
-	/// Index of Google Fast Pair in paring mode
+	/// Index of Google Fast Pair in pairing mode
 	FP_MODE_PAIRING,
-	/// Index of Google Fast Pair in paring process mode
+	/// Index of Google Fast Pair in pairing process mode
 	FP_MODE_PAIRING_PROCESSING,
 	/// Index of Google Fast Pair paired mode
 	FP_MODE_PAIRED,

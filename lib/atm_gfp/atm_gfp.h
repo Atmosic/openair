@@ -26,7 +26,7 @@ typedef struct atm_gfp_hdlrs_s {
 	/// play sound callback function
 	void (*sound_action_cb)(bool action);
 #ifdef CONFIG_ATM_GFP_MUTLIMODE_TAG
-	/// paring in progress callback function
+	/// pairing in progress callback function
 	void (*mode_state_cb)(fp_mode_t mode);
 #endif
 } atm_gfp_hdlrs_t;

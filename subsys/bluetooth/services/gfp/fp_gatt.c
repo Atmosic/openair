@@ -144,11 +144,11 @@ static int fp_kbp_req_handler(struct bt_conn *conn, struct net_buf_simple *rsp,
 #define REQ_ADDTION_NAME_NOTIFY            0b00000010
 #define REQ_ETROACTIVELY_WRITE_ACCOUNT_KEY 0b00000100
 		if (req->flags & REQ_INITIALING_BONDING) {
-			LOG_DBG("Subsequece paring not support");
+			LOG_DBG("Subsequece pairing not supported");
 			pairing_req = false;
 		}
 		if (req->flags & REQ_ADDTION_NAME_NOTIFY) {
-			LOG_DBG("Addition Name Notify not support");
+			LOG_DBG("Addition Name Notify not supported");
 			*do_addi_act = false;
 		}
 		if (req->flags & REQ_ETROACTIVELY_WRITE_ACCOUNT_KEY) {

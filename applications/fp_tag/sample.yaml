@@ -7,7 +7,7 @@ common:
   harness_config:
     type: one_line
     regex:
-      - "Press button to start paring"
+      - "Press button to start pairing"
 tests:
   applications.fp_tag.atm:
     tags: fp_tag atm33 atm34 no_mcuboot

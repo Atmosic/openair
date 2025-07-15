@@ -67,7 +67,7 @@ bool fp_mode_is_pairing(void);
 
 /**
  * @brief The callback function of mode switch notify
- * @param[in] mode fast paring mode
+ * @param[in] mode fast pairing mode
  */
 typedef void (*fp_mode_switch_cb)(fp_mode_t mode);
 
