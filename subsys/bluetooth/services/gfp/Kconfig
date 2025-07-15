@@ -26,11 +26,13 @@ config FAST_PAIR_MAX_ACCOUNT_KEY_COUNT
 
 config FAST_PAIR_MODEL_ID
     hex "Google Fast Pair Model ID"
-    default 0x1A7331
+    default 0x1A7331 if SOC_SERIES_ATM33
+    default 0x8FE397 if SOC_SERIES_ATM34
 
 config FAST_PAIR_AS_KEY
     string "Google Fast Pair Anti-Spoofing key"
-    default "wLhpDl6Z4da3v/s1/AA32ZUtvMUkgtmPTCy5weMIDrs="
+    default "wLhpDl6Z4da3v/s1/AA32ZUtvMUkgtmPTCy5weMIDrs=" if SOC_SERIES_ATM33
+    default "3H/wrAa6A5Bn2IvSq0E6RrNMucXdhEtI/Vv4sKiHtoI=" if SOC_SERIES_ATM34
 
 config FAST_PAIR_USER_PAIR_BT_ADDR
     bool "Enable user to specify Google Fast Pair Static Random BT Address"
