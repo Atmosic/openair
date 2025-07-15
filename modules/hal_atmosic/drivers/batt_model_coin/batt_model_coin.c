@@ -25,6 +25,8 @@ ATM_LOG_LOCAL_SETTING("batt_coin", V);
 #else
 #include <zephyr/drivers/adc.h>
 #include <zephyr/logging/log.h>
+#include "atm_adc.h"
+
 LOG_MODULE_REGISTER(batt_model_coin, CONFIG_BATT_MODEL_LOG_LEVEL);
 #define ATM_LOG(MSK, fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
 #endif
@@ -113,7 +115,12 @@ static bool batt_coin_gadc_sample(void (*cb)(uint16_t, int32_t))
 
     ret = k_poll(&async_evt, 1, K_FOREVER);
     ASSERT_INFO(ret == 0, ret, 0);
-    batt_coin_calc_lvl(m_sample_buffer[0] / 1000.0f);
+    /* Convert raw ADC value to millivolts, then to volts */
+    int32_t mv = m_sample_buffer[0];
+    uint16_t ref = adc_ref_internal(coin);
+    ret = atm_adc_raw_to_millivolts(ref, channel_cfg.gain, ADC_RESOLUTION, &mv);
+    ASSERT_INFO(ret == 0, ret, 0);
+    batt_coin_calc_lvl(mv / 1000.0f);
 #endif
     return true;
 }
