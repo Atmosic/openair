@@ -130,6 +130,9 @@ static void pc_ctr_load_config(void)
     pc_ctr_ll_rt_cfg.csOptTFcsTimesSup = 0;
     pc_ctr_ll_rt_cfg.csTSwTimeSup = 10;
 #endif
+#ifdef DIS_SCAN_RANDOM_BACKOFF
+    pc_ctr_ll_rt_cfg.defaultOpModeFlags &= ~LL_OP_MODE_FLAG_ENA_SCAN_BACKOFF;
+#endif
 }
 
 static void pc_ctr_wsf_init(void)
@@ -257,9 +260,6 @@ void pc_ctr_main(void)
     LhciVsInit();
 #endif
 
-#ifdef DIS_SCAN_RANDOM_BACKOFF
-    LlSetOpFlags(LL_OP_MODE_FLAG_ENA_SCAN_BACKOFF, false);
-#endif
 }
 
 bool pc_ctr_schedule(void)

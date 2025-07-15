@@ -220,6 +220,8 @@ typedef struct
   /* FSU */
   uint16_t fsuMinIfsAclUsec;        /*!< Minimum interframe space for ACL. */
   uint16_t fsuMinIfsCisUsec;        /*!< Minimum interframe space for CIS. */
+  /* default opModeFlags */
+  uint64_t defaultOpModeFlags;      /*!< Default value for opModeFlags. */
 } LlRtCfg_t;
 
 /*! \} */    /* LL_API_INIT */
