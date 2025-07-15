@@ -207,7 +207,7 @@ static void atm_gfp_service_init(void)
 			atm_gfp_hdlrs->mode_state_cb(FP_MODE_NONE);
 		}
 #else
-		LOG_INF("Press button to start paring");
+		LOG_INF("Press button to start pairing");
 #endif
 	}
 }
