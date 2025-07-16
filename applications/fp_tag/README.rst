@@ -84,6 +84,8 @@ The device operates through multiple modes when interacting with the **Find My D
 Button2
 *******
 
+In order for the button to work, jumpers JP25 and JP27 need to be installed on the EVK.
+
 :ref:`Button2` provides context-dependent functionality:
 
 - **Unpaired mode**: Press to start FP Discoverable Advertisement.
