@@ -113,7 +113,7 @@ Example:
   .. code-block:: console
 
      CONFIG_FAST_PAIR_USER_PAIR_BT_ADDR=y
-     CONFIG_FAST_PAIR_PAIR_BT_ADDR=<BD address>
+     CONFIG_FAST_PAIR_PAIR_BT_ADDR=\"<BD address>\"
 
 If ``CONFIG_FAST_PAIR_PAIR_BT_ADDR`` not specified, the default custom Bluetooth device address is``E5:C4:11:11:11:11``
 
@@ -175,7 +175,7 @@ Specify a static address for FP discoverable advertisements:
 
 .. code-block:: console
 
-    west build -p always -b <board>//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm -- -DCONFIG_FAST_PAIR_USER_PAIR_BT_ADDR=y -DCONFIG_FAST_PAIR_PAIR_BT_ADDR="E5:C4:12:12:12:12"
+    west build -p always -b <board>//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm -- -DCONFIG_FAST_PAIR_USER_PAIR_BT_ADDR=y -DCONFIG_FAST_PAIR_PAIR_BT_ADDR=\"E5:C4:12:12:12:12\"
 
 Build With OTA Support
 ======================

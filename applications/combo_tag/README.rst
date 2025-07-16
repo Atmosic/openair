@@ -44,7 +44,7 @@ Example of fmna_tag::
 Example of fp_tag::
 
   CONFIG_FAST_PAIR_USER_PAIR_BT_ADDR=y
-  CONFIG_FAST_PAIR_PAIR_BT_ADDR="ED:12:34:56:6E:EF"
+  CONFIG_FAST_PAIR_PAIR_BT_ADDR=\"ED:12:34:56:6E:EF\"
 
 
 PWM Buzzer
