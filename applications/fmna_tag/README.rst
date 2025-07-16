@@ -121,6 +121,8 @@ Run the following command to program all the built images and run the applicatio
 Button Functions
 ****************
 
+In order for the button to work, jumpers JP25 and JP27 need to be installed on the EVK.
+
 - Press and hold button2 on EVK for 3 seconds during reboot to unpair and enter pairing mode.
 
 
