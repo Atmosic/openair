@@ -62,7 +62,7 @@ Build the Secure Processing Environment (SPE) and application:
 
   .. code-block:: console
 
-    west build -p always -b <board>//ns openair/applications/ss_fmna_tag --sysbuild -T applications.ss_fmna_tag.atm
+    west build -p always -b <BOARD>//ns openair/applications/ss_fmna_tag --sysbuild -T applications.ss_fmna_tag.atm
 
 Build With MCUboot
 ==================
@@ -71,7 +71,7 @@ Build MCUboot, SPE, and the application:
 
   .. code-block:: console
 
-    west build -p always -b <board>@mcuboot//ns openair/applications/ss_fmna_tag --sysbuild -T applications.ss_fmna_tag.atm.mcuboot
+    west build -p always -b <BOARD>@mcuboot//ns openair/applications/ss_fmna_tag --sysbuild -T applications.ss_fmna_tag.atm.mcuboot
 
 Programming
 ===========
@@ -80,4 +80,4 @@ To flash the built images:
 
   .. code-block:: console
 
-    west flash --skip-rebuild --verify --device=<serial> --jlink --fast_load [--erase_all]
+    west flash --skip-rebuild --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]

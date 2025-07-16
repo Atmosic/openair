@@ -51,7 +51,7 @@ PWM Buzzer
 **********
 
 - To enable the PWM Buzzer for FMNA sound implementation, please add **CONFIG_PWM_BUZZER=y** to the prj.conf file.
-- Since Atmosic EVK does not include an onboard buzzer, kindly refine the overlay file at boards/<board>_ns.overlay to map the corresponding pin and PWM channel.
+- Since Atmosic EVK does not include an onboard buzzer, kindly refine the overlay file at boards/<BOARD>_ns.overlay to map the corresponding pin and PWM channel.
 
 
 Building and Running
@@ -63,20 +63,20 @@ Run the following command to build the SPE, application and factory data for the
 
 .. code-block:: bash
 
-    west build -p always -b <board>//ns openair/applications/combo_tag --sysbuild -T applications.combo_tag.atm
+    west build -p always -b <BOARD>//ns openair/applications/combo_tag --sysbuild -T applications.combo_tag.atm
 
 
 Run the following command to build the SPE, application and factory data for the **ATM34/e** series:
 
 .. code-block:: bash
 
-    west build -p always -b <board>//ns openair/applications/combo_tag --sysbuild -T applications.combo_tag.atm.atm34
+    west build -p always -b <BOARD>//ns openair/applications/combo_tag --sysbuild -T applications.combo_tag.atm.atm34
 
 Run the following command to program all the built images:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild -d build --verify --device=<serial> --jlink --fast_load [--erase_all]
+    west flash --skip-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
 
 .. note::
     - Use the ``--erase_all`` option cautiously, as it may erase critical updated token information.

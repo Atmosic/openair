@@ -23,13 +23,13 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/samples/nsc_hello_world --sysbuild -T samples.nsc_hello_world.atm
+   west build -p always -b <BOARD>//ns openair/samples/nsc_hello_world --sysbuild -T samples.nsc_hello_world.atm
 
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
 
 Sample Output
 =============

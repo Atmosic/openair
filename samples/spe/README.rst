@@ -111,13 +111,13 @@ The SPE application build uses the default `secure` board file without the ``_ns
 
 Build commands for SPE and NSPE::
 
-  west build -p -s ${SPE} -b ${BOARD} -d build/${BOARD}/${SPE}
-  west build -p -s ${APP} -b ${BOARD}_ns -d build/${BOARD}_ns/${APP} -- -DCONFIG_SPE_PATH=\"build/${BOARD}/${SPE}\"
+  west build -p -s <SPE> -b <BOARD> -d build/<BOARD>/<SPE>
+  west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_SPE_PATH=\"build/<BOARD>/<SPE>\"
 
 Flash commands for SPE and NSPE::
 
-  west flash --skip-rebuild --device=<JLINK_SN> --verify --jlink --build-dir build/${BOARD}/${SPE} --noreset --erase_flash
-  west flash --skip-rebuild --device=<JLINK_SN> --verify --jlink --build-dir build/${BOARD}_ns/${APP} --fast_load
+  west flash --skip-rebuild --device <DEVICE_ID> --verify --jlink --build-dir build/<BOARD>/<SPE> --noreset --erase_flash
+  west flash --skip-rebuild --device <DEVICE_ID> --verify --jlink --build-dir build/<BOARD>_ns/<APP> --fast_load
 
 Increasing the Size of the SPE
 ------------------------------

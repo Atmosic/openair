@@ -141,7 +141,7 @@ PWM Buzzer Support
 
 - Since the Atmosic EVK lacks an onboard buzzer, update the device tree overlay at:
 
-  ``<application>/boards/<board>_ns.overlay`` to map the appropriate pin and PWM channel.
+  ``<APP>/boards/<BOARD>_ns.overlay`` to map the appropriate pin and PWM channel.
 
 Building and Running
 ********************
@@ -155,7 +155,7 @@ Build the Secure Processing Environment (SPE) and application:
 
 .. code-block:: console
 
-    west build -p always -b <board>//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm
+    west build -p always -b <BOARD>//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm
 
 Build With MCUboot
 ==================
@@ -164,7 +164,7 @@ Build MCUboot, SPE, and the application:
 
 .. code-block:: console
 
-    west build -p always -b <board>@mcuboot//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm.mcuboot
+    west build -p always -b <BOARD>@mcuboot//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm.mcuboot
 
 Specify User-Pair Bluetooth Address
 ===================================
@@ -173,7 +173,7 @@ Specify a static address for FP discoverable advertisements:
 
 .. code-block:: console
 
-    west build -p always -b <board>//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm -- -DCONFIG_FAST_PAIR_USER_PAIR_BT_ADDR=y -DCONFIG_FAST_PAIR_PAIR_BT_ADDR="E5:C4:12:12:12:12"
+    west build -p always -b <BOARD>//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm -- -DCONFIG_FAST_PAIR_USER_PAIR_BT_ADDR=y -DCONFIG_FAST_PAIR_PAIR_BT_ADDR="E5:C4:12:12:12:12"
 
 Build With OTA Support
 ======================
@@ -182,7 +182,7 @@ Enable OTA via BLE and build the full image:
 
 .. code-block:: console
 
-    west build -p always -b <board>@mcuboot//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm.mcuboot.ota
+    west build -p always -b <BOARD>@mcuboot//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm.mcuboot.ota
 
 .. note::
 
@@ -195,7 +195,7 @@ Enable DFU via serial and build the full image:
 
 .. code-block:: console
 
-    west build -p always -b <board>@mcuboot//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm.mcuboot.serialdfu
+    west build -p always -b <BOARD>@mcuboot//ns openair/applications/fp_tag --sysbuild -T applications.fp_tag.atm.mcuboot.serialdfu
 
 Programming
 ===========
@@ -204,4 +204,4 @@ To flash the built images:
 
 .. code-block:: console
 
-    west flash --skip-rebuild --verify --device=<serial> --jlink --fast_load [--erase_all]
+    west flash --skip-rebuild --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]

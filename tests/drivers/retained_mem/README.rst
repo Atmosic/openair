@@ -136,7 +136,7 @@ The test supports sysbuild for building with SPE configuration:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/tests/drivers/retained_mem --sysbuild -T drivers.retained_mem.atm
+   west build -p always -b <BOARD>//ns openair/tests/drivers/retained_mem --sysbuild -T drivers.retained_mem.atm
 
 **Available sysbuild test configuration:**
 
@@ -155,7 +155,7 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
 
 The test will automatically:
 1. Run basic functionality tests

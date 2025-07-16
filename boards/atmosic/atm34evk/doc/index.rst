@@ -95,7 +95,7 @@ Programming and Debugging
 It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.8 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
 
  export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
- export ZEPHYR_SDK_INSTALL_DIR=<$HOME/zephyr-sdk-0.16.8>
+ export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-0.16.8
 
 Applications for the Atmosic EVK boards can be built, flashed, and debugged using the familiar `west build` and `west flash`.
 
@@ -116,7 +116,7 @@ In the remainder of this document, substitute for ``<ZEPHYR_TOOLCHAIN_VARIANT>``
  <MCUBOOT>: bootloader/mcuboot/boot/zephyr
  <ATMWSTK>: PD50 or CPD200
  <BOARD>: ATMEVK-3430e-YQN-5
- <DEVICE_ID>: 900036960
+ <DEVICE_ID>: 000900036960
 
 * Use any board from the `board`_ list as ``<BOARD>``.
 * <DEVICE_ID> is the unique ID from the J-Link device used to program. For FTDI, the format will be ATRDIXXXX.
@@ -131,7 +131,7 @@ Enabling a Random BD Address
 
 Non-production ATM34 EVKs in the field have no BD address programmed in the secure journal.  On such boards, upon loading a BLE application, an assert error occurs with a message appearing on the console similar to the one below::
 
-  ASSERT ERR(0) at <zephyrproject-root>/atmosic-private/modules/hal_atmosic/ATM34xx/drivers/eui/eui.c:129
+  ASSERT ERR(0) at <zephyrproject-root>/openair/modules/hal_atmosic/drivers/eui/eui.c:132
 
 To avoid this error, the BLE application must be built with an option to allocate a random BD address.  This can be done by adding ``-DCONFIG_ATM_EUI_ALLOW_RANDOM=y`` to the build options.
 
@@ -177,8 +177,8 @@ Atmosic provides a mechanism to increase the legacy programming time called FAST
 
 Flash the SPE and the application separately if ``CONFIG_MERGE_SPE_NSPE`` was not enabled::
 
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
 
 Alternatively, if ``CONFIG_MERGE_SPE_NSPE`` was enabled in building the application, the first step (programming the SPE) can be skipped.
 
@@ -218,13 +218,13 @@ Flash MCUboot
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
 
-   west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
+   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
 
 Note that adding ``--erase_flash`` is an option to erase Flash if needed.
 
 Flash the signed application image (merged with SPE)::
 
-   west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
+   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
 
 ===========================
 BLE Link Controller Options

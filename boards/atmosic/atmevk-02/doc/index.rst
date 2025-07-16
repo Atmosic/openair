@@ -43,7 +43,7 @@ Programming and Debugging
 It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.8 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
 
  export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
- export ZEPHYR_SDK_INSTALL_DIR=<$HOME/zephyr-sdk-0.16.8>
+ export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-0.16.8
 
 Applications for the Atmosic EVK boards can be built, flashed, and debugged using the familiar `west build` and `west flash`.
 
@@ -98,7 +98,7 @@ Flash MCUboot
 
 .. code-block:: console
 
-  west flash --build-dir build/<BOARD>/<MCUBOOT> --device=<DEVICE_ID> --verify --noreset
+  west flash --build-dir build/<BOARD>/<MCUBOOT> --device <DEVICE_ID> --verify --noreset
 
 ---------------------
 Flash the Application
@@ -106,7 +106,7 @@ Flash the Application
 
 .. code-block:: console
 
-  west flash --build-dir build/<BOARD>/<APP> --device=<DEVICE_ID> --verify
+  west flash --build-dir build/<BOARD>/<APP> --device <DEVICE_ID> --verify
 
 **************************
 Viewing the Console Output

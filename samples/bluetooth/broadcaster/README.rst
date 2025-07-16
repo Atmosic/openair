@@ -24,10 +24,10 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/samples/bluetooth/broadcaster --sysbuild -T samples.bluetooth.broadcaster.atm
+   west build -p always -b <BOARD>//ns openair/samples/bluetooth/broadcaster --sysbuild -T samples.bluetooth.broadcaster.atm
 
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]

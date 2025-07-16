@@ -36,13 +36,13 @@ Build command:
 
 .. code-block:: bash
 
-    west build -p always -b <board>//ns openair/samples/subsys/settings --sysbuild -T samples.subsys.settings.atm
+    west build -p always -b <BOARD>//ns openair/samples/subsys/settings --sysbuild -T samples.subsys.settings.atm
 
 Flash command:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild --verify --device=<serial> [--jlink] --fast_load [--erase_flash]
+    west flash --skip-rebuild --verify --device <DEVICE_ID> [--jlink] --fast_load [--erase_flash]
 
 .. note::
 

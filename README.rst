@@ -10,9 +10,8 @@ This is the top-level repository for the Atmosic SDK.  It contains the west mani
 Supported Platforms
 *******************
 
-* `ATM3/ATM3 </boards/atmosic/atmevk-02/doc/index.rst>`_
-* `ATM33/e </boards/atmosic/atm33evk/doc/index.rst>`_
-* `ATM34/e </boards/atmosic/atm34evk/doc/index.rst>`_
+    * `ATM33/e <boards/atmosic/atm33evk/doc/index.rst>`_
+    * `ATM34/e <boards/atmosic/atm34evk/doc/index.rst>`_
 
 Creating a Workspace
 ********************
@@ -25,4 +24,9 @@ To create an Atmosic SDK workspace, first follow the instructions_ from the offi
 
 .. _instructions: https://docs.zephyrproject.org/latest/develop/getting_started/index.html
 
-Refer to the `Supported Platforms`_ documentation for details on how to build and program an application.  For example, see the section on `programming and debugging an ATM33xx </boards/atmosic/atm33evk/doc/index.rst#programming-and-debugging>`_ EVK.
+For details about how to build and program an application, see the following sections:
+
+ * `ATM33/e programming and debugging </boards/atmosic/atm33evk/doc/index.rst#programming-and-debugging>`_
+ * `ATM34/e programming and debugging </boards/atmosic/atm34evk/doc/index.rst#programming-and-debugging>`_
+
+For more information, see `Atmosic OpenAir Documentation <https://atmosic.com/public/OpenAir_SDK_doc/index.html>`_.
