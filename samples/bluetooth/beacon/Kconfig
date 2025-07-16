@@ -49,8 +49,7 @@ endchoice
 
 config REFBCN_SIMPLE_BEACON
 	bool "simple beacon"
-	select RETAINED_MEM
-	select RETAINED_MEM_ATM_HIB
+	select ATM_RESET
 	help
 	  Add simple beacon profile if Button 1 is not present or not pressed
 	  at boot; otherwise, use the other enabled profile.

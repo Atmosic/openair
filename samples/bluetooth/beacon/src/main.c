@@ -8,6 +8,7 @@
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include "compiler.h"
 
 #if CONFIG_SOFT_OFF
 #include <zephyr/pm/pm.h>
@@ -25,22 +26,22 @@
 #define BCN_201_SHORT_NAME       "Atmosic"
 
 #ifdef CONFIG_REFBCN_SIMPLE_BEACON
-static bool using_simple_beacon = true;
+static bool using_simple_beacon;
 #include <zephyr/drivers/gpio.h>
-#include <zephyr/drivers/retained_mem.h>
+#include "reset.h"
 #if DT_NODE_EXISTS(DT_NODELABEL(button0))
 #define BUTTON_1_EXIST
 #endif
 #if DT_NODE_EXISTS(DT_NODELABEL(led0))
 #define LED_1_EXIST
 #endif
-#endif
+#endif // CONFIG_REFBCN_SIMPLE_BEACON
 
 #define PMU_NODE DT_NODELABEL(pmu)
 
 #define PMU_BATT_LIION_HARV_ENABLED ((DT_NODE_HAS_PROP(PMU_NODE, batt_type) && (DT_PROP(PMU_NODE, batt_type) == BATT_TYPE_LI_ION)) && (DT_PROP_OR(PMU_NODE, rf_harv, 0) || DT_PROP_OR(PMU_NODE, nonrf_harv, 0)))
 
-#if defined(CONFIG_REFBCN_SIMPLE_BEACON) || PMU_BATT_LIION_HARV_ENABLED
+#if PMU_BATT_LIION_HARV_ENABLED
 #include <zephyr/drivers/retained_mem.h>
 #include <zephyr/device.h>
 
@@ -49,8 +50,6 @@ static const struct device *retained_mem_dev = NULL;
 /* Memory layout offsets to prevent overlap */
 #define RETAINED_MEM_BATT_OFFSET    0
 #define RETAINED_MEM_BATT_SIZE      4  /* sizeof(uint32_t) */
-#define RETAINED_MEM_BEACON_OFFSET  (RETAINED_MEM_BATT_OFFSET + RETAINED_MEM_BATT_SIZE)
-#define RETAINED_MEM_BEACON_SIZE    1  /* sizeof(bool) */
 #endif
 
 #if PMU_BATT_LIION_HARV_ENABLED
@@ -403,7 +402,7 @@ static dev_state_t batt_state_get(void)
 
 int main(void)
 {
-#if defined(CONFIG_REFBCN_SIMPLE_BEACON) || PMU_BATT_LIION_HARV_ENABLED
+#if PMU_BATT_LIION_HARV_ENABLED
 	retained_mem_dev = DEVICE_DT_GET(DT_NODELABEL(retained_mem_hib));
 	if (!device_is_ready(retained_mem_dev)) {
 		printk("Retained memory device not ready");
@@ -412,15 +411,10 @@ int main(void)
 #endif
 
 #ifdef CONFIG_REFBCN_SIMPLE_BEACON
-	int ret = retained_mem_read(retained_mem_dev, RETAINED_MEM_BEACON_OFFSET,
-		(uint8_t *) &using_simple_beacon, sizeof(bool));
-	if (ret) {
-		printk("ret_mem err:%d", ret);
-		return ret;
-	}
+	using_simple_beacon = is_boot_type(TYPE_POWER_ON);
 #ifdef BUTTON_1_EXIST
 	static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(DT_NODELABEL(button0), gpios);
-	ret = gpio_pin_configure_dt(&button, GPIO_INPUT);
+	int ret = gpio_pin_configure_dt(&button, GPIO_INPUT);
 	if (ret) {
 		printk("button err:%d", ret);
 		return ret;
@@ -442,13 +436,7 @@ int main(void)
 		pm_notifier_register(&notifier);
 	}
 #endif
-	ret = retained_mem_write(retained_mem_dev, RETAINED_MEM_BEACON_OFFSET,
-		(uint8_t *) &using_simple_beacon, sizeof(bool));
-	if (ret) {
-		printk("ret_mem err:%d", ret);
-		return ret;
-	}
-#endif
+#endif // CONFIG_REFBCN_SIMPLE_BEACON
 	print_profile();
 
 #if PMU_BATT_LIION_HARV_ENABLED
