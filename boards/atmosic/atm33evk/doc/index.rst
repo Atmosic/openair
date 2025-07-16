@@ -15,17 +15,20 @@ SoCs and EVKs
 
 .. _board:
 
-==================  =================  =================  ==================  ========  ==========
-SoC Part #          EVK Part #         Board List         On-chip             Package   Energy
-                                       <BOARD>            Flash                         Harvesting
-==================  =================  =================  ==================  ========  ==========
-ATM3330e-5DCAQN     ATMEVK-3330e-QN-7  ATMEVK-3330e-QN-7  512KB               QFN 7x7   x
-ATM3330e-5DCAQN     ATMEVK-3330e-QN-6  ATMEVK-3330e-QN-6  512KB               QFN 7x7   x
-ATM3330-5DCAQN      ATMEVK-3330-QN-6   ATMEVK-3330-QN-6   512KB               QFN 7x7
-ATM3325-5DCAQK      ATMEVK-3325-QK-6   ATMEVK-3325-QK-6   512KB               QFN 5x5
-ATM3325-5LCAQK      ATMEVK-3325-LQK-6  ATMEVK-3325-LQK-6  512KB + 1MB         QFN 5x5
-ATM3325-5DCACM      ATMEVK-3325-CM-6   ATMEVK-3325-CM-6   512KB               WLCSP
-==================  =================  =================  ==================  ========  ==========
+==================  =======================  =================  ==================  ========  ==========
+SoC Part #          EVK Part #               Board List         On-chip             Package   Energy
+                                             <BOARD>            Flash                         Harvesting
+==================  =======================  =================  ==================  ========  ==========
+ATM3330e-5DCAQN     ATMEVK-3330e-QN-7        ATMEVK-3330e-QN-7  512KB               QFN 7x7   x
+ATM3330e-5DCAQN     | ATMEVK-3330e-QN-6      ATMEVK-3330e-QN-7  512KB               QFN 7x7   x
+                    | 052-(4x-5x)-xxx-xxxx
+ATM3330e-5DCAQN     | ATMEVK-3330e-QN-6      ATMEVK-3330e-QN-6  512KB               QFN 7x7   x
+                    | 052-(0x-3x)-xxx-xxxx
+ATM3330-5DCAQN      ATMEVK-3330-QN-6         ATMEVK-3330-QN-6   512KB               QFN 7x7
+ATM3325-5DCAQK      ATMEVK-3325-QK-6         ATMEVK-3325-QK-6   512KB               QFN 5x5
+ATM3325-5LCAQK      ATMEVK-3325-LQK-6        ATMEVK-3325-LQK-6  512KB + 1MB         QFN 5x5
+ATM3325-5DCACM      ATMEVK-3325-CM-6         ATMEVK-3325-CM-6   512KB               WLCSP
+==================  =======================  =================  ==================  ========  ==========
 
 ================
 Pin Multiplexing
