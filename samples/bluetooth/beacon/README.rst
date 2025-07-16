@@ -126,7 +126,7 @@ Hardware Requirements
 
 For button functionality:
 
-- BUTTON_1 (``button0`` device tree node)
+- BUTTON_1 (``button0`` device tree node). In order for the button to work, jumpers JP25 and JP27 need to be installed on the EVK.
 - LED_1 (``led0`` device tree node) for power management indication
 
 Both are optional - the application will adapt based on hardware availability.
