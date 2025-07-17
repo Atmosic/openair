@@ -15,12 +15,12 @@ source "subsys/logging/Kconfig.template.log_config"
 config ATM_VENDOR_TX_STACK_SIZE
 	int "ATM hci uart tx thread stack size"
 	default 2048 if COVERAGE
-	default 400
+	default 1792
 
 config ATM_VENDOR_RX_STACK_SIZE
 	int "ATM hci uart rx thread stack size"
 	default 2048 if COVERAGE
-	default 800
+	default 1792
 
 choice
 	prompt "Atmosic HCI UART DEVICE"
