@@ -113,7 +113,7 @@ Example:
   .. code-block:: console
 
      CONFIG_FAST_PAIR_USER_PAIR_BT_ADDR=y
-     CONFIG_FAST_PAIR_PAIR_BT_ADDR=\"<BD address>\"
+     CONFIG_FAST_PAIR_PAIR_BT_ADDR="<BD address>"
 
 If ``CONFIG_FAST_PAIR_PAIR_BT_ADDR`` not specified, the default custom Bluetooth device address is ``E5:C4:11:11:11:11``.
 
