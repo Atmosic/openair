@@ -75,13 +75,13 @@ Build with UART0 as console and shell command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/applications/ras_rreq_initiator --sysbuild -T applications.ras_rreq_initiator.atm.atmwstklib.full
+   west build -p always -b <BOARD>//ns openair/applications/ras_rreq_initiator --sysbuild -T applications.ras_rreq_initiator.atm.atmwstk.full
 
 Build with UART1 as console and shell command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/applications/ras_rreq_initiator --sysbuild -T applications.ras_rreq_initiator.atm.atmwstklib.full.uart1
+   west build -p always -b <BOARD>//ns openair/applications/ras_rreq_initiator --sysbuild -T applications.ras_rreq_initiator.atm.atmwstk.full.uart1
 
 Flash command:
 

@@ -152,7 +152,7 @@ Run the following command to build the mcuboot, SPE, application and factory dat
 
 .. code-block:: bash
 
-    west build -p always -b <BOARD>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstklib.pd50
+    west build -p always -b <BOARD>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstk.pd50
 
 
 Programming

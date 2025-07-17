@@ -82,7 +82,7 @@ Run the following command to build the MCUboot, SPE, application with ``CONFIG_A
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>@mcuboot//ns openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.mcuboot.atmwstklib.pd50
+   west build -p always -b <BOARD>@mcuboot//ns openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.mcuboot.atmwstk.pd50
 
 Build with OTA command:
 Run the following command to build the SPE, application and MCUboot with ``-DEXTRA_CONF_FILE="basic_ota_bt.conf"`` to enable OTA function
