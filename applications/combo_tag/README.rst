@@ -3,8 +3,10 @@
 Find My Combo Tag: Apple & Google Compatible
 ############################################
 
-This sample illustrates the functionality of a combo tag compatible with both **Apple Find My Network** and **Google Find My Device Network**.
+Overview
+********
 
+This sample illustrates the functionality of a combo tag compatible with both **Apple Find My Network** and **Google Find My Device Network**.
 
 Requirements
 ************
@@ -72,7 +74,10 @@ Run the following command to build the SPE, application and factory data for the
 
     west build -p always -b <BOARD>//ns openair/applications/combo_tag --sysbuild -T applications.combo_tag.atm.atm34
 
-Run the following command to program all the built images:
+Programming
+===========
+
+To flash the built images:
 
 .. code-block:: bash
 
