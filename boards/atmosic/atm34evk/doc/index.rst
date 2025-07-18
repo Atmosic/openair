@@ -22,7 +22,10 @@ SoCs and EVKs
 SoC Part #          EVK Part #          Board List          On-chip             Package   Energy
                                         <BOARD>             Flash                         Harvesting
 ==================  ==================  ==================  ==================  ========  ==========
+ATM3405-5PCAQK      ATMEVK-3405-PQK-5   ATMEVK-3405-PQK-5   512KB               QFN 5x5
 ATM3405-5YCABV      ATMEVK-3405-YBV-5   ATMEVK-3405-YBV-5   2560KB              BGA 4x4
+ATM3405-5WCAQK      ATMEVK-3405-WQK-5   ATMEVK-3405-WQK-5   1536KB              QFN 5x5
+ATM3405-5WCAQK      ATMBTCSTAG-3405     ATMBTCSTAG-3405     1536KB              QFN 5x5
 ATM3430e-5YCAQN     ATMEVK-3430e-YQN-5  ATMEVK-3430e-YQN-5  2560KB              QFN 7x7   x
 ==================  ==================  ==================  ==================  ========  ==========
 
