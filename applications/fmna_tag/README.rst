@@ -25,7 +25,7 @@ ADK Integration Guide
 Option1 (recommended)
 =====================
 
-The Atmosic Zephyr ADK core is provided as the binary library libatm_fmna.a and included in the public release, so no additional effort or ADK source code is required to build the example.
+The Atmosic Zephyr ADK core is provided as the binary library ``libatm_fmna.a`` and included in the public release, so no additional effort or ADK source code is required to build the example.
 Customization can still be performed through configuration settings or application-level modifications, such as button behavior and buzzer customization.
 
 Option2
@@ -155,7 +155,10 @@ Run the following command to build the mcuboot, SPE, application and factory dat
     west build -p always -b <BOARD>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstklib.pd50
 
 
-Run the following command to program all the built images and run the application:
+Programming
+===========
+
+To flash the built images:
 
 .. code-block:: bash
 
