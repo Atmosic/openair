@@ -1,12 +1,12 @@
 .. _ss_fmna_tag-application:
 
-Samsung SmartThings Apple Find My Combo Tag
-###########################################
+Find My Combo Tag: Apple & Samsung SmartThings Compatible
+#########################################################
 
 Overview
 ********
 
-This sample demonstrates the **Samsung SmartThings Apple Find My Combo Tag** functionality.
+This sample illustrates the functionality of a combo tag compatible with both **Apple Find My Network** and **Samsung SmartThings Find Network**.
 
 Requirements
 ************
@@ -20,37 +20,15 @@ Requirements
 Samsung SmartThings Find Device SDK
 ***********************************
 
-1. Once you have access to SmartThings Find Device SDK you can request access to git@github.com:Atmosic/TagSDK.git
+1. Once you have access to SmartThings Find Device SDK you can request for the integration patch from Atmosic.
 
-2. Add following entry to the `projects` section of `west.yml`:
+2. Create a directory named ``vendor`` under the ``<WEST_TOPDIR>``, and place the unzipped ``TagSDK`` directory under ``vendor``. The path will be ``<WEST_TOPDIR>/vendor/TagSDK``.
 
-  .. code-block:: yaml
-    - name: TagSDK
-      url: git@github.com:Atmosic/TagSDK.git
-      revision: main
-      path: vendor/TagSDK
-
-3. Run `west update` to fetch the project.
 
 ADK Integration Guide
 *********************
 
-The ADK core is provided as the binary library ``libatm_fmna.a``, making it easy for users to integrate the Apple FindMy function into their applications without needing the source code.
-For access to the Atmosic ADK Zephyr source code, please contact Atmosic and provide the MFi Program ID.
-
-Once you have access to the private Atmosic Zephyr ADK GitHub repository, follow the instructions in the repository's README to include the ADK source in your project build.
-
-  .. note::
-    For detailed behavior, configuration, and instructions for **fmna_tag**, please refer to its documentation:
-    <:ref:`Apple Find My Network Tag <fmna_tag-application>`>.
-
-Button Functions
-****************
-
-In order for the button to work, jumpers JP25 and JP27 need to be installed on the EVK.
-
-- Press and hold button2 on EVK for 5 seconds during reboot to unpair and enter pairing mode.
-- During the pairing process, the Samsung SmartThings APP will prompt the user to press button2 to continue and complete pairing.
+See the following link for integration and instructions: `Apple Find My Network Tag <../fmna_tag/README.rst#adk-integration-guide>`_.
 
 Building and Running
 ********************
@@ -83,3 +61,11 @@ To flash the built images:
   .. code-block:: console
 
     west flash --skip-rebuild --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+
+Button Functions
+****************
+
+In order for the button to work, jumpers JP25 and JP27 need to be installed on the EVK.
+
+- Press and hold button2 on EVK for 5 seconds during reboot to unpair and enter pairing mode.
+- During the pairing process, the Samsung SmartThings APP will prompt the user to press button2 to continue and complete pairing.
