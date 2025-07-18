@@ -44,7 +44,7 @@ Follow the steps as below:
 
       patch -p1 < <patch_name>.diff
 
-5. Add the following entry to the ``projects`` section of ``west.yaml``:
+5. Add the following entry to the ``projects`` section of ``openair/west.yml``:
 
    .. code-block:: yaml
 
