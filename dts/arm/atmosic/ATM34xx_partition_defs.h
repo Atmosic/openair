@@ -15,6 +15,10 @@
 #ifndef _ATMOSIC_ATM_ATM34XX_PARTITION_DEFS_H_
 #define _ATMOSIC_ATM_ATM34XX_PARTITION_DEFS_H_
 
+#define RUN_APP_NORMAL 0
+#define RUN_APP_IN_FLASH 1
+#define RUN_APP_IN_FLASH_SPLIT 2
+
 #ifdef ATM_APP_PART_DEFS
 #include ATM_APP_PART_DEFS
 #endif
@@ -50,9 +54,9 @@
 #define ATM_SPE_OFFSET 0x0
 
 #ifndef ATM_SPE_SIZE
-#if (RUN_IN_FLASH == 2)
-#define ATM_SPE_SIZE (32 * 1024)
-#elif (RUN_IN_FLASH == 1)
+#if (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
+#define ATM_SPE_SIZE (24 * 1024)
+#elif (RUN_IN_FLASH == RUN_APP_IN_FLASH)
 /* this option gives all of RRAM to the SPE (used for testing) */
 #define ATM_SPE_SIZE (ATM_RRAM_AVAIL_SIZE - ATM_TOTAL_STORAGE_SIZE)
 #else
@@ -76,7 +80,7 @@
 #define ATM_APP_SIZE           (FLASH_SIZE - ATM_TEST_STORAGE_SIZE)
 #define ATM_TEST_STORAGE_OFFSET (ATM_APP_OFFSET + ATM_APP_SIZE)
 #endif
-#if (RUN_IN_FLASH == 1)
+#if (RUN_IN_FLASH == RUN_APP_IN_FLASH)
 #define ATM_FAST_CODE_SIZE 0
 #if (ATM_SPE_SIZE)
 /* data placed after SPE */
@@ -84,7 +88,7 @@
 #else
 #define ATM_DATA_START_OFFSET 0x0
 #endif
-#elif (RUN_IN_FLASH == 2)
+#elif (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
 #if (ATM_SPE_SIZE)
 #define ATM_FAST_CODE_OFFSET (ATM_SPE_OFFSET + ATM_SPE_SIZE)
 #define ATM_FAST_CODE_SIZE  (ATM_RRAM_AVAIL_SIZE - ATM_SPE_SIZE \
@@ -97,7 +101,7 @@
 #define ATM_DATA_START_OFFSET (ATM_FAST_CODE_OFFSET + ATM_FAST_CODE_SIZE)
 #else
 #error "Invalid RUN_IN_FLASH option"
-#endif // RUN_IN_FLASH == 1
+#endif // RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT
 #else
 #if (ATM_SPE_SIZE)
 #define ATM_NSPE_OFFSET (ATM_SPE_OFFSET + ATM_SPE_SIZE)

@@ -37,8 +37,13 @@
 // MCUBOOT starts at the beginning of RRAM
 #define ATM_MCUBOOT_OFFSET 0x0
 #ifndef ATM_MCUBOOT_SIZE
-#define ATM_MCUBOOT_SIZE 0x0C000
+#if defined(USE_ATM_SECURE_DEBUG) || !ATM_SPE_SIZE || \
+    (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
+#define ATM_MCUBOOT_SIZE 0xC000
+#else
+#define ATM_MCUBOOT_SIZE 0x8000
 #endif
+#endif // ATM_MCUBOOT_SIZE
 #if ((ATM_MCUBOOT_SIZE % ATM_RRAM_BLOCK_SIZE) != 0)
 #error "MCUBOOT size must be aligned"
 #endif
@@ -62,7 +67,7 @@
 #define ATM_SLOT2_TRAILER_RSVD_SIZE ATM_FLASH_BLOCK_SIZE
 #endif
 
-#if (RUN_IN_FLASH == 2) && (FLASH_SIZE < 0x100000)
+#if (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT) && (FLASH_SIZE < 0x100000)
 // internal testing of systems with only 512KB of FLASH
 // reduce slot0/1 size and give the rest to FLASH
 #define SLOT0_FLASH_RESERVE (24 * 1024)
@@ -102,7 +107,7 @@
 
 #ifdef RUN_IN_FLASH
 // multi-image layouts
-#if (RUN_IN_FLASH == 2)
+#if (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
 #if (ATM_SPE_SIZE)
 // fast code in RRAM placed after the SPE
 #define ATM_FAST_CODE_OFFSET (ATM_SPE_OFFSET + ATM_SPE_SIZE)
@@ -114,9 +119,9 @@
 #define ATM_FAST_CODE_OFFSET ATM_SLOT0_OFFSET
 #define ATM_FAST_CODE_SIZE (ATM_SLOT0_SIZE - ATM_SLOT0_TRAILER_RSVD_SIZE)
 #endif
-#elif (RUN_IN_FLASH == 1)
+#elif (RUN_IN_FLASH == RUN_APP_IN_FLASH)
 #error "Unsupported OTA configuration with SPE only in slot0"
-#endif // (RUN_IN_FLASH == 2)
+#endif // (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
 
 // slot 2 is the NSPE in FLASH
 #define ATM_SLOT2_OFFSET 0

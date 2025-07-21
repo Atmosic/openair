@@ -27,7 +27,7 @@
 #ifdef RUN_IN_FLASH
 / {
         chosen {
-		zephyr,flash_image1 = &flash0;
+		zephyr,atm_flash_xip = &flash0;
         };
 };
 #endif

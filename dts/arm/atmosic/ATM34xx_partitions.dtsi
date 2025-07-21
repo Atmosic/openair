@@ -6,6 +6,14 @@
 
 #include <arm/atmosic/ATM34xx_partition_defs.h>
 
+#ifdef RUN_IN_FLASH
+/ {
+        chosen {
+		zephyr,atm_flash_xip = &flash0;
+        };
+};
+#endif
+
 &rram0 {
 	partitions {
 #if ATM_SPE_SIZE

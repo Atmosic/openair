@@ -176,8 +176,11 @@ function(sign_flash_nspe_tasks)
   #  -) Removed encrypted images support
   ##########################################################
 
+  if(NOT "${CONFIG_MCUBOOT_ENCRYPTION_KEY_FILE}" STREQUAL "")
+      message(FATAL_ERROR "Encrypting upgrade image for Flash XIP region not supported")
+  endif()
+
   set(keyfile "${CONFIG_MCUBOOT_SIGNATURE_KEY_FILE}")
-  set(keyfile_enc "${CONFIG_MCUBOOT_ENCRYPTION_KEY_FILE}")
 
   foreach(file keyfile)
     if(NOT "${${file}}" STREQUAL "")
@@ -194,35 +197,20 @@ function(sign_flash_nspe_tasks)
     endif()
   endforeach()
 
-  # Find imgtool. Even though west is installed, imgtool might not be.
-  # The user may also have a custom manifest which doesn't include
-  # MCUboot.
-  #
-  # Therefore, go with an explicitly installed imgtool first, falling
-  # back on mcuboot/scripts/imgtool.py.
-  if(IMGTOOL)
-    set(imgtool_path "${IMGTOOL}")
-  elseif(DEFINED ZEPHYR_MCUBOOT_MODULE_DIR)
-    set(IMGTOOL_PY "${ZEPHYR_MCUBOOT_MODULE_DIR}/scripts/imgtool.py")
-    if(EXISTS "${IMGTOOL_PY}")
-      set(imgtool_path "${IMGTOOL_PY}")
-    endif()
-  endif()
-
   # No imgtool, no signed binaries.
-  if(NOT DEFINED imgtool_path)
+  if(NOT DEFINED IMGTOOL)
     message(FATAL_ERROR "Can't sign images for MCUboot: can't find imgtool")
     return()
   endif()
 
   # Fetch devicetree details for flash and slot information in slot2 (flash NSPE)
-  dt_chosen(flash_node PROPERTY "zephyr,flash_image1")
+  dt_chosen(flash_node PROPERTY "zephyr,atm_flash_xip")
   dt_nodelabel(slot2_flash NODELABEL "slot2_partition" REQUIRED)
   dt_prop(slot_size PATH "${slot2_flash}" PROPERTY "reg" INDEX 1 REQUIRED)
   dt_prop(write_block_size PATH "${flash_node}" PROPERTY "write-block-size")
 
   # Basic 'imgtool sign' command with known image information.
-  set(imgtool_sign ${PYTHON_EXECUTABLE} ${imgtool_path} sign
+  set(imgtool_sign ${PYTHON_EXECUTABLE} ${IMGTOOL} sign
     --version ${CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION} --header-size ${CONFIG_ROM_START_OFFSET}
     --slot-size ${slot_size} --align ${write_block_size})
 
@@ -276,10 +264,6 @@ function(sign_flash_nspe_tasks)
                    ${imgtool_sign} ${imgtool_args} --pad --confirm ${FLASH_NSPE_BASE}.bin
                    ${SIGNED_FLASH_NSPE_BASE}.confirmed.bin)
     endif()
-
-    if(NOT "${keyfile_enc}" STREQUAL "")
-      message(FATAL_ERROR "Encrypting NSPE image in Flash not supported")
-    endif()
   endif()
 
   # Set up .hex outputs.
@@ -300,10 +284,6 @@ function(sign_flash_nspe_tasks)
       set_property(GLOBAL APPEND PROPERTY extra_post_build_commands COMMAND
                    ${imgtool_sign} ${imgtool_args} --pad --confirm ${FLASH_NSPE_BASE}.hex
                    ${SIGNED_FLASH_NSPE_BASE}.signed.confirmed.hex)
-    endif()
-
-    if(NOT "${keyfile_enc}" STREQUAL "")
-      message(FATAL_ERROR "Encrypting NSPE image in Flash not supported")
     endif()
   endif()
 
