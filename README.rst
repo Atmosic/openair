@@ -11,7 +11,6 @@ Supported Platforms
 *******************
 
 * `ATM33/e <boards/atmosic/atm33evk/doc/index.rst>`_
-* `ATM34/e <boards/atmosic/atm34evk/doc/index.rst>`_
 
 Starting 25.07.0 release, we have deprecated support for ATMx2xx(ATM2/3) platforms.
 
@@ -44,6 +43,5 @@ To create an Atmosic SDK workspace, first follow the instructions_ from the offi
 For details about how to build and program an application, see the following sections:
 
  * `ATM33/e programming and debugging </boards/atmosic/atm33evk/doc/index.rst#programming-and-debugging>`_
- * `ATM34/e programming and debugging </boards/atmosic/atm34evk/doc/index.rst#programming-and-debugging>`_
 
 For more information, see `Atmosic OpenAir Documentation <https://atmosic.com/public/OpenAir_SDK_doc/index.html>`_.
