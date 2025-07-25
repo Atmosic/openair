@@ -13,6 +13,23 @@ Supported Platforms
     * `ATM33/e <boards/atmosic/atm33evk/doc/index.rst>`_
     * `ATM34/e <boards/atmosic/atm34evk/doc/index.rst>`_
 
+Starting 25.07.0 release, we have deprecated support for ATMx2xx(ATM2/3) platforms.
+
+OpenAir branches
+****************
+
+The main branch is used for development and to integrate all new features and bug fixes. It reflects the latest state of development.
+
+For Production Use
+
+If you need a stable version of this project, please use the code from one of the official releases_.
+
+.. _releases: https://github.com/Atmosic/openair/releases/
+
+For Contributors
+
+Please base all pull requests on the main branch.
+
 Creating a Workspace
 ********************
 
