@@ -13,7 +13,7 @@ Supported Platforms
     * `ATM33/e <boards/atmosic/atm33evk/doc/index.rst>`_
     * `ATM34/e <boards/atmosic/atm34evk/doc/index.rst>`_
 
-Starting 25.07.0 release, we have deprecated support for ATMx2xx(ATM2/3) platforms.
+Starting 25.07.0 release, support for ATMx2xx(ATM2/3) platforms are deprecated.
 
 OpenAir branches
 ****************
