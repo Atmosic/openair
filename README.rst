@@ -35,7 +35,7 @@ Creating a Workspace
 
 To create an Atmosic SDK workspace, first follow the instructions_ from the official Zephyr documentation on setting up the tooling for your host operating system.  Then use ``west init`` and ``west update`` as follows::
 
-  west init -m https://github.com/Atmosic/openair.git --mr rc/25.07.0 zephyrproject
+  west init -m https://github.com/Atmosic/openair.git zephyrproject
   cd zephyrproject
   west update
 
