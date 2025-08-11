@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Atmosic
+ * Copyright (c) 2024-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,8 +8,7 @@
 #include "cust_sec_func.h"
 #include "sec_service.h"
 
-__attribute__((cmse_nonsecure_entry)) __attribute__((used)) bool
-nsc_hello_world(uint8_t *buffer, uint32_t *buf_len)
+__SPE_NSC bool nsc_hello_world(uint8_t *buffer, uint32_t *buf_len)
 {
     // before checking if we have access to the buffer, need to check access
     // to buf_len

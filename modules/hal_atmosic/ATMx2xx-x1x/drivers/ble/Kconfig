@@ -2,6 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+config ATM_BLE
+    bool "Atmosic BLE driver"
+    default y
+    depends on BT
+    select MBEDTLS
+
 if BT
 
 config EXT_WAKEUP_ENABLE

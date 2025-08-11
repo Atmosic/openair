@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_PC_CTR_SLEEP
+	bool "Atmosic pc_ctr_sleep module"
+	default y if ATM_ATLC

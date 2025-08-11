@@ -125,6 +125,10 @@ static bool harv_enabled(void)
 static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 {
 	uint64_t duration;
+
+#if CONFIG_ATM_SOCOFF_DURATION_SEC
+	duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_DURATION_SEC);
+#else
 	if (idle != IDLE_FOREVER) {
 		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
 		/* Convert ticks to lpcycles */
@@ -132,6 +136,7 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 	} else {
 		duration = 0;
 	}
+#endif
 
 	WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
 	{

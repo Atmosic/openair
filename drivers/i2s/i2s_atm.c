@@ -348,8 +348,8 @@ static int i2s_atm_configure(struct device const *dev, enum i2s_dir dir,
 		/* preallocate and put into rdy_q */
 		void *mem_block;
 		while (!k_mem_slab_alloc(i2s_data->tx.mem_slab, &mem_block, K_NO_WAIT)) {
-			ASSERT_ERR(sizeof(mem_block) ==
-				   RING_BUF_PUT(i2s_data->tx.rdy_q, mem_block));
+			uint32_t write_bytes = RING_BUF_PUT(i2s_data->tx.rdy_q, mem_block);
+			ASSERT_ERR(sizeof(mem_block) == write_bytes);
 		}
 #endif
 	}

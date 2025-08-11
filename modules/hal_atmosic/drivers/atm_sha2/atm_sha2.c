@@ -5,7 +5,7 @@
  *
  * @brief Atmosic SHA256 driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
+#include "arch.h"
 #include "atm_sha2.h"
 #include "ARMv8MBL.h"
 #include "base_addr.h"
@@ -21,8 +22,6 @@
 #include "at_apb_clkrstgen_regs_core_macro.h"
 #include "at_apb_wrpr_pins_regs_core_macro.h"
 #include "ll.h"
-#include "atm_utils_c.h"
-#include "atm_utils_reg.h"
 #if defined(SECURE_MODE)
 #if defined(ENABLE_HMAC_SIDELOAD)
 #include "key_sideload.h"
@@ -39,10 +38,13 @@
 #error "SHA2 access is limited to SECURE when SECURE_SHA2_MODE is enabled."
 #endif
 #endif // defined(SECURE_MODE)
+#include "atm_utils_c.h"
+#include "atm_utils_reg.h"
 
-
+#ifndef IS_ALIGNED
 #define IS_ALIGNED(ptr, alignment) \
     (((uintptr_t)(ptr)) % (alignment) == 0)
+#endif
 
 #define SHA2_ID 0x53484132 // 'S' 'H' 'A' '2'
 

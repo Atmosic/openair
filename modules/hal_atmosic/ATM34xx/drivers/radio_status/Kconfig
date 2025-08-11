@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_RADIO_STATUS
+	bool "Atmosic radio_status module"
+	default y if ATM_ATLC || DTOP_BYPASS

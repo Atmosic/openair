@@ -1,0 +1,15 @@
+# Copyright (c) 2024-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+if BT || ENTROPY_ATM_TRNG
+
+config USE_FIXED_ATMWSTK
+	bool
+	default y if ATMWSTK_FULL
+
+config FIXED_ATMWSTK_PATH
+	string "path of BLE link stack image"
+	default "${ZEPHYR_OPENAIR_MODULE_DIR}/modules/hal_atmosic/ATM33xx-5/drivers/ble"
+
+endif

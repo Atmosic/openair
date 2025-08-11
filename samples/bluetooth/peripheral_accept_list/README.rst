@@ -17,17 +17,17 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/bluetooth/peripheral_accept_list`` in the OpenAir tree.
+This sample is built from ``openair/samples/bluetooth/peripheral_accept_list``.
 The source code can be found under ``zephyr/samples/bluetooth/peripheral_accept_list``.
 
 Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/samples/bluetooth/peripheral_accept_list --sysbuild -T samples.bluetooth.peripheral_accept_list.atm
+   west build -p always -b <BOARD>//ns openair/samples/bluetooth/peripheral_accept_list --sysbuild -T samples.bluetooth.peripheral_accept_list.atm
 
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]

@@ -1,8 +1,8 @@
 .. _atmevk-02:
 
-###############
-Atmosic ATMx2xx
-###############
+#################
+Atmosic ATM2/ATM3
+#################
 
 ********
 Overview
@@ -40,10 +40,10 @@ It is available at https://atmosic.com/public/Pinmux/index.html for all Atmosic 
 Programming and Debugging
 *************************
 
-It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.8 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
+It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.4 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
 
  export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
- export ZEPHYR_SDK_INSTALL_DIR=<$HOME/zephyr-sdk-0.16.8>
+ export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-0.16.4
 
 Applications for the Atmosic EVK boards can be built, flashed, and debugged using the familiar `west build` and `west flash`.
 
@@ -98,7 +98,7 @@ Flash MCUboot
 
 .. code-block:: console
 
-  west flash --build-dir build/<BOARD>/<MCUBOOT> --device=<DEVICE_ID> --verify --noreset
+  west flash --build-dir build/<BOARD>/<MCUBOOT> --device <DEVICE_ID> --verify --noreset
 
 ---------------------
 Flash the Application
@@ -106,7 +106,7 @@ Flash the Application
 
 .. code-block:: console
 
-  west flash --build-dir build/<BOARD>/<APP> --device=<DEVICE_ID> --verify
+  west flash --build-dir build/<BOARD>/<APP> --device <DEVICE_ID> --verify
 
 **************************
 Viewing the Console Output
@@ -141,7 +141,7 @@ The user will need to test each one to determine where the message output is dis
 Windows
 =======
 
-The console output for the Atmosic ATMx2xx is sent to the USB Serial port. When connected, two UART ports will be displayed.
+The console output for the Atmosic ATM2/ATM3 is sent to the USB Serial port. When connected, two UART ports will be displayed.
 The user must test each one to determine where the message output appears.
 To view the console output, use a serial terminal program such as PuTTY (available from
 https://www.chiark.greenend.org.uk/~sgtatham/putty) to connect to the USB Serial port. Set the UART configuration to 115200/N/8/1.
@@ -151,5 +151,5 @@ Note on UART1 RX
 ================
 
 To use P32 for UART1 RX, set the MODE2 switch (SW1) on the EVK to the OFF position. This switch is connected to a 1k pull-down resistor and, when ON, prevents the FTDI interface board from driving the UART1 RX line.
-To connect the ATMx2 part to the FTDI interface board, change the J3 jumper on the FTDI board from its default position (pins 3 and 4 connected) to pins 5 and 6 (third position from the right).
-However, when loading the application, remove the J3 jumper to prevent benign boot being active that could stop the ATMx2 from booting into the application.
+To connect the ATM2/ATM3 part to the FTDI interface board, change the J3 jumper on the FTDI board from its default position (pins 3 and 4 connected) to pins 5 and 6 (third position from the right).
+However, when loading the application, remove the J3 jumper to prevent benign boot being active that could stop the ATM2/ATM3 from booting into the application.

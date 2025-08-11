@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_SEC_COUNTER
+	bool "Atmosic Secure Counter module"
+	depends on TRUSTED_EXECUTION_SECURE

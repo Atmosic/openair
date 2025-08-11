@@ -172,8 +172,15 @@ static union {
 #endif
 #if (defined(CFG_VND_MALLOC) || defined(CFG_VND_OTP_PUSH))
     // vendor_stage: VENDOR_MALLOC
-    malloc_cmd_t malloc_cmd;
-    malloc_ctx_t malloc_ctx;
+    // SW-6246 bug fix: malloc_cmd and malloc_ctx are used
+    // in the same code block. The previous approach can lead to data
+    // overwritten and cause the logic error in the handler functions. Using an
+    // anonymous struct is the most tiny change to fix the issue without
+    // spreading the changes to other scope.
+    struct {
+	malloc_cmd_t malloc_cmd;
+	malloc_ctx_t malloc_ctx;
+    };
 #endif
 #ifdef CFG_VND_DBG_MMR
     // vendor_stage: VENDOR_RD_MEM

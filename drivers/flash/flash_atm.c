@@ -50,7 +50,7 @@ LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
 // this allows the CPU to break in during a long running operation
 // NOTE: when using flash execute in place (XIP), only enable breakin on
 // supported chips.
-#if !EXECUTING_IN_PLACE || defined(QSPI_BURST_PP_CTRL__WRD_CNT__MASK)
+#if !EXECUTING_IN_PLACE || defined(__QSPI_BURST_PP_CTRL_MACRO__)
 #define FLASH_BREAK_IN
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
@@ -88,6 +88,123 @@ do {\
 		qspi_drive_stop();\
 	} \
 } while(0)
+
+#ifndef __QSPI_BURST_PP_CTRL_MACRO__
+/**
+ * @brief Convert nibble to OE/val format for TRANSACTION_SETUP register
+ * @param[in] nibble 4-bit value to convert
+ * @return OE/val format for TRANSACTION_SETUP register
+ */
+__PP_FAST uint32_t to_oe_format_quad(uint8_t nibble)
+{
+	if (nibble > 0xf) {
+		return 0;
+	}
+	return (0x2222 | (nibble & 0x1) | ((nibble & 0x2) << 3) | ((nibble & 0x4) << 6) |
+		((nibble & 0x8) << 9));
+}
+
+/**
+ * @brief Begin QSPI transaction
+ */
+__PP_FAST void qspi_drive_start(void)
+{
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
+}
+
+/**
+ * @brief Drive all QSPI outputs for a single cycle
+ * @param[in] nibble 4-bit value to drive
+ */
+__PP_FAST void qspi_drive_nibble(uint8_t nibble)
+{
+	uint32_t oe = to_oe_format_quad(nibble) << QSPI_TRANSACTION_SETUP__DOUT_0_CTRL__SHIFT;
+	CMSDK_QSPI->TRANSACTION_SETUP = oe;
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK | oe;
+}
+
+/**
+ * @brief Drive all QSPI outputs for two cycles
+ * @param[in] byte 8-bit value to drive
+ */
+__PP_FAST void qspi_drive_byte(uint8_t byte)
+{
+	qspi_drive_nibble((byte & 0xf0) >> 4);
+	qspi_drive_nibble(byte & 0x0f);
+}
+
+/**
+ * @brief Read all QSPI inputs for two cycles
+ */
+__PP_FAST void qspi_capture_byte(void)
+{
+	CMSDK_QSPI->TRANSACTION_SETUP = 0;
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK |
+					QSPI_TRANSACTION_SETUP__SAMPLE_DIN__WRITE(0xf0);
+
+	CMSDK_QSPI->TRANSACTION_SETUP = 0;
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK |
+					QSPI_TRANSACTION_SETUP__SAMPLE_DIN__WRITE(0x0f);
+}
+
+/**
+ * @brief Drive serial SPI command
+ * @param[in] cmd 8-bit command to drive on DOUT_0
+ */
+__PP_FAST void qspi_drive_serial_cmd(uint8_t cmd)
+{
+	for (int i = 0; i < 8; i++, cmd <<= 1) {
+		uint32_t oe = ((cmd & 0x80) ? 0x0003 : 0x0002)
+			      << QSPI_TRANSACTION_SETUP__DOUT_0_CTRL__SHIFT;
+
+		CMSDK_QSPI->TRANSACTION_SETUP = oe;
+		CMSDK_QSPI->TRANSACTION_SETUP = oe | QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
+	}
+}
+
+/**
+ * @brief Read SPI input for 8 cycles
+ * @return read byte
+ */
+__PP_FAST uint8_t qspi_read_serial_byte(void)
+{
+	uint8_t data = 0;
+	for (uint8_t i = 0x80; i; i >>= 1) {
+		CMSDK_QSPI->TRANSACTION_SETUP = 0;
+		CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
+		CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK |
+						QSPI_TRANSACTION_SETUP__SAMPLE_DIN__WRITE(0x02);
+
+		if (CMSDK_QSPI->READ_DATA & 0x02) {
+			data |= i;
+		}
+	}
+	return data;
+}
+
+/**
+ * @brief Drive dummy cycles on QSPI bus
+ * @param[in] cycles Number of dummy cycles to drive
+ */
+__PP_FAST void qspi_dummy(uint8_t cycles)
+{
+	for (; cycles; cycles--) {
+		CMSDK_QSPI->TRANSACTION_SETUP = 0;
+		CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
+	}
+}
+
+/**
+ * @brief End QSPI transaction
+ */
+__PP_FAST void qspi_drive_stop(void)
+{
+	CMSDK_QSPI->TRANSACTION_SETUP = 0;
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
+}
+#endif
 
 #ifdef QSPI_REMOTE_AHB_SETUP_3__OPCODE_PERFORMANCE_MODE__READ
 #define RESTORE_PERF_MODE() \
@@ -229,6 +346,7 @@ static uint8_t uid[UID_PUYA_GIGA_LEN];
  */
 static K_SEM_DEFINE(flash_atm_sync_sem, 1, 1);
 #endif
+static bool write_erase_in_progress;
 
 #ifdef CONFIG_FLASH_EX_OP_ENABLED
 /*
@@ -239,8 +357,10 @@ static K_SEM_DEFINE(flash_atm_latency_sem, 1, 1);
 
 #ifdef FLASH_BREAK_IN
 
-#define FLASH_BREAKIN_TIMEOUT_MS 500
-#define QSPI_SUSPEND_US          CONFIG_SOC_FLASH_ATM_BREAK_IN_SUSPEND_US
+#define FLASH_BREAKIN_TIMEOUT_MS    500
+#define PUYA_BREAK_IN_SUSPEND_US    30
+#define GIGADEV_BREAK_IN_SUSPEND_US 40
+#define MACRONIX_BREAK_IN_SUSPEND_US 40
 
 #define QSPI_CLEAR_INTERRUPT()                                                                     \
 	do {                                                                                       \
@@ -250,11 +370,24 @@ static K_SEM_DEFINE(flash_atm_latency_sem, 1, 1);
 			CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_4);                                 \
 	} while (0)
 
+static uint8_t break_in_suspend_us;
+
 static K_SEM_DEFINE(flash_atm_break_sem, 0, 1);
+
+static bool in_exception;
 
 // wait for the outstanding operation allowing break in to complete
 static int flash_atm_wait_break_in_op_done(const char *desc, off_t offset)
 {
+	if (in_exception) {
+		if (!QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__READ \
+		    (CMSDK_QSPI->REMOTE_AHB_SETUP_4))
+		{
+			return 0;
+		} else {
+			return -EBUSY;
+		}
+	}
 	LOG_DBG("Wait op: %s offset:0x%08lx", desc, (unsigned long)offset);
 	int err = k_sem_take(&flash_atm_break_sem, K_MSEC(FLASH_BREAKIN_TIMEOUT_MS));
 	__ASSERT(!err, "breakin wait failed (%d)", err);
@@ -274,6 +407,10 @@ void flash_atm_breakin_isr_handler(void const *arg)
 
 static void external_flash_enable_breakin(void)
 {
+	if (atm_soc_in_exception()) {
+		in_exception = true;
+		return;
+	}
 #ifdef CONFIG_PM
 	// breakin is interrupt driven and erase can take 100s of ms to finish
 	// hold off low power states to prevent disruption
@@ -285,7 +422,7 @@ static void external_flash_enable_breakin(void)
 	QSPI_CLEAR_INTERRUPT();
 	QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__SET(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
 	QSPI_REMOTE_AHB_SETUP_4__MASK_INTRP__SET(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
-	uint32_t suspend_time = QSPI_SUSPEND_US * atm_bp_clock_get() / 1000000;
+	uint32_t suspend_time = break_in_suspend_us * atm_bp_clock_get() / 1000000;
 	QSPI_REMOTE_AHB_SETUP_9__ESL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9,
 					     suspend_time);
 	QSPI_REMOTE_AHB_SETUP_9__PSL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9,
@@ -294,6 +431,10 @@ static void external_flash_enable_breakin(void)
 
 static void external_flash_disable_breakin(void)
 {
+	if (in_exception) {
+		in_exception = false;
+		return;
+	}
 	QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__CLR(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
 	QSPI_REMOTE_AHB_SETUP_4__MASK_INTRP__CLR(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
 	QSPI_REMOTE_AHB_SETUP_9__ESL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9, 0);
@@ -309,6 +450,16 @@ static void init_flash_breakin(void)
 	IRQ_CONNECT(QSPI_BREAKIN_IRQn, IRQ_PRI_MID, flash_atm_breakin_isr_handler, NULL, 0);
 	QSPI_CLEAR_INTERRUPT();
 	irq_enable(QSPI_BREAKIN_IRQn);
+	if (man_id == FLASH_MAN_ID_PUYA) {
+		break_in_suspend_us = PUYA_BREAK_IN_SUSPEND_US;
+	} else if (man_id == FLASH_MAN_ID_GIGA) {
+		break_in_suspend_us = GIGADEV_BREAK_IN_SUSPEND_US;
+	} else if (man_id == FLASH_MAN_ID_MACRONIX) {
+		break_in_suspend_us = MACRONIX_BREAK_IN_SUSPEND_US;
+	} else {
+		ASSERT_ERR(0);
+		return;
+	}
 	LOG_INF("Flash breakin enabled");
 }
 
@@ -399,23 +550,32 @@ static int flash_atm_read(struct device const *dev, off_t addr, void *data, size
 static int flash_atm_read_sync(struct device const *dev, off_t addr,
 		void *data, size_t len)
 {
-#if defined(CONFIG_MULTITHREADING)
 	int err;
+	bool is_exception = atm_soc_in_exception();
 
-	err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
-	if (err) {
+	if (is_exception && write_erase_in_progress) {
+	    LOG_ERR("  Flash write or erase in progress and read in exception");
+	    return -EBUSY;
+	}
+#if defined(CONFIG_MULTITHREADING)
+	if (!is_exception) {
+	    err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
+	    if (err) {
 		LOG_ERR("  Flash read sem wait error: %d", err);
 		return err;
+	    }
 	}
-	err = flash_atm_read(dev, addr, data, len);
-	k_sem_give(&flash_atm_sync_sem);
-
-	return err;
-#else
-	return flash_atm_read(dev, addr, data, len);
 #endif
+	err = flash_atm_read(dev, addr, data, len);
+#if defined(CONFIG_MULTITHREADING)
+	if (!is_exception) {
+	    k_sem_give(&flash_atm_sync_sem);
+	}
+#endif
+	return err;
 }
 
+#ifndef __QSPI_BURST_PP_CTRL_MACRO__
 typedef struct {
 	uint16_t d;
 } __PACKED misaligned_uint16_t;
@@ -462,12 +622,150 @@ static void flash_write_mapped(struct device const *dev, off_t addr, size_t len,
 		*(volatile uint8_t *)addr++ = *buffer++;
 	}
 }
+#endif
 
 #define PAGE_SIZE 256
 #define PAGE_MASK (PAGE_SIZE - 1)
 
-static void flash_write_pages(struct device const *dev, off_t addr, size_t length,
-			      uint8_t const *buffer);
+#if EXECUTING_IN_PLACE
+__ramfunc
+#endif
+static int flash_write_page(struct device const *dev, off_t addr,
+			    size_t length, uint8_t const *buffer)
+{
+#ifdef __QSPI_BURST_PP_CTRL_MACRO__
+#define PP_RAM_ADDR_START (DT_REG_ADDR(SOC_NV_FLASH_NODE) + 0xFFFE00)
+#define PP_RAM_SIZE       0x100
+#define PP_RAM_ADDR_MASK  (PP_RAM_SIZE - 1)
+	uint32_t pp_ram_addr = addr & PP_RAM_ADDR_MASK;
+	if ((pp_ram_addr + length) > PP_RAM_SIZE) {
+		ASSERT_ERR(0);
+		return -EINVAL;
+	}
+	pp_ram_addr += PP_RAM_ADDR_START;
+
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
+
+	memcpy((void *)pp_ram_addr, buffer, length);
+	if (length == PAGE_SIZE) {
+		CMSDK_QSPI_NONSECURE->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(0);
+	} else {
+		CMSDK_QSPI_NONSECURE->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(length);
+	}
+
+#define MAGIC_PP_WRITE_ADDR (DT_REG_ADDR(SOC_NV_FLASH_NODE) + 0x00FFFFF8)
+	*(volatile uint32_t *)MAGIC_PP_WRITE_ADDR = addr;
+
+	int err = SYNC_FLASH_BREAKIN("Write 1 page", addr);
+
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+	return err;
+#else
+	GLOBAL_INT_DISABLE();
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
+	// Apply bank swap
+	addr ^= QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__READ(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
+
+	// !!! from this point forward the QSPI bridge will be disabled
+
+	EXIT_PERF_MODE();
+
+	// Set WEL
+	qspi_drive_start();
+	qspi_drive_serial_cmd(SPI_FLASH_WREN);
+	qspi_drive_stop();
+
+	// Quad Page Program
+	qspi_drive_start();
+	uint8_t qpp = (man_id == FLASH_MAN_ID_MACRONIX) ? SPI_FLASH_4PP : SPI_FLASH_QPP;
+	qspi_drive_serial_cmd(qpp);
+	if (qpp == SPI_FLASH_4PP) {
+		// 4XIO PP, address is sent in quad mode
+		qspi_drive_byte((addr >> 16) & 0xff);
+		qspi_drive_byte((addr >> 8) & 0xff);
+		qspi_drive_byte(addr & 0xff);
+	} else {
+		// regular QPP, address is sent serially
+		qspi_drive_serial_cmd((addr >> 16) & 0xff);
+		qspi_drive_serial_cmd((addr >> 8) & 0xff);
+		qspi_drive_serial_cmd(addr & 0xff);
+	}
+	for (; length; length--) {
+		qspi_drive_byte(*(buffer++));
+	}
+	qspi_drive_stop();
+
+	// Poll Status Register until WIP clears
+	uint8_t status;
+	do {
+		qspi_drive_start();
+		qspi_drive_serial_cmd(SPI_FLASH_RDSR);
+		status = qspi_read_serial_byte();
+		qspi_drive_stop();
+	} while (status & 0x1);
+
+	RESTORE_PERF_MODE();
+
+	// Switch control from QSPI to AHB bridge
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
+					QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+
+	// QSPI bridge is restored this point forward
+	GLOBAL_INT_RESTORE();
+	return 0;
+#endif
+}
+
+static int flash_write_pages(struct device const *dev, off_t addr, size_t length,
+			     uint8_t const *buffer)
+{
+
+	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(
+		    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {
+		ext_flash_inval_cache();
+		// Issue a dummy read (end of flash) to get back into performance mode,
+		// in case we performed an erase, mem-mapped write or went into power down mode
+		// prior to page programming. The bridge disables performance mode for these pior
+		// operations and does not re-instate perf mode until the CPU issues a read again.
+		uint32_t volatile *dummy = (uint32_t volatile *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) +
+								 flash_size - sizeof(uint32_t));
+		*dummy;
+	}
+
+	// When copying from flash to itself, precopy is required
+	bool precopy = ((addr >> QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__WIDTH) ==
+			((uintptr_t)buffer >> QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__WIDTH));
+	uint8_t copy_buf[precopy ? PAGE_SIZE : 0];
+	int err = 0;
+#ifdef __QSPI_BURST_PP_CTRL_MACRO__
+	ENABLE_FLASH_BREAKIN();
+#endif
+	while (length) {
+		uint32_t next_len = PAGE_SIZE - (addr & PAGE_MASK);
+		if (next_len > length) {
+			next_len = length;
+		}
+		uint8_t const *page_buf;
+		if (precopy) {
+			memcpy(copy_buf, buffer, next_len);
+			page_buf = copy_buf;
+		} else {
+			page_buf = buffer;
+		}
+		err = flash_write_page(dev, addr, next_len, page_buf);
+		if (err) {
+			break;
+		}
+		addr += next_len;
+		buffer += next_len;
+		length -= next_len;
+	}
+#ifdef __QSPI_BURST_PP_CTRL_MACRO__
+	DISABLE_FLASH_BREAKIN();
+#endif
+	return err;
+}
 
 static int flash_atm_write(struct device const *dev, off_t addr, void const *data, size_t len)
 {
@@ -484,6 +782,10 @@ static int flash_atm_write(struct device const *dev, off_t addr, void const *dat
 	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
 	ext_flash_enable_AHB_writes();
 
+#ifdef __QSPI_BURST_PP_CTRL_MACRO__
+	int err = flash_write_pages(dev, addr, len, data);
+#else
+	int err = 0;
 	switch (man_id) {
 	case FLASH_MAN_ID_FUDAN:
 	case FLASH_MAN_ID_GIANTEC:
@@ -497,39 +799,50 @@ static int flash_atm_write(struct device const *dev, off_t addr, void const *dat
 	// fall through
 	case FLASH_MAN_ID_PUYA:
 		// always page write with PUYA
-		flash_write_pages(dev, addr, len, data);
+		err = flash_write_pages(dev, addr, len, data);
 		break;
 	default:
 		flash_write_mapped(dev, addr, len, data);
 		break;
 	}
+#endif
 
 	ext_flash_disable_AHB_writes();
 	// flash state is now changed, invalidate cache
 	ext_flash_inval_cache();
 	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
 
-	return 0;
+	return err;
 }
 
 static int flash_atm_write_sync(struct device const *dev, off_t addr,
 		void const *data, size_t len)
 {
-#if defined(CONFIG_MULTITHREADING)
 	int err;
+	bool is_exception = atm_soc_in_exception();
 
-	err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
-	if (err) {
+	if (is_exception && write_erase_in_progress) {
+	    LOG_ERR("  Flash write or erase in progress and in exception");
+	    return -EBUSY;
+	}
+#if defined(CONFIG_MULTITHREADING)
+	if (!is_exception) {
+	    err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
+	    if (err) {
 		LOG_ERR("  Flash write sem wait error: %d", err);
 		return err;
+	    }
 	}
-	err = flash_atm_write(dev, addr, data, len);
-	k_sem_give(&flash_atm_sync_sem);
-
-	return err;
-#else
-	return flash_atm_write(dev, addr, data, len);
 #endif
+	write_erase_in_progress = true;
+	err = flash_atm_write(dev, addr, data, len);
+	write_erase_in_progress = false;
+#if defined(CONFIG_MULTITHREADING)
+	if (!is_exception) {
+	    k_sem_give(&flash_atm_sync_sem);
+	}
+#endif
+	return err;
 }
 
 static int flash_atm_erase(struct device const *dev, off_t addr, size_t size)
@@ -580,21 +893,31 @@ static int flash_atm_erase(struct device const *dev, off_t addr, size_t size)
 static int flash_atm_erase_sync(struct device const *dev, off_t addr,
 		size_t size)
 {
-#if defined(CONFIG_MULTITHREADING)
 	int err;
+	bool is_exception = atm_soc_in_exception();
 
-	err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
-	if (err) {
+	if (is_exception && write_erase_in_progress) {
+	    LOG_ERR("  Flash write or erase in progress and in exception");
+	    return -EBUSY;
+	}
+#if defined(CONFIG_MULTITHREADING)
+	if (!is_exception) {
+	    err = k_sem_take(&flash_atm_sync_sem, K_FOREVER);
+	    if (err) {
 		LOG_ERR("  Flash Erase sem wait error: %d", err);
 		return err;
+	    }
 	}
-	err = flash_atm_erase(dev, addr, size);
-	k_sem_give(&flash_atm_sync_sem);
-
-	return err;
-#else
-	return flash_atm_erase(dev, addr, size);
 #endif
+	write_erase_in_progress = true;
+	err = flash_atm_erase(dev, addr, size);
+	write_erase_in_progress = false;
+#if defined(CONFIG_MULTITHREADING)
+	if (!is_exception) {
+	    k_sem_give(&flash_atm_sync_sem);
+	}
+#endif
+	return err;
 }
 
 static struct flash_parameters const *flash_atm_get_parameters(struct device const *dev)
@@ -790,222 +1113,6 @@ static void winbond_flash_enable_pm(void)
 	pm_notifier_register(&notifier);
 }
 #endif
-
-/**
- * @brief Convert nibble to OE/val format for TRANSACTION_SETUP register
- * @param[in] nibble 4-bit value to convert
- * @return OE/val format for TRANSACTION_SETUP register
- */
-__PP_FAST uint32_t to_oe_format_quad(uint8_t nibble)
-{
-	if (nibble > 0xf) {
-		return 0;
-	}
-	return (0x2222 | (nibble & 0x1) | ((nibble & 0x2) << 3) | ((nibble & 0x4) << 6) |
-		((nibble & 0x8) << 9));
-}
-
-/**
- * @brief Begin QSPI transaction
- */
-__PP_FAST void qspi_drive_start(void)
-{
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
-}
-
-/**
- * @brief Drive all QSPI outputs for a single cycle
- * @param[in] nibble 4-bit value to drive
- */
-__PP_FAST void qspi_drive_nibble(uint8_t nibble)
-{
-	uint32_t oe = to_oe_format_quad(nibble) << QSPI_TRANSACTION_SETUP__DOUT_0_CTRL__SHIFT;
-	CMSDK_QSPI->TRANSACTION_SETUP = oe;
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK | oe;
-}
-
-/**
- * @brief Drive all QSPI outputs for two cycles
- * @param[in] byte 8-bit value to drive
- */
-__PP_FAST void qspi_drive_byte(uint8_t byte)
-{
-	qspi_drive_nibble((byte & 0xf0) >> 4);
-	qspi_drive_nibble(byte & 0x0f);
-}
-
-/**
- * @brief Read all QSPI inputs for two cycles
- */
-__PP_FAST void qspi_capture_byte(void)
-{
-	CMSDK_QSPI->TRANSACTION_SETUP = 0;
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK |
-					QSPI_TRANSACTION_SETUP__SAMPLE_DIN__WRITE(0xf0);
-
-	CMSDK_QSPI->TRANSACTION_SETUP = 0;
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK |
-					QSPI_TRANSACTION_SETUP__SAMPLE_DIN__WRITE(0x0f);
-}
-
-/**
- * @brief Drive serial SPI command
- * @param[in] cmd 8-bit command to drive on DOUT_0
- */
-__PP_FAST void qspi_drive_serial_cmd(uint8_t cmd)
-{
-	for (int i = 0; i < 8; i++, cmd <<= 1) {
-		uint32_t oe = ((cmd & 0x80) ? 0x0003 : 0x0002)
-			      << QSPI_TRANSACTION_SETUP__DOUT_0_CTRL__SHIFT;
-
-		CMSDK_QSPI->TRANSACTION_SETUP = oe;
-		CMSDK_QSPI->TRANSACTION_SETUP = oe | QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
-	}
-}
-
-/**
- * @brief Read SPI input for 8 cycles
- * @return read byte
- */
-__PP_FAST uint8_t qspi_read_serial_byte(void)
-{
-	uint8_t data = 0;
-	for (uint8_t i = 0x80; i; i >>= 1) {
-		CMSDK_QSPI->TRANSACTION_SETUP = 0;
-		CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
-		CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK |
-						QSPI_TRANSACTION_SETUP__SAMPLE_DIN__WRITE(0x02);
-
-		if (CMSDK_QSPI->READ_DATA & 0x02) {
-			data |= i;
-		}
-	}
-	return data;
-}
-
-/**
- * @brief Drive dummy cycles on QSPI bus
- * @param[in] cycles Number of dummy cycles to drive
- */
-__PP_FAST void qspi_dummy(uint8_t cycles)
-{
-	for (; cycles; cycles--) {
-		CMSDK_QSPI->TRANSACTION_SETUP = 0;
-		CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CLK_VAL__MASK;
-	}
-}
-
-/**
- * @brief End QSPI transaction
- */
-__PP_FAST void qspi_drive_stop(void)
-{
-	CMSDK_QSPI->TRANSACTION_SETUP = 0;
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
-}
-
-#if EXECUTING_IN_PLACE
-__ramfunc
-#endif
-static void flash_write_page(struct device const *dev, off_t addr,
-			     size_t length, uint8_t const *buffer)
-{
-	GLOBAL_INT_DISABLE();
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
-
-	// Apply bank swap
-	addr ^= QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__READ(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
-
-	// !!! from this point forward the QSPI bridge will be disabled
-
-	EXIT_PERF_MODE();
-
-	// Set WEL
-	qspi_drive_start();
-	qspi_drive_serial_cmd(SPI_FLASH_WREN);
-	qspi_drive_stop();
-
-	// Quad Page Program
-	qspi_drive_start();
-	uint8_t qpp = (man_id == FLASH_MAN_ID_MACRONIX) ? SPI_FLASH_4PP : SPI_FLASH_QPP;
-	qspi_drive_serial_cmd(qpp);
-	if (qpp == SPI_FLASH_4PP) {
-		// 4XIO PP, address is sent in quad mode
-		qspi_drive_byte((addr >> 16) & 0xff);
-		qspi_drive_byte((addr >> 8) & 0xff);
-		qspi_drive_byte(addr & 0xff);
-	} else {
-		// regular QPP, address is sent serially
-		qspi_drive_serial_cmd((addr >> 16) & 0xff);
-		qspi_drive_serial_cmd((addr >> 8) & 0xff);
-		qspi_drive_serial_cmd(addr & 0xff);
-	}
-	for (; length; length--) {
-		qspi_drive_byte(*(buffer++));
-	}
-	qspi_drive_stop();
-
-	// Poll Status Register until WIP clears
-	uint8_t status;
-	do {
-		qspi_drive_start();
-		qspi_drive_serial_cmd(SPI_FLASH_RDSR);
-		status = qspi_read_serial_byte();
-		qspi_drive_stop();
-	} while (status & 0x1);
-
-	RESTORE_PERF_MODE();
-
-	// Switch control from QSPI to AHB bridge
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
-					QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
-
-	// QSPI bridge is restored this point forward
-	GLOBAL_INT_RESTORE();
-}
-
-static void flash_write_pages(struct device const *dev, off_t addr, size_t length,
-			      uint8_t const *buffer)
-{
-
-	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(
-		    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {
-		ext_flash_inval_cache();
-		// Issue a dummy read (end of flash) to get back into performance mode,
-		// in case we performed an erase, mem-mapped write or went into power down mode
-		// prior to page programming. The bridge disables performance mode for these pior
-		// operations and does not re-instate perf mode until the CPU issues a read again.
-		uint32_t volatile *dummy = (uint32_t volatile *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) +
-								 flash_size - sizeof(uint32_t));
-		*dummy;
-	}
-
-	// When copying from flash to itself, precopy is required
-	bool precopy = ((addr >> QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__WIDTH) ==
-			((uintptr_t)buffer >> QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__WIDTH));
-	uint8_t copy_buf[precopy ? PAGE_SIZE : 0];
-
-	while (length) {
-		uint32_t next_len = PAGE_SIZE - (addr & PAGE_MASK);
-		if (next_len > length) {
-			next_len = length;
-		}
-		uint8_t const *page_buf;
-		if (precopy) {
-			memcpy(copy_buf, buffer, next_len);
-			page_buf = copy_buf;
-		} else {
-			page_buf = buffer;
-		}
-		flash_write_page(dev, addr, next_len, page_buf);
-		addr += next_len;
-		buffer += next_len;
-		length -= next_len;
-	}
-}
 
 #ifdef CONFIG_FLASH_ATM_RUID
 #if EXECUTING_IN_PLACE
@@ -1934,9 +2041,11 @@ static int flash_atm_init(struct device const *dev)
 	external_flash_wakeup();
 	bool found = flash_discover();
 
-	if (found) {
-		LOG_INF("man_id:%#x", man_id);
+	if (!found) {
+		LOG_ERR("No flash found: man_id:%#x", man_id);
+		return 0;
 	}
+	LOG_INF("man_id:%#x", man_id);
 #else
 	recover_man_id();
 #endif
@@ -1945,4 +2054,4 @@ static int flash_atm_init(struct device const *dev)
 }
 
 DEVICE_DT_INST_DEFINE(0, flash_atm_init, NULL, NULL, NULL, POST_KERNEL,
-		      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &flash_atm_api);
+		      CONFIG_KERNEL_INIT_PRIORITY_DEFAULT, &flash_atm_api);

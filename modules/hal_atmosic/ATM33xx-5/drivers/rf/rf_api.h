@@ -65,12 +65,12 @@ void rf_set_txpwr_override(int8_t txpwr_dbm);
 /**
  *******************************************************************************
  * @brief Set the tx power for the cs idx.
- * @param[in] cs_idx control structure index.
+ * @param[in] conhdl connection handle.
  * @param[in] txpwr_dbm Tx power in dbm.
  * @return Tx power in dbm.
  *******************************************************************************
  */
-int8_t rf_set_cs_txpwr_val(uint8_t cs_idx, int8_t txpwr_dbm);
+int8_t rf_set_cs_txpwr_val(uint16_t conhdl, int8_t txpwr_dbm);
 
 /**
  *******************************************************************************

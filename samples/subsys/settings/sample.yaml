@@ -1,6 +1,22 @@
 sample:
-  description: Sample demonstrating saving/loading factory/settings partitions
+  description: Demonstrates saving to the Settings partition and loading from
+    the Factory and Settings partitions
   name: Atmosic Settings Subsystem
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "load FACTORY/COMPANY_ID key: 0xa24"
+      - "load FACTORY/SERIAL_NUMBER key: 0x12345678"
+      - "load SETTINGS/VERSION key: 1.23"
+      - "save SETTINGS/TEST_KEY key: 0x5aa50ff0"
+      - "load SETTINGS/TEST_KEY key: 0x5aa50ff0"
+      - "save SETTINGS/TEST_KEY key: 0xa55af00f"
+      - "load SETTINGS/TEST_KEY key: 0xa55af00f"
 tests:
-  sample.subsys.settings:
-    tags: introduction
+  samples.subsys.settings.atm:
+    tags: introduction atm33 atm34 no_mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y

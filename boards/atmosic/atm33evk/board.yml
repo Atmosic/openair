@@ -1,11 +1,12 @@
 boards:
-- name: ATMEVK-3330-QN-5
+- name: ATMEVK-3330-QN-6
   vendor: atmosic
   revision:
     format: custom
     default: normal
     revisions:
     - name: mcuboot
+    - name: mcuboot_bl
     - name: normal
   socs:
     - name: ATM33xx-5
@@ -13,13 +14,14 @@ boards:
       - name: 'ns'
       - name: 'no_TZ'
 
-- name: ATMEVK-3330e-QN-5
+- name: ATMEVK-3330e-QN-6
   vendor: atmosic
   revision:
     format: custom
     default: normal
     revisions:
     - name: mcuboot
+    - name: mcuboot_bl
     - name: normal
   socs:
     - name: ATM33xx-5
@@ -34,6 +36,7 @@ boards:
     default: normal
     revisions:
     - name: mcuboot
+    - name: mcuboot_bl
     - name: normal
   socs:
     - name: ATM33xx-5
@@ -41,13 +44,14 @@ boards:
       - name: 'ns'
       - name: 'no_TZ'
 
-- name: ATMEVK-3325-QK-5
+- name: ATMEVK-3325-CM-6
   vendor: atmosic
   revision:
     format: custom
     default: normal
     revisions:
     - name: mcuboot
+    - name: mcuboot_bl
     - name: normal
   socs:
     - name: ATM33xx-5
@@ -55,13 +59,29 @@ boards:
       - name: 'ns'
       - name: 'no_TZ'
 
-- name: ATMEVK-3325-LQK
+- name: ATMEVK-3325-QK-6
   vendor: atmosic
   revision:
     format: custom
     default: normal
     revisions:
     - name: mcuboot
+    - name: mcuboot_bl
+    - name: normal
+  socs:
+    - name: ATM33xx-5
+      variants:
+      - name: 'ns'
+      - name: 'no_TZ'
+
+- name: ATMEVK-3325-LQK-6
+  vendor: atmosic
+  revision:
+    format: custom
+    default: normal
+    revisions:
+    - name: mcuboot
+    - name: mcuboot_bl
     - name: normal
   socs:
     - name: ATM33xx-5

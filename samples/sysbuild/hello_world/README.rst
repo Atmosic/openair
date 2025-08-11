@@ -1,6 +1,6 @@
 .. _sysbuild-hello-world-sample:
 
-Sysbuild: Hello World
+Sysbuild: hello_world
 #####################
 
 Overview
@@ -24,7 +24,7 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/sysbuild/hello_world`` in the openair tree.
+This sample is built from ``openair/samples/sysbuild/hello_world``.
 
 Sysbuild with or without MCUboot is specified by setting
 ``SB_CONFIG_SPE`` and ``SB_CONFIG_BOOTLOADER_MCUBOOT``.
@@ -35,10 +35,10 @@ Build the sample using:
 
 .. code-block:: bash
 
-    west build -p always -b <board>//ns <application> --sysbuild -T <test_item>
+    west build -p always -b <BOARD>//ns <APP> --sysbuild -T <test_item>
 
-- ``board`` Atmosic device. See :ref:`board <atmosic_evk>`.
-- ``application`` Sample folder path.
+- ``BOARD`` Atmosic device. See :ref:`board <atmosic_evk>`.
+- ``APP`` Sample folder path.
 - ``test_item`` Test item defined in `sample.yaml`.
 
 This sample builds both the application and SPE images, with or without MCUboot.
@@ -47,25 +47,24 @@ Build command:
 
 .. code-block:: bash
 
-    west build -p always -b <board>//ns openair/samples/sysbuild/hello_world --sysbuild -T samples.sysbuild.hello_world.atm
+    west build -p always -b <BOARD>//ns openair/samples/sysbuild/hello_world --sysbuild -T samples.sysbuild.hello_world.atm
 
 Build with MCUboot command:
 
 .. code-block:: bash
 
-    west build -p always -b <board>@mcuboot//ns openair/samples/sysbuild/hello_world --sysbuild -T samples.sysbuild.hello_world.atm.mcuboot
+    west build -p always -b <BOARD>@mcuboot//ns openair/samples/sysbuild/hello_world --sysbuild -T samples.sysbuild.hello_world.atm.mcuboot
 
 
 Flash command:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild --verify --device=<serial> [--jlink] --fast_load [--erase_flash]
+    west flash --skip-rebuild --verify --device <DEVICE_ID> [--jlink] --fast_load [--erase_flash]
 
 .. note::
   * The default build directory is the `build` folder under the current directory.
   * If the ``-d build_dir`` option is specified with `west build`, the same ``-d build_dir`` must also be specified with `west flash`.
-  * If a custom ``build_dir`` is specified, the `CONFIG_SPE_PATH` in `${BOARD_DIR}/sysbuild/app.conf` and `${BOARD_DIR}/sysbuild/app_mcuboot.conf` must be updated accordingly, since sysbuild test items defined in `sample.yaml` depend on them.
 
 
 Sample Output
@@ -77,7 +76,7 @@ When the device boots up, the console output shows:
 
     Atmosic Sysbuild Hello World of <BOARD_TARGET>
 
-- ``BOARD_TARGET`` refers to a specific hardware platform or SoC-based configuration. The full syntax is typically <board>@<revision>/<soc>/<variant>, if applicable.
+- ``BOARD_TARGET`` refers to a specific hardware platform or SoC-based configuration. The full syntax is typically <BOARD>@<revision>/<soc>/<variant>, if applicable.
 - ``soc`` ATM33/e and ATM34/e series of Atmosic devices are supported. See :ref:`soc <atmosic_evk>`.
 
 Examples:
@@ -86,10 +85,10 @@ With MCUboot:
 
 .. code-block:: bash
 
-    Atmosic Sysbuild Hello World of <board>@mcuboot/<soc>/ns
+    Atmosic Sysbuild Hello World of <BOARD>@mcuboot/<soc>/ns
 
 Without MCUboot:
 
 .. code-block:: bash
 
-    Atmosic Sysbuild Hello World of <board>/<soc>/ns
+    Atmosic Sysbuild Hello World of <BOARD>/<soc>/ns

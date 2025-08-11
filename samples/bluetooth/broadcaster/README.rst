@@ -17,17 +17,17 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/bluetooth/broadcaster`` in the OpenAir tree.
+This sample is built from ``openair/samples/bluetooth/broadcaster``.
 The source code can be found under ``zephyr/samples/bluetooth/broadcaster``.
 
 Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/samples/bluetooth/broadcaster --sysbuild -T samples.bluetooth.broadcaster.atm
+   west build -p always -b <BOARD>//ns openair/samples/bluetooth/broadcaster --sysbuild -T samples.bluetooth.broadcaster.atm
 
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]

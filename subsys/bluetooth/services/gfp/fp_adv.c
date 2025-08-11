@@ -70,7 +70,6 @@ static const struct bt_data fp_disc_ad[] = {
 typedef struct fp_non_disc_adv_s {
 	uint16_t uuid;
 	uint8_t ver_flag;
-	uint8_t account_key_num;
 	uint8_t act_filter_type;
 	uint8_t act_filter[FMDN_ACCOUNT_FILTER_LEN];
 	uint8_t salt_type;
@@ -109,22 +108,29 @@ static void fp_disc_fp_adv_data(void)
 
 static bool fp_non_disc_fp_adv_data(void)
 {
-	// process account data
+	bool ret = false;
 	size_t ak_num = fp_storage_account_key_count_get();
 	fp_non_disc_adv_data.uuid = FP_UUID_SERVICE;
 	fp_non_disc_adv_data.ver_flag = 0x00;
-	fp_non_disc_adv_data.account_key_num = ak_num;
-	static gfp_crypto_acct_key_fl_info_t gfp_fl;
+
+	gfp_crypto_acct_key_fl_info_t gfp_fl;
+	gfp_fl.max_data_len = fp_storage_account_key_filter_size(ak_num);
+	gfp_fl.data = calloc(gfp_fl.max_data_len, sizeof(uint8_t));
 	if (!gfp_fl.data) {
-		gfp_fl.max_data_len = fp_storage_account_key_filter_size(ak_num);
-		gfp_fl.data = calloc(gfp_fl.max_data_len, sizeof(uint8_t));
+		LOG_ERR("Failed to allocate gfp_fl.data");
+		return ret;
 	}
 	uint16_t adv_salt = fp_adv_data_salt();
-	uint8_t key_list[FP_ACCOUNT_KEY_LEN];
+	uint8_t *key_list = calloc(FP_ACCOUNT_KEY_LEN * ak_num, sizeof(uint8_t));
+	if (!key_list) {
+		LOG_ERR("Failed to allocate key_list");
+		goto finish;
+	}
 	fp_storage_account_key_list_get(key_list);
 	static gfp_crypto_acct_key_fl_ctx_t tv_gbf;
+	memset(&tv_gbf, 0, sizeof(gfp_crypto_acct_key_fl_ctx_t));
 	tv_gbf.acct_key_num = ak_num;
-	tv_gbf.acct_key_list = &key_list[0];
+	tv_gbf.acct_key_list = key_list;
 	tv_gbf.salt = adv_salt;
 #ifdef CONFIG_BATT_NOTI
 	static uint8_t gfp_batti[FP_GAP_BATT_IE_SIZE] = {0x33, 0x40, 0x40, 0x40};
@@ -133,12 +139,12 @@ static bool fp_non_disc_fp_adv_data(void)
 	if (!gfp_crypto_acct_key_fl_gen(&gfp_fl, adv_salt, gfp_batti, FP_GAP_BATT_IE_SIZE,
 					&tv_gbf)) {
 		LOG_WRN("Gen account key filter failed");
-		return false;
+		goto finish;
 	}
 #else
 	if (!gfp_crypto_acct_key_fl_gen(&gfp_fl, adv_salt, NULL, 0, &tv_gbf)) {
 		LOG_WRN("Gen account key filter failed");
-		return false;
+		goto finish;
 	}
 #endif
 #define FP_FIELD_TYPE_SHOW_PAIRING_UI_INDICATION 0b0000
@@ -160,7 +166,15 @@ static bool fp_non_disc_fp_adv_data(void)
 #endif
 	LOG_HEXDUMP_DBG((uint8_t *)&fp_non_disc_adv_data, sizeof(fp_non_disc_adv_data),
 			"fp_non_disc_adv_data ");
-	return true;
+	ret = true;
+finish:
+	if (key_list) {
+		free(key_list);
+	}
+	if (gfp_fl.data) {
+		free(gfp_fl.data);
+	}
+	return ret;
 }
 
 static void fp_adv_release_adv(void)
@@ -189,12 +203,12 @@ static int fp_adv_set_payload(void)
 	fp_mode_t mode = fp_mode_get();
 	if (mode == FP_MODE_PAIRING) {
 		fp_disc_fp_adv_data();
-		LOG_DBG("fp_adv_set_payload %p fp_disc_ad", fp_adv_set);
+		LOG_DBG("fp_adv_set_payload %p fp_disc_ad", (void *)fp_adv_set);
 		err = bt_le_ext_adv_set_data(fp_adv_set, fp_disc_ad, ARRAY_SIZE(fp_disc_ad), NULL,
 					     0);
 	} else {
 		fp_non_disc_fp_adv_data();
-		LOG_DBG("fp_adv_set_payload %p fp_non_disc_ad", fp_adv_set);
+		LOG_DBG("fp_adv_set_payload %p fp_non_disc_ad", (void *)fp_adv_set);
 		err = bt_le_ext_adv_set_data(fp_adv_set, fp_non_disc_ad, ARRAY_SIZE(fp_non_disc_ad),
 					     NULL, 0);
 	}

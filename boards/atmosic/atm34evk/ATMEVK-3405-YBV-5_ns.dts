@@ -1,0 +1,162 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#ifndef FLASH_SIZE
+#define FLASH_SIZE 0x200000
+#endif
+#include <arm/atmosic/ATM34xx_ns.dtsi>
+#include <dt-bindings/gpio/gpio.h>
+#include "pinctrl-bv.dtsi"
+#define STACKED_FLASH_YBV
+#include "stacked_flash.dtsi"
+
+/ {
+	model = "Atmosic EVK 3405-YBV-5";
+	compatible = "atmosic,ATMEVK-3405-YBV-5";
+
+	chosen {
+		zephyr,console = &uart1;
+		zephyr,shell-uart = &uart1;
+		zephyr,uart-mcumgr = &uart0;
+		zephyr,bt-mon-uart = &uart1;
+		zephyr,bt-c2h-uart = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash-controller = &rram_controller;
+		zephyr,flash = &rram0;
+		zephyr,code-partition = &nspe_partition;
+		zephyr,entropy = &trng;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
+			label = "Red LED1";
+		};
+		led1: led_1 {
+			gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+			label = "Yellow LED2";
+		};
+		led2: led_2 {
+			gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
+			label = "Blue LED3";
+		};
+	};
+
+        pwmleds {
+                compatible = "pwm-leds";
+                pwm_led0: pwm_led_0 {
+                        pwms = <&pwm3 3 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+			label = "Red LED1";
+                };
+        };
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+			label = "Button1";
+		};
+		button1: button_1 {
+			gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
+			label = "Button2";
+		};
+	};
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		i2c-1 = &i2c0;
+		led0 = &led0;
+		pwm-0 = &pwm3;
+		pwm-led0 = &pwm_led0;
+		sw0 = &button0;
+	};
+
+	zephyr,user {
+		pin-arrangement = "bga";
+	};
+};
+
+&i2c0 {
+	pinctrl-0 = <&i2c0_sda_default &i2c0_scl_default>;
+	pinctrl-names = "default";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+&pwm3 {
+	pin = <29>;
+	status = "okay";
+};
+
+&spi0 {
+	clk-pin = <17>;
+	cs-pin = <8>;
+	mosi-pin = <2>;
+	miso-pin = <3>;
+};
+
+&spi1 {
+	clk-pin = <21>;
+	cs-pin = <20>;
+	mosi-pin = <22>;
+	miso-pin = <23>;
+};
+
+&adc {
+	ch-cell = <1>;
+	ch-store = <2>;
+	ch-core = <3>;
+	ch-temp = <4>;
+	ch-p1diff = <5>;
+	ch-p0diff = <6>;
+	ch-p1single0 = <7>;
+	ch-p1single1 = <8>;
+	ch-p0single0 = <9>;
+	ch-p0single1 = <10>;
+	ch-batt = <11>;
+	ch-p2single = <12>;
+	ch-p3single = <13>;
+	ch-p4single = <14>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@8 {
+		reg = <8>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+};
+
+&uart0 {
+	rx-pin = <30>;
+	tx-pin = <15>;
+	rts-pin = <13>;
+	cts-pin = <12>;
+};
+
+&uart1 {
+	tx-pin = <27>;
+};
+
+&uart2 {
+	rx-pin = <41>;
+	tx-pin = <42>;
+	rts-pin = <44>;
+	cts-pin = <43>;
+};
+
+&pmu {
+	batt-type = <3>;
+	batt-level = <1>;
+	vddio-type = <0>;
+	vddpa-src = <0>;
+};
+
+arduino_i2c: &i2c0 {};
+arduino_spi: &spi1 {};

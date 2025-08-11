@@ -79,7 +79,6 @@ static void dult_adv_connected(struct bt_le_ext_adv *instance,
 	dult_adv_release_adv();
 }
 
-static int64_t last_rotate;
 static bool dult_adv_rpa_expired(struct bt_le_ext_adv *adv)
 {
 	/* It is assumed that the callback executes in the cooperative
@@ -100,18 +99,16 @@ static bool dult_adv_rpa_expired(struct bt_le_ext_adv *adv)
 	}
 
 	if (dult_mode == DULT_NO_MODE_SEPERATED) {
-		if (!last_rotate) {
-			last_rotate = uptime;
-		}
-		int64_t time_diff = k_uptime_delta(&uptime) - last_rotate;
-		if (time_diff) {
-			time_diff /= MSEC_PER_SEC;
-		}
-#define SEPERATE_TIMEOUT_SEC (24 * 60 * 60)
-		if (time_diff < SEPERATE_TIMEOUT_SEC) {
+		static int64_t last_dult_rotation;
+		int64_t current_time = k_uptime_get();
+		/* 24 hours = 86400 seconds = 86400000 milliseconds */
+		if (current_time - last_dult_rotation < (24 * 60 * 60 * 1000)) {
+			LOG_DBG("DULT: Seperated Mode, skip rotate the current RPA "
+			"(24h not elapsed)");
 			rpa_expired = false;
-			LOG_INF(" Seperated Mode: time_diff %" PRId64 " [s], not achieved %d yet",
-				time_diff, SEPERATE_TIMEOUT_SEC);
+		} else {
+			LOG_DBG("DULT: Seperated Mode, allowing RPA rotation after 24h");
+			last_dult_rotation = current_time;
 		}
 	}
 	LOG_DBG("DULT: RPA rotate %u", rpa_expired);

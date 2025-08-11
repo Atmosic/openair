@@ -22,7 +22,7 @@ Using the Overlay Files
 =======================
 There are three methods for using the provided overlay files:
 
-1. The absolute path to the overlay files may be provided to the build using the ``-DEXTRA_CONF_FILE="${WEST_TOPDIR}/openair/doc/dfu/overlay-bt-dfu.conf"`` build option. Multiple overlays may be provided if they are separated by semicolons.
+1. The absolute path to the overlay files may be provided to the build using the ``-DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"`` build option. Multiple overlays may be provided if they are separated by semicolons.
 2. The files can be copied to the directory of the sample where ``prj.conf`` is located, this also uses the ``-DEXTRA_CONF_FILE`` option when building to specify which should be included in the build. This does not need the absolute path to be provided but instead just the file name(s).
 3. The options from the provided overlay files may be copied directly into a project's ``prj.conf``. This should only be done if the application always requires these options.
 
@@ -43,17 +43,17 @@ For some configurations, additional (external) flash is not required but is supp
 When additional flash is used, the ``-DDFU_IN_FLASH`` flag should be added to ``-DDTS_EXTRA_CPPFLAGS``.
 
 * On the ATMx2 platform additional flash is not required.
-* On the ATM33 platform additional flash **IS** required when using BLE OTA with ``CONFIG_USE_ATMWSTK=n`` (default) but **IS NOT** required when using ``CONFIG_USE_ATMWSTK=y``.
+* On the ATM33 platform additional flash **IS** required when using BLE OTA with BLE stack library (default, ``CONFIG_ATMWSTK_PD50=y`` uses library), but **IS NOT** required when using fixed BLE stack image (``CONFIG_ATMWSTK_FULL=y`` uses fixed image).
 * On the ATM34 platform additional flash is always required. ``DFU_IN_FLASH`` is the default and does not need to be specified manually in ``-DDTS_EXTRA_CPPFLAGS``.
 
-Here is an example build command for the ATM33 platform that uses the ``CONFIG_ATMWSTK_FULL=y`` and ``CONFIG_USE_ATMWSTK=y`` BLE stack with external flash, which uses `method 2 <#using-the-overlay-files>`_ to provide both overlay files to enable BLE and UART based DFU:
+Here is an example build command for the ATM33 platform that uses the FULL fixed BLE stack image (``CONFIG_ATMWSTK_FULL=y``, FULL stack for ATM33 is only using fixed image, see :ref:`Platform support for different BLE Stack variations - ATM33xx <platform-support-for-different-ble-stack-variations>`) with external flash, which uses `method 2 <#using-the-overlay-files>`_ to provide both overlay files to enable BLE and UART based DFU:
 
   .. code-block:: bash
 
-    west build -p -s ${APP} -b ${BOARD}@mcuboot//ns -d build/${BOARD}_ns/${APP} -- \
+    west build -p -s <APP> -b <BOARD>@mcuboot//ns -d build/<BOARD>_ns/<APP> -- \
         -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" \
-        -DCONFIG_SPE_PATH=\"build/${BOARD}/${SPE}\" \
-        -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=FULL;-DDFU_IN_FLASH" -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATMWSTK_FULL=y \
+        -DCONFIG_SPE_PATH=\"build/<BOARD>/<SPE>\" \
+        -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=FULL;-DDFU_IN_FLASH" -DCONFIG_ATMWSTK_FULL=y \
         -DEXTRA_CONF_FILE="overlay-bt-dfu.conf;overlay-serial-dfu.conf"
 
 To perform a BLE OTA update the Atmosic Mobile Application may be used, and for Serial DFU the ``mcumgr`` utility may be used.
@@ -71,7 +71,7 @@ Serial DFU
 
 By default, Serial DFU is performed over UART0, which is usually disabled.
 This can be enabled by adding ``status = "okay";`` line to the ``uart0`` block of the boards DTS file.
-For Atmosic EVKs this can be found in ``${WEST_TOPDIR}/openair/boards/atmosic/``:
+For Atmosic EVKs this can be found in ``<WEST_TOPDIR>/openair/boards/atmosic/``:
 
   .. code-block:: dts
 
@@ -96,7 +96,7 @@ Alternatively, the parameters may be saved using the following command (example 
 
   .. code-block:: bash
 
-    mcumgr conn add <NAME> type="serial" connstring="dev=/dev/serial/by-id/usb-SEGGER_J-Link_${SERIAL}-if00,baud=115200"
+    mcumgr conn add <NAME> type="serial" connstring="dev=/dev/serial/by-id/usb-SEGGER_J-Link_<DEVICE_ID>-if00,baud=115200"
 
 This allows the use of ``mcumgr -c <NAME>`` so that the options do not need to be passed each time.
 The rest of this guide will assume a connection was saved using a ``<NAME>`` of ``DEMO``.

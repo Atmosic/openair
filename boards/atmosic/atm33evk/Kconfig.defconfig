@@ -39,4 +39,11 @@ endchoice
 
 endif # BATTERY_UPD
 
+if MCUMGR_TRANSPORT_BT
+
+config IMG_ERASE_PROGRESSIVELY
+	default y
+
+endif # MCUMGR_TRANSPORT_BT
+
 endif # SOC_ATM33XX_5

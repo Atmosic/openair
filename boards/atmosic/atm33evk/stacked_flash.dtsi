@@ -1,0 +1,27 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#if defined(FLASH_SIZE) && !FLASH_SIZE && !defined(ATM_ALLOW_FLASH_DISABLE)
+#error "FLASH should not be disabled for stacked flash devices. Set ATM_ALLOW_FLASH_DISABLE to allow disablement."
+#endif
+
+/* NOTE: top level board file should set FLASH_SIZE */
+
+#if FLASH_SIZE
+#if defined(STACKED_FLASH_LQK)
+/* LQK = QFN 5x5 1MB stacked flash */
+&flash_controller {
+	clk-pin = <6>;
+	csn-pin = <13>;
+	d0-pin = <2>;
+	d1-pin = <15>;
+	d2-pin = <16>;
+	d3-pin = <23>;
+};
+#else
+#error "Unknown stacked part variant"
+#endif
+#endif // FLASH_SIZE

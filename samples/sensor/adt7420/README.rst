@@ -23,16 +23,16 @@ Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 Building and Running
 ********************
 
-This sample can be found under ``samples/sensor/adt7420`` in the OpenAir tree.
+This sample is built from ``openair/samples/sensor/adt7420``.
 
 Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <board>//ns openair/samples/sensor/adt7420 --sysbuild -T samples.bluetooth.adt7420.atm
+   west build -p always -b <BOARD>//ns openair/samples/sensor/adt7420 --sysbuild -T samples.bluetooth.adt7420.atm
 
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <serial> --jlink --fast_load [--erase_flash]
+   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]

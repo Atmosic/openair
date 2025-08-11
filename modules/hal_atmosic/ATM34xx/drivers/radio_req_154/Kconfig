@@ -1,0 +1,7 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_RADIO_REQ_154
+	bool "Atmosic 15.4 Radio Request module"
+	default y if IEEE802154_ATM34

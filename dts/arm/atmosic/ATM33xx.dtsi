@@ -17,6 +17,7 @@
 #endif
 
 / {
+#if FLASH_SIZE
 	flash_controller: flash-controller@10200000 {
 		compatible = "atmosic,external-flash-controller";
 
@@ -33,6 +34,7 @@
 			reg = <0x0 FLASH_SIZE>;
 		};
 	};
+#endif
 
 	rram_controller: rram-controller@10010000 {
 		compatible = "atmosic,rram-controller";

@@ -1,0 +1,24 @@
+sample:
+  description: Samsung Apple ComboTag Application
+  name:  Samsung Apple ComboTag
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "advP:"
+tests:
+  applications.ss_fmna_tag.atm:
+    tags: ss_fmna_tag atm33 atm34 no_mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DDFU_IN_FLASH"
+  applications.ss_fmna_tag.atm.mcuboot:
+    tags: ss_fmna_tag atm33 atm34 mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DDFU_IN_FLASH"

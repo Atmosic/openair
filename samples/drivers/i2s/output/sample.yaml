@@ -1,0 +1,14 @@
+sample:
+  description: i2s TX output sample
+  name: i2s output
+tests:
+  samples.drivers.i2s.output.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "All I2S blocks written"
+    tags: introduction atm33 atm34 no_mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y

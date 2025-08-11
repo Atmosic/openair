@@ -5,7 +5,7 @@
  *
  * @brief Atmosic SHA256 driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -31,7 +31,6 @@
 #define SHA_MULTI_CTXT 2
 
 // By default the single context API is available.
-// Multi-context APIs have to be explicitly enabled.
 #if !defined(ATM_SHA2_API)
 #define ATM_SHA2_API SHA_SINGLE_CTXT
 #endif

@@ -1,0 +1,30 @@
+# Copyright (c) 2025 Atmosic Technologies
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Atmosic hibernation retained memory driver.
+
+  This driver provides retained memory functionality using Atmosic SOC's
+  SHUB (Sensor Hub) registers and PSEQ (Power Sequencer) persistent registers
+  that retain their values during hibernation and low power modes.
+
+  The driver automatically determines the available storage capacity based on
+  the SOC variant:
+  - With PERSISTENT6: 222 bytes
+  - With PERSISTENT5: 218 bytes
+  - Base configuration: 198 bytes
+
+  Example usage:
+
+  retained_mem_hib: retained-memory {
+    compatible = "atmosic,retained-hib";
+    status = "okay";
+  };
+
+compatible: "atmosic,retained-hib"
+
+include: base.yaml
+
+properties:
+  status:
+    default: "okay"

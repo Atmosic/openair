@@ -9,14 +9,17 @@
  *
  *******************************************************************************
  */
+#include <zephyr/kernel.h>
+#include "arch.h"
 
 #define DT_DRV_COMPAT atmosic_ble
+
+#if CONFIG_ATM_RWLC
 
 #include <errno.h>
 #include <stddef.h>
 #include <string.h>
 
-#include <zephyr/kernel.h>
 #include <soc.h>
 #include <zephyr/init.h>
 #include <zephyr/device.h>
@@ -28,7 +31,6 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/drivers/bluetooth.h>
-#include <zephyr/drivers/bluetooth/hci_driver.h>
 #ifdef CONFIG_BT_SMP
 #define BLE_THREAD_STACK_SIZE MAX(CONFIG_BT_RX_STACK_SIZE, 1600)
 #else
@@ -57,7 +59,6 @@ LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 #if (defined(CONFIG_ATM_BLE) || defined(ATM_PROVIDE_LIBC_RAND))
 #include <zephyr/random/random.h>
 #endif
-#include "arch.h"
 #include "timer.h"
 #include "vectors.h"
 #include "co_error.h"
@@ -439,6 +440,16 @@ ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
 
 	p_itf = rwtl_itf_get();
 	open_once = true;
+
+	// Ensure that all entropy sources are ready before allowing BLE use.
+	// sys_csrand_get() and sys_rand_get() will block until the underlying
+	// generator is seeded and ready.
+	__UNUSED uint8_t dummy = sys_rand8_get();
+	int ret = sys_csrand_get(&dummy, sizeof(dummy));
+	if (ret) {
+	    __ASSERT(0, "sys_csrand_get failed: %d", ret);
+	    return ret;
+	}
     }
 
     is_open = true;
@@ -627,6 +638,20 @@ void srand(unsigned int seed)
 {
 }
 #endif
+
+#elif CONFIG_PM
+
+#include "reg_blecore.h"
+
+static int ble_driver_init(struct device const *dev)
+{
+    // Force to sleep (RW BLE Core sleep | Radio sleep | Oscillator sleep)
+    ble_deepslcntl_set(ble_deepslcntl_get() | BLE_DEEP_SLEEP_ON_BIT |
+	BLE_RADIO_SLEEP_EN_BIT | BLE_OSC_SLEEP_EN_BIT);
+    return 0;
+}
+
+#endif // CONFIG_ATM_RWLC
 
 DEVICE_DT_INST_DEFINE(0, ble_driver_init, NULL,
 		      COND_CODE_1(CONFIG_BT, (&hci_data), (NULL)), NULL,

@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_RADIO_HAL_BLE_CTE
+	bool "Atmosic radio_hal_ble_cte module"
+	depends on SOC_ATM34XX_5
+	default y if ATM_BLE

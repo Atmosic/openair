@@ -5,7 +5,7 @@
  *
  * @brief Power Management Unit Driver
  *
- * Copyright (C) Atmosic 2021-2024
+ * Copyright (C) Atmosic 2021-2025
  *
  ******************************************************************************
  */
@@ -229,6 +229,8 @@ static void pmu_init(void)
 	    BOOST_SRC_VHARV_INDUCTOR,
 #elif defined (BOOST_FROM_VHARV_TWO_DIODE)
 	    BOOST_SRC_VHARV_TWO_DIODE,
+#elif defined (BOOST_FROM_VSTORE_TWO_DIODE)
+	    BOOST_SRC_VSTORE_TWO_DIODE,
 #else
 	    BOOST_SRC_NONE,
 #endif

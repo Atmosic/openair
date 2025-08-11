@@ -1,0 +1,23 @@
+# Copyright (c) 2023-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config DTOP_BYPASS
+	bool "FPGA dtop_bypass mezzanine driver"
+	depends on BT || IEEE802154_ATM34 || ENTROPY_ATM_TRNG
+
+choice ATM_WIRELESS_STACK_CHOICE
+	prompt "BLE link layer wireless stack flavor"
+	default ATMWSTK_PD50
+	depends on BT
+
+config ATMWSTK_PD50
+	bool "PD50 link controller"
+
+config ATMWSTK_CPD200
+	bool "CPD200 link controller"
+
+config ATMWSTK_FULL
+	bool "Full link controller"
+
+endchoice

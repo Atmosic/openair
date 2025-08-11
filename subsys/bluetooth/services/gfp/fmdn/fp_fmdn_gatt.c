@@ -217,6 +217,7 @@ static void fp_fmdn_provision_cleanup(void)
 {
 	LOG_INF("FMDN provision cleanup");
 	if (fp_mode_is_provisioned()) {
+		fp_fmdn_adv_recreate(true, true);
 		fp_storage_eid_reset();
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 		memset(fmdn_dult_id, 0, FP_FMDN_DULT_ID_LEN);
@@ -594,7 +595,7 @@ static size_t fp_fmdn_bcna_set_utp_handle(bcna_write_data_t *resp, uint16_t *res
 		utp_ignore_ring_auth = resp->addition_data[0];
 	}
 	fp_storage_utp_mode_save(utp_mode);
-	fp_fmdn_adv_recreate(true);
+	fp_fmdn_adv_recreate(true, false);
 	if (utp_mode_cb) {
 		utp_mode_cb(utp_mode);
 	}
@@ -618,7 +619,7 @@ ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr
 		err = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 		LOG_INF("BCNA write: res=%zd conn=%p, "
 			"Return error because Fast Pair Mode %u not allow",
-			res, conn, mode);
+			res, (void *)conn, mode);
 		goto finish;
 	}
 
@@ -735,7 +736,7 @@ void fp_fmdn_bcna_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t valu
 static void fp_fmdn_gatt_conn_invoke_action(struct k_work *work)
 {
 	if (fp_mode_is_provisioned()) {
-		fp_fmdn_adv_recreate(false);
+		fp_fmdn_adv_recreate(false, false);
 	}
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	if (utp_owner_conn_cb) {
@@ -752,7 +753,7 @@ static void fp_fmdn_gatt_disconn_invoke_action(struct k_work *work)
 		fp_storge_account_key_reset();
 		fp_mode_update(FP_MODE_NONE);
 	} else {
-		fp_fmdn_adv_recreate(false);
+		fp_fmdn_adv_recreate(false, false);
 	}
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	if (utp_owner_conn_cb) {
@@ -764,7 +765,7 @@ K_WORK_DEFINE(fp_fmdn_gatt_disconn_action, fp_fmdn_gatt_disconn_invoke_action);
 
 static void fp_fmdn_gatt_connected(struct bt_conn *conn, uint8_t err)
 {
-	LOG_DBG("Connected conn(%p) err(0x%02x) ", conn, err);
+	LOG_DBG("Connected conn(%p) err(0x%02x) ", (void *)conn, err);
 	if (!fp_conn_validate(conn)) {
 		return;
 	}
@@ -777,7 +778,7 @@ static void fp_fmdn_gatt_connected(struct bt_conn *conn, uint8_t err)
 
 static void fp_fmdn_gatt_disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	LOG_DBG("Discon conn(%p) res(0x%02x) ", conn, reason);
+	LOG_DBG("Discon conn(%p) res(0x%02x) ", (void *)conn, reason);
 	if (!fp_conn_validate(conn)) {
 		return;
 	}

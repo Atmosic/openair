@@ -1,0 +1,88 @@
+/*
+ * Copyright (c) 2021-2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <arm/atmosic/ATM34xx_partition_defs.h>
+
+&rram0 {
+	partitions {
+#if ATM_SPE_SIZE
+		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+#else
+		compatible = "fixed-partitions";
+#endif
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+#if ATM_SPE_SIZE
+		spe_partition: partition@ATM_SPE_NODE_ID {
+			label = "spe_partition";
+			secure;
+			reg = <ATM_SPE_OFFSET ATM_SPE_SIZE>;
+		};
+#endif
+#ifndef RUN_IN_FLASH
+#if ATM_SPE_SIZE
+		nspe_partition: partition@ATM_NSPE_NODE_ID {
+			label = "nspe_partition";
+			reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
+		};
+#endif
+#if ATM_APP_SIZE
+		app_partition: partition@ATM_APP_NODE_ID {
+			label = "app_partition";
+			reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
+		};
+#endif
+#elif ATM_FAST_CODE_SIZE
+		fast_code_partition: partition@ATM_FAST_CODE_NODE_ID {
+			label = "fast_code_partition";
+			reg = <ATM_FAST_CODE_OFFSET ATM_FAST_CODE_SIZE>;
+		};
+#endif
+#if ATM_FACTORY_SIZE
+		factory_partition: partition@ATM_FACTORY_NODE_ID {
+			label = "factory";
+			reg = <ATM_FACTORY_OFFSET ATM_FACTORY_SIZE>;
+		};
+#endif
+#if ATM_STORAGE_SIZE && !ATM_TEST_STORAGE_SIZE
+		storage_partition: partition@ATM_STORAGE_NODE_ID {
+			label = "storage";
+			reg = <ATM_STORAGE_OFFSET ATM_STORAGE_SIZE>;
+		};
+#endif
+	};
+};
+
+#if defined(RUN_IN_FLASH) || ATM_TEST_STORAGE_SIZE
+&flash0 {
+	partitions {
+		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+#ifdef RUN_IN_FLASH
+#if ATM_SPE_SIZE
+		nspe_partition: partition@ATM_NSPE_NODE_ID {
+			label = "nspe_partition";
+			reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
+		};
+#endif
+#if ATM_APP_SIZE
+		app_partition: partition@ATM_APP_NODE_ID {
+			label = "app_partition";
+			reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
+		};
+#endif
+#endif
+#if ATM_TEST_STORAGE_SIZE
+		storage_partition: partition@ATM_TEST_STORAGE_NODE_ID {
+			label = "storage";
+			reg = <ATM_TEST_STORAGE_OFFSET ATM_TEST_STORAGE_SIZE>;
+		};
+#endif
+	};
+};
+#endif

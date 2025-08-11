@@ -15,17 +15,20 @@ SoCs and EVKs
 
 .. _board:
 
-==================  =================  =================  ==================  ========  ==========
-SoC Part #          EVK Part #         Board List         On-chip             Package   Energy
-                                       <BOARD>            Flash                         Harvesting
-==================  =================  =================  ==================  ========  ==========
-ATM3330e-5DCAQN     ATMEVK-3330e-QN-7  ATMEVK-3330e-QN-7  512KB               QFN 7x7   x
-ATM3330e-5DCAQN     ATMEVK-3330e-QN-6  ATMEVK-3330e-QN-5  512KB               QFN 7x7   x
-ATM3330-5DCAQN      ATMEVK-3330-QN-6   ATMEVK-3330-QN-5   512KB               QFN 7x7
-ATM3325-5DCAQK      ATMEVK-3325-QK-6   ATMEVK-3325-QK-5   512KB               QFN 5x5
-ATM3325-5LCAQK      ATMEVK-3325-LQK-6  ATMEVK-3325-LQK    512KB + 1MB         QFN 5x5
-ATM3325-5DCACM      ATMEVK-3325-CM-6   Not Supported      512KB               WLCSP
-==================  =================  =================  ==================  ========  ==========
+==================  =======================  =================  ==================  ========  ==========
+SoC Part #          EVK Part #               Board List         On-chip             Package   Energy
+                                             <BOARD>            Flash                         Harvesting
+==================  =======================  =================  ==================  ========  ==========
+ATM3330e-5DCAQN     ATMEVK-3330e-QN-7        ATMEVK-3330e-QN-7  512KB               QFN 7x7   x
+ATM3330e-5DCAQN     | ATMEVK-3330e-QN-6      ATMEVK-3330e-QN-7  512KB               QFN 7x7   x
+                    | 052-(4x-5x)-xxx-xxxx
+ATM3330e-5DCAQN     | ATMEVK-3330e-QN-6      ATMEVK-3330e-QN-6  512KB               QFN 7x7   x
+                    | 052-(0x-3x)-xxx-xxxx
+ATM3330-5DCAQN      ATMEVK-3330-QN-6         ATMEVK-3330-QN-6   512KB               QFN 7x7
+ATM3325-5DCAQK      ATMEVK-3325-QK-6         ATMEVK-3325-QK-6   512KB               QFN 5x5
+ATM3325-5LCAQK      ATMEVK-3325-LQK-6        ATMEVK-3325-LQK-6  512KB + 1MB         QFN 5x5
+ATM3325-5DCACM      ATMEVK-3325-CM-6         ATMEVK-3325-CM-6   512KB               WLCSP
+==================  =======================  =================  ==================  ========  ==========
 
 ================
 Pin Multiplexing
@@ -92,10 +95,10 @@ as such rather than the "J-Link driver".  (In Device Manager, expand the categor
 Programming and Debugging
 *************************
 
-It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.8 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
+It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.4 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
 
  export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
- export ZEPHYR_SDK_INSTALL_DIR=<$HOME/zephyr-sdk-0.16.8>
+ export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-0.16.4
 
 Applications for the Atmosic EVK boards can be built, flashed, and debugged using the familiar `west build` and `west flash`.
 
@@ -105,7 +108,7 @@ The Atmosic SPE can be found under ``<WEST_TOPDIR>/openair/samples/spe``.
 
 .. _variable assignments:
 
-In the remainder of this document, substitute for ``<ZEPHYR_TOOLCHAIN_VARIANT>``, ``<ZEPHYR_SDK_INSTALL_DIR>``, ``<WEST_TOPDIR>``, ``<SPE>``, ``<APP>``, ``<APP_NAME>``, ``<MCUBOOT>``, ``<ATMWSTK>``, ``<ELF_FILE>``, ``<BOARD>``, and ``<DEVICE_ID>`` appropriately.  For example::
+In the remainder of this document, substitute for ``<ZEPHYR_TOOLCHAIN_VARIANT>``, ``<ZEPHYR_SDK_INSTALL_DIR>``, ``<WEST_TOPDIR>``, ``<SPE>``, ``<APP>``, ``<APP_NAME>``, ``<MCUBOOT>``, ``<ATMWSTK>``, ``<BOARD>``, and ``<DEVICE_ID>`` appropriately.  For example::
 
  <ZEPHYR_TOOLCHAIN_VARIANT>: zephyr
  <ZEPHYR_SDK_INSTALL_DIR>: /absolute/path/to/zephyrSDK
@@ -114,17 +117,31 @@ In the remainder of this document, substitute for ``<ZEPHYR_TOOLCHAIN_VARIANT>``
  <APP>: zephyr/samples/bluetooth/peripheral
  <APP_NAME>: APP Name for ISP section
  <MCUBOOT>: bootloader/mcuboot/boot/zephyr
- <ATMWSTK>: PD50
- <ELF_FILE>: PD50LL
+ <ATMWSTK>: PD50 or FULL
  <BOARD>: ATMEVK-3330e-QN-7
- <DEVICE_ID>: 900036846
+ <DEVICE_ID>: 000900036846
 
 * Use any board from the `board`_ list as ``<BOARD>``.
-* <DEVICE_ID> is the unique ID from the J-Link device used to program. For FTDI, the format will be ATRDIXXXX.
+* ``<DEVICE_ID>`` is the unique ID from the J-Link device used to program. For FTDI, the format will be ATRDIXXXX.
 
 =====================
 Building and Flashing
 =====================
+
+----------------------------
+Enabling a Random BD Address
+----------------------------
+
+Some non-production ATM33 EVKs in the field may have no BD address programmed in the secure journal.  On such boards, upon loading a BLE application, an assert error occurs with a message appearing on the console similar to the one below::
+
+  ASSERT ERR(0) at <zephyrproject-root>/openair/modules/hal_atmosic/drivers/eui/eui.c:132
+
+To avoid this error, the BLE application must be built with an option to allocate a random BD address.  This can be done by adding ``-DCONFIG_ATM_EUI_ALLOW_RANDOM=y`` to the build options.
+
+
+---------------
+Build and Flash
+---------------
 
 Applications can be built with MCUboot or without the MCUboot option. If a device firmware update (DFU) is not needed, you can choose the option without MCUboot. If you require DFU, then the MCUboot option is required.
 
@@ -134,15 +151,15 @@ There are two main options as stated above (with 2 suboptions):
 A. Non-MCUboot Option
 ---------------------
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Using Fixed BLE Link Controller Image for Atmosic Wireless Stack (Suboption #1, ``-DCONFIG_USE_ATMWSTK=y``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using Fixed BLE Link Controller Image for FULL Atmosic Wireless Stack (Suboption #1, ``<ATMWSTK>=FULL``, ``-DCONFIG_ATMWSTK_FULL=y``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1a. Build the SPE:
 
 ::
 
-  west build -p -s <SPE> -b <BOARD> -d build/<BOARD>/<SPE> -- -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=<ATMWSTK>;"
+  west build -p -s <SPE> -b <BOARD> -d build/<BOARD>/<SPE> -- -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=<ATMWSTK>;"
 
 2a. Build the Application:
 
@@ -150,13 +167,13 @@ Note: ``<BOARD>//ns`` is the non-secure variant of ``<BOARD>``.
 
 Build the app with the non-secure board variant and the SPE configured as follows::
 
-  west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=<ATMWSTK>;" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATM_EUI_ALLOW_RANDOM=y
+  west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=<ATMWSTK>;" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DCONFIG_ATM_EUI_ALLOW_RANDOM=y
 
 Passing the path to the SPE is for linking in the non-secure-callable veneer file generated in building the SPE.
 
 With this approach, each built image has to be flashed separately.  Optionally, build a single merged image by enabling ``CONFIG_MERGE_SPE_NSPE``, thereby minimizing the flashing steps::
 
-  west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=<ATMWSTK>;" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DCONFIG_MERGE_SPE_NSPE=y
+  west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=<ATMWSTK>;" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DCONFIG_MERGE_SPE_NSPE=y
 
 3a. Flashing the SPE and the Application:
 
@@ -166,27 +183,20 @@ For an atmevk33 board, this is typically a J-Link serial number, but it can also
 
 If the application requires Bluetooth (configured with ``CONFIG_BT`` in the prj.conf file) and uses the fixed BLE link controller image option, then the controller image requires programming.  This is typically done before programming the application and resetting (omitting the ``--noreset`` option to ``west flash``). For example::
 
-  west flash --verify --device=${DEVICE_ID} --jlink --fast_load --skip-rebuild -d build/${BOARD}/${SPE} --use-elf --elf-file openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_<ELF_FILE>.elf --noreset
-
-* replace ``<ELF_FILE>`` with:
-
-  - ``PD50LL``, if <ATMWSTK>=PD50.
-  - ``LL``, if <ATMWSTK>=FULL.
+  west flash --verify --device <DEVICE_ID> --jlink --fast_load --skip-rebuild -d build/<BOARD>/<SPE> --use-elf --elf-file openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_<ATMWSTK>.elf --noreset
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.
 
 Flash the SPE and the application separately if ``CONFIG_MERGE_SPE_NSPE`` was not enabled::
 
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
 
 Alternatively, if ``CONFIG_MERGE_SPE_NSPE`` was enabled in building the application, the first step (programming the SPE) can be skipped.
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Using Statically Linked BLE Link Controller Library for Atmosic Wireless Stack (Suboption #2, ``-DCONFIG_USE_ATMWSTK=n`` (default))
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The ``-DCONFIG_USE_ATMWSTK`` option is default set to ``=n``, i.e. to not use the fixed image, so there is no need to explicily say ``-DCONFIG_USE_ATMWSTK=n`` when using the statically-linked library for Atmosic Wireless Stack.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using Statically Linked BLE Link Controller Library for PD50 Atmosic Wireless Stack (Suboption #2, ``<ATMWSTK>=PD50``, ``-DCONFIG_ATMWSTK_PD50=y`` (default))
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1b. Build the SPE:
 
@@ -214,8 +224,8 @@ Atmosic provides a mechanism to increase the legacy programming time called FAST
 
 Flash the SPE and the application separately if ``CONFIG_MERGE_SPE_NSPE`` was not enabled::
 
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
-  west flash --device=<DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
 
 Alternatively, if ``CONFIG_MERGE_SPE_NSPE`` was enabled in building the application, the first step (programming the SPE) can be skipped.
 
@@ -225,19 +235,19 @@ B. MCUboot Option
 
 .. _MCUboot option:
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Using Fixed BLE Link Controller Image for Atmosic Wireless Stack (Suboption #1, ``-DCONFIG_USE_ATMWSTK=y``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using Fixed BLE Link Controller Image for FULL Atmosic Wireless Stack (Suboption #1, ``<ATMWSTK>=FULL``, ``-DCONFIG_ATMWSTK_FULL=y``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1a. Build the MCUboot and the SPE:
 
 To build with MCUboot, for example, DFU is needed, first build MCUboot::
 
-  west build -p -s <MCUBOOT> -b <BOARD>@mcuboot -d build/<BOARD>/<MCUBOOT> -- -DCONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y -DCONFIG_BOOT_MAX_IMG_SECTORS=512 -DDTC_OVERLAY_FILE="<WEST_TOPDIR>/openair/boards/atmosic/atm33evk/<BOARD>_mcuboot_bl.overlay" -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=<ATMWSTK>;-DDFU_IN_FLASH"
+  west build -p -s <MCUBOOT> -b <BOARD>@mcuboot_bl -d build/<BOARD>/<MCUBOOT> -- -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=<ATMWSTK>;-DDFU_IN_FLASH"
 
 and then the Atmosic SPE::
 
-  west build -p -s <SPE> -b <BOARD>@mcuboot -d build/<BOARD>/<SPE> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_GENERATE_UNSIGNED_IMAGE=n -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=<ATMWSTK>;-DDFU_IN_FLASH"
+  west build -p -s <SPE> -b <BOARD>@mcuboot -d build/<BOARD>/<SPE> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_GENERATE_UNSIGNED_IMAGE=n -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=<ATMWSTK>;-DDFU_IN_FLASH"
 
 Note that make use of "board revision" to configure our board partitions to work for MCUboot.  On top of the "revisions," MCUboot currently needs an additional overlay that must be provided through the command line to give it the entire SRAM.
 
@@ -245,7 +255,7 @@ Note that make use of "board revision" to configure our board partitions to work
 
 Build the application with MCUboot and SPE as follows::
 
-  west build -p -s <APP> -b <BOARD>@mcuboot//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DDTS_EXTRA_CPPFLAGS="-DATMWSTK=<ATMWSTK>;-DDFU_IN_FLASH" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DCONFIG_USE_ATMWSTK=y -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
+  west build -p -s <APP> -b <BOARD>@mcuboot//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=<ATMWSTK>;-DDFU_IN_FLASH" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
 
 This is somewhat of a non-standard workflow.  When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command line, ``west`` automatically creates a signed, merged image (``zephyr.signed.{bin,hex}``), which is ultimately used by ``west flash`` to program the device.  The original application binaries are renamed with a ``.nspe`` suffixed to the file basename (``zephyr.{bin,hex,elf}`` renamed to ``zephyr.nspe.{bin,hex,elf}``) and are the ones that should be supplied to a debugger.
 
@@ -255,23 +265,23 @@ Flash MCUboot
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
 
-   west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
+   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
 
 Note that adding ``--erase_flash`` is an option to erase Flash if needed.
 
 Flash the signed application image (merged with SPE)::
 
-   west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
+   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Using Statically Linked BLE Link Controller Library for Atmosic Wireless Stack (Suboption #2, ``-DCONFIG_USE_ATMWSTK=n`` (default))
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using Statically Linked BLE Link Controller Library for PD50 Atmosic Wireless Stack (Suboption #2, ``<ATMWSTK>=PD50``, ``-DCONFIG_ATMWSTK_PD50=y`` (default))
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1b. Build the MCUboot and the SPE:
 
 To build with MCUboot, for example, DFU is needed, first build MCUboot::
 
-  west build -p -s <MCUBOOT> -b <BOARD>@mcuboot -d build/<BOARD>/<MCUBOOT> -- -DCONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y -DCONFIG_BOOT_MAX_IMG_SECTORS=512 -DDTC_OVERLAY_FILE="<WEST_TOPDIR>/openair/boards/atmosic/atm33evk/<BOARD>_mcuboot_bl.overlay" -DDTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+  west build -p -s <MCUBOOT> -b <BOARD>@mcuboot_bl -d build/<BOARD>/<MCUBOOT> -- -DDTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
 
 and then the Atmosic SPE::
 
@@ -293,13 +303,13 @@ Flash MCUboot
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
 
-  west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
+  west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
 
 Note that adding ``--erase_flash`` is an option to erase Flash if needed.
 
 Flash the signed application image (merged with SPE)::
 
-  west flash --verify --device=<DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
+  west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
 
 ---------------------------
 BLE Link Controller Options
@@ -347,7 +357,7 @@ On macOS, the serial console will appear as a USB device (``/dev/tty.usbmodem<UN
 Windows
 =======
 
-The console output for the Atmosic ATM33xx is sent to the J-Link CDC UART port. When connected, two UART ports will be displayed.
+The console output for the Atmosic ATM33/e is sent to the J-Link CDC UART port. When connected, two UART ports will be displayed.
 The user must test each one to determine where the message output appears.
 To view the console output, use a serial terminal program such as PuTTY (available from https://www.chiark.greenend.org.uk/~sgtatham/putty) to connect to the J-Link CDC UART port. Set the UART configuration to 115200/N/8/1.
 

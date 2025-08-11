@@ -9,7 +9,12 @@ config ATM_SPE_DISABLE_SAU
 
 config ATM_SPE_DISABLE_SHUB
 	bool "Disable Sensor Hub"
-	default y
+
+config ATM_SPE_DISABLE_ROM_PATCH
+	bool "Disable ROM PATCH controller"
+
+config ATM_SPE_DISABLE_OTP
+	bool "Disable OTP controller"
 
 config ATM_ENABLE_NSC_EXAMPLE
 	bool "Enable NSC example function for extending SPE"
@@ -32,3 +37,11 @@ config ATM_SPE_SECURE_MEM_AREAS
 	select ATM_SPE_WP_ATMWSTK
 	select ATM_SPE_RP_MCUBOOT
 	select ATM_SPE_RP_BOOT_ROM
+	select ATM_SPE_DISABLE_OTP
+	select ATM_SPE_DISABLE_ROM_PATCH
+	select ATM_SPE_DISABLE_SHUB
+
+config ATM_SPE_DISABLE_SYSTICK
+	bool "Disable secure SysTick"
+	depends on SYSTEM_TIMER_HAS_DISABLE_SUPPORT
+	default y

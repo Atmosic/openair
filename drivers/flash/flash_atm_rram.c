@@ -5,17 +5,13 @@
  *
  * @brief Atmosic RRAM Driver
  *
- * Copyright (C) Atmosic 2020-2024
+ * Copyright (C) Atmosic 2020-2025
  *
  * SPDX-License-Identifier: Apache-2.0
  *
  *******************************************************************************
  */
 #define DT_DRV_COMPAT atmosic_rram_controller
-#define SOC_NV_FLASH_NODE DT_INST(1, soc_nv_flash)
-
-#define FLASH_WRITE_BLK_SZ DT_PROP(SOC_NV_FLASH_NODE, write_block_size)
-#define FLASH_ERASE_BLK_SZ DT_PROP(SOC_NV_FLASH_NODE, erase_block_size)
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
@@ -24,6 +20,16 @@
 #include <errno.h>
 #include <zephyr/drivers/flash.h>
 #include <soc.h>
+
+#if DT_NODE_EXISTS(DT_NODELABEL(flash_controller))
+#define SOC_NV_FLASH_NODE DT_INST(1, soc_nv_flash)
+#else
+#define SOC_NV_FLASH_NODE DT_INST(0, soc_nv_flash)
+#endif
+
+#define FLASH_WRITE_BLK_SZ DT_PROP(SOC_NV_FLASH_NODE, write_block_size)
+#define FLASH_ERASE_BLK_SZ DT_PROP(SOC_NV_FLASH_NODE, erase_block_size)
+#define RRAM_ADDR_OFFSET_END (DT_REG_SIZE(SOC_NV_FLASH_NODE) - 1)
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(flash_atm_rram, CONFIG_FLASH_LOG_LEVEL);
@@ -40,6 +46,10 @@ static int flash_atm_rram_read(struct device const *dev, off_t addr, void *data,
 		return 0;
 	}
 
+	if (addr > RRAM_ADDR_OFFSET_END) {
+	    return -EINVAL;
+	}
+
 	memcpy(data, (void const *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), len);
 
 	return 0;
@@ -51,6 +61,10 @@ static int flash_atm_rram_write(struct device const *dev, off_t addr, void const
 
 	if (!len) {
 		return 0;
+	}
+
+	if (addr > RRAM_ADDR_OFFSET_END) {
+	    return -EINVAL;
 	}
 
 	if (!rram_prot_write_enable(addr, len)) {
@@ -67,6 +81,10 @@ static int flash_atm_rram_write(struct device const *dev, off_t addr, void const
 static int flash_atm_rram_erase(struct device const *dev, off_t addr, size_t size)
 {
 	LOG_DBG("flash_atm_rram_erase(0x%08lx, %zu)", (unsigned long)addr, size);
+
+	if (addr > RRAM_ADDR_OFFSET_END) {
+	    return -EINVAL;
+	}
 
 	if (!rram_prot_write_enable(addr, size)) {
 		return -EIO;

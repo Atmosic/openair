@@ -1,0 +1,27 @@
+sample:
+  name: Bluetooth Central RAS RREQ Initiator
+  description: Demonstrates the ranging requestor RAS
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "scan entry"
+tests:
+  applications.ras_rreq_initiator.atm.atmwstklib.full:
+    tags: atm34 no_mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_ATMWSTK_FULL=y
+      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/boards/${BOARD}_spe_uart0.overlay
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.ras_rreq_initiator.atm.atmwstklib.full.uart1:
+    tags: atm34 no_mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_ATMWSTK_FULL=y
+      - EXTRA_DTC_OVERLAY_FILE=boards/${BOARD}_ns_uart1.overlay
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"

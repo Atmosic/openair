@@ -1,4 +1,4 @@
 # Override "nanopb module" requirements to the minimum compatible with atm_isp
-grpcio-tools==1.47.0
-protobuf==3.20.3
+grpcio-tools>=1.47.0
+protobuf>=3.20.3
 -r ../../zephyr/scripts/requirements.txt

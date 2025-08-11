@@ -1,6 +1,6 @@
 .. _hci_uart-sample:
 
-Bluetooth: HCI UART
+Bluetooth: hci_uart
 ###################
 
 Overview
@@ -33,16 +33,16 @@ By default the builds use ``uart0`` with the following settings:
 Building and Running
 ********************
 
-This sample can be found under ``samples/bluetooth/hci_uart`` in the OpenAir tree.
+This sample is built from ``openair/samples/bluetooth/hci_uart``.
 
 Build Command:
 
 .. code-block:: bash
 
-    west build -p always -b <board>//ns openair/samples/bluetooth/hci_uart --sysbuild -T samples.bluetooth.hci_uart.atm
+    west build -p always -b <BOARD>//ns openair/samples/bluetooth/hci_uart --sysbuild -T samples.bluetooth.hci_uart.atm
 
 Flash command:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild --device <serial> --jlink --fast_laod [--erase_flash]
+    west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_laod [--erase_flash]

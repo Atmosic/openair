@@ -1,0 +1,7 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_VERSION
+	bool "Print Atmosic SDK Version"
+	default y

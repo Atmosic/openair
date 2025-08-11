@@ -1,0 +1,30 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#if defined(FLASH_SIZE) && !FLASH_SIZE && !defined(ATM_ALLOW_FLASH_DISABLE)
+#error "FLASH should not be disabled for stacked flash devices. Set ATM_ALLOW_FLASH_DISABLE to allow disablement."
+#endif
+
+/* NOTE: top level board file should set FLASH_SIZE */
+
+#if FLASH_SIZE
+#if defined(STACKED_FLASH_YBV) || defined(STACKED_FLASH_YQN) || defined(STACKED_FLASH_YQK) || defined(STACKED_FLASH_WQK)
+/* YBV = BGA 4x4 2MB stacked flash */
+/* YQN = QFN 7x7 2MB stacked flash */
+/* YQK = QFN 5x5 2MB stacked flash */
+/* WQK = QFN 5x5 1MB stacked flash */
+&flash_controller {
+	clk-pin = <35>;
+	csn-pin = <31>;
+	d0-pin = <34>;
+	d1-pin = <32>;
+	d2-pin = <33>;
+	d3-pin = <36>;
+};
+#else
+#error "Unknown stacked part variant"
+#endif
+#endif // FLASH_SIZE

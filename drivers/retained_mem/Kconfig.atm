@@ -1,0 +1,37 @@
+# Copyright (c) 2025 Atmosic Technologies
+# SPDX-License-Identifier: Apache-2.0
+
+config RETAINED_MEM_ATM_HIB
+	bool "Atmosic hibernation retained memory driver"
+	default y
+	depends on DT_HAS_ATMOSIC_RETAINED_HIB_ENABLED
+	depends on !ATM_SHUB_ENABLED
+	help
+	  Enable driver for Atmosic hibernation retained memory support.
+	  This driver uses SHUB (Sensor Hub) registers and PSEQ (Power Sequencer)
+	  persistent registers to provide retained memory functionality across
+	  hibernation and low power modes.
+
+	  The driver automatically determines storage capacity based on SOC variant:
+	  - With PERSISTENT6: 222 bytes
+	  - With PERSISTENT5: 218 bytes
+	  - Base configuration: 198 bytes
+
+	  Note: This driver cannot be used when SHUB is enabled for sensor
+	  functionality as it conflicts with the register usage.
+
+config ATM_SHUB_ENABLED
+	bool "Atmosic Sensor Hub (SHUB) functionality enabled"
+	help
+	  This option indicates that the Atmosic Sensor Hub (SHUB) hardware
+	  is being used for sensor functionality. When enabled, it prevents
+	  the retained memory driver from using SHUB registers, as they
+	  conflict with sensor operations.
+
+	  Enable this option if:
+	  - Using SHUB for sensor data collection
+	  - Running sensor hub firmware
+	  - Using any sensor drivers that require SHUB hardware
+
+	  When this option is enabled, the retained memory driver will be
+	  automatically disabled to prevent register conflicts.

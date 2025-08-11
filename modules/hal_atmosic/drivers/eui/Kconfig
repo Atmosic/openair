@@ -13,6 +13,5 @@ config ATM_EUI_ALLOW_RANDOM
 
 config ATM_EUI48_ALLOW_BUILTIN
 	bool "Allow eui driver to return no value."
-	depends on ATM_EUI
 
 endif # ATM_EUI

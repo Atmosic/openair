@@ -7,15 +7,25 @@ family:
       - name: ATM33
         socs:
           - name: ATM33xx-5
+      - name: ATM34
+        socs:
+          - name: ATM34xx-2
+          - name: ATM34xx-5
 runners:
   run_once:
-    '--erase_flash':
+    '--erase_all':
       - run: first
         runners:
           - atmisp
         groups:
           - qualifiers:
+              - ATMx2xx-x1x
               - ATM33xx-5
               - ATM33xx-5/ns
               - ATM33xx-5/no_TZ
-              - ATMx2xx-x1x
+              - ATM34xx-2
+              - ATM34xx-2/ns
+              - ATM34xx-2/no_TZ
+              - ATM34xx-5
+              - ATM34xx-5/ns
+              - ATM34xx-5/no_TZ

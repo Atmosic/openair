@@ -6,10 +6,8 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm33 atm34
+    tags: introduction atm33 atm34 no_mcuboot
     extra_args:
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app.conf
       - SB_CONFIG_SPE=y
   samples.bluetooth.hci_uart.atm.mcuboot:
     sysbuild: true
@@ -18,71 +16,59 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm33 atm34
+    tags: introduction atm33 atm34 mcuboot
     extra_args:
-      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.pd50ll:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
+  samples.bluetooth.hci_uart.atm.mcuboot.rram_only:
     sysbuild: true
     harness: console
     harness_config:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm33
-    platform_allow:
-      - ATMEVK-3325-LQK@mcuboot/ATM33xx-5/ns
-      - ATMEVK-3330-QN-5@mcuboot/ATM33xx-5/ns
-      - ATMEVK-3330e-QN-5@mcuboot/ATM33xx-5/ns
+    tags: introduction atm33 mcuboot
     extra_args:
-      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
-      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
-      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=PD50LL"
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
     extra_configs:
-      - CONFIG_ATMWSTK="PD50LL"
-      - CONFIG_USE_ATMWSTK=y
       - CONFIG_ATM_SOC_ALLOW="ATM33"
-  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.ll:
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.full:
     sysbuild: true
     harness: console
     harness_config:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm33
-    platform_allow:
-      - ATMEVK-3325-LQK@mcuboot/ATM33xx-5/ns
-      - ATMEVK-3330-QN-5@mcuboot/ATM33xx-5/ns
-      - ATMEVK-3330e-QN-5@mcuboot/ATM33xx-5/ns
+    tags: introduction atm33 mcuboot
     extra_args:
-      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - mcuboot_DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL"
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
-      - spe_DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL"
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
-      - DTS_EXTRA_CPPFLAGS="-DATMWSTK=LL"
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_CONFIG_ATMWSTK_FULL=y
     extra_configs:
-      - CONFIG_ATMWSTK="LL"
-      - CONFIG_USE_ATMWSTK=y
+      - CONFIG_ATM_SOC_ALLOW="ATM33"
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.pd50.rram_only:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags: introduction atm33 mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+    extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM33"
   samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.pd50:
     sysbuild: true
@@ -91,26 +77,15 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm33 atm34
-    platform_allow:
-      - ATMEVK-3325-LQK@mcuboot/ATM33xx-5/ns
-      - ATMEVK-3330-QN-5@mcuboot/ATM33xx-5/ns
-      - ATMEVK-3330e-QN-5@mcuboot/ATM33xx-5/ns
-      - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3425-YQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3430e-YQN-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3405-YBV-5@mcuboot/ATM34xx-5/ns
+    tags: introduction atm34 mcuboot
     extra_args:
-      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_ATMWSTK_PD50=y
     extra_configs:
-      - CONFIG_ATMWSTKLIB="PD50"
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
   samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.cpd200:
     sysbuild: true
     harness: console
@@ -118,23 +93,14 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm34
-    platform_allow:
-      - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3425-YQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3430e-YQN-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3405-YBV-5@mcuboot/ATM34xx-5/ns
+    tags: introduction atm34 mcuboot
     extra_args:
-      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_ATMWSTK_CPD200=y
     extra_configs:
-      - CONFIG_ATMWSTKLIB="CPD200"
       - CONFIG_ATM_SOC_ALLOW="ATM34"
   samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.full:
     sysbuild: true
@@ -143,23 +109,14 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm34
-    platform_allow:
-      - ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3425-YQK-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3430e-YQN-5@mcuboot/ATM34xx-5/ns
-      - ATMEVK-3405-YBV-5@mcuboot/ATM34xx-5/ns
+    tags: introduction atm34 mcuboot
     extra_args:
-      - mcuboot_DTC_OVERLAY_FILE="${BOARD_DIR}/${BOARD}_mcuboot_bl.overlay"
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - spe_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/spe_mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_ATMWSTK_FULL=y
     extra_configs:
-      - CONFIG_ATMWSTKLIB=""
       - CONFIG_ATM_SOC_ALLOW="ATM34"
   samples.bluetooth.hci_uart.atm.mcuboot.atmx2:
     sysbuild: true
@@ -172,8 +129,6 @@ tests:
     platform_allow:
       - ATMEVK-M2251-02/ATMx2xx-x1x
     extra_args:
-      - mcuboot_EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/mcuboot.conf
-      - EXTRA_CONF_FILE=${BOARD_DIR}/sysbuild/app_mcuboot.conf
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y

@@ -1,0 +1,38 @@
+sample:
+  name: Bluetooth Responder of RAP and Channel sounding reflector
+  description: Demonstrates the RAP(Ranging Profile) GATT Service
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "adv_entry"
+tests:
+  applications.ras_rrsp_reflector.atm:
+    tags: atm34 no_mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.ras_rrsp_reflector.atm.mcuboot.atmwstklib.pd50:
+    tags: atm34 mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.ras_rrsp_reflector.atm.mcuboot.ota:
+    tags: atm34 mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+      - EXTRA_CONF_FILE=basic_ota_bt.conf
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"

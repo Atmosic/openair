@@ -11,7 +11,7 @@ To specify the generated .pem key file for signing, set the ``-DCONFIG_BOOT_SIGN
 
 For example, to build MCUboot with the ECDSA P-256 key generated above::
 
-  west build -p -s <MCUBOOT> -b <BOARD>@mcuboot -d build/<BOARD>/<MCUBOOT> -- -DCONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y -DCONFIG_BOOT_SIGNATURE_KEY_FILE=\"<path_to_new_key_file>/my_ecdsa_p256_key.pem\" -DCONFIG_BOOT_MAX_IMG_SECTORS=512 -DDTC_OVERLAY_FILE="<WEST_TOPDIR>/atmosic-private/boards/atmosic/atm34evk/<BOARD>_mcuboot_bl.overlay"
+  west build -p -s <MCUBOOT> -b <BOARD>@mcuboot_bl -d build/<BOARD>/<MCUBOOT> -- -DCONFIG_BOOT_SIGNATURE_KEY_FILE=\"<path_to_new_key_file>/my_ecdsa_p256_key.pem\""
 
 To build the application with the ECDSA P-256 key generated above (assuming the SPE is already built)::
 

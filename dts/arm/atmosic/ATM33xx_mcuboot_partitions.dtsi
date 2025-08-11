@@ -32,12 +32,6 @@
 #endif
 			reg = <ATM_MCUBOOT_OFFSET ATM_MCUBOOT_SIZE>;
 		};
-#if !defined(DFU_IN_FLASH) && ATM_MCUBOOT_SCRATCH_SIZE
-		scratch_partition: partition@ATM_MCUBOOT_SCRATCH_NODE_ID {
-			label = "image-scratch";
-			reg = <ATM_MCUBOOT_SCRATCH_OFFSET ATM_MCUBOOT_SCRATCH_SIZE>;
-		};
-#endif
 		slot0_partition: partition@ATM_SLOT0_NODE_ID {
 			label = "image-0";
 			reg = <ATM_SLOT0_OFFSET ATM_SLOT0_SIZE>;

@@ -14,6 +14,7 @@
 #include <zephyr/storage/flash_map.h>
 #include "vectors.h"
 #include <zephyr/irq.h>
+#include <zephyr/drivers/timer/system_timer.h>
 #include "at_tz_sau.h"
 #include "at_tz_ppc.h"
 #include "at_tz_mpc.h"
@@ -217,8 +218,12 @@ static void sau_cfg(void)
 	PART_SPE_ADDR() + DT_REG_SIZE(DT_NODELABEL(spe_partition));
     uint32_t rram_flash_baddr = GET_PHYS_ADDR(rram_ns_start);
     uint32_t rram_flash_laddr =
+#if DT_NODE_EXISTS(DT_NODELABEL(flash_controller))
 	GET_PHYS_ADDR(DT_REG_ADDR(DT_NODELABEL(flash_controller))) +
 	DT_REG_SIZE(DT_NODELABEL(flash_controller)) - 1;
+#else
+	CMSDK_EXT_FLASH_NONSECURE_BASE - 1; // end just shy of ext_flash start
+#endif
     TRACE_TZ_CFG("SAU RRAM NS: [0x%08x - 0x%08x]\n", rram_flash_baddr,
 	rram_flash_laddr);
     ret = at_tz_sau_enable_region(sau_region++,
@@ -241,7 +246,7 @@ static void sau_cfg(void)
 	at_tz_sau_enable_region(sau_region++, AT_TZ_SAU_BADDR_MASK(flash_baddr),
 	    AT_TZ_SAU_LADDR_MASK(flash_laddr), AT_TZ_SAU_NS);
     SEC_ASSERT(ret == AT_TZ_SAU_OK);
-#endif
+#endif //  DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
 
     uint32_t ns_sram_baddr = GET_PHYS_ADDR(DT_REG_ADDR(DT_NODELABEL(sram0))) +
 	DT_REG_SIZE(DT_NODELABEL(sram0));
@@ -315,12 +320,16 @@ static void pre_sau_security_lockdown(void)
 {
     bool sec_s;
 
+#ifdef CONFIG_ATM_SPE_DISABLE_ROM_PATCH
     // lock out the ROM patch controller
     sec_s = sec_device_set_lockout(SEC_DEV_LOCKOUT_ROM_P_CFG);
     SEC_ASSERT(sec_s);
+#endif
+#ifdef CONFIG_ATM_SPE_DISABLE_OTP
     // lock out the OTP controller's write capability
     sec_s = sec_device_set_lockout(SEC_DEV_LOCKOUT_OTP_WR);
     SEC_ASSERT(sec_s);
+#endif
 
 #if SHUB_LOCKOUT_SUPPORT && defined(CONFIG_ATM_SPE_DISABLE_SHUB)
     // lock out shub
@@ -420,6 +429,13 @@ FUNC_NORETURN void spe_main(void)
     // Enable and configure security controllers (SAU and MPC)
     sau_cfg();
     mpc_cfg();
+
+#ifdef CONFIG_ATM_SPE_DISABLE_SYSTICK
+    // Disable secure SysTick
+    sys_clock_disable();
+#else
+    NVIC_SetPriority(SysTick_IRQn, IRQ_PRI_MID);
+#endif
 
     // Redirect interrupts to non-secure handlers
     IRQn_Type irq;

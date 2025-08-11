@@ -31,7 +31,6 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/buf.h>
 #include <zephyr/bluetooth/hci_raw.h>
-#include <zephyr/drivers/bluetooth/hci_driver.h>
 #include <zephyr/sys/reboot.h>
 #ifdef CONFIG_BT_HCI_RAW_CMD_EXT
 #include "atm_vendor_internal.h"
@@ -160,6 +159,15 @@ ATM_VS_HDLR(BLE_REG_RD_CMD)
 #ifdef CONFIG_VND_BLE_REGW
 ATM_VS_HDLR(BLE_REG_WR_CMD)
 #endif
+#ifdef CONFIG_VND_MALLOC
+ATM_VS_HDLR(MALLOC_CMD)
+#endif
+#ifdef CONFIG_VND_WFI
+ATM_VS_HDLR(WFI_CMD)
+#endif
+#ifdef CONFIG_VND_NO_CLOCK
+ATM_VS_HDLR(NO_CLOCK_CMD)
+#endif
 ATM_VS_HDLR(EN_TXCW_CMD)
 ATM_VS_HDLR(FREQCAL_CMD)
 ATM_VS_HDLR(MM_R_CMD)
@@ -177,6 +185,15 @@ static struct bt_hci_raw_cmd_ext cmd_ext[] = {
 #endif
 #ifdef CONFIG_VND_BLE_REGW
     ATM_VS_SET(BLE_REG_WR_CMD),
+#endif
+#ifdef CONFIG_VND_MALLOC
+    ATM_VS_SET(MALLOC_CMD),
+#endif
+#ifdef CONFIG_VND_WFI
+    ATM_VS_SET(WFI_CMD),
+#endif
+#ifdef CONFIG_VND_NO_CLOCK
+    ATM_VS_SET(NO_CLOCK_CMD),
 #endif
     ATM_VS_SET(EN_TXCW_CMD),
     ATM_VS_SET(FREQCAL_CMD),
