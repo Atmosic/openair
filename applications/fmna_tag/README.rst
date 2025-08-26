@@ -36,13 +36,13 @@ If modification of the ADK source code is truly required, please contact Atmosic
 Follow the steps as below:
 
 1. Download the ADK source code archive ``Find My network ADK 1.0.zip`` from the Apple MFi Content Center.
-2. Extract it and place the ``findmy_network_adk`` directory under ``zephyrproject/vendor``.
-3. Place the Atmosic patch file (e.g., ``<patch_name>.diff``) into ``zephyrproject/vendor/findmy_network_adk``.
-4. Navigate to ``zephyrproject/vendor/findmy_network_adk`` and execute the following command:
+2. Extract it and place the ``findmy_network_adk`` directory under ``<WEST_TOPDIR>/vendor``.
+3. Place the Atmosic patch file (e.g., ``<patch_name.diff>``) into ``<WEST_TOPDIR>/vendor/findmy_network_adk``.
+4. Navigate to ``<WEST_TOPDIR>/vendor/findmy_network_adk`` and execute the following command:
 
    .. code-block:: bash
 
-      patch -p1 < <patch_name>.diff
+      patch -p1 < <patch_name.diff>
 
 5. Add the following entry to the ``projects`` section of ``openair/west.yml``:
 
@@ -152,7 +152,7 @@ Run the following command to build the mcuboot, SPE, application and factory dat
 
 .. code-block:: bash
 
-    west build -p always -b <BOARD>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstklib.pd50
+    west build -p always -b <BOARD>@mcuboot//ns openair/applications/fmna_tag --sysbuild -T applications.fmna_tag.atm.mcuboot.uarp.atmwstk.pd50
 
 
 Programming
@@ -179,7 +179,7 @@ In order for the button to work, jumpers JP25 and JP27 need to be installed on t
 PWM Buzzer
 **********
 
-- To enable the PWM Buzzer for FMNA sound implementation, please add **CONFIG_PWM_BUZZER=y** to the prj.conf file.
+- To enable the PWM Buzzer for FMNA sound implementation, please add **CONFIG_ATM_BUZZER=y** to the prj.conf file.
 - Since Atmosic EVK does not include an onboard buzzer, kindly refine the overlay file at boards/<BOARD>_ns.overlay to map the corresponding pin and PWM channel.
 - By default, the PWM pin is mapped to LED1 on the EVK, allowing LED1 to light up while playing sound for evaluation purposes.
 

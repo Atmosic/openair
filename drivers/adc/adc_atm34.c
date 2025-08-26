@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 #include <assert.h>
 #include <string.h>
 #include <math.h>
+#include <inttypes.h>
 #ifdef CONFIG_PM
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
@@ -625,7 +626,7 @@ static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 		return (int32_t)(result * 100.0f);
 	}
 
-	printk("channel: %d, raw: %#x, sample_signed: %d\n", ch, raw_fifo.value, sample_signed);
+	LOG_DBG("channel: %d, raw: %#x, sample_signed: %" PRId32 "\n", ch, raw_fifo.value, sample_signed);
 
 	return sample_signed;
 }

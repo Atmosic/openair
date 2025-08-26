@@ -264,6 +264,19 @@ bool WsfOsReadyToSleep(void);
 
 /*************************************************************************************************/
 /*!
+ *  \brief  Reset OS timer state.
+ *
+ *  \details Resets the OS timer's last expiration time and fractional accumulator
+ *           to current time. This should be called when starting the first timer
+ *           after an idle period to ensure accurate timing calculations.
+ *
+ *  \note   This function must be called within a task lock.
+ */
+/*************************************************************************************************/
+void WsfOsTimerReset(void);
+
+/*************************************************************************************************/
+/*!
  *  \brief  OS updates timer from Pal
  */
 /*************************************************************************************************/

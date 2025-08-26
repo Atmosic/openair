@@ -27,7 +27,7 @@
 #endif
 
 #ifndef ATM_SPE_SIZE
-#define ATM_SPE_SIZE (22 * 1024)
+#define ATM_SPE_SIZE (18 * 1024)
 #endif
 #if ((ATM_SPE_SIZE % ATM_RRAM_BLOCK_SIZE) != 0)
 #error "SPE size must be aligned"

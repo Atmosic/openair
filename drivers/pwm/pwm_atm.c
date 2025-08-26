@@ -8,9 +8,11 @@
 LOG_MODULE_REGISTER(pwm_atm, CONFIG_PWM_LOG_LEVEL);
 
 #include <errno.h>
+#include <inttypes.h>
 #include <zephyr/drivers/pwm.h>
 #ifdef CONFIG_PM
 #include <zephyr/pm/policy.h>
+#include <zephyr/kernel.h>
 #endif
 #include <soc.h>
 
@@ -59,7 +61,6 @@ LOG_MODULE_REGISTER(pwm_atm, CONFIG_PWM_LOG_LEVEL);
 #define PWM(n) CONCAT(CONCAT(PWM_, DT_INST_PROP(n, channel)), _)
 #endif
 
-#define PWM_MIN_HZ 123 // Lowest supported freq
 #define SYS_CLK_IN_HZ (SYS_CLK_IN_KHZ * 1000)
 
 #define PWM_TOT_DUR_ADJ 1
@@ -73,6 +74,7 @@ typedef enum {
 } pwm_mode_t;
 
 #define DEV_CFG(dev) ((struct pwm_atm_config const *)(dev)->config)
+#define DEV_DATA(dev) ((struct pwm_atm_data *)(dev)->data)
 
 typedef void (*set_callback_t)(void);
 
@@ -85,6 +87,10 @@ struct pwm_atm_config {
 	uint8_t max_duty_cycle;
 	uint8_t min_duty_cycle;
 #endif
+};
+
+struct pwm_atm_data {
+	uint32_t period_cycles[MAX_PWM_INST];  /* Track period for each PWM channel */
 };
 
 #ifdef PSEQ_CTRL0__PWM_LATCH_OPEN__CLR
@@ -113,9 +119,29 @@ static void pwm_atm_pm_constraint_set(const struct device *dev, uint8_t channel)
 
 static void pwm_atm_pm_constraint_release(const struct device *dev, uint8_t channel)
 {
+	struct pwm_atm_data *data = DEV_DATA(dev);
 	atomic_t old_mask = atomic_and(&pm_constraint_mask, ~BIT(channel));
 
 	if (old_mask && !pm_constraint_mask) {
+		/* Calculate frame duration based on stored period for the channel being disabled */
+		if (data->period_cycles[channel]) {
+			/*
+			 * Frame duration with 20% safety margin in microseconds
+			 */
+			uint32_t delay_us = data->period_cycles[channel] /
+					    ((SYS_CLK_IN_KHZ * 100) / (MSEC_PER_SEC * 120));
+
+			LOG_DBG("PWM channel %d: period=%" PRIu32 " cycles, delay=%" PRIu32 " µs",
+				channel, data->period_cycles[channel], delay_us);
+
+			/*
+			 * Hardware Timing Requirement:
+			 * PWM OK_TO_RUN bit clears immediately, but the hardware stops
+			 * "at the end of the next frame" per register documentation.
+			 */
+			k_usleep(delay_us);
+		}
+
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -272,6 +298,8 @@ static int pwm_atm_get_cycles_per_sec(struct device const *dev, uint32_t pwm, ui
 static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32_t period_cycles,
 			      uint32_t pulse_cycles, pwm_flags_t flags)
 {
+	struct pwm_atm_data *data = DEV_DATA(dev);
+
 	if (channel >= MAX_PWM_INST) {
 		LOG_ERR("Invalid channel. Received (%d)", channel);
 		return -EINVAL;
@@ -283,6 +311,7 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 #ifdef CONFIG_PM
 		pwm_atm_pm_constraint_release(dev, channel);
 #endif
+		data->period_cycles[channel] = 0;
 		return 0;
 	}
 
@@ -351,6 +380,8 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 	uint16_t hi_dur = tot_dur - lo_dur;
 #endif // PWM_PMW0_CTRL__TOT_DUR__READ
 
+	data->period_cycles[channel] = period_cycles;
+
 #ifdef CONFIG_PM
 	pwm_atm_pm_constraint_set(dev, channel);
 #endif
@@ -398,8 +429,11 @@ static struct pwm_driver_api const pwm_atm_driver_api = {
 		IF_ENABLED(DT_INST_NODE_HAS_PROP(n, min_duty_cycle),                               \
 		           (.min_duty_cycle = PWM_MIN_DUTY_CYCLE(n),))                             \
 	};                                                                                         \
-	DEVICE_DT_INST_DEFINE(n, &pwm_atm_init, NULL, NULL, &pwm_atm_config_##n, POST_KERNEL,      \
-			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &pwm_atm_driver_api);            \
+	static struct pwm_atm_data pwm_atm_data_##n = {                                            \
+		.period_cycles = {0},  /* Initialize all period tracking to 0 */                   \
+	};                                                                                         \
+	DEVICE_DT_INST_DEFINE(n, &pwm_atm_init, NULL, &pwm_atm_data_##n, &pwm_atm_config_##n,      \
+		POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &pwm_atm_driver_api);             \
 	BUILD_ASSERT(PWM_CTRL(n) == (uint32_t *)DT_REG_ADDR(                                       \
 					    DT_NODELABEL(CONCAT(pwm, DT_INST_PROP(n, channel)))));
 

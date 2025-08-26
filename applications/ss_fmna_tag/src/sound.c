@@ -8,14 +8,25 @@
 #include <zephyr/logging/log.h>
 #include "sound.h"
 
-#ifdef CONFIG_PWM_BUZZER
+#ifdef CONFIG_ATM_BUZZER
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
+#include "atm_buzzer.h"
 
-static const struct pwm_dt_spec pwm_dt = PWM_DT_SPEC_GET(DT_NODELABEL(buzzer));
+#define BUZZER_NODE DT_NODELABEL(buzzer)
+#define BUZZER_PWM_NODE DT_PHANDLE(BUZZER_NODE, pwms)
+BUILD_ASSERT(DT_NODE_EXISTS(BUZZER_NODE),
+    "BUZZER_NODE does not exist in the Device Tree!");
+
+static atm_buzzer_t buzzer_cfg = {
+    .pwm_dt = PWM_DT_SPEC_GET(BUZZER_NODE),
+    .pulse = DT_PROP(BUZZER_NODE, pulse),
+    .min_frequency = DT_PROP(BUZZER_PWM_NODE, min_frequency),
+    .max_frequency = DT_PROP(BUZZER_PWM_NODE, max_frequency),
+};
 #endif
-LOG_MODULE_REGISTER(sound, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(sound, CONFIG_SS_FMNA_TAG_LOG_LEVEL);
 
 void sound_init(void)
 {
@@ -25,22 +36,16 @@ void sound_init(void)
 
 void sound_start(void)
 {
-#ifdef CONFIG_PWM_BUZZER
-    int ret = pwm_set_pulse_dt(&pwm_dt, DT_PROP(DT_NODELABEL(buzzer), pulse));
-    if (ret) {
-	LOG_ERR("Failed to start PWM: %d", ret);
-    }
+#ifdef CONFIG_ATM_BUZZER
+    atm_buzzer_onoff(&buzzer_cfg, true);
 #endif
     LOG_DBG("sound_start");
 }
 
 void sound_stop(void)
 {
-#ifdef CONFIG_PWM_BUZZER
-    int ret = pwm_set_pulse_dt(&pwm_dt, 0);
-    if (ret) {
-	LOG_ERR("Failed to stop PWM: %d", ret);
-    }
+#ifdef CONFIG_ATM_BUZZER
+    atm_buzzer_onoff(&buzzer_cfg, false);
 #endif
     LOG_DBG("sound_stop");
 }

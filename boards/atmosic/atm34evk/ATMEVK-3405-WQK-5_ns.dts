@@ -101,6 +101,7 @@
 
 &adc {
 	ch-cell = <1>;
+	ch-store = <2>;
 	ch-core = <3>;
 	ch-temp = <4>;
 	ch-p1diff = <5>;
@@ -109,6 +110,7 @@
 	ch-p1single1 = <8>;
 	ch-p0single0 = <9>;
 	ch-p0single1 = <10>;
+	ch-batt = <11>;
 	ch-p2single = <12>;
 
 	#address-cells = <1>;

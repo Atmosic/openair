@@ -4,6 +4,91 @@
 
 if SOC_ATM33XX_5
 
+config ROM_START_OFFSET
+	default 0 if MERGE_SPE_NSPE && BOOTLOADER_MCUBOOT
+	default 0x800 if BOOTLOADER_MCUBOOT
+
+config BUILD_OUTPUT_HEX
+	default y
+
+if ENTROPY_ATM_TRNG
+
+# entropy driver needs additional support (i.e. BLE driver)
+config HEAP_MEM_POOL_SIZE
+       default 32768
+
+endif # ENTROPY_ATM_TRNG
+
+if PM
+
+config IDLE_STACK_SIZE
+	int
+	default 1024
+
+endif # PM
+
+config ATM_NO_SPE
+	bool "Application uses ATM No-SPE feature in a single image"
+
+config ATM_NO_TZ
+	bool "Application uses ATM No-Trustzone feature in a single image"
+	select ATM_NO_SPE
+
+# MCUBOOT uses BOOT_MAX_IMG_SECTORS to size the sector swap map for SLOT1. The
+# value needs to be sufficiently large to handle the largest number of sectors
+# in the slot. Since the trailer must have a minimum size and alignment of 2K in
+# RRAM-only configurations and 4K when flash memory is used, we can use a
+# conservative value of 512 image sectors for the non-volatile swap map.
+# The default value results in:
+#  -) slot0/slot1 (RRAM/RRAM) can be up to 512KB slot sizes if the RRAM has a
+#     large enough capacity
+#  -) slot0/slot1 (RRAM/FLASH) can be up to 2MB slot sizes if RRAM capacity
+#     allows it
+
+config BOOT_MAX_IMG_SECTORS
+	int
+	default 512
+	depends on MCUBOOT || BOOTLOADER_MCUBOOT
+
+if TRUSTED_EXECUTION_NONSECURE
+
+config SPE_PATH
+	string "Path to SPE build directory"
+
+config ATM_ARM_FIRMWARE_USES_SECURE_ENTRY_FUNCS
+	bool "ATM Non-Secure Firmware uses Secure Entry functions"
+	default y if SPE_PATH != ""
+	help
+	  Option as ARM_FIRMWARE_USES_SECURE_ENTRY_FUNCS.
+
+config ATM_ARM_ENTRY_VENEERS_LIB_NAME
+	string "ATM Entry Veneers symbol file"
+	depends on SPE_PATH != ""
+	default "libentryveneers.a"
+	help
+	  Library file as ARM_ENTRY_VENEERS_LIB_NAME.
+
+config MERGE_SPE_NSPE
+	bool "Merge SPE and application into single image"
+	depends on SPE_PATH != ""
+	default y if BOOTLOADER_MCUBOOT
+	default n
+	help
+	  Option to merge SPE and NSPE to a single image. This config must
+	  be set if building with MCUboot as the merged image is signed.
+	  However, it can also be set to allow a single `west flash` to flash
+	  both the spe and nspe.
+
+if BOOTLOADER_MCUBOOT
+
+config MCUBOOT_EXTRA_IMGTOOL_ARGS
+	# Need to override header-size for image tool to the SPE header allocation
+	default "--header-size=0x800" if MERGE_SPE_NSPE
+
+endif # BOOTLOADER_MCUBOOT
+
+endif # TRUSTED_EXECUTION_NONSECURE
+
 if BT
 
 config HEAP_MEM_POOL_SIZE

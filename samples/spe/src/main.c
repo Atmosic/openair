@@ -63,8 +63,6 @@ extern irq_target_state_t irq_target_state_set(unsigned int irq,
     DT_NODE_EXISTS(DT_NODELABEL(slot3_partition))
 // This is an implicit MCUBOOT configuration
 // the NSPE is now in slot2 with the OTA area in slot3
-// for a signed image the start is after the image header
-#define NSPE_APP_START_OFFSET CONFIG_ROM_START_OFFSET
 #define PART_SPE_ADDR() PART_IN_SLOT_ADDR(slot0_partition, spe_partition)
 #define PART_NSPE_ADDR() PART_IN_SLOT_ADDR(slot2_partition, nspe_partition)
 // fast code is in slot 0
@@ -81,7 +79,15 @@ extern irq_target_state_t irq_target_state_set(unsigned int irq,
 
 #define PART_SPE_SIZE() DT_REG_SIZE(DT_NODELABEL(spe_partition))
 #define PART_NSPE_SIZE() DT_REG_SIZE(DT_NODELABEL(nspe_partition))
+
+#if DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
 #define PART_FAST_CODE_SIZE() DT_REG_SIZE(DT_NODELABEL(fast_code_partition))
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+#define FAST_CODE_APP_START_OFFSET CONFIG_ROM_START_OFFSET
+#else
+#define FAST_CODE_APP_START_OFFSET 0
+#endif
+#endif // DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
 
 #define PROG_MPC_PARTITION(part, base_partition) \
     do { \
@@ -407,9 +413,17 @@ FUNC_NORETURN void spe_main(void)
 #endif
     printk("* NSPE range: [0x%08x - 0x%08x]\n", (unsigned int)PART_NSPE_ADDR(),
 	(unsigned int)PART_NSPE_ADDR() + (unsigned int)PART_NSPE_SIZE() - 1);
-    uint32_t *application_addr = (uint32_t *)((
-	(PART_NSPE_ADDR() + NSPE_APP_START_OFFSET) & ~0x10000000));
+    uint32_t *application_addr =
+#if DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
+	(uint32_t *)((PART_FAST_CODE_ADDR() + FAST_CODE_APP_START_OFFSET) &
+	    ~0x10000000);
+    // vector table is in the fast code partition
+    printk("* Fast Code start addr %p \n", application_addr);
+#else
+	(uint32_t *)((
+	    (PART_NSPE_ADDR() + NSPE_APP_START_OFFSET) & ~0x10000000));
     printk("* NSPE non-sec start addr: %p \n", application_addr);
+#endif
     printk("***\n");
 
     // Enables BusFault, MemFault, UsageFault and SecureFault

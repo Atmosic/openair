@@ -30,3 +30,40 @@ tests:
       - SB_CONFIG_ATMWSTK_FULL=y
     extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM33"
+  samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot.flash_xip:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - smp_sample
+    tags: atm34 mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot.flash_xip.overwrite:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - smp_sample
+    tags: atm34 mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - mcuboot_CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS=n
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"

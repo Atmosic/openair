@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include "motion.h"
 
-LOG_MODULE_REGISTER(motion, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(motion, CONFIG_SS_FMNA_TAG_LOG_LEVEL);
 
 void motion_init(void)
 {

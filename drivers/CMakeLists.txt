@@ -3,6 +3,7 @@
 # zephyr-keep-sorted-start
 add_subdirectory_ifdef(CONFIG_ADC adc)
 add_subdirectory_ifdef(CONFIG_ATM_ANTENNA_SWITCH atm_antenna)
+add_subdirectory_ifdef(CONFIG_ATM_BUZZER atm_buzzer)
 add_subdirectory_ifdef(CONFIG_AUDIO audio)
 add_subdirectory_ifdef(CONFIG_ENTROPY_GENERATOR entropy)
 add_subdirectory_ifdef(CONFIG_FLASH flash)

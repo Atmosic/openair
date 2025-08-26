@@ -18,6 +18,7 @@ from west.commands import WestCommand, Verbosity
 from os import path
 import os
 import sys
+from pathlib import Path
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tools', 'scripts'))
 import atm_openocd
 from sec_jrnl_tlv.sec_jrnl_tlv import SecJrnl
@@ -27,7 +28,22 @@ def auto_int(x):
     return int(x, 0)
 
 def unescaped_str(arg_str):
-    return codecs.decode(str(arg_str), 'unicode_escape')
+    """Convert escape sequences to bytes, supporting ASCII text and \\x escape sequences."""
+    try:
+        str(arg_str).encode('ascii')
+    except UnicodeEncodeError:
+        # Not allowed if original string contains non-ASCII characters that were typed directly
+        raise argparse.ArgumentTypeError("Non-ASCII characters detected in --data parameter. "
+                                       "Only ASCII characters (0-127) can be typed directly. "
+                                       "Use \\xHH escape sequences for non-ASCII bytes.")
+
+    decoded_str = codecs.decode(str(arg_str), 'unicode_escape')
+
+    try:
+        return bytes(ord(char) for char in decoded_str)
+    except ValueError as e:
+        # This would happen if any character has ord() > 255
+        raise argparse.ArgumentTypeError(f"Cannot convert to bytes: {e}")
 
 
 class SecJrnlCommand(WestCommand):
@@ -90,7 +106,7 @@ class SecJrnlCommand(WestCommand):
         append_parser = self.create_default_subparser(
             subparsers, 'append', 'Appends a single TLV to the secure journal')
         append_parser.add_argument('--tag', required=True, type=auto_int, help='Tag for TLV')
-        append_parser.add_argument('--data', required=True, type=unescaped_str, help='Data for TLV')
+        append_parser.add_argument('--data', required=True, type=unescaped_str, help='Data for TLV (ASCII text + \\xHH escapes)')
         append_parser.add_argument('--locked', default=False, required=False,
                                    action='store_true',
                                    help='Lock down tag, prevent overriding')
@@ -123,26 +139,31 @@ class SecJrnlCommand(WestCommand):
         self.openocd.reset_target()
         if (self.sec_jrnl is None) or (force):
             with tempfile.NamedTemporaryFile('w+b', delete=False) as tf:
-                temp_path = tf.name.replace("\\", "/")  # Fix path for Windows
+                temp_path = Path(tf.name).as_posix()  # openocd expects posix-style paths regardless of platform
                 try:
                     cmd_ret, _, _ = \
                         self.openocd.execute_cmd([f'atm_dump_sec_jrnl_nvds {temp_path}'])
                     tf.close()
-                    with open(temp_path, "rb") as tf_read:
+                    with open(tf.name, "rb") as tf_read:
                         self.sec_jrnl = tf_read.read()
                     return cmd_ret
                 finally:
-                    os.remove(temp_path)
+                    os.remove(tf.name)
 
     def push_sec_jrnl(self, bin):
         '''Push secure journal from device
         '''
-        tf = tempfile.NamedTemporaryFile('w+b')
-        tf.write(bin)
-        tf.flush()
-        cmd_ret, _, _ = self.openocd.execute_cmd([f'atm_load_sec_jrnl_nvds {tf.name}'])
-        tf.close()
-        return cmd_ret
+        with tempfile.NamedTemporaryFile('w+b', delete=False) as tf:
+            tf.write(bin)
+            tf.flush()
+            temp_path = Path(tf.name).as_posix()  # openocd expects posix-style paths regardless of platform
+
+            tf.close()
+            try:
+                cmd_ret, _, _ = self.openocd.execute_cmd([f'atm_load_sec_jrnl_nvds {temp_path}'])
+                return cmd_ret
+            finally:
+                os.remove(tf.name)
 
     def append(self, args):
         '''Append tag to secure journal. DOES NOT INCR RATCHET
@@ -170,7 +191,7 @@ class SecJrnlCommand(WestCommand):
                 return
             # secure-only tags MUST be locked down - force it.
             locked = True
-        sec_jrnl.append_tag(args.tag, args.data.encode('ascii'), locked)
+        sec_jrnl.append_tag(args.tag, args.data, locked)
         if (args.dry_run):
             print(sec_jrnl)
         else:

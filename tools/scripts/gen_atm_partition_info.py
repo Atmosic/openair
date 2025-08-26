@@ -26,7 +26,7 @@ if not ZEPHYR_BASE:
 sys.path.append(os.path.join(ZEPHYR_BASE, 'scripts', 'dts',
                              'python-devicetree', 'src'))
 
-from devicetree import dtlib
+from devicetree import dtlib  # pylint: disable=wrong-import-position
 
 SEC_BASE_ADDR=0x10000000
 DEFAULT_ROM_OFFSET=0x0
@@ -64,7 +64,6 @@ def utils_get_node_property_reg(dt_node):
 
 def parse_args():
     """ Parse input arguments """
-    global args
     base_parser = argparse.ArgumentParser(add_help=False)
     base_parser.add_argument("-d", "--debug", action='store_true',
                         help="debug enabled, default false")
@@ -121,12 +120,12 @@ def parse_args():
     gen_parser.add_argument("-split_img", "--split_img", required=False,
                             default=None,
                             help="Image split across multiple memory regions")
-    args = parser.parse_args()
+    return parser.parse_args()
 
 
-class AtmPartInfo:
+class AtmPartInfo:  # pylint: disable=too-many-instance-attributes,too-few-public-methods
     """ Atmosic Partition Table Info """
-    def __init__(self):
+    def __init__(self):  # pylint: disable=too-many-statements
         self.ROM_ADDR = None
         self.ROM_SIZE = None
         self.PRIMARY_IMG_START = None
@@ -135,6 +134,9 @@ class AtmPartInfo:
         self.SPE_START = None
         self.SPE_OFFSET = None
         self.SPE_SIZE = None
+        self.FAST_CODE_START = None
+        self.FAST_CODE_OFFSET = None
+        self.FAST_CODE_SIZE = None
         self.NS_APP_START = None
         self.NS_APP_OFFSET = None
         self.NS_APP_SIZE = None
@@ -266,7 +268,7 @@ def log_and_exit(msg):
     print(msg)
     sys.exit(1)
 
-class DevStreeParser:
+class DevStreeParser:  # pylint: disable=too-many-instance-attributes
     """ Device Tree Parser """
     def __init__(self, args):
         self.dts_file = args.input_file
@@ -322,7 +324,7 @@ class DevStreeParser:
         if dt:
             self.dt = dt
         else:
-            log_and_exit(f"DeviceTree parsing {args.input_file} failed")
+            log_and_exit(f"DeviceTree parsing {self.dts_file} failed")
 
         if os.path.exists(self.outfile):
             os.remove(self.outfile)
@@ -373,7 +375,7 @@ class DevStreeParser:
                 board_name_prefix = name_split[0]
         self.part_info.BOARD = board_name_prefix.replace("-", "_")
 
-    def parsing_not_use_mcuboot(self, rram0, rram_start, rram_size):
+    def parsing_not_use_mcuboot(self, rram0, rram_start, rram_size):  # pylint: disable=too-many-locals,too-many-branches
         """ Parse information for non MCUBOOT use case"""
         # PRIMARY image as RRAM
         self.part_info.PRIMARY_IMG_START = hex(rram_start)
@@ -413,21 +415,28 @@ class DevStreeParser:
                     self.part_info.APP_OFFSET = hex(app_start)
                     self.part_info.APP_SIZE = hex(app_size)
         if not self.merge_spe_nspe:
-            # ATMWSTK from fast_code_partition
+            # ATMWSTK parsing: In non-merged SPE/NSPE mode, fast_code_partition
+            # is used to store ATMWSTK (Atmosic Wireless Stack) information
+            # This is different from the FAST_CODE parsing below which handles
+            # the actual fast code region in split image scenarios
             fast_code_partition = utils_get_node_by_lable(rram0,
                 "fast_code_partition")
             ret = ST_ERROR
+            atmwstk_start = None
+            atmwstk_size = None
+
             if fast_code_partition:
                 ret, atmwstk_start, atmwstk_size = \
                         utils_get_node_property_reg(fast_code_partition)
             else:
-                # ATMWSTK from slot2_partition
+                # Fallback: ATMWSTK from slot2_partition if fast_code_partition not found
                 slot2_partition = utils_get_node_by_lable(rram0,
                     "slot2_partition")
                 if slot2_partition:
                     ret, atmwstk_start, atmwstk_size = \
                         utils_get_node_property_reg(slot2_partition)
-            if ret == ST_PASS:
+
+            if ret == ST_PASS and atmwstk_start is not None and atmwstk_size is not None:
                 self.debug_print(f"atmwstk_start = {hex(atmwstk_start)}, "
                     f"atmwstk_size = {hex(atmwstk_size)}")
                 self.part_info.ATMWSTK_START = hex(atmwstk_start + rram_start)
@@ -439,7 +448,7 @@ class DevStreeParser:
                 self.part_info.APP_START = hex(spe_start + rram_start)
                 self.part_info.APP_SIZE = hex(spe_size + nspe_size)
 
-    def parsing_use_mcuboot(self, rram0, rram_start):
+    def parsing_use_mcuboot(self, rram0, rram_start):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         """ Parse MCUBOOT information """
         # MCUBOOT from boot_partition
         boot_partition = utils_get_node_by_lable(rram0, "boot_partition")
@@ -507,6 +516,31 @@ class DevStreeParser:
                     self.part_info.APP_START = hex(app_start + rram_start)
                     self.part_info.APP_OFFSET = hex(app_start)
                     self.part_info.APP_SIZE = hex(app_size)
+        elif self.merge_spe_nspe and self.split_img:
+            spe_partition = utils_get_node_by_lable(slot0_partition, "spe_partition")
+            if spe_partition:
+                ret, spe_start, spe_size = \
+                        utils_get_node_property_reg(spe_partition)
+                if ret == ST_PASS:
+                    self.debug_print(f"spe_start = {hex(spe_start)}, "
+                                    f"spe_size = {hex(spe_size)}")
+                    self.part_info.SPE_START = hex(spe_start + rram_start)
+                    self.part_info.SPE_OFFSET = hex(spe_start)
+                    self.part_info.SPE_SIZE = hex(spe_size)
+            # FAST_CODE parsing: In merged SPE/NSPE + split image mode,
+            # fast_code_partition represents the actual fast code execution region
+            # This is different from the ATMWSTK usage above - here we're parsing
+            # the partition that contains performance-critical code that runs from RRAM
+            fast_code_partition = utils_get_node_by_lable(slot0_partition, "fast_code_partition")
+            if fast_code_partition:
+                ret, fc_start, fc_size = \
+                        utils_get_node_property_reg(fast_code_partition)
+                if ret == ST_PASS:
+                    self.debug_print(f"fc_start = {hex(fc_start)}, "
+                                    f"fc_size = {hex(fc_size)}")
+                    self.part_info.FAST_CODE_START = hex(fc_start + rram_start)
+                    self.part_info.FAST_CODE_OFFSET = hex(fc_start)
+                    self.part_info.FAST_CODE_SIZE = hex(fc_size)
         # slot0_trailer to provide information only
         slot0_trailer = utils_get_node_by_lable(rram0, "slot0_trailer")
         if slot0_trailer:
@@ -545,7 +579,7 @@ class DevStreeParser:
                 self.part_info.ATMWSTK_OFFSET = hex(atmwstk_start)
                 self.part_info.ATMWSTK_SIZE = hex(atmwstk_size)
 
-    def parsing_rram(self):
+    def parsing_rram(self):  # pylint: disable=too-many-branches
         """ Parse RRAM information """
         rram_controller = utils_get_node_by_lable(self.dt, "rram_controller")
         if not rram_controller:
@@ -608,7 +642,7 @@ class DevStreeParser:
         if self.user_data_size:
             self.part_info.USER_DATA_SIZE = hex(self.user_data_size)
 
-    def parsing_flash(self):
+    def parsing_flash(self):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         """ Parse Flash Information """
         flash_controller = utils_get_node_by_lable(self.dt, "flash_controller")
         if not flash_controller:
@@ -728,15 +762,14 @@ class DevStreeParser:
                 hex(factory_data_start + flash0_start)
             self.part_info.FACTORY_DATA_OFFSET = hex(factory_data_start)
             self.part_info.FACTORY_DATA_SIZE = hex(factory_data_size)
-        if self.part_info.PLATFORM_FAMILY != 'atm33' \
-            and self.part_info.PLATFORM_FAMILY != 'atm34':
+        if self.part_info.PLATFORM_FAMILY not in ('atm33', 'atm34'):
             # erase block size from erase-block-size
             erase_block_size = flash0.props.get('erase-block-size', 'Not found')
             if erase_block_size:
                 self.part_info.ERASE_BLOCK_SIZE = \
                     hex(dtlib.to_nums(erase_block_size.value)[0])
 
-    def parsing_ext_flash(self):
+    def parsing_ext_flash(self):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         """ Parse External Flash Information """
         flash_controller = utils_get_node_by_lable(self.dt, "flash_controller")
         if not flash_controller:
@@ -903,7 +936,7 @@ class DevStreeParser:
 
 def main():
     """ Generate Atmosic Partition Table Information """
-    parse_args()
+    args = parse_args()
     if args.opcode == 'gen':
         if not os.path.exists(args.input_file):
             log_and_exit(f"{args.input_file} not exist")

@@ -1,0 +1,7 @@
+identifier: ATMEVK-3405-PBV-5@mcuboot_bl/ATM34xx-5/no_TZ
+name: ATMEVK-3405-PBV-5_no_TZ
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+vendor: atmosic

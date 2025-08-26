@@ -207,7 +207,7 @@ extern "C" {
 /// Possible errors detected by FW
 #define    RESET_NO_ERROR         0x00000000
 #define    RESET_MEM_ALLOC_FAIL   0xF2F2F2F2
-#define    RESET_WATCHDOG         0xDEDEDEDE
+#define    RESET_WATCHDOG_ERR     0xDEDEDEDE
 
 /// Reset platform and stay in ROM
 #define    RESET_TO_ROM           0xA5A5A5A5

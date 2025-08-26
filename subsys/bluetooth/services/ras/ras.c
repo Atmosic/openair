@@ -457,6 +457,11 @@ static bool ras_ind_notify_is_enable(struct bt_conn *conn, const struct bt_uuid 
 {
 	struct bt_gatt_attr *attr = bt_gatt_find_by_uuid(ras_svc.attrs, ras_svc.attr_count, uuid);
 
+	if (!attr) {
+		LOG_ERR("Unkown UUID:%#x", BT_UUID_16(uuid)->val);
+		return false;
+	}
+
 	// Priority of Indicate is higher than notify.
 	if (bt_gatt_is_subscribed(conn, attr, BT_GATT_CCC_INDICATE) ||
 	    bt_gatt_is_subscribed(conn, attr, BT_GATT_CCC_NOTIFY)) {
@@ -709,18 +714,23 @@ static void ras_sts_work_handler(struct k_work *work)
 
 	switch (info->event) {
 	case RAS_STS_WORK_EVT_RD_READY: {
+#if CONFIG_RAS_REAL_TIME_RD
 		if (ras_ind_notify_is_enable(ras.curr_conn, BT_UUID_RAS_REALTIME_RD)) {
 			ras_transit_evt_work_put(RAS_TRANS_WORK_EVT_START, false,
 						 ras.ras_rd_ready_cnt);
-		} else {
+		} else
+#endif
+		{
 			ras_rd_sts_notify_or_indicate(ras.curr_conn, BT_UUID_RAS_RD_READY,
 						      ras.ras_rd_ready_cnt);
 		}
 	} break;
 	case RAS_STS_WORK_EVT_RD_OVRWRT: {
+#if CONFIG_RAS_REAL_TIME_RD
 		if (ras_ind_notify_is_enable(ras.curr_conn, BT_UUID_RAS_REALTIME_RD)) {
 			break;
 		}
+#endif
 		ras_rd_sts_notify_or_indicate(ras.curr_conn, BT_UUID_RAS_RD_OVERWRITTEN,
 					      ras.ras_rd_ovrwrt_cnt);
 	} break;

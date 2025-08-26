@@ -88,3 +88,18 @@ boards:
       variants:
       - name: 'ns'
       - name: 'no_TZ'
+
+- name: ATMEVK-3405-PBV-5
+  vendor: atmosic
+  revision:
+    format: custom
+    default: normal
+    revisions:
+    - name: mcuboot
+    - name: mcuboot_bl
+    - name: normal
+  socs:
+    - name: ATM34xx-5
+      variants:
+      - name: 'ns'
+      - name: 'no_TZ'

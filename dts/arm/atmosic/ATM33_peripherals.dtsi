@@ -261,6 +261,25 @@ adc: adc@15a000 {
 	status = "okay";
 	#io-channel-cells = <1>;
 	resolution = <11>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* VBatt channel (ch-cell = <1>) */
+	channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+
+	/* VStore channel (ch-store = <2>) */
+	channel@2 {
+		reg = <2>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
 };
 
 trng: trng@15b000 {

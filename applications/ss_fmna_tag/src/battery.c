@@ -10,7 +10,7 @@
 #include "fmna_api.h"
 #include "battery.h"
 
-LOG_MODULE_REGISTER(battery, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(battery, CONFIG_SS_FMNA_TAG_LOG_LEVEL);
 
 static fmna_bat_state_level_t last_lvl = BAT_STATE_FULL;
 

@@ -12,6 +12,7 @@ tests:
     tags: bluetooth atm33 atm34 no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
+      - SB_CONFIG_ATMWSTK_FULL=y
   samples.bluetooth.peripheral.atm.mcuboot:
     sysbuild: true
     harness: console
@@ -26,7 +27,7 @@ tests:
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
-  samples.bluetooth.peripheral.atm.mcuboot.atmwstklib.pd50:
+  samples.bluetooth.peripheral.atm.mcuboot.atmwstk.pd50:
     sysbuild: true
     harness: console
     harness_config:

@@ -8,7 +8,7 @@
 		sw0 = &button1;
 	};
 	buzzer: buzzer {
-		compatible = "pwm-buzzer";
+		compatible = "atmosic,atm3x-pwm-buzzer";
 		pwms = <&pwm7 7 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
 		pulse = <PWM_USEC(500)>;
 	};

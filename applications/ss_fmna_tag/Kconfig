@@ -77,9 +77,5 @@ config FMNA_VERSION_REVISION
 	range 0 65535
 	default 18
 
-config PWM_BUZZER
-	bool "PWM buzzer"
-	select PWM
-
 config MULTI_MODE
 	bool "Multi-Mode (Apple FindMy and Samsung SmartThings) support"

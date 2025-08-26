@@ -22,6 +22,11 @@ extern "C" {
 void platform_init(void);
 
 /**
+ * @brief Platform factory reset
+ */
+void platform_factory_reset(void);
+
+/**
  * @brief Platform gpio init
  */
 void platform_gpio_init(void);
@@ -34,5 +39,3 @@ void platform_reset_detect(void);
 #ifdef __cplusplus
 }
 #endif
-
-///@}

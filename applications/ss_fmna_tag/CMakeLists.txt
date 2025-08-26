@@ -4,8 +4,6 @@
 
 cmake_minimum_required(VERSION 3.20.1)
 
-SET(DTC_OVERLAY_FILE "app.overlay")
-
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 add_definitions(-w)

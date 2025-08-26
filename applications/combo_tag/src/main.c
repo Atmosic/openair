@@ -14,8 +14,11 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/settings/settings.h>
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
 #include "app_work_q.h"
 #include "platform.h"
+#include "platform_ctrl_button.h"
 
 LOG_MODULE_REGISTER(combo_tag, CONFIG_COMBO_TAG_LOG_LEVEL);
 
@@ -39,7 +42,13 @@ static void combo_tag_bt_ready(void)
 int main(void)
 {
 
-	platform_gpio_init();
+	if (!platform_ctrl_button_init()) {
+		LOG_INF("skip power on");
+#ifdef CONFIG_PM
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+#endif
+		return 0;
+	}
 
 	int err = bt_enable(NULL);
 	if (err) {

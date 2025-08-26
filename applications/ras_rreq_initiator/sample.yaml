@@ -9,7 +9,7 @@ common:
     regex:
       - "scan entry"
 tests:
-  applications.ras_rreq_initiator.atm.atmwstklib.full:
+  applications.ras_rreq_initiator.atm.atmwstk.full:
     tags: atm34 no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
@@ -17,7 +17,7 @@ tests:
       - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/boards/${BOARD}_spe_uart0.overlay
     extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM34"
-  applications.ras_rreq_initiator.atm.atmwstklib.full.uart1:
+  applications.ras_rreq_initiator.atm.atmwstk.full.uart1:
     tags: atm34 no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y

@@ -40,6 +40,10 @@ properties:
     type: int
     description: Pin for antenna out 7
 
+  power-source-gpios:
+    type: phandle-array
+    description: GPIO for power source control
+
   mdm-ant-rx-3to0:
     type: int
     description: Antenna 3 to 0 table when RX

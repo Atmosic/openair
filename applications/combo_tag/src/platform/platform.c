@@ -13,6 +13,8 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
 #include "app_work_q.h"
 #include "compiler.h"
 #include "fmna_tag_platform.h"
@@ -71,7 +73,7 @@ static void platform_start_all_other_types(uint8_t type)
 	return;
 }
 
-static void platform_button_reset(void)
+void platform_factory_reset(void)
 {
 	for (uint8_t i = 0; i < TAG_TYPE_MAX; i++) {
 		if (tag_hdlrs[i].is_paired && tag_hdlrs[i].is_paired()) {
@@ -104,8 +106,20 @@ void platform_reset_detect(void)
 	}
 
 	LOG_INF("Button pressed");
-	platform_button_reset();
+	platform_factory_reset();
 }
+
+#if (CONFIG_COMBO_TAG_SOC_OFF_TIMEOUT > 0)
+static void pairing_shutdown_timeout_cb(struct k_work *work)
+{
+	LOG_INF("pairing shutdown timeout");
+	platform_ctrl_led_state_update(LED_STATE_POWER_OFF);
+	platform_ctrl_led_event_indicate(LED_EVT_POWER_OFF);
+	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+}
+
+static K_WORK_DELAYABLE_DEFINE(pairing_shutdown_timeout_work, pairing_shutdown_timeout_cb);
+#endif
 
 static void platform_mode_notify(tag_state_t st, uint8_t type)
 {
@@ -116,22 +130,37 @@ static void platform_mode_notify(tag_state_t st, uint8_t type)
 			if (tag_hdlrs[type].start) {
 				tag_hdlrs[type].start();
 			}
+			platform_ctrl_led_state_update(LED_STATE_PAIRING);
+#if (CONFIG_COMBO_TAG_SOC_OFF_TIMEOUT > 0)
+			k_work_reschedule(&pairing_shutdown_timeout_work, K_SECONDS(CONFIG_COMBO_TAG_SOC_OFF_TIMEOUT));
+#endif
 		} else {
-			platform_ctrl_led_update(TAG_STATE_PAIRED);
+			platform_ctrl_led_state_update(LED_STATE_PAIRED);
+#if (CONFIG_COMBO_TAG_SOC_OFF_TIMEOUT > 0)
+			k_work_cancel_delayable(&pairing_shutdown_timeout_work);
+#endif
 		}
 		break;
 	case TAG_STATE_UNPAIRED:
 		if (!platform_is_any_type_paired()) {
-			platform_ctrl_led_update(st);
 			platform_start_all_other_types(type);
+			platform_ctrl_led_state_update(LED_STATE_PAIRING);
+#if (CONFIG_COMBO_TAG_SOC_OFF_TIMEOUT > 0)
+			k_work_reschedule(&pairing_shutdown_timeout_work, K_SECONDS(CONFIG_COMBO_TAG_SOC_OFF_TIMEOUT));
+#endif
 		}
 		break;
 	case TAG_STATE_PAIRING:
-		platform_ctrl_led_update(st);
 		platform_stop_all_other_types(type);
+#if (CONFIG_COMBO_TAG_SOC_OFF_TIMEOUT > 0)
+		k_work_cancel_delayable(&pairing_shutdown_timeout_work);
+#endif
 		break;
 	case TAG_STATE_PAIRED:
-		platform_ctrl_led_update(st);
+		platform_ctrl_led_state_update(LED_STATE_PAIRED);
+#if (CONFIG_COMBO_TAG_SOC_OFF_TIMEOUT > 0)
+		k_work_cancel_delayable(&pairing_shutdown_timeout_work);
+#endif
 		break;
 	case TAG_STATE_INVALID:
 		LOG_WRN("Invalid Status");
@@ -141,12 +170,13 @@ static void platform_mode_notify(tag_state_t st, uint8_t type)
 
 void platform_init(void)
 {
-	platform_ctrl_led_init();
 	memset(&tag_hdlrs, 0, sizeof(tag_hdlrs_t) * TAG_TYPE_MAX);
 	fmna_tag_platform_hdlrs_get(&tag_hdlrs[TAG_TYPE_FMNA]);
 	fp_tag_platform_hdlrs_get(&tag_hdlrs[TAG_TYPE_FP]);
 
+#ifndef CONFIG_COMBO_TAG_BTN_FACTORY_RESET
 	platform_reset_detect();
+#endif
 
 	for (uint8_t i = 0; i < TAG_TYPE_MAX; i++) {
 		if (tag_hdlrs[i].init) {

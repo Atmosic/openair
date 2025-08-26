@@ -1,10 +1,9 @@
 # Copyright (c) 2025 Atmosic
-#
 # SPDX-License-Identifier: Apache-2.0
 
 description: PWM-driven buzzer.
 
-compatible: "pwm-buzzer"
+compatible: "atmosic,atm3x-pwm-buzzer"
 
 include: base.yaml
 

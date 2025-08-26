@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Atmosic
+ * Copyright (c) 2023-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,19 +13,25 @@
     DT_REG_ADDR(DT_NODELABEL(label)) \
 )
 
-#ifdef CONFIG_BOOTLOADER_MCUBOOT
-// the merged SPE/NSPE/fast_code slot needs the physical base address
-// of the parent of slot0_partition
-#define PART_FAST_CODE_ADDR(label) ( \
-    DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(slot0_partition))) + \
-    DT_REG_ADDR(DT_NODELABEL(label)) \
-)
-#else
-#define PART_FAST_CODE_ADDR(label) PART_ADDR(label)
+#ifndef CONFIG_ROMSTART_RELOCATION_ROM
+#error "Split-Image ROM start region must be relocated to RRAM"
 #endif
 
+#define RRAM_START_ADDR DT_REG_ADDR(DT_NODELABEL(rram_controller))
+#define RRAM_END_ADDR (RRAM_START_ADDR + DT_REG_SIZE(DT_NODELABEL(rram_controller)) - 1)
+
+#if !((CONFIG_ROMSTART_REGION_ADDRESS >= RRAM_START_ADDR) && \
+	(CONFIG_ROMSTART_REGION_ADDRESS <= RRAM_END_ADDR))
+#error "Relocated ROM start region must be in RRAM"
+#endif
+
+// vector table is relocated to the beginning of the fast code section, code follows
+#define VECTOR_TABLE_SIZE (CONFIG_ROMSTART_REGION_SIZE * 1K)
+#define FAST_CODE_START_ADDR (CONFIG_ROMSTART_REGION_ADDRESS + VECTOR_TABLE_SIZE)
+#define FAST_CODE_SIZE (DT_REG_SIZE(DT_NODELABEL(fast_code_partition)) - VECTOR_TABLE_SIZE)
+
 MEMORY {
-    RRAM (rx) : ORIGIN = PART_FAST_CODE_ADDR(fast_code_partition), LENGTH = DT_REG_SIZE(DT_NODELABEL(fast_code_partition))
+    RRAM (rx) : ORIGIN = FAST_CODE_START_ADDR, LENGTH = FAST_CODE_SIZE
 }
 
 SECTIONS {
@@ -38,6 +44,7 @@ SECTIONS {
 	*/libkernel.a:(.text ".text.*" .rodata ".rodata.*")
 	*/libmbedTLS*.a:(.text ".text.*" .rodata ".rodata.*")
 	*/lib*mbedtls.a:(.text ".text.*" .rodata ".rodata.*")
+	*/lib*net_buf*.a:(.text ".text.*" .rodata ".rodata.*")
 	*/libopenthread*.a:(.text ".text.*" .rodata ".rodata.*")
 	*/libsubsys*.a:(.text ".text.*" .rodata ".rodata.*")
 	*/libzephyr.a:(.text ".text.*" .rodata ".rodata.*")

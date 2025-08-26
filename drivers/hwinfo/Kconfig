@@ -5,8 +5,10 @@ if HWINFO
 config HWINFO_ATM
 	bool "Atmosic device ID"
 	default y
-	depends on SOC_SERIES_ATM33
+	depends on SOC_SERIES_ATM33 || SOC_SERIES_ATM34
+	select ATM_RESET
 	help
 	  Enable Atmosic hwinfo driver
+	  get_device_id and get_device_eui64 require CONFIG_ATM_EUI
 
 endif

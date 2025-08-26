@@ -26,3 +26,27 @@ tests:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
     extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.combo_tag.atm.atm34.mcuboot.flash_xip:
+    tags: combo_tag atm34 mcuboot flash_xip
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DRUN_IN_FLASH=2"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.combo_tag.atm.atm34.mcuboot.flash_xip.overwrite:
+    tags: combo_tag atm34 mcuboot flash_xip overwrite
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - mcuboot_CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS=n
+    extra_configs:
+      - CONFIG_ATM_SOC_ALLOW="ATM34"

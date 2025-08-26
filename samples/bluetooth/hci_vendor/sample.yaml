@@ -15,3 +15,4 @@ tests:
     tags: bluetooth atm33 atm34 no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
+      - SB_CONFIG_ATMWSTK_FULL=y

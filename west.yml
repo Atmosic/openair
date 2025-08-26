@@ -13,7 +13,7 @@ manifest:
     path: modules/hal/atmosic_lib
   - name: mcuboot
     url: https://github.com/Atmosic/mcuboot
-    revision: e9f38a28a06fc12cf6afa8d79f48e11d7ffd2350
+    revision: e9c24a4048c2fe50c53956601097c9a82239688a
     path: bootloader/mcuboot
   - name: micro-ecc
     url: https://github.com/Atmosic/micro-ecc
@@ -21,7 +21,7 @@ manifest:
     path: modules/crypto/micro-ecc
   - name: zephyr
     url: https://github.com/Atmosic/zephyr
-    revision: 24cdd75089db5cb71cc807d377cd974a9f6bfb8f
+    revision: e4f329063c7605a64921f9beb54ddacb905cab37
     west-commands: scripts/west-commands.yml
   - name: cmsis
     url: https://github.com/zephyrproject-rtos/cmsis

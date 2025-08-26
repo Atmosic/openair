@@ -15,7 +15,7 @@ tests:
       - SB_CONFIG_SPE=y
     extra_configs:
       - CONFIG_ATM_SOC_ALLOW="ATM34"
-  applications.ras_rrsp_reflector.atm.mcuboot.atmwstklib.pd50:
+  applications.ras_rrsp_reflector.atm.mcuboot.atmwstk.pd50:
     tags: atm34 mcuboot
     extra_args:
       - SB_CONFIG_SPE=y

@@ -7,7 +7,3 @@ source "Kconfig.zephyr"
 module = FP_TAG
 module-str = fp_tag
 source "subsys/logging/Kconfig.template.log_config"
-
-config PWM_BUZZER
-	bool "PWM buzzer"
-	select PWM

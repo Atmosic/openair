@@ -33,8 +33,12 @@
 // MCUBOOT starts at the beginning of RRAM
 #define ATM_MCUBOOT_OFFSET 0x0
 #ifndef ATM_MCUBOOT_SIZE
-#define ATM_MCUBOOT_SIZE 0x0C000
+#ifdef USE_ATM_SECURE_DEBUG
+#define ATM_MCUBOOT_SIZE 0xC000
+#else
+#define ATM_MCUBOOT_SIZE 0x8000
 #endif
+#endif // ATM_MCUBOOT_SIZE
 #if ((ATM_MCUBOOT_SIZE % ATM_RRAM_BLOCK_SIZE) != 0)
 #error "MCUBOOT size must be aligned"
 #endif

@@ -77,6 +77,51 @@ config FMNA_VERSION_REVISION
 	range 0 65535
 	default 18
 
-config PWM_BUZZER
-	bool "PWM buzzer"
-	select PWM
+config COMBO_TAG_BTN_POWER_CTRL
+	bool "Enable button power on/off control"
+	select PM
+	select HWINFO
+	help
+	  Enable button control for power on/off functionality.
+	  2s press to power on/off with LED indication.
+
+config COMBO_TAG_BTN_FACTORY_RESET
+	bool "Enable factory reset with long press button"
+	help
+	  Long press button for 10 secs to trigger factory reset in power on
+	  state. Pressing 2 secs would trigger power off key first and keep
+	  pressing until 10 secs would trigger factory reset then enter off state.
+
+config COMBO_TAG_BTN_BATT_REPORT
+	bool "Enable battery level detection with button"
+	help
+	  Quick press button 5 times to show battery level with LED indication.
+
+config COMBO_TAG_LED_IND
+	bool "Enable LED indication for state and button"
+	select LED
+	help
+	  Power on: Green LED blinks 3 times
+	  Power off: Red LED blinks 3 times
+	  Pairing mode: Green blink -> Red blink every 5 secs
+	  Operation mode: Green LED blinks every 20 secs
+	  Battery Status:
+	    >90% 5 GREEN blinks
+	    >60% 4 GREEN blinks
+	    >30% 3 GREEN blinks
+	    >10% 2 GREEN blinks
+	    <=10% single GREEN blink
+
+config COMBO_TAG_SOC_OFF_TIMEOUT
+	int "SOC off timeout in pairing mode (seconds)"
+	range 0 300
+	default 0
+	help
+	  Timeout in seconds to enter SOC_off mode when in pairing mode.
+	  Set to 0 to disable timeout.
+
+config COMBO_TAG_AUDIO_FEEDBACK
+	bool "Enable audio feedback for factory reset"
+	select ATM_BUZZER
+	help
+	  Enable audio feedback when factory reset is triggered.

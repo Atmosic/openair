@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Atmosic
+
+source "Kconfig.zephyr"
+
+config SENSOR_BEACON_UPDATE_INTERVAL
+	int "Sensor data update interval in centiseconds"
+	default 100
+	help
+	  Interval between sensor data updates and beacon advertisement updates.
+	  Value is in centiseconds (1 centisecond = 10ms).
+	  Default is 100 centiseconds = 1 second for responsive debugging.
+
+config SENSOR_BEACON_FAST_ADV
+	bool "Fast advertising mode"
+	default n
+	help
+	  Enable fast advertising mode for quick device discovery.
+	  Fast mode: 100-150ms intervals (higher power, better responsiveness)
+	  Normal mode: 1-1.2s intervals (balanced power and responsiveness)
+
+	  Fast mode is recommended for applications requiring immediate discovery,
+	  while normal mode provides good balance for most use cases.
+
+config SENSOR_BEACON_ACCEL_SCALING_FACTOR
+	int "Accelerometer scaling factor"
+	default 16000
+	help
+	  Scaling factor to convert Zephyr sensor values to match the
+	  mobile app expectations. Set to 16000 to compensate for mobile
+	  app scaling (÷16÷1000) with ±16g range for optimal sensitivity.
+
+config SENSOR_BEACON_TEMP_SCALING_FACTOR
+	int "Temperature scaling factor"
+	default 256
+	help
+	  Scaling factor for temperature values using fixed-point with 256 scale factor.
+
+config SENSOR_BEACON_HUMIDITY_SCALING_FACTOR
+	int "Humidity scaling factor"
+	default 256
+	help
+	  Scaling factor for humidity values using fixed-point with 256 scale factor.
+
+# Logging configuration for sensor beacon application modules
+module = SENSOR_BEACON
+module-str = sensor_beacon
+source "subsys/logging/Kconfig.template.log_config"

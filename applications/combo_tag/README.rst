@@ -52,7 +52,7 @@ Example of fp_tag::
 PWM Buzzer
 **********
 
-- To enable the PWM Buzzer for FMNA sound implementation, please add **CONFIG_PWM_BUZZER=y** to the prj.conf file.
+- To enable the PWM Buzzer for FMNA sound implementation, please add **CONFIG_ATM_BUZZER=y** to the prj.conf file.
 - Since Atmosic EVK does not include an onboard buzzer, kindly refine the overlay file at boards/<BOARD>_ns.overlay to map the corresponding pin and PWM channel.
 
 

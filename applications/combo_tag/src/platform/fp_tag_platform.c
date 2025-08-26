@@ -23,45 +23,8 @@
 
 LOG_MODULE_DECLARE(combo_tag, CONFIG_COMBO_TAG_LOG_LEVEL);
 
-#define BUTTON0 DT_ALIAS(sw0)
-#if DT_NODE_EXISTS(BUTTON0)
-#else
-BUILD_ASSERT("DT_NODE_EXISTS BUTTON0");
-#endif
-
-static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(BUTTON0, gpios, {0});
-static struct gpio_callback button_cb_data;
 static tag_state_notify_cb fp_tag_state_notify;
 static tag_state_t gfp_st = TAG_STATE_INVALID;
-
-static void fp_tag_button_invoke_notify(struct k_work *work);
-K_WORK_DEFINE(fp_tag_button_notify, fp_tag_button_invoke_notify);
-
-static void fp_tag_button_invoke_notify(struct k_work *work)
-{
-	LOG_INF("Button Perform Notify");
-	atm_gfp_button_notify();
-}
-
-static void fp_tag_button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
-{
-	LOG_DBG("Button pressed at %" PRIu32, pins);
-	atm_work_submit_to_app_work_q(&fp_tag_button_notify);
-}
-
-static void fp_tag_platform_button_monitor(void)
-{
-	int err = gpio_pin_interrupt_configure_dt(&button, GPIO_INT_EDGE_TO_ACTIVE);
-	if (err) {
-		LOG_ERR("Error %d: failed to configure interrupt on %s pin %u", err,
-			button.port->name, button.pin);
-		return;
-	}
-
-	gpio_init_callback(&button_cb_data, fp_tag_button_pressed, BIT(button.pin));
-	gpio_add_callback(button.port, &button_cb_data);
-	LOG_DBG("Set up button at %s pin %u", button.port->name, button.pin);
-}
 
 static void fp_tag_platform_reset(void)
 {
@@ -125,7 +88,6 @@ static void fp_tag_platform_init(tag_state_notify_cb fn_cb)
 		.mode_state_cb = fp_tag_mode_state,
 	};
 	atm_gfp_init(&hdlrs);
-	fp_tag_platform_button_monitor();
 }
 
 void fp_tag_platform_hdlrs_get(tag_hdlrs_t *hdlrs)

@@ -14,6 +14,11 @@ This sample demonstrates the **Google Find My Device Network Tag** functionality
 
 The sample is compatible with the Android **Find My Device** app.
 
+**Implementation Specifications:**
+
+- **Google Fast Pair Service (GFPS)**: Version 3.2
+- **Find Hub Network Accessory Specification**: Version 1.3
+
 Requirements
 ************
 
@@ -139,7 +144,7 @@ PWM Buzzer Support
 
   .. code-block:: console
 
-     CONFIG_PWM_BUZZER=y
+     CONFIG_ATM_BUZZER=y
 
 - Since the Atmosic EVK lacks an onboard buzzer, update the device tree overlay at:
 

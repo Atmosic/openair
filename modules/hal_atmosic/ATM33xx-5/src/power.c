@@ -16,6 +16,7 @@
 #include <zephyr/pm/policy.h>
 #include <zephyr/sys_clock.h>
 #include <zephyr/linker/linker-defs.h>
+#include <zephyr/devicetree.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
@@ -44,10 +45,20 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #undef DEBUG_HIBERNATE
 #undef DEBUG_WAKE_MASK
 
+/* PMU node for SOC off wakeup configuration */
+#define PMU_NODE DT_NODELABEL(pmu)
+
+/* Runtime wakeup source enable/disable state */
+static bool gpio_wakeup_enabled = false;
+#if DT_NODE_HAS_PROP(PMU_NODE, soc_off_lpcomp_wakeup_pin)
+#define DT_LPCOMP_WAKEUP_PIN  DT_PROP(PMU_NODE, soc_off_lpcomp_wakeup_pin)
+#define DT_LPCOMP_REF_LEVEL   DT_PROP(PMU_NODE, soc_off_lpcomp_ref_level)
+#endif
 unsigned int secure_irq_lock(void);
 void secure_irq_unlock(unsigned int key);
 
 #ifdef CONFIG_PM
+#include "pmu.h"
 
 #ifdef CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE
 #define IDLE_FOREVER K_TICKS_FOREVER
@@ -150,6 +161,15 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 #endif
 	}
 	WRPR_CTRL_POP();
+
+	/* Configure additional wakeup sources based on runtime enable state */
+	if (gpio_wakeup_enabled) {
+		pmu_socoff_wakeup_gpio(true);
+	}
+
+#if DT_NODE_HAS_PROP(PMU_NODE, soc_off_lpcomp_wakeup_pin)
+	pmu_socoff_wakeup_lpcomp(true, DT_LPCOMP_WAKEUP_PIN, DT_LPCOMP_REF_LEVEL);
+#endif
 
 #ifdef DEBUG_HIBERNATE
 	printk("soc_off duration %llu\n", duration);
@@ -377,6 +397,11 @@ void secure_irq_unlock(unsigned int key)
 	irq_unlock(key);
 }
 #endif
+
+void atm_socoff_wakeup_gpio_set(bool enable)
+{
+	gpio_wakeup_enabled = enable;
+}
 
 static int atm_power_init(void)
 {

@@ -24,6 +24,13 @@ Samsung SmartThings Find Device SDK
 
 2. Create a directory named ``vendor`` under the ``<WEST_TOPDIR>``, and place the unzipped ``TagSDK`` directory under ``vendor``. The path will be ``<WEST_TOPDIR>/vendor/TagSDK``.
 
+3. Place the Atmosic patch file (e.g., ``<patch_name.diff>``) into ``<WEST_TOPDIR>/vendor/TagSDK``.
+
+4. Navigate to ``<WEST_TOPDIR>/vendor/TagSDK``, and apply the patch using the following command:
+
+  .. code-block:: bash
+
+    patch -p1 < <patch_name.diff>
 
 ADK Integration Guide
 *********************

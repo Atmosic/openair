@@ -6,6 +6,7 @@ source "Kconfig.zephyr"
 
 config BTN_ON_OFF
 	bool "Power on/off device with Button"
+	select HWINFO
 
 config BTN_BATT_REPORT
 	bool "Trigger Battery report with Button"
@@ -18,12 +19,12 @@ config RRSP_ADV_TIMEOUT_CS
 	range 0 360000
 	default 0
 
-config BATT_FACTORY_RESET
-	bool "Factory reset with insert/remove battery"
-	select ATM_SETTINGS
+config BTN_FACTORY_RESET
+	bool "Factory reset with long press button for 10s in power on state"
 	help
-	  Inserting and removing the battery five times will trigger a factory
-	  reset.
+	  Long press button for 10 secs to trigger factory reset in power on
+	  state. Pressing 2 secs would trigger power off key first and keep
+	  pressing until 10 secs would trigger factory reset then enter off state.
 
 config RRSP_LED_IND
 	bool "Enable LED indication for state and button"
@@ -39,7 +40,12 @@ config RRSP_LED_IND
 	    >2.9V 4 GREEN blinks
 	    >2.8V 3 GREEN blinks
 	    >2.6V 2 GREEN blinks
-	    <= 2.6V single RED blink
+	    <= 2.6V single GREEN blink
+
+config RRSP_BUZZER_IND
+	bool "Enable Buzzer indication"
+	select ATM_BUZZER
+	select ATM_BUZZER_TIMEOUT
 
 module = RRSP
 module-str = rrsp
@@ -59,4 +65,8 @@ source "subsys/logging/Kconfig.template.log_config"
 
 module = RRSP_LED
 module-str = rrsp_led
+source "subsys/logging/Kconfig.template.log_config"
+
+module = RRSP_BUZZER
+module-str = rrsp_buzzer
 source "subsys/logging/Kconfig.template.log_config"
