@@ -54,31 +54,6 @@ static struct pm_notifier notifier = {
 };
 #endif
 
-/**
- * @brief Check boot status and determine initial device state
- *
- * @return true if device should start in ON state, false for OFF state
- */
-#ifdef CONFIG_PM
-static bool device_startup_state(void)
-{
-	/* Check if this is a cold boot (power-on reset) */
-	if (is_boot_type(TYPE_POWER_ON) && IS_ENABLED(CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL)) {
-		return false;
-	}
-
-#ifdef CONFIG_WURX
-	if (is_boot_reason(BOOT_STATUS_HIB_WKUP_WURX0) ||
-	    is_boot_reason(BOOT_STATUS_HIB_WKUP_WURX1) ||
-	    is_boot_reason(BOOT_STATUS_HIB_WKUP_WURX)) {
-		LOG_INF("  - Wakeup from hibernation (WURX)");
-	}
-#endif
-
-	return true;
-}
-#endif
-
 #ifdef CONFIG_WURX
 static void hibernate_work_handler(struct k_work *work)
 {
@@ -112,13 +87,24 @@ int main(void)
 {
 	LOG_INF("Starting Sensor Beacon Application: %#x", boot_status());
 
+#ifdef CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL
+	// Check if device should power on (button power control enabled)
+	if (!led_button_ctrl_check_power_on()) {
+		LOG_INF("Device will go into SOC-OFF state");
 #ifdef CONFIG_PM
-	if (!device_startup_state()) {
-		sensor_beacon_unlock_soft_off_state();
+		// Enable GPIO wakeup source for SOC_OFF
 		atm_socoff_wakeup_gpio_set(true);
-		LOG_INF("SOC_OFF state unlocked - device will enter deep sleep when idle");
+		// Unlock SOC_OFF state to allow PM subsystem to enter it
+		sensor_beacon_unlock_soft_off_state();
+#endif
 		return 0;
 	}
+
+	// Device is powering on - continue with initialization
+	LOG_INF("Button power control check passed - proceeding with initialization");
+#else
+	// No button power control, proceed directly to normal initialization
+	LOG_DBG("No button power control");
 #endif
 
 	/* Initialize watchdog */
