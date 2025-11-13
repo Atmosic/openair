@@ -290,6 +290,25 @@ Example::
   west build -p always -b <BOARD> openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_only.oob_de
 
+
+Storage Size Configuration
+**************************
+
+The ``SB_ATM_DTS_EXTRA_CPPFLAGS`` parameter in ``sample.yaml`` is used to configure the ATM storage size for various build targets.
+
+.. note::
+
+   The default storage size is ``0x1000`` (4 KB) for most builds, with the exception of FMNA-only builds which use ``0x2000`` (8 KB).
+   If necessary, you may need to change ``SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"`` to a different size based on your application's storage requirements.
+
+   Common storage sizes:
+   - ``0x1000`` (4 KB): Default for multimode and most single-mode builds
+   - ``0x2000`` (8 KB): Used for FMNA-only builds to accommodate additional Apple Find My data
+   - Larger sizes may be required for applications with extensive provisioning or configuration data
+
+   To adjust the storage size for a specific build target, modify the corresponding ``SB_ATM_DTS_EXTRA_CPPFLAGS`` value in ``sample.yaml``.
+
+
 Google Find Hub Network (FHN) details
 *************************************
 
