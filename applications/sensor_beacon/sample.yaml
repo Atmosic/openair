@@ -14,9 +14,9 @@ common:
 tests:
   # Main application runtime test
   applications.sensor_beacon.atm:
-    tags: sensor_beacon no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
+    tags:
+      - sensor_beacon
+      - no_mcuboot
     extra_configs:
       - CONFIG_LOG_DEFAULT_LEVEL=3
       - CONFIG_SENSOR_BEACON_LOG_LEVEL_INF=y

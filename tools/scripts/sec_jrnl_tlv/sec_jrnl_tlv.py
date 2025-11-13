@@ -1,15 +1,16 @@
-'''
+"""
 @file sec_jrnl_tlv.py
 
 @brief Secure Journal Managment
 
 Copyright (C) Atmosic 2024
-'''
+"""
+
 import struct
 
 SEC_JRNL_MAGIC = bytes([0x4E, 0x56, 0x44, 0x53])
 SEC_JRNL_MAGIC_SIZE = 4
-TLV_META_HEADER_FORMAT = 'BBH'
+TLV_META_HEADER_FORMAT = "BBH"
 TLV_META_SIZE = struct.calcsize(TLV_META_HEADER_FORMAT)
 
 SEC_JRNL_WALK_CONT = 0
@@ -17,18 +18,18 @@ SEC_JRNL_WALK_DONE = 1
 
 
 class BadMagicException(Exception):
-    """Magic is not the correct value
-    """
+    """Magic is not the correct value"""
+
     pass
 
 
 class InvalidTLVException(Exception):
-    """TLV tag value is invalid
-    """
+    """TLV tag value is invalid"""
+
     pass
 
 
-class TLVStatus():
+class TLVStatus:
     SEC_JRNL_STATUS_VALID_IDX = 0x01
     SEC_JRNL_STATUS_VALID_MASK = 0x01
     SEC_JRNL_STATUS_LOCKED_IDX = 0x02
@@ -48,8 +49,7 @@ class TLVStatus():
 
     @valid.setter
     def valid(self, value):
-        self.set_status_bit(
-            TLVStatus.SEC_JRNL_STATUS_VALID_IDX, not bool(value))
+        self.set_status_bit(TLVStatus.SEC_JRNL_STATUS_VALID_IDX, not bool(value))
 
     @property
     def locked(self):
@@ -57,8 +57,7 @@ class TLVStatus():
 
     @locked.setter
     def locked(self, value):
-        self.set_status_bit(
-            TLVStatus.SEC_JRNL_STATUS_LOCKED_IDX, not bool(value))
+        self.set_status_bit(TLVStatus.SEC_JRNL_STATUS_LOCKED_IDX, not bool(value))
 
     @property
     def erased(self):
@@ -66,8 +65,7 @@ class TLVStatus():
 
     @erased.setter
     def erased(self, value):
-        self.set_status_bit(
-            TLVStatus.SEC_JRNL_STATUS_ERASED_IDX, not bool(value))
+        self.set_status_bit(TLVStatus.SEC_JRNL_STATUS_ERASED_IDX, not bool(value))
 
     def __str__(self) -> str:
         valid_str = f"[{'!' if not self.valid else '' }V]"
@@ -76,18 +74,18 @@ class TLVStatus():
         return f"{valid_str}{locked_str}{erased_str}"
 
 
-class TLV():
+class TLV:
     PTAG_LJUST_SIZE = 10
     TAG_NAMES = {
-        0xb8: "ATE",
-        0xb9: "CHIP_INFO",
-        0xb0: "RIF_CAL",
-        0xb1: "MDM_CAL",
-        0xbc: "MISC_CAL",
+        0xB8: "ATE",
+        0xB9: "CHIP_INFO",
+        0xB0: "RIF_CAL",
+        0xB1: "MDM_CAL",
+        0xBC: "MISC_CAL",
     }
 
     def __init__(self, tag, status, raw_len, data, idx=-1) -> None:
-        if tag == 0xff:
+        if tag == 0xFF:
             raise InvalidTLVException("Bad tag")
         self.tag = tag
         if isinstance(status, TLVStatus):
@@ -115,7 +113,7 @@ class TLV():
         """
         if raw_len & 0x80:
             return TLV_META_SIZE
-        return (TLV_META_SIZE - 1)
+        return TLV_META_SIZE - 1
 
     @staticmethod
     def get_tlv_size(raw_len):
@@ -127,17 +125,16 @@ class TLV():
         Returns:
             int: length of TLV
         """
-        tlv_len = raw_len & 0x7f
+        tlv_len = raw_len & 0x7F
         if raw_len & 0x80:
-            tlv_len += ((raw_len & 0xff00) >> 1)
+            tlv_len += (raw_len & 0xFF00) >> 1
         return tlv_len
 
     @property
     def bin(self):
-        """returns binary representation of TLV
-        """
-        header = struct.pack('BBH', self.tag, self.status.status, self.raw_len)
-        header = header[0:self.get_header_size(self.raw_len)]
+        """returns binary representation of TLV"""
+        header = struct.pack("BBH", self.tag, self.status.status, self.raw_len)
+        header = header[0 : self.get_header_size(self.raw_len)]
         return header + self.data
 
     @property
@@ -167,13 +164,14 @@ class TLV():
             raise InvalidTLVException
 
         tlv_type, tlv_status, raw_tlv_len = struct.unpack(
-            TLV_META_HEADER_FORMAT, bin[idx: idx + TLV_META_SIZE])
+            TLV_META_HEADER_FORMAT, bin[idx : idx + TLV_META_SIZE]
+        )
 
         header_size = TLV.get_header_size(raw_tlv_len)
         data_idx = idx + header_size
 
         tlv_len = TLV.get_tlv_size(raw_tlv_len)
-        tlv_data = bin[data_idx: data_idx + tlv_len]
+        tlv_data = bin[data_idx : data_idx + tlv_len]
         return cls(tlv_type, tlv_status, raw_tlv_len, tlv_data, idx=idx)
 
     @classmethod
@@ -198,8 +196,8 @@ class TLV():
         tlv_status = TLVStatus()
         tlv_status.locked = locked
         data_len = len(content)
-        if data_len > 0x7f:
-            data_len = (data_len & 0x7f) & ((data_len << 1) & 0xff)
+        if data_len > 0x7F:
+            data_len = (data_len & 0x7F) & ((data_len << 1) & 0xFF)
 
         return cls(tag, tlv_status, data_len, content)
 
@@ -230,10 +228,10 @@ class TLV():
         return p_str
 
 
-class SecJrnl():
+class SecJrnl:
     SEC_JRNL_TAIL_PAD_LEN = 4
-    SEC_JRNL_SECURE_ONLY_MASK = 0xfc
-    SEC_JRNL_SECURE_ONLY_VAL = 0xec
+    SEC_JRNL_SECURE_ONLY_MASK = 0xFC
+    SEC_JRNL_SECURE_ONLY_VAL = 0xEC
 
     @classmethod
     def is_secure_tag(cls, tag):
@@ -241,9 +239,9 @@ class SecJrnl():
 
     def __init__(self, bin=None, max_len=1776) -> None:
         if bin is None:
-            bin = b"NVDS"+b"\xFF"*(max_len-SEC_JRNL_MAGIC_SIZE)
+            bin = b"NVDS" + b"\xff" * (max_len - SEC_JRNL_MAGIC_SIZE)
         self.raw_bin = bin
-        self.magic = struct.unpack('BBBB', bin[0:SEC_JRNL_MAGIC_SIZE])
+        self.magic = struct.unpack("BBBB", bin[0:SEC_JRNL_MAGIC_SIZE])
         self.max_len = max_len
 
     @classmethod
@@ -253,7 +251,7 @@ class SecJrnl():
         Args:
             bin_file: filepath to sec jrnl data
         """
-        with open(bin_file, 'rb') as bin_fd:
+        with open(bin_file, "rb") as bin_fd:
             return cls(bin_fd.read())
 
     @property
@@ -262,7 +260,7 @@ class SecJrnl():
 
     @property
     def bin(self):
-        return self.raw_bin[0:self.len]
+        return self.raw_bin[0 : self.len]
 
     def walk_bin(self, bin=None, func=lambda tlv: SEC_JRNL_WALK_CONT):
         """Provides an interface to iterate through binary
@@ -328,23 +326,27 @@ class SecJrnl():
         new_tlv = TLV.from_contents(tag, data, locked)
         if (self.ratchet_idx + new_tlv.total_size) > self.max_len:
             raise RuntimeError("Secure Journal can hold no more data")
-        self.raw_bin = self.raw_bin[0:self.ratchet_idx] + new_tlv.bin + \
-            self.raw_bin[self.ratchet_idx + new_tlv.total_size:]
+        self.raw_bin = (
+            self.raw_bin[0 : self.ratchet_idx]
+            + new_tlv.bin
+            + self.raw_bin[self.ratchet_idx + new_tlv.total_size :]
+        )
 
     @property
     def ratchet_idx(self):
-        """returns Value of ratchet index to lock down entire Secure Journal
-        """
+        """returns Value of ratchet index to lock down entire Secure Journal"""
         return self.len - SecJrnl.SEC_JRNL_TAIL_PAD_LEN
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(
-        prog='ProgramName',
-        description='What the program does',
-        epilog='Text at the bottom of help')
-    parser.add_argument('filename')
+        prog="ProgramName",
+        description="What the program does",
+        epilog="Text at the bottom of help",
+    )
+    parser.add_argument("filename")
     args = parser.parse_args()
     jrnl = SecJrnl.from_file(args.filename)
     print(jrnl)

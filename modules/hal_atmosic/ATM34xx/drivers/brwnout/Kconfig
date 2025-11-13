@@ -4,6 +4,7 @@
 
 config ATM_BROWNOUT
 	bool "Enable brownout support"
+	default y if PM && $(dt_path_enabled,/power-states/soc_off)
 
 if ATM_BROWNOUT
 
@@ -21,5 +22,25 @@ config BROWNOUT_THR_VBAT
 	    For VBATLI,
 		VBATLI threshold = 2.4V + 0.050X, where 2 <= X <= 31
             The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through CONFIG_BATT_LEVEL. Refer to the PMU configuration for additional details.
+
+config BROWNOUT_THR_VSTORE
+        int "VSTORE brownout threshold"
+        range -1 31
+        default -1
+        help
+            Controls the VSTORE brownout threshold for non-lithium ion battery types.
+            VSTORE threshold = 0.7 + 0.05X, where 0 <= X <= 31
+
+            Set to -1 (default) to use automatic battery-type-dependent defaults:
+            - Rechargeable batteries: 31 (fixed, cannot be overridden)
+            - Non-rechargeable batteries: 0
+
+            Set to 0-31 to explicitly specify the threshold value.
+
+            Note: For rechargeable batteries, this value is enforced to be 31
+            in the driver code regardless of the configured value.
+
+            The chip enters brownout if both VBAT and VSTORE are below their
+            configured thresholds.
 
 endif

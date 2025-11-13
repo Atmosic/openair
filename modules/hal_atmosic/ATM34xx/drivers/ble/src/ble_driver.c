@@ -10,14 +10,18 @@
  *******************************************************************************
  */
 
+#include <zephyr/kernel.h>
+#include "arch.h"
+
 #define DT_DRV_COMPAT atmosic_ble
+
+#if CONFIG_ATM_ATLC
 
 #include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <zephyr/kernel.h>
 #include <soc.h>
 #include <zephyr/init.h>
 #include <zephyr/device.h>
@@ -31,14 +35,12 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 
-#include "arch.h"
 #include "ble_driver.h"
 #include "pc_ctr_sleep.h"
 #include "radio_hal_common.h"
 #include "timer.h"
 #include "vectors.h"
 
-#include "at_lc_regs_core_macro.h"
 #include "at_clkrstgen.h"
 
 #ifdef CONFIG_ATM_BLE
@@ -135,9 +137,16 @@ void ChciTrWrite(uint8_t prot, uint8_t type, uint16_t len, uint8_t *pData)
     }
 
     if (nbuf) {
+	size_t buf_tailroom = net_buf_tailroom(nbuf);
+	if (buf_tailroom < len) {
+	    LOG_ERR("Not enough space in buffer %u/%zu", len, buf_tailroom);
+	    net_buf_unref(nbuf);
+	    goto done;
+	}
+
 	net_buf_add_mem(nbuf, pData, len);
 
-	LOG_DBG("Packet in: type:%u len:%u", bt_buf_get_type(nbuf), nbuf->len);
+	LOG_DBG("Packet in: type:%u len:%u", nbuf->data[0], nbuf->len);
 
 	struct device const *dev = DEVICE_DT_GET(DT_DRV_INST(0));
 	struct hci_data *hci = dev->data;
@@ -283,9 +292,9 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 	return -EINVAL;
     }
 
-    uint8_t type = bt_buf_get_type(buf);
+    uint8_t type = net_buf_pull_u8(buf);  // Remove H4 type byte from buffer
     switch (type) {
-	case BT_BUF_CMD: {
+	case BT_HCI_H4_CMD: {
 	    struct bt_hci_cmd_hdr *hdr = (struct bt_hci_cmd_hdr *)buf->data;
 	    uint8_t len = hdr->param_len;
 	    if (len > buf->len - sizeof(*hdr)) {
@@ -298,7 +307,7 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 	    memcpy(tr_buf, buf->data, buf->len);
 	    chciTrRecv(CHCI_TR_PROT_BLE, CHCI_TR_TYPE_CMD, tr_buf);
 	} break;
-	case BT_BUF_ACL_OUT: {
+	case BT_HCI_H4_ACL: {
 	    struct bt_hci_acl_hdr *hdr = (struct bt_hci_acl_hdr *)buf->data;
 	    uint16_t len = sys_le16_to_cpu(hdr->len);
 	    if (len > buf->len - sizeof(*hdr)) {
@@ -311,7 +320,7 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 	    memcpy(tr_buf, buf->data, buf->len);
 	    chciTrRecv(CHCI_TR_PROT_BLE, CHCI_TR_TYPE_ACL, tr_buf);
 	} break;
-	case BT_BUF_ISO_OUT: {
+	case BT_HCI_H4_ISO: {
 	    struct bt_hci_iso_hdr *iso_hdr = (struct bt_hci_iso_hdr *)buf->data;
 	    uint16_t len = bt_iso_hdr_len(sys_le16_to_cpu(iso_hdr->len));
 	    if (len > buf->len - sizeof(*iso_hdr)) {
@@ -470,7 +479,7 @@ static int ble_driver_init(struct device const *dev)
 
     LOG_DBG("enter");
 
-    uint32_t bp_freq = at_clkrstgen_get_bp();
+    __unused uint32_t bp_freq = at_clkrstgen_get_bp();
     // pc_ctr requires 32MHz minimum
     ASSERT_INFO(bp_freq >= 32000000, bp_freq, 32000000);
 #ifdef CONFIG_ATM_BLE
@@ -479,7 +488,7 @@ static int ble_driver_init(struct device const *dev)
     RV_RF_WAKE_ADD(ble_driver_rf_wake);
 
     // FIXME: secure SysTick needs same adjustment
-    NVIC_SetPriority(SysTick_IRQn, IRQ_PRI_MID);
+    NVIC_SetPriority(SysTick_IRQn, IRQ_PRI_NORMAL);
     BUILD_ASSERT(IRQ_PRI_HIGH >= _IRQ_PRIO_OFFSET, "ZLL too big");
     Z_ISR_DECLARE(ATLC_FRC_IRQn, ISR_FLAG_DIRECT, ble_driver_ATLC_FRC_Handler,
 	NULL);
@@ -507,6 +516,21 @@ static int ble_driver_init(struct device const *dev)
     LOG_DBG("exit");
     return 0;
 }
+
+#elif CONFIG_PM
+
+#include "at_lc_regs_core_macro.h"
+
+static int ble_driver_init(struct device const *dev)
+{
+    // Force ATLC to sleep
+    CMSDK_ATLC_NONSECURE->LC_LP_CTRL0 = ATLC_LC_LP_CTRL0__RADIO_SLP_EN__MASK;
+    CMSDK_ATLC_NONSECURE->LC_LP_CTRL2 = ATLC_LC_LP_CTRL2__SLP_TM__WRITE(0);
+    CMSDK_ATLC_NONSECURE->LC_LP_CTRL3 = ATLC_LC_LP_CTRL3__SLP__MASK;
+    return 0;
+}
+
+#endif // CONFIG_ATM_ATLC
 
 DEVICE_DT_INST_DEFINE(0, ble_driver_init, NULL,
 		      COND_CODE_1(CONFIG_ATM_BLE, (&hci_data), (NULL)), NULL,

@@ -60,7 +60,6 @@ typedef struct
   uint8_t nonce[BB_BLE_DRBG_NONCE_LEN];     /*!< Nonce. Note: Field represented in LE. */
   struct
   {
-    uint8_t byteIndex;
     uint8_t bitIndex;
     uint8_t remainingBits;
     uint8_t lastStepUsed;
@@ -90,17 +89,17 @@ void BbBleDrbgInstantiate(const uint8_t *pIV, const uint8_t *pIN, const uint8_t 
 
 /*************************************************************************************************/
 /*!
- *  \brief  Get random bits from DRBG.
+ *  \brief  Get random bits position from DRBG.
  *
- *  \param  pOut          Output.
  *  \param  n             Number of required bits.
  *  \param  transId       Channel sounding transaction ID.
- *  \param  transCount    Channel sounding transaction count.
  *  \param  stepCount     Channel sounding step count.
  *  \param  pCtx          DRBG control block.
+ *
+ *  \return Pointer to the random bits in the DRBG output buffer.
  */
 /*************************************************************************************************/
-void BbBleDrbgGenerateRandomBits(uint8_t *pOut, const uint8_t n, const uint8_t transId, const uint16_t stepCount, BbBleDrbgCtx_t *pCtx);
+uint8_t *BbBleDrbgGetRandomBitsPos(const uint8_t n, const uint8_t transId, const uint16_t stepCount, BbBleDrbgCtx_t *pCtx);
 
 /*************************************************************************************************/
 /*!

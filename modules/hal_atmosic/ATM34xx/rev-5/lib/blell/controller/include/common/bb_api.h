@@ -129,6 +129,9 @@ typedef void (*BbProtCback_t)(void);
 /*! \brief     Low power callback. */
 typedef void (*BbLowPowerCback_t)(void);
 
+/*! \brief     Setup delay callback. */
+typedef uint16_t (*BbSetupDelayCback_t)(struct BbOpDesc_tag *pBod);
+
 /*! \brief      BOD rescheduling policy (listed in priority order). */
 typedef enum
 {
@@ -328,6 +331,35 @@ void BbRecoverBod(BbOpDesc_t *pBod);
  */
 /*************************************************************************************************/
 BbOpDesc_t *BbGetCurrentBod(void);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Get the scheduler setup delay for a BOD (Baseband Operation Descriptor).
+ *
+ *  \param      pBod    Pointer to the BOD.
+ *
+ *  \return     Setup delay in microseconds required before the BOD can be executed.
+ *
+ *  This function returns the time delay needed by the scheduler to prepare and set up
+ *  the baseband hardware before executing the specified BOD. The setup delay accounts
+ *  for radio configuration, frequency synthesis, and other hardware preparation time.
+ */
+/*************************************************************************************************/
+uint16_t BbGetBodSchSetupDelay(BbOpDesc_t *pBod);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Register setup delay callback for a protocol.
+ *
+ *  \param      protId      Protocol ID.
+ *  \param      cback       Setup delay callback function.
+ *
+ *  Register a callback function that will be called to get the setup delay
+ *  for BODs of the specified protocol. The callback allows dynamic calculation
+ *  of setup delays based on BOD parameters.
+ */
+/*************************************************************************************************/
+void BbRegisterSetupDelayCback(uint8_t protId, BbSetupDelayCback_t cback);
 
 /*************************************************************************************************/
 /*!

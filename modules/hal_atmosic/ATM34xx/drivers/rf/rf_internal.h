@@ -23,7 +23,8 @@
 extern "C" {
 #endif
 
-void rf_core_set_txpwr_override(uint8_t gain_index);
+atm_txpwr_ovr_key rf_core_set_txpwr_override(uint8_t gain_index);
+void rf_core_restore_txpwr_override(atm_txpwr_ovr_key key);
 
 #ifdef __cplusplus
 }

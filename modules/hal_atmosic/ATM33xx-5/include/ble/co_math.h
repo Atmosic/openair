@@ -6,7 +6,7 @@
  * @brief Common optimized math functions
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -32,7 +32,7 @@
 #include <stdint.h>        // standard integer definitions
 #include <stdbool.h>       // boolean definitions
 #include <stdlib.h>        // standard library
-#include "compiler.h"      // for __INLINE
+#include "compiler.h"      // for __RWIP_INLINE
 #include "arch.h"          // for ASSERT_ERR
 
 /*
@@ -171,7 +171,7 @@
 #if(0) // unused code
 #define CO_MOD(val, divisor) ((val) % (divisor))
 #endif // unused code
-__INLINE uint32_t co_mod(uint32_t val, uint32_t divisor)
+__RWIP_INLINE uint32_t co_mod(uint32_t val, uint32_t divisor)
 {
    ASSERT_ERR(divisor);
    return ((val) % (divisor));
@@ -190,7 +190,7 @@ __INLINE uint32_t co_mod(uint32_t val, uint32_t divisor)
  * @return Number of leading zeros when value is written as 32 bits.
  ****************************************************************************************
  */
-__INLINE uint32_t co_clz(uint32_t val)
+__RWIP_INLINE uint32_t co_clz(uint32_t val)
 {
     #if defined(__arm__)
     return __builtin_clz(val);
@@ -220,7 +220,7 @@ __INLINE uint32_t co_clz(uint32_t val)
  * @return Number of trailing zeros when value is written as 32 bits.
  ****************************************************************************************
  */
-__INLINE uint32_t co_ctz(uint32_t val)
+__RWIP_INLINE uint32_t co_ctz(uint32_t val)
 {
     #if defined(__arm__)
     return __builtin_ctz(val);
@@ -256,7 +256,7 @@ extern void co_random_init(uint32_t seed);
  * @return Random byte value.
  ****************************************************************************************
  */
-__INLINE uint8_t co_rand_byte(void)
+__RWIP_INLINE uint8_t co_rand_byte(void)
 {
     return (uint8_t)((rand() >> 16) & 0xFF);
 }
@@ -267,7 +267,7 @@ __INLINE uint8_t co_rand_byte(void)
  * @return Random half word value.
  ****************************************************************************************
  */
-__INLINE uint16_t co_rand_hword(void)
+__RWIP_INLINE uint16_t co_rand_hword(void)
 {
     return (uint16_t)((rand() >> 16) & 0xFFFF);
 }
@@ -278,7 +278,7 @@ __INLINE uint16_t co_rand_hword(void)
  * @return Random word value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_rand_word(void)
+__RWIP_INLINE uint32_t co_rand_word(void)
 {
     return (uint32_t)rand();
 }
@@ -291,7 +291,7 @@ extern uint32_t co_secure_rand_word(void);
  * @return The smallest value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_min(uint32_t a, uint32_t b)
+__RWIP_INLINE uint32_t co_min(uint32_t a, uint32_t b)
 {
     return a < b ? a : b;
 }
@@ -302,7 +302,7 @@ __INLINE uint32_t co_min(uint32_t a, uint32_t b)
  * @return The smallest value.
  ****************************************************************************************
  */
-__INLINE int32_t co_min_s(int32_t a, int32_t b)
+__RWIP_INLINE int32_t co_min_s(int32_t a, int32_t b)
 {
     return a < b ? a : b;
 }
@@ -313,7 +313,7 @@ __INLINE int32_t co_min_s(int32_t a, int32_t b)
  * @return The greatest value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_max(uint32_t a, uint32_t b)
+__RWIP_INLINE uint32_t co_max(uint32_t a, uint32_t b)
 {
     return a > b ? a : b;
 }
@@ -324,7 +324,7 @@ __INLINE uint32_t co_max(uint32_t a, uint32_t b)
  * @return The greatest value.
  ****************************************************************************************
  */
-__INLINE int32_t co_max_s(int32_t a, int32_t b)
+__RWIP_INLINE int32_t co_max_s(int32_t a, int32_t b)
 {
     return a > b ? a : b;
 }
@@ -335,7 +335,7 @@ __INLINE int32_t co_max_s(int32_t a, int32_t b)
  * @return The absolute value.
  ****************************************************************************************
  */
-__INLINE int co_abs(int val)
+__RWIP_INLINE int co_abs(int val)
 {
     return (val < 0) ? (0 - val) : val;
 }
@@ -346,7 +346,7 @@ __INLINE int co_abs(int val)
  * @return The factorial count (n! = n x (n-1) x (n-2) x (n-3) x ... x 1).
  ****************************************************************************************
  */
-__INLINE uint8_t co_fct(uint8_t n)
+__RWIP_INLINE uint8_t co_fct(uint8_t n)
 {
     // Use static reference table as factorial of only small values <= 4 currently required
     const uint8_t fct_tbl[] = {1,1,2,(3*2),(4*3*2)};
@@ -361,7 +361,7 @@ __INLINE uint8_t co_fct(uint8_t n)
  * @return The gcd gcd(a,b) = gcd(b,a mod b).
  ****************************************************************************************
  */
-__INLINE uint32_t co_gcd(uint32_t a, uint32_t b)
+__RWIP_INLINE uint32_t co_gcd(uint32_t a, uint32_t b)
 {
     while (b != 0)
     {
@@ -382,7 +382,7 @@ __INLINE uint32_t co_gcd(uint32_t a, uint32_t b)
  * @return The lowest common multiple, LCM(a, b) = (a * b) / GCD(a, b).
  ****************************************************************************************
  */
-__INLINE uint32_t co_lcm(uint32_t a, uint32_t b)
+__RWIP_INLINE uint32_t co_lcm(uint32_t a, uint32_t b)
 {
     // Calculate 'a' divided by the GCD of 'a' and 'b', the result is then multiplied by 'b' to get the LCM.
     uint32_t result = CO_DIVIDE_CEIL(a, co_gcd(a,b)) * b;

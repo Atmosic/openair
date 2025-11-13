@@ -15,6 +15,11 @@
 #ifndef _ATMOSIC_ATM_ATM33XX_PARTITION_DEFS_H_
 #define _ATMOSIC_ATM_ATM33XX_PARTITION_DEFS_H_
 
+#ifdef ATM_NO_TZ
+#undef ATM_SPE_SIZE
+#define ATM_SPE_SIZE 0
+#endif
+
 #ifdef ATM_APP_PART_DEFS
 #include ATM_APP_PART_DEFS
 #endif
@@ -27,8 +32,9 @@
 #endif
 
 #ifndef ATM_SPE_SIZE
-#define ATM_SPE_SIZE (18 * 1024)
+#define ATM_SPE_SIZE (20 * 1024)
 #endif
+
 #if ((ATM_SPE_SIZE % ATM_RRAM_BLOCK_SIZE) != 0)
 #error "SPE size must be aligned"
 #endif
@@ -50,13 +56,14 @@
 #define _MAKE_ATMWSTK_FLAVOR(f) ATMWSTK_FLAVOR_##f
 #define MAKE_ATMWSTK_FLAVOR(f) _MAKE_ATMWSTK_FLAVOR(f)
 #define ATMWSTK_FLAVOR MAKE_ATMWSTK_FLAVOR(FIXED_ATMWSTK)
-#define ATMWSTK_FLAVOR_FULL 1
+#define ATMWSTK_FLAVOR_CPD200   1
 
 #ifdef FIXED_ATMWSTK
-#if (ATMWSTK_FLAVOR == ATMWSTK_FLAVOR_FULL)
-// FULL flavor
+#if (ATMWSTK_FLAVOR == ATMWSTK_FLAVOR_CPD200)
+// CPD200 flavor
 #define ATMWSTK_SIZE  0x21800
 #define ATMWSTK_OFFSET 0x5e000
+#define ATMWSTK_VARIANT_STRING "CPD200"
 #else
 #error "Valid ATMWSTK flavor must be set"
 #endif // ATMWSTK_FLAVOR

@@ -44,7 +44,7 @@ extern "C" {
  * @return The 16-bit value.
  */
 __NONNULL_ALL
-__INLINE uint16_t atm_get_le16(void const *ptr)
+__STATIC_FORCEINLINE uint16_t atm_get_le16(void const *ptr)
 {
     struct {
 	uint16_t val;
@@ -62,7 +62,7 @@ __INLINE uint16_t atm_get_le16(void const *ptr)
  * @return The 24-bit value.
  */
 __NONNULL_ALL
-__INLINE uint32_t atm_get_le24(void const *ptr)
+__STATIC_FORCEINLINE uint32_t atm_get_le24(void const *ptr)
 {
     uint8_t const volatile *p = ptr;
     return p[0] | (p[1] << 8) | (p[2] << 16);
@@ -74,7 +74,7 @@ __INLINE uint32_t atm_get_le24(void const *ptr)
  * @return The 32-bit value.
  */
 __NONNULL_ALL
-__INLINE uint32_t atm_get_le32(void const *ptr)
+__STATIC_FORCEINLINE uint32_t atm_get_le32(void const *ptr)
 {
     struct {
 	uint32_t val;
@@ -92,7 +92,7 @@ __INLINE uint32_t atm_get_le32(void const *ptr)
  * @return The 16-bit value.
  */
 __NONNULL_ALL
-__INLINE uint16_t atm_get_be16(void const *ptr)
+__STATIC_FORCEINLINE uint16_t atm_get_be16(void const *ptr)
 {
     struct {
 	uint16_t val;
@@ -110,7 +110,7 @@ __INLINE uint16_t atm_get_be16(void const *ptr)
  * @return The 24-bit value.
  */
 __NONNULL_ALL
-__INLINE uint32_t atm_get_be24(void const *ptr)
+__STATIC_FORCEINLINE uint32_t atm_get_be24(void const *ptr)
 {
     uint8_t const volatile *p = ptr;
     return p[2] | (p[1] << 8) | (p[0] << 16);
@@ -122,7 +122,7 @@ __INLINE uint32_t atm_get_be24(void const *ptr)
  * @return The 32-bit value.
  */
 __NONNULL_ALL
-__INLINE uint32_t atm_get_be32(void const *ptr)
+__STATIC_FORCEINLINE uint32_t atm_get_be32(void const *ptr)
 {
     struct {
         uint32_t val;
@@ -141,7 +141,7 @@ __INLINE uint32_t atm_get_be32(void const *ptr)
  * @param[in] value The 16-bit value to be written
  */
 __NONNULL(1)
-__INLINE void atm_set_le16(void *ptr, uint16_t value)
+__STATIC_FORCEINLINE void atm_set_le16(void *ptr, uint16_t value)
 {
     struct {
 	uint16_t val;
@@ -160,7 +160,7 @@ __INLINE void atm_set_le16(void *ptr, uint16_t value)
  * @param[in] value The 24-bit value to be written
  */
 __NONNULL(1)
-__INLINE void atm_set_le24(void *ptr, uint32_t value)
+__STATIC_FORCEINLINE void atm_set_le24(void *ptr, uint32_t value)
 {
     uint8_t volatile *p = ptr;
     p[0] = value;
@@ -175,7 +175,7 @@ __INLINE void atm_set_le24(void *ptr, uint32_t value)
  * @param[in] value The 32-bit value to be written
  */
 __NONNULL(1)
-__INLINE void atm_set_le32(void *ptr, uint32_t value)
+__STATIC_FORCEINLINE void atm_set_le32(void *ptr, uint32_t value)
 {
     struct {
 	uint32_t val;
@@ -194,7 +194,7 @@ __INLINE void atm_set_le32(void *ptr, uint32_t value)
  * @param[in] value The 16-bit value to be written
  */
 __NONNULL(1)
-__INLINE void atm_set_be16(void *ptr, uint16_t value)
+__STATIC_FORCEINLINE void atm_set_be16(void *ptr, uint16_t value)
 {
     struct {
 	uint16_t val;
@@ -213,7 +213,7 @@ __INLINE void atm_set_be16(void *ptr, uint16_t value)
  * @param[in] value The 24-bit value to be written
  */
 __NONNULL(1)
-__INLINE void atm_set_be24(void *ptr, uint32_t value)
+__STATIC_FORCEINLINE void atm_set_be24(void *ptr, uint32_t value)
 {
     uint8_t volatile *p = ptr;
     p[2] = value;
@@ -228,7 +228,7 @@ __INLINE void atm_set_be24(void *ptr, uint32_t value)
  * @param[in] value The 32-bit value to be written
  */
 __NONNULL(1)
-__INLINE void atm_set_be32(void *ptr, uint32_t value)
+__STATIC_FORCEINLINE void atm_set_be32(void *ptr, uint32_t value)
 {
     struct {
 	uint32_t val;

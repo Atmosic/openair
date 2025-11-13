@@ -8,7 +8,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (c) Atmosic 2025
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -154,8 +156,24 @@ typedef void (*BbBleCisRxDataComp_t)(BbOpDesc_t *pBod, uint8_t *pBuf, uint8_t st
 /*! \brief      CIS data receive completion post callback signature. */
 typedef void (*BbBleCisRxDataPostComp_t)(BbOpDesc_t *pBod, uint8_t status);
 
-/*! \brief      Test completion callback signature. */
-typedef bool (*BbBleTestComp_t)(BbOpDesc_t *pBod, uint8_t status);
+/*! \brief      Tx test completion callback signature. */
+typedef bool (*BbBleTxTestComp_t)(BbOpDesc_t *pBod, uint8_t status);
+
+/*!
+ *  \brief      Rx test completion callback signature.
+ *
+ *  This callback is invoked upon completion of each BLE test mode receive operation.
+ *  It provides timing and PHY information needed for packet interval calculation
+ *  and synchronization tracking.
+ *
+ *  \param      pBod          Pointer to the BOD (Baseband Operation Descriptor).
+ *  \param      status        Reception status (BB_STATUS_SUCCESS, BB_STATUS_CRC_FAILED, etc.).
+ *  \param      rxPhyOption   PHY options of the received packet (for interval calculation).
+ *  \param      startTs       Timestamp when packet reception started (microseconds).
+ *
+ *  \return     true to continue receiving next packet, false to terminate reception.
+ */
+typedef bool (*BbBleRxTestComp_t)(BbOpDesc_t *pBod, uint8_t status, uint8_t rxPhyOption, uint32_t startTs);
 
 /*! \brief      Periodic PDU Rx complete call signature. */
 typedef uint32_t (*BbBlePerComp_t)(BbOpDesc_t *pBod, const uint8_t *pBuf, uint8_t status);
@@ -541,7 +559,7 @@ typedef struct
 {
   BbBleData_t             cmn;                /*!< Common operation parameters. */
 
-  BbBleTestComp_t         testCback;          /*!< Test callback. */
+  BbBleTxTestComp_t       testCback;          /*!< Test callback. */
 
   uint8_t                 *pTxBuf;            /*!< Transmit data buffer. */
   uint16_t                txLen;              /*!< Transmit data buffer length. */
@@ -554,11 +572,13 @@ typedef struct
   BbBleData_t             cmn;                /*!< Common operation parameters. */
 
   uint32_t                rxSyncDelayUsec;    /*!< Synchronization delay in microseconds. */
-  BbBleTestComp_t         testCback;          /*!< Test callback. */
-
+  BbBleRxTestComp_t       testCback;          /*!< Test completion callback. */
+  uint32_t                dueUsec;            /*!< Next expected packet reception time (microseconds). */
   uint8_t                 *pRxBuf;            /*!< Receive data buffer. */
   uint16_t                rxLen;              /*!< Receive data buffer length. */
-  int8_t                  rssi;
+  uint16_t                pktInterval;        /*!< Calculated packet interval from received packets (microseconds). */
+  int8_t                  rssi;               /*!< RSSI of last received packet. */
+  bool                    syncOnce;           /*!< Synchronization status: true if synchronized to packet timing. */
 } BbBleTestRx_t;
 
 /*! \brief       DAA EDS event operation data (\ref BB_BLE_OP_DAA_EDS_EVENT). */
@@ -578,34 +598,11 @@ typedef struct
 {
   BbBleData_t             cmn;                /*!< Common operation parameters. */
 
-  uint8_t                 tIp1Usec;           /*!< T_IP1 time. */
-  uint8_t                 tIp2Usec;           /*!< T_IP2 time. */
-  uint8_t                 tFcsUsec;           /*!< T_FCS time. */
-  uint8_t                 tPmUsec;            /*!< T_PM time. */
-  uint8_t                 tSwUsec;            /*!< T_SW time. */
-  uint8_t                 nAp;                /*!< Number of antenna paths. */
-  uint8_t                 seqLen;             /*!< Rounding or sounding sequence length. */
-  uint8_t                 csSyncPhy;          /*!< CS_SYNC PHY. */
-  uint8_t                 role;               /*!< CS role. */
   bool                    testMode;           /*!< True if CS Test command is being used. */
   uint16_t                totalDriffPpm;      /*!< Total clock driff. */
-  uint32_t                subEvtIntUsec;      /*!< Subevent interval. */
-  PalBbBleTxBufDesc_t     txCsPdu;            /*!< CS PDU descriptor. */
-  uint8_t                 *pRxCsBuf;          /*!< CS RX buffer. */
-  BbBleCsCalcTimeCback_t  pLctrCsCompNextTime;/*!< CS Next transaction time computation callback. */
 
   /* Return parameters. */
-  uint8_t                 stepMode;           /*!< CS step mode. */
-  uint8_t                 chanIdx;            /*!< CS channel index. */
-  bool                    eventEnd;           /*!< True if this is the last subevent in the event. */
-  bool                    mode0Rx;            /*!< True if reflector got at least 1 mode-0 packet. */
   uint32_t                wwTotalUsec;        /*!< Window widening. */
-  uint32_t                seGapUsec;          /*!< Time gap between start of next subevent and end of current subevent. */
-  uint32_t                accAddr;            /*!< CS access address. */
-  uint32_t                peerAccAddr;        /*!< Peer CS access address. */
-  uint32_t                nextStepTxTime;     /*!< Time of next step Tx CS operation. */
-  uint32_t                nextStepRxTime;     /*!< Time of next step Rx CS operation. */
-  bool                    recoverState;       /*!< True if CS procedure is a recovery state. */
 } BbBleCsEvent_t;
 
 /**************************************************************************************************

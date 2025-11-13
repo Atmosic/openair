@@ -8,7 +8,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (c) 2023-2025 Atmosic, Inc. All rights reserved.
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -109,6 +111,28 @@ void WsfAssertTrapEnable(bool enaAssertTrap);
 #define WSF_ASSERT(expr)
 #endif
 #endif
+#endif
+/*************************************************************************************************/
+/*!
+ *  \brief  Run-time critical assert macro. Executes when expression is false.
+ *
+ *          In non-debug builds with WSF_ASSERT_FAIL_CRIT defined:
+ *          - Calls platform-specific assertion failure recording function
+ *          - Minimal overhead: only executes recording on failure
+ *          - Platform may provide retrieval mechanism (e.g., PalSysGetAssertAddr())
+ *
+ *          In debug builds or when WSF_ASSERT_FAIL_CRIT is not defined:
+ *          - Falls back to standard WSF_ASSERT/WSF_ASSERT_INFO behavior
+ *
+ *  \param  expr    Boolean expression to be tested.
+ */
+/*************************************************************************************************/
+#ifdef WSF_ASSERT_FAIL_CRIT
+#define WSF_ASSERT_CRIT(expr) if (!(expr)) {WSF_ASSERT_FAIL_CRIT();}
+#define WSF_ASSERT_INFO_CRIT(expr, param1, param2) if (!(expr)) {WSF_ASSERT_FAIL_CRIT();}
+#else
+#define WSF_ASSERT_CRIT(expr) WSF_ASSERT(expr)
+#define WSF_ASSERT_INFO_CRIT(expr, param1, param2) WSF_ASSERT_INFO(expr, param1, param2)
 #endif
 
 /*************************************************************************************************/

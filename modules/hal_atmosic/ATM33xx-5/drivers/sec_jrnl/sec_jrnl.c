@@ -5,7 +5,7 @@
  *
  * @brief Secure Journal Driver
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2025
  *
  ******************************************************************************
  */
@@ -270,14 +270,14 @@ sec_jrnl_ret_status_t sec_jrnl_get_aligned_32(uint8_t tag,
 
 #ifdef SECURE_PROC_ENV
 
-__attribute__((cmse_nonsecure_entry)) __attribute__((used))
+__SPE_NSC
 sec_jrnl_ret_status_t
 nsc_sec_jrnl_walk_init_ctx(void)
 {
     return sec_jrnl_walk_init_specific_ctx(&ns_walk_ctx);
 }
 
-__attribute__((cmse_nonsecure_entry)) __attribute__((used))
+__SPE_NSC
 sec_jrnl_ret_status_t
 nsc_sec_jrnl_walk_read_curr_tag(uint32_t buf_len, uint8_t *buffer)
 {
@@ -290,7 +290,7 @@ nsc_sec_jrnl_walk_read_curr_tag(uint32_t buf_len, uint8_t *buffer)
     return sec_jrnl_walk_read_ctx_curr_tag(&ns_walk_ctx, buf_len, buffer);
 }
 
-__attribute__((cmse_nonsecure_entry)) __attribute__((used))
+__SPE_NSC
 sec_jrnl_ret_status_t
 nsc_sec_jrnl_walk_tag(uint8_t *tag, sec_jrnl_tag_len_t *tag_length)
 {
@@ -308,8 +308,7 @@ nsc_sec_jrnl_walk_tag(uint8_t *tag, sec_jrnl_tag_len_t *tag_length)
     return ret;
 }
 
-__attribute__((cmse_nonsecure_entry))
-__attribute__((used))
+__SPE_NSC
 sec_jrnl_ret_status_t nsc_sec_jrnl_get(uint8_t tag, sec_jrnl_tag_len_t *tag_length,
     uint8_t *tag_data)
 {
@@ -326,8 +325,7 @@ sec_jrnl_ret_status_t nsc_sec_jrnl_get(uint8_t tag, sec_jrnl_tag_len_t *tag_leng
     return sec_jrnl_get(tag, tag_length, tag_data);
 }
 
-__attribute__((cmse_nonsecure_entry))
-__attribute__((used))
+__SPE_NSC
 sec_jrnl_ret_status_t nsc_sec_jrnl_get_aligned_32(uint8_t tag,
     sec_jrnl_tag_len_t *tag_length, uint32_t *tag_data)
 {

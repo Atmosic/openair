@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config PC_VS_CMD
+	bool "PacketCraft Vendor command module"
+	default y if ATM_VENDOR
+	depends on ATM_PC_CTR

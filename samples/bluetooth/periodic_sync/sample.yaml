@@ -1,0 +1,16 @@
+sample:
+  name: Bluetooth Periodic Advertising Synchronization
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Waiting for periodic advertising"
+tests:
+  samples.bluetooth.periodic_sync.atm:
+    tags:
+      - bluetooth
+      - no_mcuboot
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

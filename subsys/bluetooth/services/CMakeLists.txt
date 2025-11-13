@@ -12,3 +12,7 @@ endif()
 if((CONFIG_BT_RAS) OR (CONFIG_BT_RAS_CLIENT))
   add_subdirectory(ras)
 endif()
+
+if(CONFIG_ATM_BT_TPUTP)
+  add_subdirectory(atm_bt_tput)
+endif()

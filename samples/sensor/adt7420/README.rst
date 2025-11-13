@@ -29,7 +29,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/sensor/adt7420 --sysbuild -T samples.bluetooth.adt7420.atm
+   west build -p always -b <BOARD> openair/samples/sensor/adt7420 --sysbuild -T samples.bluetooth.adt7420.atm
 
 Flash command:
 

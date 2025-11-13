@@ -32,7 +32,7 @@ extern "C" {
  * @brief Begin QSPI transaction
  */
 #ifndef __GNUC__
-__INLINE void
+__STATIC_FORCEINLINE void
 #else
 static inline void
 #endif
@@ -46,7 +46,7 @@ qspi_drive_start(void)
  * @param[in] cmd 8-bit command to drive on DOUT_0
  */
 #ifndef __GNUC__
-__INLINE void
+__STATIC_FORCEINLINE void
 #else
 static inline void
 #endif
@@ -67,7 +67,7 @@ qspi_drive_serial_cmd(uint8_t cmd)
  * @return read byte
  */
 #ifndef CFG_ROM
-__INLINE uint8_t
+__STATIC_FORCEINLINE uint8_t
 qspi_read_serial_byte(void)
 {
     uint8_t data = 0;
@@ -91,7 +91,7 @@ qspi_read_serial_byte(void)
  * @return OE/val format for TRANSACTION_SETUP register
  */
 #ifndef __GNUC__
-__INLINE uint32_t
+__STATIC_FORCEINLINE uint32_t
 to_oe_format_quad(uint8_t nibble)
 {
     if (nibble > 0xf) {
@@ -132,7 +132,7 @@ to_oe_format_quad(uint8_t nibble)
  * @param[in] nibble 4-bit value to drive
  */
 #ifndef __GNUC__
-__INLINE void
+__STATIC_FORCEINLINE void
 #else
 static inline void
 #endif
@@ -149,7 +149,7 @@ qspi_drive_nibble(uint8_t nibble)
  * @param[in] byte 8-bit value to drive
  */
 #ifndef __GNUC__
-__INLINE void
+__STATIC_FORCEINLINE void
 #else
 static inline void
 #endif
@@ -164,7 +164,7 @@ qspi_drive_byte(uint8_t byte)
  * @param[in] cycles Number of dummy cycles to drive
  */
 #ifndef __GNUC__
-__INLINE void
+__STATIC_FORCEINLINE void
 #else
 static inline void
 #endif
@@ -180,7 +180,7 @@ qspi_dummy(uint8_t cycles)
  * @brief Read all QSPI inputs for two cycles
  */
 #ifndef __GNUC__
-__INLINE void
+__STATIC_FORCEINLINE void
 #else
 static inline void
 #endif
@@ -201,7 +201,7 @@ qspi_capture_byte(void)
  * @brief End QSPI transaction
  */
 #ifndef __GNUC__
-__INLINE void
+__STATIC_FORCEINLINE void
 #else
 static inline void
 #endif

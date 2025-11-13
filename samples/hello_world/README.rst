@@ -22,7 +22,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/hello_world --sysbuild -T samples.hello_world.atm
+   west build -p always -b <BOARD> openair/samples/hello_world --sysbuild -T samples.hello_world.atm
 
 Flash command:
 

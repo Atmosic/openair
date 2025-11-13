@@ -15,18 +15,20 @@ Supported Platforms
 
 Starting 25.07.0 release, support for ATMx2xx(ATM2/3) platforms are deprecated.
 
-OpenAir branches
+OpenAir Branches
 ****************
 
 The main branch is used for development and to integrate all new features and bug fixes. It reflects the latest state of development.
 
-For Production Use
+For Production Use:
+-------------------
 
 If you need a stable version of this project, please use the code from one of the official releases_.
 
 .. _releases: https://github.com/Atmosic/openair/releases/
 
-For Contributors
+For Contributors:
+-----------------
 
 Please base all pull requests on the main branch.
 
@@ -35,7 +37,7 @@ Creating a Workspace
 
 To create an Atmosic SDK workspace, first follow the instructions_ from the official Zephyr documentation on setting up the tooling for your host operating system.  Then use ``west init`` and ``west update`` as follows::
 
-  west init -m https://github.com/Atmosic/openair.git --mr rel_25.07.1 zephyrproject
+  west init -m https://github.com/Atmosic/openair.git zephyrproject
   cd zephyrproject
   west update
 

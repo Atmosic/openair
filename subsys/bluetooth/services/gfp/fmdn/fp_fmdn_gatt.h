@@ -17,6 +17,9 @@
 #include <zephyr/bluetooth/gatt.h>
 #include "compiler.h" // __NONNULL_ALL inline functions
 #include "fp_common.h"
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+#include "fp_fhpf_gatt.h"
+#endif
 
 /**
  * @addtogroup ATM_BTFMDN Google Fast Pair Find My Device Network Extention
@@ -72,8 +75,10 @@ void fp_fmdn_gatt_utp_mode_reg(fp_fmdn_utp_mode_cb const hdlr);
 /**
  * @brief The callback function of ring action
  * @param[in] action enable/disable ring action
+ * @param[in] ring_op ring operation
+ * @param[in] ring_vol ring volume
  */
-typedef void (*fp_fmdn_ring_action_cb)(bool action);
+typedef void (*fp_fmdn_ring_action_cb)(bool action, uint8_t ring_op, uint8_t ring_vol);
 
 /**
  * @brief fmdn ring action handler register
@@ -125,6 +130,16 @@ void fp_fmdn_gatt_deinit(void);
  * @brief fmdn gatt button notify
  */
 void fp_fmdn_button_notify(void);
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+
+/**
+ * @brief Register ranging callback handlers
+ * @param handler Handler structure or NULL to unregister
+ */
+void fp_fmdn_ranging_handler_register(fp_fmdn_ranging_handler_t const *handler);
+
+#endif // CONFIG_FMDN_PRECISION_FINDING
 
 #ifdef __cplusplus
 }

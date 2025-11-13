@@ -34,6 +34,13 @@ extern "C" {
 extern uint8_t *SystemHeapStart;
 extern uint32_t SystemHeapSize;
 
+#define WSF_HEAP_INIT_FEAT_MEM(initFunc, pFreeMem, freeMemAvail, totalMemUsed, featureEn) do { \
+  uint32_t memUsed ## initFunc = initFunc(pFreeMem, freeMemAvail, featureEn); \
+  pFreeMem += memUsed ## initFunc; \
+  freeMemAvail -= memUsed ## initFunc; \
+  totalMemUsed += memUsed ## initFunc; \
+} while (0)
+
 #define WSF_HEAP_INIT_MEM(initFunc, pFreeMem, freeMemAvail, totalMemUsed) do { \
   uint32_t memUsed ## initFunc = initFunc(pFreeMem, freeMemAvail); \
   pFreeMem += memUsed ## initFunc; \

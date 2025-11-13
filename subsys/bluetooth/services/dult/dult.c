@@ -20,7 +20,9 @@
 #include "app_work_q.h"
 #include "atm_utils_c.h"
 #include "dult.h"
+#ifdef CONFIG_DULT_ADV_SUPPORT
 #include "dult_adv.h"
+#endif
 
 LOG_MODULE_REGISTER(dult, CONFIG_ATM_DULT_LOG_LEVEL);
 
@@ -32,6 +34,7 @@ K_WORK_DELAYABLE_DEFINE(dult_read_id_timer, dult_dult_read_id_timer_handler);
 static dult_mode_t cur_no_mode;
 static dult_hdlrs_t const *dult_hdlrs;
 static dult_user_info_t const *dult_user_info;
+bool dult_enabled;
 
 // DULT Service Near Owner Response
 typedef struct ble_dult_no_resp_s {
@@ -59,6 +62,7 @@ enum dult_info_write_opcode {
 	DULT_INFO_WRITE_OPCODE_GET_FIRMWARE_VERSION = 0x00A,
 	DULT_INFO_WRITE_OPCODE_GET_BATTERY_TYPE = 0x00B,
 	DULT_INFO_WRITE_OPCODE_GET_BATTERY_LEVEL = 0x00C,
+	DULT_INFO_WRITE_OPCODE_GET_NETWORK_VERSION = 0x00D,
 };
 
 // DULT opcodes for Non-owner control writes
@@ -332,6 +336,7 @@ static ssize_t dult_write_handler(struct bt_conn *conn, const struct bt_gatt_att
 
 	opcode = sys_get_le16(buf);
 	LOG_DBG("Received opcode: %" PRIu16 " (dult gatt write)", opcode);
+	LOG_DBG("cur_no_mode: %u", cur_no_mode);
 	if (cur_no_mode != DULT_NO_MODE_SEPERATED) {
 		LOG_WRN("Invalid near-owner state mode: mode=%u "
 			"(Accessory non-owner write)",
@@ -414,6 +419,18 @@ static ssize_t dult_write_handler(struct bt_conn *conn, const struct bt_gatt_att
 		resp = dult_safe_malloc(sizeof(ble_dult_no_resp_t) + data_len);
 		resp->data[0] = dult_get_battery_level();
 		break;
+	case DULT_INFO_WRITE_OPCODE_GET_NETWORK_VERSION:
+		data_len = DULT_VER_LEN;
+		resp = dult_safe_malloc(sizeof(ble_dult_no_resp_t) + data_len);
+		/*
+		 * Byte 0: revision version number
+		 * Byte 1: minor version number
+		 * Byte 2-3: major version number
+		 */
+		resp->data[0] = CONFIG_DULT_NETWORK_VERSION_REVISION;
+		resp->data[1] = CONFIG_DULT_NETWORK_VERSION_MINOR;
+		atm_set_be16(&resp->data[2], CONFIG_DULT_NETWORK_VERSION_MAJOR);
+		break;
 
 	case DULT_CTRL_WRITE_OPCODE_SOUND_START:
 		uint16_t state;
@@ -481,9 +498,25 @@ static ssize_t dult_write_handler(struct bt_conn *conn, const struct bt_gatt_att
 	return dult_write_err_handle(conn, attr, opcode, len, err);
 }
 
+#ifdef CONFIG_DULT_ADV_SUPPORT
+static void dult_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	LOG_DBG("DULT disconnected cur_no_mode %u", cur_no_mode);
+	if (dult_enabled && (cur_no_mode == DULT_NO_MODE_SEPERATED)) {
+		// Only restart advertising if in separated mode (power saving)
+		dult_adv_enable(cur_no_mode);
+	}
+}
+
+BT_CONN_CB_DEFINE(dult_conn_callbacks) = {
+	.disconnected = dult_disconnected,
+};
+#endif
+
 int dult_init(void)
 {
 	LOG_DBG("start");
+	cur_no_mode = DULT_NO_MODE_UNKNOWN;
 	return 0;
 }
 
@@ -496,26 +529,48 @@ void dult_deinit(void)
 void dult_reset(void)
 {
 	dult_deinit();
-	cur_no_mode = DULT_NO_MODE_NEAR_OWNER;
+	cur_no_mode = DULT_NO_MODE_UNKNOWN;
+	dult_enabled = false;
 }
 
 void dult_enable(bool en)
 {
-	if (!en) {
-		dult_reset();
-		dult_adv_disable();
+	if (dult_enabled == en) {
+		LOG_DBG("DULT already %s", en ? "enabled" : "disabled");
 		return;
 	}
+
+	dult_enabled = en;
+	if (!en) {
+		dult_deinit();
+#ifdef CONFIG_DULT_ADV_SUPPORT
+		dult_adv_disable();
+#endif
+		return;
+	}
+
+	// When enabling DULT, start in SEPARATED mode by default
+	// The caller should use dult_mode_update() to set the correct mode
 	cur_no_mode = DULT_NO_MODE_SEPERATED;
+#ifdef CONFIG_DULT_ADV_SUPPORT
 	dult_adv_enable(cur_no_mode);
+#endif
 }
 
 void dult_mode_update(dult_mode_t mode)
 {
 	LOG_DBG("Update Near Owner mode from %u to %u", cur_no_mode, mode);
-	if (cur_no_mode != DULT_NO_MODE_SEPERATED) {
-		dult_enable(false);
+	cur_no_mode = mode;
+#ifdef CONFIG_DULT_ADV_SUPPORT
+	if (mode == DULT_NO_MODE_SEPERATED) {
+		// Only advertise when separated from owner (for unwanted tracking detection)
+		dult_adv_enable(mode);
+	} else {
+		// Stop advertising when near owner (save power)
+		LOG_DBG("DULT Near Owner mode - disabling advertising to save power");
+		dult_adv_disable();
 	}
+#endif
 }
 
 void dult_read_id_enable(void)
@@ -531,5 +586,7 @@ void dult_handlers_register(dult_hdlrs_t const *hdlrs, dult_user_info_t const *u
 {
 	dult_hdlrs = hdlrs;
 	dult_user_info = user_info;
+#ifdef CONFIG_DULT_ADV_SUPPORT
 	dult_adv_bt_id_set(bt_id);
+#endif
 }

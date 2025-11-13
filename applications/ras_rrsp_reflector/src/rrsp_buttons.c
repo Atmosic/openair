@@ -23,6 +23,9 @@
 #ifdef CONFIG_RRSP_LED_IND
 #include "rrsp_led.h"
 #endif
+#ifdef CONFIG_BTN_FAKE_CS_DATA
+#include "ras.h"
+#endif
 #ifdef CONFIG_RRSP_BUZZER_IND
 #include "rrsp_buzzer.h"
 #endif
@@ -218,7 +221,17 @@ static void rrsp_button_work_handler(struct k_work *work)
 		}
 	}
 #else // CONFIG_BTN_ON_OFF
-	rrsp_button_factory_reset_handler();
+	if (gpio_pin_get_dt(&rrsp_btn0)) {
+#ifdef CONFIG_BTN_FAKE_CS_DATA
+#define FAKE_CS_DATA_RANGECOUNTER 0
+		if (rrsp_mmi_get_state() == RRSP_MMI_STATE_CONNECTED) {
+			LOG_DBG("Fake CS data:%u", FAKE_CS_DATA_RANGECOUNTER);
+			ras_fake_cs_data(FAKE_CS_DATA_RANGECOUNTER);
+			return;
+		}
+#endif
+		rrsp_button_factory_reset_handler();
+	}
 #endif // CONFIG_BTN_ON_OFF
 }
 

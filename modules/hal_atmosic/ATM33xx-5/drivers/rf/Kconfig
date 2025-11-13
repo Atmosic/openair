@@ -1,10 +1,10 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 config ATM_RF
 	bool "Atmosic RF module"
-	default y if BT
+	default y if ATM_RWLC
 	default y if ENTROPY_ATM_TRNG
 
 config MAX_TX_PWR
@@ -16,12 +16,11 @@ config MAX_TX_PWR
 	    Configure the maximum transmit power (dBm) for both advertising and
 	    connection.
 
-config RF_TEST
-	bool "RF Test"
-
 config FORCE_TX_PWR
 	int "Force TX power"
-	depends on RF_TEST
-	default 0
+	default 255
 	help
-	    This is the highest-priority setting for rftest use only.
+	    This setting forces a fixed transmit power. It is the highest-priority
+		option and should be used for RF test purposes only.
+	    The value 255 is reserved and indicates that forced TX power is disabled.
+	    Use values in the range -20 to 10 (dBm) to enable forced TX power.

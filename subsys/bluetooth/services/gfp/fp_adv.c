@@ -33,13 +33,13 @@ LOG_MODULE_REGISTER(fp, CONFIG_ATM_FP_LOG_LEVEL);
 
 // Advertising interval in discoverable
 #define FP_ADV_DISCOVER_MS     100
-#define FP_ADV_DISCOVER_MS_MIN ((uint32_t)(FP_ADV_DISCOVER_MS - 20) * 1000 / 625)
-#define FP_ADV_DISCOVER_MS_MAX ((uint32_t)FP_ADV_DISCOVER_MS * 1000 / 625)
+#define FP_ADV_DISCOVER_INT_MIN ((uint32_t)(FP_ADV_DISCOVER_MS - 20) * 1000 / 625)
+#define FP_ADV_DISCOVER_INT_MAX ((uint32_t)FP_ADV_DISCOVER_MS * 1000 / 625)
 
 // Advertising interval in non-discoverable
 #define FP_ADV_NONDISCOVER_MS     250
-#define FP_ADV_NONDISCOVER_MS_MIN ((uint32_t)(FP_ADV_NONDISCOVER_MS - 20) * 1000 / 625)
-#define FP_ADV_NONDISCOVER_MS_MAX ((uint32_t)FP_ADV_NONDISCOVER_MS * 1000 / 625)
+#define FP_ADV_NONDISCOVER_INT_MIN ((uint32_t)(FP_ADV_NONDISCOVER_MS - 20) * 1000 / 625)
+#define FP_ADV_NONDISCOVER_INT_MAX ((uint32_t)FP_ADV_NONDISCOVER_MS * 1000 / 625)
 
 static struct bt_le_ext_adv *fp_adv_set = NULL;
 
@@ -63,7 +63,9 @@ static const struct bt_data fp_disc_ad[] = {
 	BT_DATA(BT_DATA_SVC_DATA16, (uint8_t *)&fp_disc_adv_data, sizeof(fp_disc_adv_data)),
 };
 
-#define FMDN_ACCOUNT_FILTER_LEN 4
+// Account key filter buffer size is now configured via Kconfig
+// with automatic sizing based on FAST_PAIR_MAX_ACCOUNT_KEY_COUNT
+#define FMDN_ACCOUNT_FILTER_MAX_LEN CONFIG_FAST_PAIR_ACCOUNT_KEY_FILTER_MAX_LEN
 #ifdef CONFIG_BATT_NOTI
 #define FP_GAP_BATT_IE_SIZE 4
 #endif
@@ -71,7 +73,7 @@ typedef struct fp_non_disc_adv_s {
 	uint16_t uuid;
 	uint8_t ver_flag;
 	uint8_t act_filter_type;
-	uint8_t act_filter[FMDN_ACCOUNT_FILTER_LEN];
+	uint8_t act_filter[FMDN_ACCOUNT_FILTER_MAX_LEN];
 	uint8_t salt_type;
 	uint16_t salt;
 #ifdef CONFIG_BATT_NOTI
@@ -79,10 +81,13 @@ typedef struct fp_non_disc_adv_s {
 #endif
 } __packed fp_non_disc_adv_t;
 static fp_non_disc_adv_t fp_non_disc_adv_data;
+
+// Dynamic advertising payload buffer - only contains actual data size
+static uint8_t fp_non_disc_adv_payload[sizeof(fp_non_disc_adv_t)];
 static struct bt_data fp_non_disc_ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
 	BT_DATA_BYTES(BT_DATA_TX_POWER, FP_APP_TX_PWR),
-	BT_DATA(BT_DATA_SVC_DATA16, (uint8_t *)&fp_non_disc_adv_data, sizeof(fp_non_disc_adv_t)),
+	BT_DATA(BT_DATA_SVC_DATA16, fp_non_disc_adv_payload, 0), // Size will be set dynamically
 };
 
 uint16_t fp_adv_salt;
@@ -115,6 +120,14 @@ static bool fp_non_disc_fp_adv_data(void)
 
 	gfp_crypto_acct_key_fl_info_t gfp_fl;
 	gfp_fl.max_data_len = fp_storage_account_key_filter_size(ak_num);
+
+	// Validate filter size against advertising buffer capacity
+	if (gfp_fl.max_data_len > FMDN_ACCOUNT_FILTER_MAX_LEN) {
+		LOG_ERR("Account key filter size (%u) exceeds buffer capacity (%u)",
+			gfp_fl.max_data_len, FMDN_ACCOUNT_FILTER_MAX_LEN);
+		return ret;
+	}
+
 	gfp_fl.data = calloc(gfp_fl.max_data_len, sizeof(uint8_t));
 	if (!gfp_fl.data) {
 		LOG_ERR("Failed to allocate gfp_fl.data");
@@ -157,6 +170,11 @@ static bool fp_non_disc_fp_adv_data(void)
 #define ENCODE_FIELD_LEN_TYPE(len, type) (((len) << TYPE_BITS) | (type))
 	fp_non_disc_adv_data.act_filter_type = ENCODE_FIELD_LEN_TYPE(
 		gfp_fl.max_data_len, FP_FIELD_TYPE_HIDE_PAIRING_UI_INDICATION);
+
+	// Clear the entire filter buffer first
+	memset(fp_non_disc_adv_data.act_filter, 0, FMDN_ACCOUNT_FILTER_MAX_LEN);
+
+	// Copy the actual filter data (bounds already checked above)
 	memcpy(fp_non_disc_adv_data.act_filter, gfp_fl.data, gfp_fl.max_data_len);
 	fp_non_disc_adv_data.salt_type =
 		ENCODE_FIELD_LEN_TYPE(sizeof(adv_salt), FP_FIELD_TYPE_SALT);
@@ -164,8 +182,34 @@ static bool fp_non_disc_fp_adv_data(void)
 #ifdef CONFIG_BATT_NOTI
 	memcpy(fp_non_disc_adv_data.batt_data, gfp_gap_batti, FP_GAP_BATT_IE_SIZE);
 #endif
-	LOG_HEXDUMP_DBG((uint8_t *)&fp_non_disc_adv_data, sizeof(fp_non_disc_adv_data),
-			"fp_non_disc_adv_data ");
+	// Build dynamic advertising payload with only actual data
+	size_t payload_offset = 0;
+
+	// Copy fields sequentially using FP_UTIL_MEMCPY_SHIFT macro
+	FP_UTIL_MEMCPY_SHIFT(fp_non_disc_adv_payload, &fp_non_disc_adv_data.uuid, sizeof(uint16_t),
+			     payload_offset);
+	FP_UTIL_MEMCPY_SHIFT(fp_non_disc_adv_payload, &fp_non_disc_adv_data.ver_flag,
+			     sizeof(uint8_t), payload_offset);
+	FP_UTIL_MEMCPY_SHIFT(fp_non_disc_adv_payload, &fp_non_disc_adv_data.act_filter_type,
+			     sizeof(uint8_t), payload_offset);
+	FP_UTIL_MEMCPY_SHIFT(fp_non_disc_adv_payload, fp_non_disc_adv_data.act_filter,
+			     gfp_fl.max_data_len, payload_offset);
+	FP_UTIL_MEMCPY_SHIFT(fp_non_disc_adv_payload, &fp_non_disc_adv_data.salt_type,
+			     sizeof(uint8_t), payload_offset);
+	FP_UTIL_MEMCPY_SHIFT(fp_non_disc_adv_payload, &fp_non_disc_adv_data.salt, sizeof(uint16_t),
+			     payload_offset);
+
+#ifdef CONFIG_BATT_NOTI
+	FP_UTIL_MEMCPY_SHIFT(fp_non_disc_adv_payload, fp_non_disc_adv_data.batt_data,
+			     FP_GAP_BATT_IE_SIZE, payload_offset);
+#endif
+
+	// Update the advertising data structure with correct size
+	fp_non_disc_ad[2].data_len = payload_offset;
+
+	LOG_HEXDUMP_DBG(fp_non_disc_adv_payload, payload_offset, "fp_non_disc_adv_payload ");
+	LOG_DBG("Account key filter: count=%zu, filter_size=%u, payload_size=%zu", ak_num,
+		gfp_fl.max_data_len, payload_offset);
 	ret = true;
 finish:
 	if (key_list) {
@@ -280,18 +324,17 @@ static void fp_adv_stop(void)
 
 static void fp_adv_start(fp_mode_t mode)
 {
-	adv_param.id = fp_storage_bt_id_base_get() + FP_ADV_BT_ID;
+	adv_param.id = fp_conn_get_bt_id(FP_ADV_BT_ID);
+	LOG_INF("FP advertising on BT_ID %u", adv_param.id);
 	if (mode == FP_MODE_PAIRING) {
-		adv_param.interval_min = FP_ADV_DISCOVER_MS_MIN;
-		adv_param.interval_max = FP_ADV_DISCOVER_MS_MAX;
+		adv_param.interval_min = FP_ADV_DISCOVER_INT_MIN;
+		adv_param.interval_max = FP_ADV_DISCOVER_INT_MAX;
 	} else {
-		adv_param.interval_min = FP_ADV_NONDISCOVER_MS_MIN;
-		adv_param.interval_max = FP_ADV_NONDISCOVER_MS_MAX;
+		adv_param.interval_min = FP_ADV_NONDISCOVER_INT_MIN;
+		adv_param.interval_max = FP_ADV_NONDISCOVER_INT_MAX;
 	}
 
-	if (mode != FP_MODE_PROVISIONED) {
-		adv_param.options |= BT_LE_ADV_OPT_USE_IDENTITY;
-	}
+	adv_param.options |= BT_LE_ADV_OPT_USE_IDENTITY;
 
 	int err = bt_le_ext_adv_create(&adv_param, &adv_cb, &fp_adv_set);
 	if (err) {

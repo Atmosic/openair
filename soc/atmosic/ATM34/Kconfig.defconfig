@@ -16,4 +16,10 @@ config NUM_IRQS
 config HW_STACK_PROTECTION
 	default y
 
+config CORTEX_M_NULL_POINTER_EXCEPTION_PAGE_SIZE
+	hex "Size of paged unmapped to implement null pointer detection"
+	default $(dt_nodelabel_reg_size_hex,rom_null_page)
+	depends on $(dt_nodelabel_exists,rom_null_page)
+	depends on NULL_POINTER_EXCEPTION_DETECTION_MPU
+
 endif # SOC_SERIES_ATM34

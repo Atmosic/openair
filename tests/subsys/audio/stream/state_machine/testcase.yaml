@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+tests:
+  tests.subsys.audio.stream.state_machine.atm:
+    sysbuild: true
+    tags:
+      - audio

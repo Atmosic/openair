@@ -152,7 +152,7 @@ properties:
     description: |
         LP comparator input pin number for SOC off wakeup.
         Valid values are platform-specific:
-        - ATM33xx/ATM34xx/ATM13xx: 3 or 4
+        - ATM33xx/ATM34xx: 3 or 4
         When this property is defined, soc-off-lpcomp-ref-level must also be defined.
 
   soc-off-lpcomp-ref-level:
@@ -161,3 +161,21 @@ properties:
         LP comparator reference voltage level (1-15).
         The system will wake when the input voltage crosses this threshold.
         This property is required when soc-off-lpcomp-wakeup-pin is defined.
+
+  xtal-32k-cap-in:
+    type: int
+    description: |
+      32kHz crystal load value on XTALI_32K pin. The value is calculated using
+      calibration tools.
+
+  xtal-32k-cap-out:
+    type: int
+    description: |
+      32kHz crystal load value on XTALO_32K pin. The value is calculated using
+      calibration tools.
+
+  hsc-mode:
+    type: boolean
+    required: false
+    description:
+        Indicate if the design is using Hybrid Super Cap (valid for batt-type = BATT_TYPE_LI_ION)

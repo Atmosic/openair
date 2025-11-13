@@ -127,6 +127,15 @@ void BbBleWhiteListRemoveAnonymous(void);
 /*************************************************************************************************/
 bool BbBleWhiteListIsAnonymousAllowed(void);
 
+/*************************************************************************************************/
+/*!
+ *  \brief      Check if white list is empty.
+ *
+ *  \return     true if no whilte list entries.
+ */
+/*************************************************************************************************/
+bool BbBleWhiteListIsEmpty(void);
+
 /*! \} */    /* BB_API_BLE_WL */
 
 #ifdef __cplusplus

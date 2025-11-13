@@ -1,0 +1,21 @@
+sample:
+  description: Test for placing application code in fast_code section using simple linker snippet
+  name: ATM Fast Code Test
+common:
+  sysbuild: true
+  harness: ztest
+  tags:
+    - fast_code
+tests:
+  tests.atm.fast_code.atm.spe.flash_xip:
+    tags:
+      - no_mcuboot
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+  tests.atm.fast_code.atm.mcuboot.flash_xip:
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"

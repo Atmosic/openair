@@ -1,0 +1,13 @@
+sample:
+  name: ATM BLE peripheral sample
+tests:
+  samples.bluetooth.atm_ble.atm_ble_peripheral.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+      - "Advertising successfully started"
+    tags:
+      - bluetooth
+      - no_mcuboot

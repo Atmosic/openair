@@ -9,6 +9,6 @@ tests:
       type: one_line
       regex:
         - "All I2S blocks written"
-    tags: introduction atm33 atm34 no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
+    tags:
+      - introduction
+      - no_mcuboot

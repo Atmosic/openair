@@ -1,19 +1,20 @@
 sample:
   name: BME280 Sensor sample
 common:
-  tags: atm33 atm34 no_mcuboot
+  tags:
+    - shield
+    - sensor
   sysbuild: true
   harness: console
   harness_config:
     type: one_line
     regex:
       - '[Dd]evice "BME280_.*"'
-  extra_args:
-    - SB_CONFIG_SPE=y
-    - SB_CONFIG_ATMWSTK_FULL=y
+  platform_allow: ATMBTCSTAG-3405/ATM34xx-5
 tests:
-  samples.sensor.bme280.atm: {}
-    # Uses common extra_args from above
+  samples.sensor.bme280.atm:
+    extra_args:
+      - bme280_SHIELD=mikroe_weather_click_i2c
   samples.sensor.bme280.atm.spi:
     extra_args:
-      - EXTRA_DTC_OVERLAY_FILE=boards/${BOARD}_ns_spi.overlay
+      - bme280_SHIELD=mikroe_weather_click_spi

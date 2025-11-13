@@ -21,6 +21,30 @@ When developing custom NSC APIs in the SPE environment these guidelines should b
 * The function should not use kernal APIs or threading primitives and only implement function calls that run to completion with no asynchronous behavior (i.e. avoid callbacks and interrupts).  The SPE does not support any form of inter-application communications mechanism that would allow for blocking or asynchronous behavior.
 * The SPE should limit the use of hardware in the secure space.  Any HW in secure mode will isolate it from the non-secure side and will require additional NSC accessor functions for the NSPE to perform I/O.
 
+Secure Fault Storage
+********************
+
+The SPE includes optional secure fault storage functionality that preserves fault information across system resets for debugging secure faults.
+
+**Configuration:**
+
+Controlled by ``ATM_SEC_FAULT_STORAGE`` definition and ``spe_fault_storage`` device tree node. When enabled:
+
+1. **Allocates ATM_SEC_FAULT_STORAGE_SIZE bytes** at end of SRAM for fault storage
+2. **Reduces main SRAM** by fault storage size
+3. **Keeps fault storage secure**, main SRAM becomes non-secure
+4. **Auto-records** fault data when secure faults occur
+
+The SPE includes optional secure fault storage functionality that preserves fault information across system resets for debugging secure faults.
+
+**Memory Layout:**
+
+- Main SRAM: ``0x30000000`` to ``0x30000000 + (SRAM_SIZE - ATM_SEC_FAULT_STORAGE_SIZE)``
+- Fault Storage: ``0x30000000 + SRAM_SIZE - ATM_SEC_FAULT_STORAGE_SIZE`` (``ATM_SEC_FAULT_STORAGE_SIZE`` bytes)
+
+**Usage:**
+
+``CONFIG_ATM_SPE_FAULT_STORAGE`` automatically enabled when ``spe_fault_storage`` device tree node exists.
 
 Requirements
 ************
@@ -98,26 +122,7 @@ Build and Run
 
 Running an application (NSPE) on a TrustZone enabled platform requires an extra SPE build/install step.  The SPE needs to be built first and its build output supplied to the application during its build process.  NSC API invocations in NSPE code are resolved by references in the SPE build.  There are sysbuild enabled examples in openair that can automatically build the SPE and provide this build to the application.  Sysbuild can also flash both the SPE and NSPE.
 
-Below are the steps for building and programming this application, without MCUBoot, using ``west build`` and ``west flash`` directly.
-
-Example environment variables setup::
-
-  APP=openair/hci_vendor
-  BOARD=<board base name, i.e. ATMEVK-3330e-QN-6>
-  JLINK_SN=<serial number>
-  SPE=openair/samples/spe
-
-The SPE application build uses the default `secure` board file without the ``_ns`` suffix (ex: ``ATMEVK-3330e-QN-6``).  The NSPE uses the non-secure board file with the ``_ns`` suffix (ex: ``ATMEVK-3330e-QN-6_ns``). The SPE and NSPE are separate Zephyr applications requiring different board and system resources (secure versus non-secure).  The MCUBOOT application image also uses the same `secure` board file since the resource requirements are similar to the SPE.  MCUBOOT specific board overlays are provided to configure resource settings.
-
-Build commands for SPE and NSPE::
-
-  west build -p -s <SPE> -b <BOARD> -d build/<BOARD>/<SPE>
-  west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_SPE_PATH=\"build/<BOARD>/<SPE>\"
-
-Flash commands for SPE and NSPE::
-
-  west flash --skip-rebuild --device <DEVICE_ID> --verify --jlink --build-dir build/<BOARD>/<SPE> --noreset --erase_flash
-  west flash --skip-rebuild --device <DEVICE_ID> --verify --jlink --build-dir build/<BOARD>_ns/<APP> --fast_load
+See :ref:`spe_nspe_architecture` for details on SPE/NSPE builds.
 
 Increasing the Size of the SPE
 ------------------------------

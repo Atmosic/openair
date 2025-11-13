@@ -1,6 +1,0 @@
-&i2c0 {
-	lis2dh: lis2dh@19 {
-		compatible = "st,lis2dh";
-		reg = <0x19>;
-	};
-};

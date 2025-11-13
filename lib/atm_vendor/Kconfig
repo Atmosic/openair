@@ -19,22 +19,22 @@ config RUNTIME_EN_HCI_VENDOR
 
 config VND_DBG_MMR
 	bool "[0xFC01] DBG Read Memory."
-	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	depends on SOC_SERIES_ATM33
 	default y
 
 config VND_DBG_MMW
 	bool "[0xFC02] DBG Write Memory."
-	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	depends on SOC_SERIES_ATM33
 	default y
 
 config VND_BLE_REGR
 	bool "[0xFC30] BLE Register Read."
-	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	depends on SOC_SERIES_ATM33
 	default y
 
 config VND_BLE_REGW
 	bool "[0xFC31] BLE Register Write."
-	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	depends on SOC_SERIES_ATM33
 	default y
 
 config VND_EN_TXCW
@@ -43,7 +43,7 @@ config VND_EN_TXCW
 
 config VND_CAP_V1
 	bool "[0xF803] 16MXtal cap. control - set cap. value."
-	depends on (SOC_SERIES_ATMX2 || SOC_SERIES_ATM33)
+	depends on SOC_SERIES_ATM33
 	default y
 
 config VND_CAP_V2
@@ -57,7 +57,6 @@ config VND_SYS_MMR
 
 config VND_PV_TEST
 	bool "[0xF80C] PV Test"
-	default y if SOC_SERIES_ATMX2
 
 config VND_PSM
 	bool "[0xF80F] PSM - set power save mode."
@@ -68,20 +67,12 @@ config VND_SET_BDDR
 config VND_SET_ADV_CH
 	bool "[0xF807] Set Advertising Channels."
 
-config VND_OTP_PUSH
-	bool "[0xF808] OTP Push."
-	depends on SOC_SERIES_ATMX2
-
 config VND_MALLOC
 	bool "[0xF809] Memory Allocate - Allocate n bytes memory (little endian)."
 	default y
 
 config VND_IO_CTRL
 	bool "[0xF80A] IO Control - set io pin."
-
-config VND_GADC_V1
-	bool "[0xF80B] GADC - set gadc value."
-	depends on SOC_SERIES_ATMX2
 
 config VND_GADC_V2
 	bool "[0xF80B] GADC - set gadc value."
@@ -145,5 +136,9 @@ config VND_API_SET_ADV_TX_POWER
 config VND_API_SET_CON_TX_POWER
 	bool "[0xFC1A] Set Transmitter Power."
 	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+
+config VND_API_SET_SCAN_CHMAP
+	bool "[0xFFE0] Set Scan Channel Map."
+	depends on SOC_SERIES_ATM34
 
 endif # ATM_VENDOR_API

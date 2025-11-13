@@ -10,26 +10,32 @@
 #endif
 #include <arm/atmosic/ATM34xx.dtsi>
 #include <dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 #include "pinctrl-qk.dtsi"
 #define STACKED_FLASH_WQK
 #include "stacked_flash.dtsi"
 
+
 / {
+
 	model = "Atmosic EVK 3405-WQK-5";
 	compatible = "atmosic,ATMEVK-3405-WQK-5";
 
 	chosen {
 		zephyr,console = &uart1;
-		zephyr,shell-uart = &uart1;
 		zephyr,uart-mcumgr = &uart0;
-		zephyr,bt-mon-uart = &uart1;
 		zephyr,sram = &sram0;
 		zephyr,flash-controller = &rram_controller;
 		zephyr,flash = &rram0;
-		zephyr,code-partition = &spe_partition;
 		zephyr,entropy = &trng;
+#ifdef ATM_DTS_USER_APP
+		zephyr,shell-uart = &uart1;
+		zephyr,bt-mon-uart = &uart1;
+		zephyr,bt-c2h-uart = &uart0;
+#endif
 	};
 
+#ifdef ATM_DTS_USER_APP
 	leds {
 		compatible = "gpio-leds";
 		led0: led_0 {
@@ -59,10 +65,12 @@
 		button0: button_0 {
 			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
 			label = "Button1";
+			zephyr,code = <INPUT_KEY_0>;
 		};
 		button1: button_1 {
 			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 			label = "Button2";
+			zephyr,code = <INPUT_KEY_1>;
 		};
 	};
 
@@ -78,8 +86,28 @@
 	zephyr,user {
 		pin-arrangement = "5X5";
 	};
+#endif
 };
 
+&uart1 {
+	tx-pin = <27>;
+};
+
+&uart0 {
+	rx-pin = <30>;
+	tx-pin = <15>;
+	rts-pin = <13>;
+	cts-pin = <12>;
+};
+
+&pmu {
+	batt-type = <3>;
+	batt-level = <1>;
+	vddio-type = <0>;
+	vddpa-src = <0>;
+};
+
+#ifdef ATM_DTS_USER_APP
 &i2c0 {
 	pinctrl-0 = <&i2c0_sda_default &i2c0_scl_default>;
 	pinctrl-names = "default";
@@ -89,6 +117,13 @@
 &pwm7 {
 	pin = <7>;
 	status = "okay";
+};
+
+&spi1 {
+        clk-pin = <5>;
+        cs-pin = <4>;
+        mosi-pin = <22>;
+        miso-pin = <15>;
 };
 
 &adc {
@@ -116,20 +151,7 @@
 	};
 };
 
-&uart1 {
-	tx-pin = <27>;
-};
+arduino_i2c: &i2c0 {};
+arduino_spi: &spi1 {};
+#endif
 
-&uart0 {
-	rx-pin = <30>;
-	tx-pin = <15>;
-	rts-pin = <13>;
-	cts-pin = <12>;
-};
-
-&pmu {
-	batt-type = <3>;
-	batt-level = <1>;
-	vddio-type = <0>;
-	vddpa-src = <0>;
-};

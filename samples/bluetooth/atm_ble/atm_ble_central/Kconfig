@@ -1,0 +1,62 @@
+source "Kconfig.zephyr"
+
+menu "Atmosic BLE PHY mode"
+
+config ATM_BT_APP_CENTRAL_LOG_LEVEL
+        int "Atmosic BLE application central log level"
+        default 3  # LOG_LEVEL_INF
+        range 0 4
+
+config ATM_CONN_TX_POWER_DBM
+    int "BLE connection TX power in DBM"
+    default 6
+
+config ATM_DYN_TX_POWER_DBM
+    int "Dynamic TX power in DBM used during connection for power adjustment"
+    default 2
+
+choice
+    prompt "Select BLE PHY mode"
+    default ATM_BT_PHY_1M
+
+config ATM_BT_PHY_1M
+    bool "1M PHY"
+
+config ATM_BT_PHY_2M
+    bool "2M PHY"
+
+config ATM_BT_PHY_CODED_S2
+    bool "Coded PHY (S2)"
+
+config ATM_BT_PHY_CODED_S8
+    bool "Coded PHY (S8)"
+
+endchoice
+
+endmenu
+
+config ATM_SUBRATE_MIN
+    int "Minimum subrating factor"
+    default 2
+
+config ATM_SUBRATE_MAX
+    int "Maximum supported subrating factor"
+    default 24
+
+config ATM_MAX_LATENCY
+    int "Maximum number of skipped subrated events"
+    default 0
+
+config ATM_CONTINUATION_NUMBER
+    int "Minimum number of consecutive subrated events before changing subrate"
+    default 1
+
+config ATM_SUPERVISION_TIMEOUT
+    int "Time (in 10 ms units) to detect connection loss without packets"
+    default 400
+
+config ATM_PER_ADV_NAME
+    string "Target Periodic Advertising Name"
+    default "Test Periodic Advertising"
+    help
+    Name of target advertising for Periodic Advertising Synchronization.

@@ -1,0 +1,8 @@
+shields:
+  - name: mikroe_pir_click
+    full_name: PIR Click
+    vendor: mikroe
+    supported_features:
+      - sensor
+      - adc
+      - i2c

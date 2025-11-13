@@ -39,7 +39,7 @@ typedef struct {
  * @param[in] data The address of the data
  */
 __NONNULL_ALL
-__INLINE
+__STATIC_FORCEINLINE
 void atm_reg_write(uint32_t volatile *reg, void const *data)
 {
     *reg = ((misaligned_uint32_t const *)data)->d;
@@ -51,7 +51,7 @@ void atm_reg_write(uint32_t volatile *reg, void const *data)
  * @param[out] data The address of the destination
  */
 __NONNULL_ALL
-__INLINE
+__STATIC_FORCEINLINE
 void atm_reg_read(uint32_t volatile const *reg, void *data)
 {
     ((misaligned_uint32_t *)data)->d = *reg;

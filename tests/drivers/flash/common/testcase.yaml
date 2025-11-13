@@ -1,0 +1,7 @@
+common:
+  tags:
+    - drivers
+    - flash
+tests:
+  tests.drivers.flash.common.atm:
+    sysbuild: true

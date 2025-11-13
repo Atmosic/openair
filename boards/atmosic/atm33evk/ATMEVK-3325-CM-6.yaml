@@ -1,0 +1,7 @@
+identifier: ATMEVK-3325-CM-6/ATM33xx-5
+name: ATMEVK-3325-CM-6
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+vendor: atmosic

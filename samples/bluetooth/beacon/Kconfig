@@ -55,12 +55,62 @@ config REFBCN_SIMPLE_BEACON
 	  at boot; otherwise, use the other enabled profile.
 
 config REFBCN_SIMPLE_BEACON_INTV
-	hex
+	hex "Simple beacon advertising interval"
 	range 0x14 0x2710
 	default 0x64 # 100 ms
 	help
 	  This parameter is specified in units of 1 ms, rather than 0.625 ms.
 	  However, the final value will be rounded to the nearest multiple of 0.625 ms.
+
+# for Create
+config ADV_INTV
+	hex "Advertising interval in 0.625ms units"
+	range 0x20 0x640
+	default ATM_TEST_UTIL_HEX1 if ATM_TEST_UTIL_HAS_OVR  # for testing
+	default 0x640 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 1s
+	default 0x20
+	help
+	  Configures the advertising interval in units of 0.625ms.
+	  Range: 0x20 (32ms) to 0x640 (1600ms).
+
+config ADV_MAX_EVT
+	int "Maximum number of advertising events"
+	default ATM_TEST_UTIL_INT1 if ATM_TEST_UTIL_HAS_OVR # for testing
+	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s_adv (30 * 1s)
+	default 0
+	help
+	  Specifies the maximum number of advertising events to send before stopping.
+	  0 means unlimited advertising.
+
+config ADV_RSTRT_DUR_MS
+	int "Advertising restart duration (milliseconds)"
+	default ATM_TEST_UTIL_INT2 if ATM_TEST_UTIL_HAS_OVR  # for testing
+	default 30000 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s
+	default 0
+	help
+	  Specifies the duration in milliseconds to wait before restarting advertising.
+	  0 means no restart delay.
+
+# for Low power
+config SOFT_OFF
+	bool "Enable soft-off low power mode"
+	depends on PM
+	select EXT_WAKEUP_ENABLE_INDEFINITE
+	default ATM_TEST_UTIL_BOOL1 if ATM_TEST_UTIL_HAS_OVR # for testing
+	default y if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON
+	help
+	  Enables the soft-off low power mode for the beacon application.
+	  When enabled, the device will enter a low power state between advertising cycles.
+
+# for hibernation
+config SOFT_OFF_SUBID
+	int "Soft-off substate ID"
+	depends on SOFT_OFF
+	default ATM_TEST_UTIL_INT3 if ATM_TEST_UTIL_HAS_OVR  # for testing
+	default 0 if REFBCN_POWER_PROFILE
+	help
+	  Specifies the substate ID to use in low power state
+	  1:soc-off 0:hibernation
 
 #
 # Invisible Kconfig symbols
@@ -68,14 +118,6 @@ config REFBCN_SIMPLE_BEACON_INTV
 
 rsource "Kconfig.adv_opts"
 rsource "Kconfig.adv_flags"
-
-# for Create
-config ADV_INTV
-	hex
-	range 0x20 0x640
-	default ATM_TEST_UTIL_HEX1 if ATM_TEST_UTIL_HAS_OVR  # for testing
-	default 0x640 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 1s
-	default 0x20
 
 config ADV_FLAGS
 	hex
@@ -88,30 +130,3 @@ config ADV_FLAGS
 config ADV_TOUT
 	int
 	default 0
-
-config ADV_MAX_EVT
-	int
-	default ATM_TEST_UTIL_INT1 if ATM_TEST_UTIL_HAS_OVR # for testing
-	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s_adv (30 * 1s)
-	default 0
-
-config ADV_RSTRT_DUR_MS
-	int
-	default ATM_TEST_UTIL_INT2 if ATM_TEST_UTIL_HAS_OVR  # for testing
-	default 30000 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s
-	default 0
-
-# for Low power
-config SOFT_OFF
-	bool
-	depends on PM
-	select EXT_WAKEUP_ENABLE_INDEFINITE
-	default ATM_TEST_UTIL_BOOL1 if ATM_TEST_UTIL_HAS_OVR # for testing
-	default y if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON
-
-# for hibernation
-config SOFT_OFF_SUBID
-	int
-	depends on SOFT_OFF
-	default ATM_TEST_UTIL_INT3 if ATM_TEST_UTIL_HAS_OVR  # for testing
-	default 0 if REFBCN_POWER_PROFILE

@@ -27,10 +27,6 @@ LOG_MODULE_REGISTER(spi_atm, CONFIG_SPI_LOG_LEVEL);
 #include "at_wrpr.h"
 #include "at_pinmux.h"
 #include "at_apb_spi_regs_core_macro.h"
-#ifdef CONFIG_SOC_SERIES_ATMX2
-#include "intisr.h"
-#define INTR_ROUTING_REQUIRED 1
-#endif
 #ifdef CONFIG_SPI_ATM_DMA
 #include "dma.h"
 #endif
@@ -350,7 +346,18 @@ static void spi_atm_dma_tx(struct device const *dev)
 
 	LOG_DBG("SPI dma tx: %p %zu", dma_buf, dma_len);
 	struct spi_atm_config const *aconfig = DEV_CFG(dev);
+
 	SPI_TRANSACTION_SETUP__START__CLR(aconfig->base->TRANSACTION_SETUP);
+	// Interrupt and spi clk needs to be setup for DMA operation to start
+	// when starting SPI transfer for the first time. Subsequent SPI transfer
+	// continuation via ISR does not need this setup
+	if (!k_is_in_isr()) {
+		aconfig->base->SET_INTERRUPT = SPI_SET_INTERRUPT__SET_INTERRUPT0__MASK;
+		aconfig->base->SET_INTERRUPT = 0;
+		struct spi_config const *config = data->ctx.config;
+		SPI_TRANSACTION_SETUP__CLKDIV__MODIFY(aconfig->base->TRANSACTION_SETUP,
+						      SPI_CLK_DIV(config->frequency));
+	}
 	dma_spi_tx_async(aconfig->port, dma_buf, dma_len, spi_atm_tx_dma_callback, dev);
 
 #ifdef CONFIG_SPI_ATM_WATCHDOG
@@ -379,7 +386,18 @@ static void spi_atm_dma_rx(struct device const *dev)
 
 	LOG_DBG("SPI dma rx: %p %zu", dma_buf, dma_len);
 	struct spi_atm_config const *aconfig = DEV_CFG(dev);
+
 	SPI_TRANSACTION_SETUP__START__CLR(aconfig->base->TRANSACTION_SETUP);
+	// Interrupt and spi clk needs to be setup for DMA operation to start
+	// when starting SPI transfer for the first time. Subsequent SPI transfer
+	// continuation via ISR does not need this setup
+	if (!k_is_in_isr()) {
+		aconfig->base->SET_INTERRUPT = SPI_SET_INTERRUPT__SET_INTERRUPT0__MASK;
+		aconfig->base->SET_INTERRUPT = 0;
+		struct spi_config const *config = data->ctx.config;
+		SPI_TRANSACTION_SETUP__CLKDIV__MODIFY(aconfig->base->TRANSACTION_SETUP,
+						      SPI_CLK_DIV(config->frequency));
+	}
 	dma_spi_rx_async(aconfig->port, dma_buf, dma_len, spi_atm_rx_dma_callback, dev);
 
 #ifdef CONFIG_SPI_ATM_WATCHDOG
@@ -752,8 +770,6 @@ static int spi_atm_init(struct device const *dev)
 		SPI_CONTEXT_INIT_SYNC(spi_atm_data_##n, ctx),					   \
 	};											   \
 	DEVICE_DT_INST_DEFINE(n, &spi_atm_init, NULL, &spi_atm_data_##n, &spi_atm_config_##n,      \
-			      POST_KERNEL, CONFIG_SPI_INIT_PRIORITY, &spi_atm_driver_api);         \
-	BUILD_ASSERT(SPI_BASE(n) == (CMSDK_AT_APB_SPI_TypeDef *)DT_REG_ADDR(DT_NODELABEL(          \
-					    CONCAT(spi, DT_INST_PROP(n, instance)))));
+			      POST_KERNEL, CONFIG_SPI_INIT_PRIORITY, &spi_atm_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(SPI_DEVICE_INIT)

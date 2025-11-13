@@ -1,16 +1,18 @@
-'''
+"""
 @file atm_openocd.py
 
 @brief Helper file for Atmosic openocd
 
 Copyright (C) Atmosic 2024-2025
-'''
+"""
+
 import contextlib
 import glob
 import os
 from pathlib import Path
 import platform
 import subprocess
+
 
 def get_atm_plat_dir_from_board(board):
     """Generates the partial platform path from a specific board
@@ -23,20 +25,20 @@ def get_atm_plat_dir_from_board(board):
     """
     try:
         # if a revision is passed, strip it before continuing
-        board,_ = board.split("@")
+        board, _ = board.split("@")
     except:
         board = board
     # if a ns board is passed, strip before continuing
-    if board.endswith('ns'):
+    if board.endswith("ns"):
         board = board.split("/", 1)[0]
 
     soc = get_soc_from_board(board)
 
     if soc == "ATM33xx-5":
-        openocd_dir_path = os.path.join('openair', 'modules', 'hal_atmosic')
+        openocd_dir_path = os.path.join("openair", "modules", "hal_atmosic")
         return os.path.join(openocd_dir_path, "ATM33xx-5")
     elif soc.startswith("ATM34xx"):
-        openocd_dir_path = os.path.join('atmosic-private', 'modules', 'hal_atmosic')
+        openocd_dir_path = os.path.join("openair", "modules", "hal_atmosic")
         if soc.endswith("-2"):
             return os.path.join(openocd_dir_path, "ATM34xx", "rev-2")
         elif soc.endswith("-5"):
@@ -45,13 +47,25 @@ def get_atm_plat_dir_from_board(board):
             raise RuntimeError("Could not match board revision.")
     return None
 
+
 def get_soc_from_board(board):
     def get_soc_from_west_boards(board, board_path):
         try:
             west_boards_results = subprocess.run(
-                ["west", "boards", "-f", "{qualifiers}", "--board", board,
-                 "--board-root", board_path],
-                text=True, capture_output=True, check=True)
+                [
+                    "west",
+                    "boards",
+                    "-f",
+                    "{qualifiers}",
+                    "--board",
+                    board,
+                    "--board-root",
+                    board_path,
+                ],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
             if west_boards_results.stdout:
                 qualifiers = west_boards_results.stdout.strip().split(",")
                 socs = [i for i in qualifiers if not i.endswith("/ns")]
@@ -63,9 +77,7 @@ def get_soc_from_board(board):
             return None
 
     # First check if the given board is defined in regular board paths.
-    board_paths = [
-        "./zephyr/boards/atmosic/",
-        "./atmosic-internal/boards/atmosic/"]
+    board_paths = ["./zephyr/boards/atmosic/", "./atmosic-internal/boards/atmosic/"]
 
     for board_path in board_paths:
         soc = get_soc_from_west_boards(board, board_path)
@@ -87,8 +99,7 @@ def get_soc_from_board(board):
 
 @contextlib.contextmanager
 def _temp_environ(update_dict):
-    """create a temp env context manager
-    """
+    """create a temp env context manager"""
     env = os.environ
     update = update_dict or {}
 
@@ -98,6 +109,7 @@ def _temp_environ(update_dict):
     finally:
         [env.pop(i) for i in update]
 
+
 def get_atm_openocd():
     """Retrieves Atmosic openocd executable and seach path.
 
@@ -106,27 +118,29 @@ def get_atm_openocd():
     """
     # Unfortunately the env var ZEPHYR_MODULES is only defined during
     # Zephyr CMake builds... so we have to derive that from ZEPHYR_BASE
-    zephyr_modules = os.path.join(os.path.dirname(
-        os.path.abspath(os.environ['ZEPHYR_BASE'])),  'modules')
+    zephyr_modules = os.path.join(
+        os.path.dirname(os.path.abspath(os.environ["ZEPHYR_BASE"])), "modules"
+    )
     atm_openocd_base = os.path.join(
-        zephyr_modules, 'hal', 'atmosic_lib', 'tools', 'openocd')
-    openocd_search = os.path.join(atm_openocd_base, 'tcl')
+        zephyr_modules, "hal", "atmosic_lib", "tools", "openocd"
+    )
+    openocd_search = os.path.join(atm_openocd_base, "tcl")
     openocd = None
     openocd_search = None
     if atm_openocd_base is not None:
         plat = platform.system()
-        if plat.startswith('MSYS') or plat.startswith('Windows'):
-            plat = 'Windows_NT'
-        elif plat == 'Darwin':
+        if plat.startswith("MSYS") or plat.startswith("Windows"):
+            plat = "Windows_NT"
+        elif plat == "Darwin":
             arch = platform.machine().lower()
-            plat = f'Darwin/{arch}'
-        elif plat == 'Linux':
+            plat = f"Darwin/{arch}"
+        elif plat == "Linux":
             pass
         else:
             raise ValueError(f"Unrecognized platform: {plat}")
 
-        openocd = os.path.join(atm_openocd_base, 'bin', plat, 'openocd')
-        openocd_search = os.path.join(atm_openocd_base, 'tcl')
+        openocd = os.path.join(atm_openocd_base, "bin", plat, "openocd")
+        openocd_search = os.path.join(atm_openocd_base, "tcl")
         print("Using ATM OpenOCD '{}'".format(openocd))
     return (openocd, openocd_search)
 
@@ -140,11 +154,10 @@ def get_atm_openocd_cfg(board):
     Returns:
         str: path to openocd.cfg
     """
-    zephyr_top = os.path.dirname(
-        os.path.abspath(os.environ['ZEPHYR_BASE']))
+    zephyr_top = os.path.dirname(os.path.abspath(os.environ["ZEPHYR_BASE"]))
 
     atm_plat_dir = get_atm_plat_dir_from_board(board)
-    def_path = os.path.join(zephyr_top, atm_plat_dir, 'openocd', '*openocd.cfg')
+    def_path = os.path.join(zephyr_top, atm_plat_dir, "openocd", "*openocd.cfg")
     try:
         default = glob.glob(def_path, recursive=True)[0]
         # even if glob succeeds, sanity check file exists
@@ -156,9 +169,18 @@ def get_atm_openocd_cfg(board):
         return None
 
 
-class AtmOpenOCD():
+class AtmOpenOCD:
 
-    def __init__(self, board, device, jlink, openocd_bin=None, openocd_search=None, openocd_cfg=None) -> None:
+    def __init__(
+        self,
+        board,
+        device,
+        jlink,
+        dl,
+        openocd_bin=None,
+        openocd_search=None,
+        openocd_cfg=None,
+    ) -> None:
         atm_openocd_bin, atm_openocd_search = get_atm_openocd()
 
         if not openocd_bin:
@@ -179,7 +201,9 @@ class AtmOpenOCD():
         if not openocd_cfg:
             self.openocd_cfg = get_atm_openocd_cfg(board)
             if self.openocd_cfg is None:
-                raise RuntimeError("Could not find Openocd config file. Please pass config file via: `--openocd_config`")
+                raise RuntimeError(
+                    "Could not find Openocd config file. Please pass config file via: `--openocd_config`"
+                )
         else:
             self.openocd_cfg = openocd_cfg
 
@@ -194,15 +218,18 @@ class AtmOpenOCD():
             self.swdif = "FTDI"
             ser_name = "SYDNEY_SERIAL"
 
-        self.env_dict = {
-            "SWDIF": self.swdif,
-            ser_name: str(self.device)
-        }
+        self.env_dict = {"SWDIF": self.swdif, ser_name: str(self.device)}
+        if dl:
+            self.env_dict["SWDBOARD"] = "DL"
 
     @property
     def base_cmd(self):
-        return [self.openocd_bin] + ['-s', os.path.dirname(self.openocd_cfg)] + \
-            ['-s', self.openocd_search] + ['-f', self.openocd_cfg]
+        return (
+            [self.openocd_bin]
+            + ["-s", os.path.dirname(self.openocd_cfg)]
+            + ["-s", self.openocd_search]
+            + ["-f", self.openocd_cfg]
+        )
 
     def execute_cmd(self, cmds, env_var={}):
         """Executes openocd command on device
@@ -218,10 +245,12 @@ class AtmOpenOCD():
         openocd_cmds = ["-c " + s for s in cmds]
 
         with _temp_environ(exec_env):
-            call = subprocess.run(self.base_cmd + ['-c init'] +
-                                  openocd_cmds + ['-c exit'],
-                                  check=True,
-                                  capture_output=True)
+            call = subprocess.run(
+                self.base_cmd + ["-c init"] + openocd_cmds + ["-c exit"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
 
         return (call.returncode, call.stdout, call.stderr)
 
@@ -231,5 +260,7 @@ class AtmOpenOCD():
             device (str): device jlink serial
             base_openocd_cmd (str): base openocd command
         """
-        return self.execute_cmd(["release_reset", "sleep 100", "set_normal_boot"],
-                         env_var={"FTDI_BENIGN_BOOT": '1', "FTDI_HARD_RESET": '1'})
+        return self.execute_cmd(
+            ["release_reset", "sleep 100", "set_normal_boot"],
+            env_var={"FTDI_BENIGN_BOOT": "1", "FTDI_HARD_RESET": "1"},
+        )

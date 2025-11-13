@@ -8,6 +8,5 @@ tests:
       type: one_line
       regex:
         - PWM-based blinky
-    tags: atm33 atm34 no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
+    tags:
+      - no_mcuboot

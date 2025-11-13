@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_RADIO_HAL_COMMON
+	bool "Atmosic radio_hal_common module"
+	default y
+	depends on ATM_ATLC || DTOP_BYPASS

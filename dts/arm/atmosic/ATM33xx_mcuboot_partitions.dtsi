@@ -18,9 +18,9 @@
 &rram0 {
 	partitions {
 #if ATM_SPE_SIZE
-		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+		compatible = "atmosic,fixed_atmwstk", "atmosic,tz-fixed-partitions", "fixed-partitions";
 #else
-		compatible = "fixed-partitions";
+		compatible = "atmosic,fixed_atmwstk", "fixed-partitions";
 #endif
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -63,13 +63,6 @@
 #endif
 			};
 		};
-#ifndef DFU_IN_FLASH
-		// OTA staging area in RRAM, size must equal slot0_partition
-		slot1_partition: partition@ATM_SLOT1_NODE_ID {
-			label = "image-1";
-			reg = <ATM_SLOT1_OFFSET ATM_SLOT1_SIZE>;
-		};
-#endif
 		factory_partition: partition@ATM_FACTORY_NODE_ID {
 			label = "factory";
 			reg = <ATM_FACTORY_OFFSET ATM_FACTORY_SIZE>;
@@ -81,14 +74,13 @@
 #if ATMWSTK_SIZE
 		slot2_partition: partition@ATMWSTK_NODE_ID {
 			label = "image-2";
+			variant = ATMWSTK_VARIANT_STRING;
 			reg = <ATMWSTK_OFFSET ATMWSTK_SIZE>;
 		};
 #endif
 	};
 };
 
-
-#ifdef DFU_IN_FLASH
 &flash0 {
 	partitions {
 		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
@@ -107,4 +99,3 @@
 		};
 	};
 };
-#endif

@@ -28,6 +28,9 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #include "rram.h"
 #include "sec_cache.h"
 #include "sec_reset.h"
+#ifdef SECURE_PROC_ENV
+#include "sec_service.h"
+#endif
 #include "power.h"
 #ifdef CONFIG_ATM_ATLC
 #include "at_lc_regs_core_macro.h"
@@ -35,6 +38,9 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 
 #define PSEQ_INTERNAL_DIRECT_INCLUDE_GUARD
 #include "pseq_internal.h"
+
+/* WURX support */
+bool wurx0_enabled, wurx1_enabled;
 
 /* Debugs - to enable, change undef to define */
 #undef DEBUG_HIBERNATE
@@ -52,10 +58,10 @@ static bool gpio_wakeup_enabled = false;
 #define DT_LPCOMP_WAKEUP_PIN  DT_PROP(PMU_NODE, soc_off_lpcomp_wakeup_pin)
 #define DT_LPCOMP_REF_LEVEL   DT_PROP(PMU_NODE, soc_off_lpcomp_ref_level)
 #endif
-
-
+#ifndef CONFIG_ATM_NO_SPE
 unsigned int secure_irq_lock(void);
 void secure_irq_unlock(unsigned int key);
+#endif
 
 #ifdef CONFIG_PM
 #include "hw_cfg.h"
@@ -67,6 +73,20 @@ void secure_irq_unlock(unsigned int key);
 #define IDLE_FOREVER INT_MAX
 #endif
 
+#ifdef CONFIG_ZTEST
+static bool gpio_pulse_detect_disabled;
+
+void pseq_enable_gpio_pulse_detection(bool enable)
+{
+	gpio_pulse_detect_disabled = !enable;
+}
+
+#define SHOULD_DETECT_GPIO_PULSE() (!gpio_pulse_detect_disabled)
+#else
+#define SHOULD_DETECT_GPIO_PULSE() (true)
+#endif
+
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
 static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 {
 	uint32_t duration;
@@ -89,11 +109,22 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 	// Retain all RAM
 	uint32_t block_sysram = ~0;
 #endif
-	pseq_core_config_retain(duration, block_sysram, false, false);
 
-	pseq_core_enter_retain(false, false);
+#define MAX_TIME_IN_RETAIN (UINT32_MAX / Z_HZ_cyc) * 32000
+	duration = MIN(duration, MAX_TIME_IN_RETAIN);
+
+	pseq_core_config_retain(duration, block_sysram, wurx0_enabled, wurx1_enabled);
+
+#ifdef CONFIG_DETECT_PULSE_IN_RETENTION
+	if (SHOULD_DETECT_GPIO_PULSE()) {
+		pseq_core_gpio_data_snapshot();
+	}
+#endif
+	pseq_core_enter_retain(wurx0_enabled, wurx1_enabled);
 }
+#endif // power_states/retain
 
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
 static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 {
 	uint32_t duration;
@@ -107,7 +138,8 @@ static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 		duration = 0;
 	}
 
-	__UNUSED uint32_t wake_mask = pseq_core_config_hibernate(duration, false, false);
+	__UNUSED uint32_t wake_mask =
+		pseq_core_config_hibernate(duration, wurx0_enabled, wurx1_enabled);
 
 #ifdef DEBUG_HIBERNATE
 	printk("Hibernate duration %" PRId32 ", ise 0x%08" PRIx32 "_%08" PRIx32 "_%08" PRIx32
@@ -121,29 +153,33 @@ static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 #endif // DEBUG_WAKE_MASK
 #endif // DEBUG_HIBERNATE
 
-	pseq_core_enter_hibernation(false, false);
+	pseq_core_enter_hibernation(wurx0_enabled, wurx1_enabled);
 }
+#endif // power_states/hibernate
 
-#define PMU_WKUP_PIN 0x01
-#define PMU_WKUP_LPCOMP 0x02
-#define PMU_WKUP_TIMER 0x04
-#define PMU_WKUP_NA 0x08
-
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 {
 	uint64_t duration;
 
-#if CONFIG_ATM_SOCOFF_DURATION_SEC
-	duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_DURATION_SEC);
-#else
 	if (idle != IDLE_FOREVER) {
 		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
 		/* Convert ticks to lpcycles */
 		duration = atm_to_lpc(Z_HZ_ticks, idle);
-	} else {
-		duration = 0;
-	}
+#if CONFIG_ATM_SOCOFF_MAX_DURATION_SEC
+		/* Apply maximum duration cap if configured */
+		uint64_t max_duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_MAX_DURATION_SEC);
+		if (duration > max_duration) {
+			duration = max_duration;
+		}
 #endif
+	} else {
+#if CONFIG_ATM_SOCOFF_MAX_DURATION_SEC
+		duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_MAX_DURATION_SEC);
+#else
+		duration = 0;
+#endif
+	}
 
 	WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
 	{
@@ -167,6 +203,7 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 
 	pseq_core_enter_soc_off();
 }
+#endif // power_states/soc_off
 
 #ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
 #define PSEQ_USE_FSM
@@ -185,14 +222,9 @@ static void pseq_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 #ifdef PSEQ_USE_FSM
 static uint32_t pseq_pending_fsm_bp_freq;
 #endif
-static uint32_t volatile pseq_pending_pll_bp_freq;
 
 static uint32_t pseq_get_system_freq(void)
 {
-	if (pseq_pending_pll_bp_freq) {
-		return pseq_pending_pll_bp_freq;
-	}
-
 #ifdef PSEQ_USE_FSM
 	if (pseq_pending_fsm_bp_freq) {
 		return pseq_pending_fsm_bp_freq;
@@ -239,51 +271,7 @@ static void pseq_prep_for_xtal_pd(void)
 	pseq_at_clkrstgen_set_bp_hint(ATM_BP_XTAL_FREQ, true, true);
 	CLKRSTGEN_CLKSYNC__CLK16_SRC_INNER__CLR(CMSDK_CLKRSTGEN_NONSECURE->CLKSYNC);
 	CLKRSTGEN_XTAL_BITS1__CLKHPC_EN__CLR(CMSDK_CLKRSTGEN_NONSECURE->XTAL_BITS1);
-}
-
-/*
- * bp_freq is not actually used.  It is supplied as a guard to make sure
- * that the argument has been fetched before this function is called.
- *
- * Locate in RAM - avoid waking RRAM from nap or shutdown
- */
-__ramfunc static void pseq_cancel_pll_ready(uint32_t bp_freq)
-{
-	if (!pseq_pending_pll_bp_freq) {
-		return;
-	}
-
-	pseq_pending_pll_bp_freq = 0;
-	NVIC_DisableIRQ(PLL_READY_IRQn);
-	NVIC_DisableIRQ(XTAL_STABLE_IRQn);
-}
-
-ISR_DIRECT_DECLARE(PLL_READY_Handler)
-{
-	ASSERT_ERR(pseq_pending_pll_bp_freq);
-
-	pseq_at_clkrstgen_set_bp_hint(pseq_pending_pll_bp_freq, false, true);
-	pseq_pending_pll_bp_freq = 0;
-	NVIC_DisableIRQ(PLL_READY_IRQn);
-	return 0;
-}
-
-static void pseq_set_pll_when_ready_body(uint32_t bp_freq)
-{
-	// Set up PLL
-	pseq_at_clkrstgen_set_bp_hint(bp_freq, true, false);
-
-	NVIC_EnableIRQ(PLL_READY_IRQn);
-	// PLL_READY_Handler will commit the change
-}
-
-ISR_DIRECT_DECLARE(XTAL_STABLE_Handler)
-{
-	ASSERT_ERR(pseq_pending_pll_bp_freq);
-
-	pseq_set_pll_when_ready_body(pseq_pending_pll_bp_freq);
-	NVIC_DisableIRQ(XTAL_STABLE_IRQn);
-	return 0;
+	CMSDK_CLKRSTGEN_NONSECURE->PLL_CTRL = 0;
 }
 
 __STATIC_FORCEINLINE void pseq_set_pll_when_ready(uint32_t bp_freq, bool fsm_used)
@@ -299,21 +287,7 @@ __STATIC_FORCEINLINE void pseq_set_pll_when_ready(uint32_t bp_freq, bool fsm_use
 		return;
 	}
 
-	pseq_pending_pll_bp_freq = bp_freq;
-
-	// Clear interrupts
-	CMSDK_CLKRSTGEN_NONSECURE->IRQ_CLR = CLKRSTGEN_IRQ_CLR__XTAL_STABLE_IRQ_CLR__MASK |
-					     CLKRSTGEN_IRQ_CLR__PLL_READY_IRQ_CLR__MASK;
-	NVIC_ClearPendingIRQ(PLL_READY_IRQn);
-	NVIC_ClearPendingIRQ(XTAL_STABLE_IRQn);
-
-	if (CLKRSTGEN_RADIO_STATUS__XTAL_STABLE__READ(CMSDK_CLKRSTGEN_NONSECURE->RADIO_STATUS)) {
-		pseq_set_pll_when_ready_body(bp_freq);
-		return;
-	}
-
-	NVIC_EnableIRQ(XTAL_STABLE_IRQn);
-	// XTAL_STABLE_Handler will continue the change
+	pseq_at_clkrstgen_set_bp_hint(bp_freq, true, true);
 }
 
 #ifdef PSEQ_USE_FSM
@@ -342,8 +316,6 @@ __STATIC_FORCEINLINE void pseq_reset_fsm(void)
  */
 __ramfunc static void pseq_slow_wfi(uint32_t bp_freq, uint32_t slow_freq, bool radio_pd)
 {
-	pseq_cancel_pll_ready(bp_freq);
-
 	if (bp_freq == slow_freq) {
 		// Can't have doubler or pll running across xtal power transition
 		ASSERT_INFO((!radio_pd) || (slow_freq <= ATM_BP_XTAL_FREQ) ||
@@ -497,8 +469,9 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	for (int i = 0; i < INT_REG_NUM; i++) {
 		NVIC->ICER[i] = int_set[i] = NVIC->ISER[i];
 	}
+#ifndef CONFIG_ATM_NO_SPE
 	unsigned int sec_key = secure_irq_lock();
-
+#endif
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
 		mode(idle, int_set);
@@ -510,8 +483,6 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 #ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
 	static uint32_t bp_freq;
 	bp_freq = pseq_get_system_freq();
-
-	pseq_cancel_pll_ready(bp_freq);
 #endif
 
 #ifndef PSEQ_RETAIN_ICACHE
@@ -536,6 +507,7 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	if (bp_freq > ATM_BP_XTAL_FREQ) {
 		// Get off PLL/doubler before xtal is powered down
 		at_clkrstgen_set_bp(ATM_BP_XTAL_FREQ);
+		CMSDK_CLKRSTGEN_NONSECURE->PLL_CTRL = 0;
 	}
 #endif // CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
 
@@ -546,6 +518,11 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	__DSB();
 	__WFI();
 	/* Retain will continue here after wakeup */
+
+	// Settle PLL while RRAM timing is restored
+	if (bp_freq > BP_DOUBLER_FREQ) {
+		CMSDK_CLKRSTGEN_NONSECURE->PLL_CTRL = CLKRSTGEN_PLL_CTRL__PLL_ENABLE__MASK;
+	}
 
 	// Retention powered down ROMC and reset RRAM config
 	rram_adjust_timing(bp_freq / 1000000);
@@ -577,11 +554,19 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	{
 		pseq_core_back_from_retain();
 		pseq_core_back_from_retain_final();
+
+#ifdef CONFIG_DETECT_PULSE_IN_RETENTION
+		if (SHOULD_DETECT_GPIO_PULSE() && !pseq_core_gpio_pulse_restore()) {
+			ASSERT_ERR(0);
+		}
+#endif
 	}
 	WRPR_CTRL_POP();
 
 	// Restore interrupt set enables
+#ifndef CONFIG_ATM_NO_SPE
 	secure_irq_unlock(sec_key);
+#endif
 	for (int i = 0; i < INT_REG_NUM; i++) {
 		NVIC->ISER[i] = int_set[i];
 	}
@@ -630,6 +615,7 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 #endif
 		SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
 		break;
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
 	case PM_STATE_SUSPEND_TO_RAM: {
 		__disable_irq();
 		extern void sys_clock_correct(uint32_t cycles);
@@ -671,15 +657,23 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 		WRPR_CTRL_POP();
 		break;
 	}
+#endif // power_states/retain
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate)) ||                                   \
+	DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 	case PM_STATE_SOFT_OFF:
 		__disable_irq();
 		if (!substate_id) {
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
 			atm_power_pseq_control(atm_power_mode_hibernate);
+#endif
 		} else {
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 			atm_power_pseq_control(atm_power_mode_soc_off);
+#endif
 		}
 		LOG_ERR("SOFT_OFF failed!");
 		break;
+#endif // power_states/hibernate || power_states/soc_off
 	default:
 		LOG_DBG("Unsupported power state %u", state);
 		break;
@@ -692,8 +686,13 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 	switch (state) {
 	case PM_STATE_RUNTIME_IDLE:
 	case PM_STATE_SUSPEND_TO_IDLE:
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
 	case PM_STATE_SUSPEND_TO_RAM:
+#endif
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate)) ||                                   \
+	DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 	case PM_STATE_SOFT_OFF:
+#endif
 		__enable_irq();
 		break;
 	default:
@@ -703,29 +702,32 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 	}
 }
 
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 void atm_pseq_soc_off(uint32_t ticks)
 {
 	__disable_irq();
 	atm_power_pseq_setup(atm_power_mode_soc_off, ticks);
 }
+#endif // power_states/soc_off
 
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
 void atm_pseq_hibernate(uint32_t ticks)
 {
 	__disable_irq();
 
 #ifdef CONFIG_ATM_ATLC
 	// Force ATLC to sleep
+	ATLC_LC_LP_CTRL0__SW_WU_REQ__CLR(CMSDK_ATLC_NONSECURE->LC_LP_CTRL0);
 	CMSDK_ATLC_NONSECURE->LC_LP_CTRL2 = ATLC_LC_LP_CTRL2__SLP_TM__WRITE(0);
 	CMSDK_ATLC_NONSECURE->LC_LP_CTRL3 = ATLC_LC_LP_CTRL3__SLP__MASK;
 #endif
 
 	atm_power_pseq_setup(atm_power_mode_hibernate, ticks);
 }
-
+#endif // power_states/hibernate
 #endif /* CONFIG_PM */
 
 #ifdef SECURE_PROC_ENV
-#define __SPE_NSC __attribute__((cmse_nonsecure_entry)) __attribute__((used))
 __SPE_NSC
 unsigned int secure_irq_lock(void)
 {
@@ -783,10 +785,6 @@ static int atm_power_init(void)
 #ifdef CONFIG_PM
 	// IRQ_PRI_RT will break through irq_lock() to wake WFI in atm_power_pseq_control()
 	NVIC_SetPriority(PSEQ_IRQn, IRQ_PRI_RT);
-#ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
-	IRQ_DIRECT_CONNECT(PLL_READY_IRQn, IRQ_PRI_RT, PLL_READY_Handler, IRQ_ZERO_LATENCY);
-	IRQ_DIRECT_CONNECT(XTAL_STABLE_IRQn, IRQ_PRI_RT, XTAL_STABLE_Handler, IRQ_ZERO_LATENCY);
-#endif
 
 	// Don't let system reboot itself right away - application can decide later
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);

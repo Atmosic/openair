@@ -28,7 +28,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/drivers/i2s/output --sysbuild -T samples.drivers.i2s.output.atm
+   west build -p always -b <BOARD> openair/samples/drivers/i2s/output --sysbuild -T samples.drivers.i2s.output.atm
 
 Flash command:
 

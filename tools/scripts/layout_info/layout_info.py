@@ -22,13 +22,15 @@ filter_list = ["OFFSET"]
 
 SECURE_ADDR_BASE = 0x10000000
 
+
 def auto_int(x):
     """arg parse type that parses all int types when passes as param"""
     return int(x, 0)
 
 
 class PartitionEntry:
-    """ Single Partition """
+    """Single Partition"""
+
     def __init__(self, name: str, lbound: int = -1, size: int = -1):
         """Processed Entry from Parititon Map"""
         self.name = name
@@ -52,7 +54,8 @@ class PartitionEntry:
 
 
 class Partitions:
-    """ All Partitions """
+    """All Partitions"""
+
     def __init__(self) -> None:
         self.paritions = {}
 
@@ -63,19 +66,19 @@ class Partitions:
         return iter(self.paritions)
 
     def keys(self):
-        """ return partition labels """
+        """return partition labels"""
         return self.paritions.keys()
 
     def items(self):
-        """ All partitions in the list """
+        """All partitions in the list"""
         return self.paritions.items()
 
     def values(self):
-        """ return partition size/offsets """
+        """return partition size/offsets"""
         return self.paritions.values()
 
     def add(self, name, value, vtype):
-        """ Add new partition entry  """
+        """Add new partition entry"""
         if name in self.paritions:
             if vtype == "SIZE":
                 self.paritions[name].size = value
@@ -92,7 +95,7 @@ class Partitions:
 
 
 def dump_layout(memory_types, max_spacing=40):
-    """ Display memory block layout """
+    """Display memory block layout"""
     spacing = " " * 5  # Between cards.
     for pieces in itertools.zip_longest(
         *(str(block).splitlines() for block in memory_types)
@@ -102,7 +105,7 @@ def dump_layout(memory_types, max_spacing=40):
 
 
 def handle_partitions(layout_flags):
-    """ Create memory block for all  valid partitions """
+    """Create memory block for all  valid partitions"""
     blocks = []
     for flag in layout_flags:
         if layout_flags[flag].is_valid():
@@ -118,7 +121,7 @@ def handle_partitions(layout_flags):
 
 
 def main():
-    """ Generate human readable partition layout information """
+    """Generate human readable partition layout information"""
     parser = argparse.ArgumentParser(
         description="Visualize memory layout for Atmosic chips"
     )
@@ -141,7 +144,7 @@ def main():
         sys.exit(0)
 
     layout_partitions = Partitions()
-    with open(args.layout_file, 'r', encoding='ascii') as f:
+    with open(args.layout_file, "r", encoding="ascii") as f:
         for flag in f.readlines():
             name, value = flag.strip().split("=")
             try:

@@ -8,7 +8,7 @@
  * @note H4 transport layer was old name for UART transport layer
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */

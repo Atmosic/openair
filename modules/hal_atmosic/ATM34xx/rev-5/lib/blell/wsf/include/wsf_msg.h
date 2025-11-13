@@ -36,7 +36,14 @@ extern "C" {
   Data Types
 **************************************************************************************************/
 
-extern const uint8_t WSF_MSG_HDR_SIZE;     /*!< TBD. */
+/*! \brief Message buf structure */
+typedef struct wsfMsg_tag
+{
+  struct wsfMsg_tag   *pNext;
+  wsfHandlerId_t      handlerId;
+} wsfMsg_t;
+
+#define WSF_MSG_HDR_SIZE  sizeof(wsfMsg_t);
 
 /**************************************************************************************************
   Function Declarations
@@ -131,6 +138,15 @@ void *WsfMsgPeek(wsfQueue_t *pQueue, wsfHandlerId_t *pHandlerId);
  */
 /*************************************************************************************************/
 void *WsfMsgNPeek(wsfQueue_t *pQueue, uint8_t n, wsfHandlerId_t *pHandlerId);
+
+/*************************************************************************************************/
+/*!
+ *  \brief  Get the maximum message size available.
+ *
+ *  \return Maximum message size in bytes (buffer size minus message header), or 0 if no buffers exist.
+ */
+/*************************************************************************************************/
+uint16_t WsfMsgGetMaxSize(void);
 
 /*! \} */    /* WSF_MSG_API */
 

@@ -7,7 +7,7 @@
  *        definitions for use by all modules in RW stack.
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */
@@ -101,6 +101,7 @@ enum co_llcp_op_code
 
 
 
+
     /// Opcode length
     LL_OPCODE_MAX_OPCODE,
     LL_OPCODE_DEBUG = 0xFF,
@@ -161,13 +162,14 @@ enum co_llcp_length
 
 
 
+
     #if (BLE_CIS)
     LL_PDU_LENGTH_MAX                = LL_CIS_REQ_LEN,
     #elif (BLE_PAST)
     LL_PDU_LENGTH_MAX                = LL_PER_SYNC_IND_LEN,
-    #else // !(BLE_CIS || BLE_PAST)
+    #else // !((0) || BLE_CIS || BLE_PAST)
     LL_PDU_LENGTH_MAX                = LE_MIN_OCTETS,
-    #endif // !(BLE_CIS || BLE_PAST)
+    #endif // !((0) || BLE_CIS || BLE_PAST)
 
 };
 
@@ -593,45 +595,45 @@ struct  ll_length_rsp
 /*@TRACE
  * @NO_PAD
 */
-struct  ll_phy_req
+typedef struct ll_phy_req
 {
     /// op_code
     uint8_t    op_code;
-    /// Tx phy selection
+    /// Tx phy selection (see #le_phy_mask enumeration)
     uint8_t    tx_phys;
-    /// Rx phy selection
+    /// Rx phy selection (see #le_phy_mask enumeration)
     uint8_t    rx_phys;
-};
+} ll_phy_req_t;
 
 /// LL_PHY_RSP structure.
 /*@TRACE
  * @NO_PAD
 */
-struct  ll_phy_rsp
+typedef struct ll_phy_rsp
 {
     /// op_code
     uint8_t    op_code;
-    /// Tx phy selection
+    /// Tx phy selection (see #le_phy_mask enumeration)
     uint8_t    tx_phys;
-    /// Rx phy selection
+    /// Rx phy selection (see #le_phy_mask enumeration)
     uint8_t    rx_phys;
-};
+} ll_phy_rsp_t;
 
 /// LL_PHY_UPDATE_IND structure.
 /*@TRACE
  * @NO_PAD
 */
-struct  ll_phy_update_ind
+typedef struct ll_phy_update_ind
 {
     /// op_code
     uint8_t    op_code;
-    /// master to slave phy selected
-    uint8_t    m_to_s_phy;
-    /// slave to master phy selected
-    uint8_t    s_to_m_phy;
+    /// Central to peripheral PHY selected (see #le_phy_mask enumeration)
+    uint8_t    c_to_p_phy;
+    /// Peripheral to central PHY selected (see #le_phy_mask enumeration)
+    uint8_t    p_to_c_phy;
     /// Instant
     uint16_t   instant;
-};
+} ll_phy_update_ind_t;
 
 /// LL_MIN_USED_CHANNELS_IND structure.
 /*@TRACE
@@ -777,7 +779,7 @@ struct  ll_cis_req
     uint16_t        iso_interval;
     /// bit[0:23] Minimum time in microseconds between the start of the connection event with the
     /// connection event counter = connEventCount and the first CIS anchor point.
-    /// It shall have a value between 500µs and connInterval
+    /// It shall have a value between 500us and connInterval
     uint32_t        cis_offset_min;
     /// bit[0:23] Maximum time in microseconds between the start of the connection event with the
     /// connection event counter = connEventCount and the first CIS anchor point.
@@ -789,6 +791,7 @@ struct  ll_cis_req
     /// currEvent - 2^14 < connEventCount < currEvent + 2^14 (modulo 65536), where currEvent is the counter value for
     /// the connection event where the LL_CIS_REQ PDU is being transmitted (or retransmitted).
     uint16_t        conn_event_cnt;
+
 };
 
 /// CIS Request Bit Field parameters
@@ -821,7 +824,7 @@ struct  ll_cis_rsp
     uint8_t         op_code;
     /// bit[0:23] Minimum time in microseconds between the start of the connection event with the
     /// connection event counter = connEventCount and the first CIS anchor point.
-    /// It shall have a value between 400µs and connInterval
+    /// It shall have a value between 400us and connInterval
     uint32_t        cis_offset_min;
     /// bit[0:23] Maximum time in microseconds between the start of the connection event with the
     /// connection event counter = connEventCount and the first CIS anchor point.
@@ -859,6 +862,7 @@ struct  ll_cis_ind
     /// currEvent 2^14 < connEventCount < currEvent + 2^14 (modulo 65536), where currEvent is the counter value
     /// for the connection event where the LL_CIS_IND PDU is being transmitted (or retransmitted).
     uint16_t        conn_event_cnt;
+
 };
 
 /// LL_CIS_TERMINATE_IND structure.
@@ -1060,6 +1064,8 @@ union llcp_pdu
     //@trc_union op_code == LL_PWR_CHANGE_IND_OPCODE
     struct ll_pwr_change_ind            pwr_change_ind;
     #endif // BLE_PWR_CTRL
+
+
 
 
 

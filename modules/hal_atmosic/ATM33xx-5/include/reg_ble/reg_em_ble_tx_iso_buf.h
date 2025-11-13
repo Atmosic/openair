@@ -28,12 +28,12 @@
 #define EM_BLE_TXISOBUFSETUP_INDEX  0x00000000
 #define EM_BLE_TXISOBUFSETUP_RESET  0x00000000
 
-__INLINE uint16_t em_ble_txisobufsetup_get(int elt_idx)
+__RWIP_INLINE uint16_t em_ble_txisobufsetup_get(int elt_idx)
 {
     return EM_BLE_RD(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE);
 }
 
-__INLINE void em_ble_txisobufsetup_set(int elt_idx, uint16_t value)
+__RWIP_INLINE void em_ble_txisobufsetup_set(int elt_idx, uint16_t value)
 {
     EM_BLE_WR(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE, value);
 }
@@ -52,7 +52,7 @@ __INLINE void em_ble_txisobufsetup_set(int elt_idx, uint16_t value)
 #define EM_BLE_TXISOLLID_RST      0x0
 #define EM_BLE_TXISOLENGTH_RST    0x0
 
-__INLINE void em_ble_txisobufsetup_pack(int elt_idx, uint8_t txisomute, uint8_t txisollid, uint8_t txisolength)
+__RWIP_INLINE void em_ble_txisobufsetup_pack(int elt_idx, uint8_t txisomute, uint8_t txisollid, uint8_t txisolength)
 {
     ASSERT_ERR((((uint16_t)txisomute << 15) & ~((uint16_t)0x00008000)) == 0);
     ASSERT_ERR((((uint16_t)txisollid << 8) & ~((uint16_t)0x00000300)) == 0);
@@ -60,7 +60,7 @@ __INLINE void em_ble_txisobufsetup_pack(int elt_idx, uint8_t txisomute, uint8_t 
     EM_BLE_WR(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE,  ((uint16_t)txisomute << 15) | ((uint16_t)txisollid << 8) | ((uint16_t)txisolength << 0));
 }
 
-__INLINE void em_ble_txisobufsetup_unpack(int elt_idx, uint8_t* txisomute, uint8_t* txisollid, uint8_t* txisolength)
+__RWIP_INLINE void em_ble_txisobufsetup_unpack(int elt_idx, uint8_t* txisomute, uint8_t* txisollid, uint8_t* txisolength)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE);
 
@@ -69,37 +69,37 @@ __INLINE void em_ble_txisobufsetup_unpack(int elt_idx, uint8_t* txisomute, uint8
     *txisolength = (localVal & ((uint16_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t em_ble_txisobufsetup_txisomute_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_txisobufsetup_txisomute_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE);
     return ((localVal & ((uint16_t)0x00008000)) >> 15);
 }
 
-__INLINE void em_ble_txisobufsetup_txisomute_setf(int elt_idx, uint8_t txisomute)
+__RWIP_INLINE void em_ble_txisobufsetup_txisomute_setf(int elt_idx, uint8_t txisomute)
 {
     ASSERT_ERR((((uint16_t)txisomute << 15) & ~((uint16_t)0x00008000)) == 0);
     EM_BLE_WR(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE, (EM_BLE_RD(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE) & ~((uint16_t)0x00008000)) | ((uint16_t)txisomute << 15));
 }
 
-__INLINE uint8_t em_ble_txisobufsetup_txisollid_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_txisobufsetup_txisollid_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE);
     return ((localVal & ((uint16_t)0x00000300)) >> 8);
 }
 
-__INLINE void em_ble_txisobufsetup_txisollid_setf(int elt_idx, uint8_t txisollid)
+__RWIP_INLINE void em_ble_txisobufsetup_txisollid_setf(int elt_idx, uint8_t txisollid)
 {
     ASSERT_ERR((((uint16_t)txisollid << 8) & ~((uint16_t)0x00000300)) == 0);
     EM_BLE_WR(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE, (EM_BLE_RD(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE) & ~((uint16_t)0x00000300)) | ((uint16_t)txisollid << 8));
 }
 
-__INLINE uint8_t em_ble_txisobufsetup_txisolength_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_txisobufsetup_txisolength_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE);
     return ((localVal & ((uint16_t)0x000000FF)) >> 0);
 }
 
-__INLINE void em_ble_txisobufsetup_txisolength_setf(int elt_idx, uint8_t txisolength)
+__RWIP_INLINE void em_ble_txisobufsetup_txisolength_setf(int elt_idx, uint8_t txisolength)
 {
     ASSERT_ERR((((uint16_t)txisolength << 0) & ~((uint16_t)0x000000FF)) == 0);
     EM_BLE_WR(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE, (EM_BLE_RD(EM_BLE_TXISOBUFSETUP_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE) & ~((uint16_t)0x000000FF)) | ((uint16_t)txisolength << 0));
@@ -118,13 +118,13 @@ __INLINE void em_ble_txisobufsetup_txisolength_setf(int elt_idx, uint8_t txisole
 #define EM_BLE_TXISODATABUF_RESET  0x00000000
 #define EM_BLE_TXISODATABUF_COUNT  129
 
-__INLINE uint16_t em_ble_txisodatabuf_get(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_txisodatabuf_get(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 128);
     return EM_BLE_RD(EM_BLE_TXISODATABUF_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE + reg_idx * 2);
 }
 
-__INLINE void em_ble_txisodatabuf_set(int elt_idx, int reg_idx, uint16_t value)
+__RWIP_INLINE void em_ble_txisodatabuf_set(int elt_idx, int reg_idx, uint16_t value)
 {
     ASSERT_ERR(reg_idx <= 128);
     EM_BLE_WR(EM_BLE_TXISODATABUF_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE + reg_idx * 2, value);
@@ -137,7 +137,7 @@ __INLINE void em_ble_txisodatabuf_set(int elt_idx, int reg_idx, uint16_t value)
 
 #define EM_BLE_TXISODATABUF_RST    0x0
 
-__INLINE uint16_t em_ble_txisodatabuf_getf(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_txisodatabuf_getf(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 128);
     uint16_t localVal = EM_BLE_RD(EM_BLE_TXISODATABUF_ADDR + elt_idx * REG_EM_BLE_TX_ISO_BUF_SIZE + reg_idx * 2);
@@ -145,7 +145,7 @@ __INLINE uint16_t em_ble_txisodatabuf_getf(int elt_idx, int reg_idx)
     return (localVal >> 0);
 }
 
-__INLINE void em_ble_txisodatabuf_setf(int elt_idx, int reg_idx, uint16_t txisodatabuf)
+__RWIP_INLINE void em_ble_txisodatabuf_setf(int elt_idx, int reg_idx, uint16_t txisodatabuf)
 {
     ASSERT_ERR(reg_idx <= 128);
     ASSERT_ERR((((uint16_t)txisodatabuf << 0) & ~((uint16_t)0x0000FFFF)) == 0);

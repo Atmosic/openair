@@ -1,32 +1,19 @@
 tests:
   tests.subsys.dfu.img_util.atm.mcuboot:
     sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - PROJECT EXECUTION SUCCESSFUL
-    tags: atm33 atm34 mcuboot
+    tags:
+      - mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_CONFIG_ATMWSTK_FULL=y
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
-  tests.subsys.dfu.img_util.atm.mcuboot.rram_only:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  tests.subsys.dfu.img_util.atm.mcuboot.overwrite:
     sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - PROJECT EXECUTION SUCCESSFUL
-    tags: atm33 mcuboot
+    tags:
+      - mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
-      - SB_CONFIG_ATMWSTK_FULL=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM33"
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

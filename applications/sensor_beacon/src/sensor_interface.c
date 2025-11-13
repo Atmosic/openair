@@ -27,7 +27,7 @@ int sensor_interface_init(void)
 	LOG_INF("ENS210 sensor initialized");
 
 	/* Give ENS210 time to stabilize after initialization */
-	k_sleep(K_MSEC(50));
+	k_sleep(K_MSEC(200));
 
 	__ASSERT(lis_dev, "Cannot get LIS2DH device");
 	if (!device_is_ready(lis_dev)) {

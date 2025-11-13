@@ -15,6 +15,11 @@
 #ifndef _ATMOSIC_ATM_ATM34XX_PARTITION_DEFS_H_
 #define _ATMOSIC_ATM_ATM34XX_PARTITION_DEFS_H_
 
+#ifdef ATM_NO_TZ
+#undef ATM_SPE_SIZE
+#define ATM_SPE_SIZE 0
+#endif
+
 #define RUN_APP_NORMAL 0
 #define RUN_APP_IN_FLASH 1
 #define RUN_APP_IN_FLASH_SPLIT 2
@@ -65,7 +70,7 @@
 
 #ifdef TEST_STORAGE_IN_FLASH
 // for testing storage in flash
-#define ATM_TEST_STORAGE_SIZE 0x4000
+#define ATM_TEST_STORAGE_SIZE 0x8000
 #else
 #define ATM_TEST_STORAGE_SIZE 0
 #endif
@@ -81,8 +86,8 @@
 /* this option gives all of RRAM to the SPE (used for testing) */
 #define ATM_SPE_SIZE (ATM_RRAM_AVAIL_SIZE - ATM_TOTAL_STORAGE_SIZE)
 #else
-#define ATM_SPE_SIZE (18 * 1024)
-#endif
+#define ATM_SPE_SIZE (20 * 1024)
+#endif // (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
 #endif // ATM_SPE_SIZE
 
 #if ((ATM_SPE_SIZE % ATM_RRAM_BLOCK_SIZE) != 0)

@@ -1,10 +1,13 @@
-# Copyright (c) 2022-2024 Atmosic
+# Copyright (c) 2022-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
+common:
+  tags:
+    - requires_trustzone
+    - introduction
 sample:
-  description: ATM33xx SPE
+  description: Openair SPE
   name: Secure Processing Env. sample
 tests:
-  sample.spe:
-    tags: introduction
+  sample.spe: {}

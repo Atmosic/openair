@@ -24,6 +24,7 @@ target_sources(app PRIVATE
   ../src/sensor_data.c
   ../src/battery_monitor.c
   ../src/beacon_adv.c
+  ../src/led_button_ctrl.c
 )
 
 # Conditionally include sensor sources

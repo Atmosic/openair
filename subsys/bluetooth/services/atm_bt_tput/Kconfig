@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Atmosic
+
+config ATM_BT_TPUTP
+	bool "Support for BLE throughput service"
+
+config ATM_BT_TPUTP_LOG_LEVEL
+	int "BLE TPUT log level"
+	default 3  # LOG_LEVEL_INF
+	range 0 4
+
+config ATM_TPUT_TEST_DATA_LEN_PER_PACKET
+	int "Data length per packet in ble throughput test"
+	default 243
+
+config ATM_TPUT_TEST_PACKET_COUNT
+	int "Numer of packets in ble throughput test"
+	default 1000
+
+if ATM_BT_TPUTP
+
+module = ATM_BT_TPUTP
+module-str = ATM_BT_TPUTP
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ATM_BT_TPUTP

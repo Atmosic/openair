@@ -36,6 +36,9 @@ config RAS_SECURE_FORCE_DISCONN
 config RAS_ACTIVE_SECURE_CHANGE
 	bool "Server would send secure request as connected"
 
+config RAS_PTS_FAKE_CS_DATA
+	bool "Generate fake cs data to pass PTS test"
+
 module = BT_RAS
 module-str = BT_RAS
 source "subsys/logging/Kconfig.template.log_config"
@@ -62,6 +65,16 @@ config RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC
 config RAS_CLIENT_REAL_TIME_RD
 	bool "Support Real-time Ranging Data Mode"
 	default y
+
+config RAS_CLIENT_SHELL
+	bool "Support Shell commands for RAS Client"
+	default n
+	select SHELL
+	select BT_PRIVATE_SHELL
+	help
+	  Enable shell commands for RAS Client operations.
+	  This provides interactive shell commands for testing
+	  and debugging RAS client functionality.
 
 module = BT_RAS_CLIENT
 module-str = BT_RAS_CLIENT

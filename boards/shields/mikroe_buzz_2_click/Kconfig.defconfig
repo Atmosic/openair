@@ -1,0 +1,12 @@
+# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_MIKROE_BUZZ_2_CLICK
+
+config PWM
+	default y
+
+config ATM_BUZZER
+	default y
+
+endif # SHIELD_MIKROE_BUZZ_2_CLICK

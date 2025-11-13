@@ -86,17 +86,8 @@ int boot_img_install_stat_hook(int image_index, int slot, int *img_install_stat)
 #else
 // In swap mode we need to keep the trailer unlocked in order to confirm the
 // the image. The trailer should not share the same RRAM block as the
-// slot0 image (NSPE) since it will be locked.
-#define SLOT0_END_OFFSET \
-    (DT_REG_ADDR(DT_NODELABEL(slot0_partition)) + \
-	DT_REG_SIZE(DT_NODELABEL(slot0_partition)))
-
-#define NSPE_END_OFFSET \
-    (DT_REG_ADDR(DT_NODELABEL(nspe_partition)) + \
-	DT_REG_SIZE(DT_NODELABEL(nspe_partition)))
-
-// the trailer is in the gap between the NSPE and the end of the slot.
-#define IMG_TRAILER_RSVD_SZ (SLOT0_END_OFFSET - NSPE_END_OFFSET)
+// slot0 image since it will be locked.
+#define IMG_TRAILER_RSVD_SZ DT_REG_SIZE(DT_NODELABEL(slot0_trailer))
 
 STATIC_ASSERT(IMG_TRAILER_RSVD_SZ > 0,
     "Slot locking requires a reserved trailer, please check SLOT0 trailer reservation");

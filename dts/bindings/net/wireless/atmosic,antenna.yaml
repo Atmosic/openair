@@ -63,3 +63,8 @@ properties:
   mdm-ant-idle:
     type: int
     description: Antenna table when Idle
+
+  rf-delay-one-eighth-ns:
+    type: int
+    description: RF delay with a unit of 1/8 ns
+    default: 30

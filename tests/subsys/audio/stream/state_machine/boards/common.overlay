@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		i2s-node0 = &i2s;
+	};
+};
+
+i2s_tx: &i2s {
+	status = "okay";
+	sck-out-pin = <18>;
+	ws-out-pin = <19>;
+	sd-out-pin = <20>;
+};

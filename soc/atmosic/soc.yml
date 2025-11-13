@@ -1,9 +1,6 @@
 family:
   - name: atmosic
     series:
-      - name: ATMx2
-        socs:
-          - name: ATMx2xx-x1x
       - name: ATM33
         socs:
           - name: ATM33xx-5
@@ -19,7 +16,36 @@ runners:
           - atmisp
         groups:
           - qualifiers:
-              - ATMx2xx-x1x
+              - ATM33xx-5
+              - ATM33xx-5/ns
+              - ATM33xx-5/no_TZ
+              - ATM34xx-2
+              - ATM34xx-2/ns
+              - ATM34xx-2/no_TZ
+              - ATM34xx-5
+              - ATM34xx-5/ns
+              - ATM34xx-5/no_TZ
+    '--erase_rram':
+      - run: first
+        runners:
+          - atmisp
+        groups:
+          - qualifiers:
+              - ATM33xx-5
+              - ATM33xx-5/ns
+              - ATM33xx-5/no_TZ
+              - ATM34xx-2
+              - ATM34xx-2/ns
+              - ATM34xx-2/no_TZ
+              - ATM34xx-5
+              - ATM34xx-5/ns
+              - ATM34xx-5/no_TZ
+    '--erase_flash':
+      - run: first
+        runners:
+          - atmisp
+        groups:
+          - qualifiers:
               - ATM33xx-5
               - ATM33xx-5/ns
               - ATM33xx-5/no_TZ

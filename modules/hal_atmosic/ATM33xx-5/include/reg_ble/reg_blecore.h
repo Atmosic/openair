@@ -47,12 +47,12 @@
 #define BLE_RWBLECNTL_INDEX  0x00000000
 #define BLE_RWBLECNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_rwblecntl_get(void)
+__RWIP_INLINE uint32_t ble_rwblecntl_get(void)
 {
     return REG_BLE_RD(BLE_RWBLECNTL_ADDR);
 }
 
-__INLINE void ble_rwblecntl_set(uint32_t value)
+__RWIP_INLINE void ble_rwblecntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, value);
 }
@@ -133,7 +133,7 @@ __INLINE void ble_rwblecntl_set(uint32_t value)
 #define BLE_RWBLE_EN_RST                 0x0
 #define BLE_RXWINSZDEF_RST               0x0
 
-__INLINE void ble_rwblecntl_pack(uint8_t mastersoftrst, uint8_t mastertgsoftrst, uint8_t regsoftrst, uint8_t radiocntlsoftrst, uint8_t swintreq, uint8_t rftestabort, uint8_t advertabort, uint8_t scanabort, uint8_t ciedsb, uint8_t npidsb, uint8_t mddsb, uint8_t sndsb, uint8_t nesndsb, uint8_t cryptdsb, uint8_t lrpmapdsb, uint8_t lrfecdsb, uint8_t whitdsb, uint8_t crcdsb, uint8_t hopremapdsb, uint8_t rxcteerrretxen, uint8_t anonymousadvfilten, uint8_t advertfilten, uint8_t rwbleen, uint8_t rxwinszdef)
+__RWIP_INLINE void ble_rwblecntl_pack(uint8_t mastersoftrst, uint8_t mastertgsoftrst, uint8_t regsoftrst, uint8_t radiocntlsoftrst, uint8_t swintreq, uint8_t rftestabort, uint8_t advertabort, uint8_t scanabort, uint8_t ciedsb, uint8_t npidsb, uint8_t mddsb, uint8_t sndsb, uint8_t nesndsb, uint8_t cryptdsb, uint8_t lrpmapdsb, uint8_t lrfecdsb, uint8_t whitdsb, uint8_t crcdsb, uint8_t hopremapdsb, uint8_t rxcteerrretxen, uint8_t anonymousadvfilten, uint8_t advertfilten, uint8_t rwbleen, uint8_t rxwinszdef)
 {
     ASSERT_ERR((((uint32_t)mastersoftrst << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)mastertgsoftrst << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -162,7 +162,7 @@ __INLINE void ble_rwblecntl_pack(uint8_t mastersoftrst, uint8_t mastertgsoftrst,
     REG_BLE_WR(BLE_RWBLECNTL_ADDR,  ((uint32_t)mastersoftrst << 31) | ((uint32_t)mastertgsoftrst << 30) | ((uint32_t)regsoftrst << 29) | ((uint32_t)radiocntlsoftrst << 28) | ((uint32_t)swintreq << 27) | ((uint32_t)rftestabort << 26) | ((uint32_t)advertabort << 25) | ((uint32_t)scanabort << 24) | ((uint32_t)ciedsb << 22) | ((uint32_t)npidsb << 21) | ((uint32_t)mddsb << 20) | ((uint32_t)sndsb << 19) | ((uint32_t)nesndsb << 18) | ((uint32_t)cryptdsb << 17) | ((uint32_t)lrpmapdsb << 16) | ((uint32_t)lrfecdsb << 15) | ((uint32_t)whitdsb << 14) | ((uint32_t)crcdsb << 13) | ((uint32_t)hopremapdsb << 12) | ((uint32_t)rxcteerrretxen << 11) | ((uint32_t)anonymousadvfilten << 10) | ((uint32_t)advertfilten << 9) | ((uint32_t)rwbleen << 8) | ((uint32_t)rxwinszdef << 0));
 }
 
-__INLINE void ble_rwblecntl_unpack(uint8_t* mastersoftrst, uint8_t* mastertgsoftrst, uint8_t* regsoftrst, uint8_t* radiocntlsoftrst, uint8_t* swintreq, uint8_t* rftestabort, uint8_t* advertabort, uint8_t* scanabort, uint8_t* ciedsb, uint8_t* npidsb, uint8_t* mddsb, uint8_t* sndsb, uint8_t* nesndsb, uint8_t* cryptdsb, uint8_t* lrpmapdsb, uint8_t* lrfecdsb, uint8_t* whitdsb, uint8_t* crcdsb, uint8_t* hopremapdsb, uint8_t* rxcteerrretxen, uint8_t* anonymousadvfilten, uint8_t* advertfilten, uint8_t* rwbleen, uint8_t* rxwinszdef)
+__RWIP_INLINE void ble_rwblecntl_unpack(uint8_t* mastersoftrst, uint8_t* mastertgsoftrst, uint8_t* regsoftrst, uint8_t* radiocntlsoftrst, uint8_t* swintreq, uint8_t* rftestabort, uint8_t* advertabort, uint8_t* scanabort, uint8_t* ciedsb, uint8_t* npidsb, uint8_t* mddsb, uint8_t* sndsb, uint8_t* nesndsb, uint8_t* cryptdsb, uint8_t* lrpmapdsb, uint8_t* lrfecdsb, uint8_t* whitdsb, uint8_t* crcdsb, uint8_t* hopremapdsb, uint8_t* rxcteerrretxen, uint8_t* anonymousadvfilten, uint8_t* advertfilten, uint8_t* rwbleen, uint8_t* rxwinszdef)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
 
@@ -192,289 +192,289 @@ __INLINE void ble_rwblecntl_unpack(uint8_t* mastersoftrst, uint8_t* mastertgsoft
     *rxwinszdef = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ble_rwblecntl_master_soft_rst_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_master_soft_rst_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_rwblecntl_master_soft_rst_setf(uint8_t mastersoftrst)
+__RWIP_INLINE void ble_rwblecntl_master_soft_rst_setf(uint8_t mastersoftrst)
 {
     ASSERT_ERR((((uint32_t)mastersoftrst << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)mastersoftrst << 31));
 }
 
-__INLINE uint8_t ble_rwblecntl_master_tgsoft_rst_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_master_tgsoft_rst_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ble_rwblecntl_master_tgsoft_rst_setf(uint8_t mastertgsoftrst)
+__RWIP_INLINE void ble_rwblecntl_master_tgsoft_rst_setf(uint8_t mastertgsoftrst)
 {
     ASSERT_ERR((((uint32_t)mastertgsoftrst << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)mastertgsoftrst << 30));
 }
 
-__INLINE uint8_t ble_rwblecntl_reg_soft_rst_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_reg_soft_rst_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x20000000)) >> 29);
 }
 
-__INLINE void ble_rwblecntl_reg_soft_rst_setf(uint8_t regsoftrst)
+__RWIP_INLINE void ble_rwblecntl_reg_soft_rst_setf(uint8_t regsoftrst)
 {
     ASSERT_ERR((((uint32_t)regsoftrst << 29) & ~((uint32_t)0x20000000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x20000000)) | ((uint32_t)regsoftrst << 29));
 }
 
-__INLINE uint8_t ble_rwblecntl_radiocntl_soft_rst_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_radiocntl_soft_rst_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x10000000)) >> 28);
 }
 
-__INLINE void ble_rwblecntl_radiocntl_soft_rst_setf(uint8_t radiocntlsoftrst)
+__RWIP_INLINE void ble_rwblecntl_radiocntl_soft_rst_setf(uint8_t radiocntlsoftrst)
 {
     ASSERT_ERR((((uint32_t)radiocntlsoftrst << 28) & ~((uint32_t)0x10000000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x10000000)) | ((uint32_t)radiocntlsoftrst << 28));
 }
 
-__INLINE uint8_t ble_rwblecntl_swint_req_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_swint_req_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x08000000)) >> 27);
 }
 
-__INLINE void ble_rwblecntl_swint_req_setf(uint8_t swintreq)
+__RWIP_INLINE void ble_rwblecntl_swint_req_setf(uint8_t swintreq)
 {
     ASSERT_ERR((((uint32_t)swintreq << 27) & ~((uint32_t)0x08000000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x08000000)) | ((uint32_t)swintreq << 27));
 }
 
-__INLINE uint8_t ble_rwblecntl_rftest_abort_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_rftest_abort_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x04000000)) >> 26);
 }
 
-__INLINE void ble_rwblecntl_rftest_abort_setf(uint8_t rftestabort)
+__RWIP_INLINE void ble_rwblecntl_rftest_abort_setf(uint8_t rftestabort)
 {
     ASSERT_ERR((((uint32_t)rftestabort << 26) & ~((uint32_t)0x04000000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x04000000)) | ((uint32_t)rftestabort << 26));
 }
 
-__INLINE uint8_t ble_rwblecntl_advert_abort_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_advert_abort_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x02000000)) >> 25);
 }
 
-__INLINE void ble_rwblecntl_advert_abort_setf(uint8_t advertabort)
+__RWIP_INLINE void ble_rwblecntl_advert_abort_setf(uint8_t advertabort)
 {
     ASSERT_ERR((((uint32_t)advertabort << 25) & ~((uint32_t)0x02000000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x02000000)) | ((uint32_t)advertabort << 25));
 }
 
-__INLINE uint8_t ble_rwblecntl_scan_abort_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_scan_abort_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x01000000)) >> 24);
 }
 
-__INLINE void ble_rwblecntl_scan_abort_setf(uint8_t scanabort)
+__RWIP_INLINE void ble_rwblecntl_scan_abort_setf(uint8_t scanabort)
 {
     ASSERT_ERR((((uint32_t)scanabort << 24) & ~((uint32_t)0x01000000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x01000000)) | ((uint32_t)scanabort << 24));
 }
 
-__INLINE uint8_t ble_rwblecntl_cie_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_cie_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00400000)) >> 22);
 }
 
-__INLINE void ble_rwblecntl_cie_dsb_setf(uint8_t ciedsb)
+__RWIP_INLINE void ble_rwblecntl_cie_dsb_setf(uint8_t ciedsb)
 {
     ASSERT_ERR((((uint32_t)ciedsb << 22) & ~((uint32_t)0x00400000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00400000)) | ((uint32_t)ciedsb << 22));
 }
 
-__INLINE uint8_t ble_rwblecntl_npi_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_npi_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00200000)) >> 21);
 }
 
-__INLINE void ble_rwblecntl_npi_dsb_setf(uint8_t npidsb)
+__RWIP_INLINE void ble_rwblecntl_npi_dsb_setf(uint8_t npidsb)
 {
     ASSERT_ERR((((uint32_t)npidsb << 21) & ~((uint32_t)0x00200000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00200000)) | ((uint32_t)npidsb << 21));
 }
 
-__INLINE uint8_t ble_rwblecntl_md_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_md_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00100000)) >> 20);
 }
 
-__INLINE void ble_rwblecntl_md_dsb_setf(uint8_t mddsb)
+__RWIP_INLINE void ble_rwblecntl_md_dsb_setf(uint8_t mddsb)
 {
     ASSERT_ERR((((uint32_t)mddsb << 20) & ~((uint32_t)0x00100000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00100000)) | ((uint32_t)mddsb << 20));
 }
 
-__INLINE uint8_t ble_rwblecntl_sn_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_sn_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00080000)) >> 19);
 }
 
-__INLINE void ble_rwblecntl_sn_dsb_setf(uint8_t sndsb)
+__RWIP_INLINE void ble_rwblecntl_sn_dsb_setf(uint8_t sndsb)
 {
     ASSERT_ERR((((uint32_t)sndsb << 19) & ~((uint32_t)0x00080000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00080000)) | ((uint32_t)sndsb << 19));
 }
 
-__INLINE uint8_t ble_rwblecntl_nesn_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_nesn_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00040000)) >> 18);
 }
 
-__INLINE void ble_rwblecntl_nesn_dsb_setf(uint8_t nesndsb)
+__RWIP_INLINE void ble_rwblecntl_nesn_dsb_setf(uint8_t nesndsb)
 {
     ASSERT_ERR((((uint32_t)nesndsb << 18) & ~((uint32_t)0x00040000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00040000)) | ((uint32_t)nesndsb << 18));
 }
 
-__INLINE uint8_t ble_rwblecntl_crypt_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_crypt_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00020000)) >> 17);
 }
 
-__INLINE void ble_rwblecntl_crypt_dsb_setf(uint8_t cryptdsb)
+__RWIP_INLINE void ble_rwblecntl_crypt_dsb_setf(uint8_t cryptdsb)
 {
     ASSERT_ERR((((uint32_t)cryptdsb << 17) & ~((uint32_t)0x00020000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00020000)) | ((uint32_t)cryptdsb << 17));
 }
 
-__INLINE uint8_t ble_rwblecntl_lrpmap_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_lrpmap_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00010000)) >> 16);
 }
 
-__INLINE void ble_rwblecntl_lrpmap_dsb_setf(uint8_t lrpmapdsb)
+__RWIP_INLINE void ble_rwblecntl_lrpmap_dsb_setf(uint8_t lrpmapdsb)
 {
     ASSERT_ERR((((uint32_t)lrpmapdsb << 16) & ~((uint32_t)0x00010000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00010000)) | ((uint32_t)lrpmapdsb << 16));
 }
 
-__INLINE uint8_t ble_rwblecntl_lrfec_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_lrfec_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ble_rwblecntl_lrfec_dsb_setf(uint8_t lrfecdsb)
+__RWIP_INLINE void ble_rwblecntl_lrfec_dsb_setf(uint8_t lrfecdsb)
 {
     ASSERT_ERR((((uint32_t)lrfecdsb << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)lrfecdsb << 15));
 }
 
-__INLINE uint8_t ble_rwblecntl_whit_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_whit_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00004000)) >> 14);
 }
 
-__INLINE void ble_rwblecntl_whit_dsb_setf(uint8_t whitdsb)
+__RWIP_INLINE void ble_rwblecntl_whit_dsb_setf(uint8_t whitdsb)
 {
     ASSERT_ERR((((uint32_t)whitdsb << 14) & ~((uint32_t)0x00004000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00004000)) | ((uint32_t)whitdsb << 14));
 }
 
-__INLINE uint8_t ble_rwblecntl_crc_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_crc_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00002000)) >> 13);
 }
 
-__INLINE void ble_rwblecntl_crc_dsb_setf(uint8_t crcdsb)
+__RWIP_INLINE void ble_rwblecntl_crc_dsb_setf(uint8_t crcdsb)
 {
     ASSERT_ERR((((uint32_t)crcdsb << 13) & ~((uint32_t)0x00002000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00002000)) | ((uint32_t)crcdsb << 13));
 }
 
-__INLINE uint8_t ble_rwblecntl_hop_remap_dsb_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_hop_remap_dsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00001000)) >> 12);
 }
 
-__INLINE void ble_rwblecntl_hop_remap_dsb_setf(uint8_t hopremapdsb)
+__RWIP_INLINE void ble_rwblecntl_hop_remap_dsb_setf(uint8_t hopremapdsb)
 {
     ASSERT_ERR((((uint32_t)hopremapdsb << 12) & ~((uint32_t)0x00001000)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00001000)) | ((uint32_t)hopremapdsb << 12));
 }
 
-__INLINE uint8_t ble_rwblecntl_rxcteerr_retx_en_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_rxcteerr_retx_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000800)) >> 11);
 }
 
-__INLINE void ble_rwblecntl_rxcteerr_retx_en_setf(uint8_t rxcteerrretxen)
+__RWIP_INLINE void ble_rwblecntl_rxcteerr_retx_en_setf(uint8_t rxcteerrretxen)
 {
     ASSERT_ERR((((uint32_t)rxcteerrretxen << 11) & ~((uint32_t)0x00000800)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00000800)) | ((uint32_t)rxcteerrretxen << 11));
 }
 
-__INLINE uint8_t ble_rwblecntl_anonymous_adv_filt_en_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_anonymous_adv_filt_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000400)) >> 10);
 }
 
-__INLINE void ble_rwblecntl_anonymous_adv_filt_en_setf(uint8_t anonymousadvfilten)
+__RWIP_INLINE void ble_rwblecntl_anonymous_adv_filt_en_setf(uint8_t anonymousadvfilten)
 {
     ASSERT_ERR((((uint32_t)anonymousadvfilten << 10) & ~((uint32_t)0x00000400)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00000400)) | ((uint32_t)anonymousadvfilten << 10));
 }
 
-__INLINE uint8_t ble_rwblecntl_advertfilt_en_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_advertfilt_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000200)) >> 9);
 }
 
-__INLINE void ble_rwblecntl_advertfilt_en_setf(uint8_t advertfilten)
+__RWIP_INLINE void ble_rwblecntl_advertfilt_en_setf(uint8_t advertfilten)
 {
     ASSERT_ERR((((uint32_t)advertfilten << 9) & ~((uint32_t)0x00000200)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00000200)) | ((uint32_t)advertfilten << 9));
 }
 
-__INLINE uint8_t ble_rwblecntl_rwble_en_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_rwble_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000100)) >> 8);
 }
 
-__INLINE void ble_rwblecntl_rwble_en_setf(uint8_t rwbleen)
+__RWIP_INLINE void ble_rwblecntl_rwble_en_setf(uint8_t rwbleen)
 {
     ASSERT_ERR((((uint32_t)rwbleen << 8) & ~((uint32_t)0x00000100)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x00000100)) | ((uint32_t)rwbleen << 8));
 }
 
-__INLINE uint8_t ble_rwblecntl_rxwinszdef_getf(void)
+__RWIP_INLINE uint8_t ble_rwblecntl_rxwinszdef_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECNTL_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ble_rwblecntl_rxwinszdef_setf(uint8_t rxwinszdef)
+__RWIP_INLINE void ble_rwblecntl_rxwinszdef_setf(uint8_t rxwinszdef)
 {
     ASSERT_ERR((((uint32_t)rxwinszdef << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_RWBLECNTL_ADDR, (REG_BLE_RD(BLE_RWBLECNTL_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)rxwinszdef << 0));
@@ -496,7 +496,7 @@ __INLINE void ble_rwblecntl_rxwinszdef_setf(uint8_t rxwinszdef)
 #define BLE_VERSION_INDEX  0x00000001
 #define BLE_VERSION_RESET  0x0B001200
 
-__INLINE uint32_t ble_version_get(void)
+__RWIP_INLINE uint32_t ble_version_get(void)
 {
     return REG_BLE_RD(BLE_VERSION_ADDR);
 }
@@ -520,7 +520,7 @@ __INLINE uint32_t ble_version_get(void)
 #define BLE_UPG_RST      0x12
 #define BLE_BUILD_RST    0x0
 
-__INLINE void ble_version_unpack(uint8_t* typ, uint8_t* rel, uint8_t* upg, uint8_t* build)
+__RWIP_INLINE void ble_version_unpack(uint8_t* typ, uint8_t* rel, uint8_t* upg, uint8_t* build)
 {
     uint32_t localVal = REG_BLE_RD(BLE_VERSION_ADDR);
 
@@ -530,25 +530,25 @@ __INLINE void ble_version_unpack(uint8_t* typ, uint8_t* rel, uint8_t* upg, uint8
     *build = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_version_typ_getf(void)
+__RWIP_INLINE uint8_t ble_version_typ_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_VERSION_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE uint8_t ble_version_rel_getf(void)
+__RWIP_INLINE uint8_t ble_version_rel_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_VERSION_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE uint8_t ble_version_upg_getf(void)
+__RWIP_INLINE uint8_t ble_version_upg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_VERSION_ADDR);
     return ((localVal & ((uint32_t)0x0000FF00)) >> 8);
 }
 
-__INLINE uint8_t ble_version_build_getf(void)
+__RWIP_INLINE uint8_t ble_version_build_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_VERSION_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
@@ -580,7 +580,7 @@ __INLINE uint8_t ble_version_build_getf(void)
 #define BLE_RWBLECONF_INDEX  0x00000002
 #define BLE_RWBLECONF_RESET  0x7D01888D
 
-__INLINE uint32_t ble_rwbleconf_get(void)
+__RWIP_INLINE uint32_t ble_rwbleconf_get(void)
 {
     return REG_BLE_RD(BLE_RWBLECONF_ADDR);
 }
@@ -633,7 +633,7 @@ __INLINE uint32_t ble_rwbleconf_get(void)
 #define BLE_BUS_TYPE_RST      0x0
 #define BLE_ADDR_WIDTH_RST    0xD
 
-__INLINE void ble_rwbleconf_unpack(uint8_t* dmmode, uint8_t* df, uint8_t* wlancoex, uint8_t* correlator, uint8_t* userxlr, uint8_t* usetxlr, uint8_t* useiso, uint8_t* rfif, uint8_t* usedbg, uint8_t* decipher, uint8_t* clksel, uint8_t* intmode, uint8_t* bustype, uint8_t* addrwidth)
+__RWIP_INLINE void ble_rwbleconf_unpack(uint8_t* dmmode, uint8_t* df, uint8_t* wlancoex, uint8_t* correlator, uint8_t* userxlr, uint8_t* usetxlr, uint8_t* useiso, uint8_t* rfif, uint8_t* usedbg, uint8_t* decipher, uint8_t* clksel, uint8_t* intmode, uint8_t* bustype, uint8_t* addrwidth)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
 
@@ -653,85 +653,85 @@ __INLINE void ble_rwbleconf_unpack(uint8_t* dmmode, uint8_t* df, uint8_t* wlanco
     *addrwidth = (localVal & ((uint32_t)0x0000001F)) >> 0;
 }
 
-__INLINE uint8_t ble_rwbleconf_dmmode_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_dmmode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE uint8_t ble_rwbleconf_df_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_df_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE uint8_t ble_rwbleconf_wlancoex_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_wlancoex_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x20000000)) >> 29);
 }
 
-__INLINE uint8_t ble_rwbleconf_correlator_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_correlator_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x10000000)) >> 28);
 }
 
-__INLINE uint8_t ble_rwbleconf_userxlr_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_userxlr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x08000000)) >> 27);
 }
 
-__INLINE uint8_t ble_rwbleconf_usetxlr_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_usetxlr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x04000000)) >> 26);
 }
 
-__INLINE uint8_t ble_rwbleconf_useiso_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_useiso_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x01000000)) >> 24);
 }
 
-__INLINE uint8_t ble_rwbleconf_rfif_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_rfif_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x007F0000)) >> 16);
 }
 
-__INLINE uint8_t ble_rwbleconf_usedbg_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_usedbg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE uint8_t ble_rwbleconf_decipher_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_decipher_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x00004000)) >> 14);
 }
 
-__INLINE uint8_t ble_rwbleconf_clk_sel_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_clk_sel_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x00003F00)) >> 8);
 }
 
-__INLINE uint8_t ble_rwbleconf_intmode_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_intmode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE uint8_t ble_rwbleconf_bus_type_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_bus_type_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE uint8_t ble_rwbleconf_addr_width_getf(void)
+__RWIP_INLINE uint8_t ble_rwbleconf_addr_width_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RWBLECONF_ADDR);
     return ((localVal & ((uint32_t)0x0000001F)) >> 0);
@@ -758,12 +758,12 @@ __INLINE uint8_t ble_rwbleconf_addr_width_getf(void)
 #define BLE_INTCNTL0_INDEX  0x00000003
 #define BLE_INTCNTL0_RESET  0x00000003
 
-__INLINE uint32_t ble_intcntl0_get(void)
+__RWIP_INLINE uint32_t ble_intcntl0_get(void)
 {
     return REG_BLE_RD(BLE_INTCNTL0_ADDR);
 }
 
-__INLINE void ble_intcntl0_set(uint32_t value)
+__RWIP_INLINE void ble_intcntl0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_INTCNTL0_ADDR, value);
 }
@@ -798,7 +798,7 @@ __INLINE void ble_intcntl0_set(uint32_t value)
 #define BLE_ENDEVTINTMSK_RST      0x1
 #define BLE_STARTEVTINTMSK_RST    0x1
 
-__INLINE void ble_intcntl0_pack(uint8_t errorintmsk, uint8_t hopintmsk, uint8_t isorxintmsk, uint8_t isotxintmsk, uint8_t rxintmsk, uint8_t txintmsk, uint8_t skipevtintmsk, uint8_t endevtintmsk, uint8_t startevtintmsk)
+__RWIP_INLINE void ble_intcntl0_pack(uint8_t errorintmsk, uint8_t hopintmsk, uint8_t isorxintmsk, uint8_t isotxintmsk, uint8_t rxintmsk, uint8_t txintmsk, uint8_t skipevtintmsk, uint8_t endevtintmsk, uint8_t startevtintmsk)
 {
     ASSERT_ERR((((uint32_t)errorintmsk << 16) & ~((uint32_t)0x00010000)) == 0);
     ASSERT_ERR((((uint32_t)hopintmsk << 7) & ~((uint32_t)0x00000080)) == 0);
@@ -812,7 +812,7 @@ __INLINE void ble_intcntl0_pack(uint8_t errorintmsk, uint8_t hopintmsk, uint8_t 
     REG_BLE_WR(BLE_INTCNTL0_ADDR,  ((uint32_t)errorintmsk << 16) | ((uint32_t)hopintmsk << 7) | ((uint32_t)isorxintmsk << 6) | ((uint32_t)isotxintmsk << 5) | ((uint32_t)rxintmsk << 4) | ((uint32_t)txintmsk << 3) | ((uint32_t)skipevtintmsk << 2) | ((uint32_t)endevtintmsk << 1) | ((uint32_t)startevtintmsk << 0));
 }
 
-__INLINE void ble_intcntl0_unpack(uint8_t* errorintmsk, uint8_t* hopintmsk, uint8_t* isorxintmsk, uint8_t* isotxintmsk, uint8_t* rxintmsk, uint8_t* txintmsk, uint8_t* skipevtintmsk, uint8_t* endevtintmsk, uint8_t* startevtintmsk)
+__RWIP_INLINE void ble_intcntl0_unpack(uint8_t* errorintmsk, uint8_t* hopintmsk, uint8_t* isorxintmsk, uint8_t* isotxintmsk, uint8_t* rxintmsk, uint8_t* txintmsk, uint8_t* skipevtintmsk, uint8_t* endevtintmsk, uint8_t* startevtintmsk)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
 
@@ -827,109 +827,109 @@ __INLINE void ble_intcntl0_unpack(uint8_t* errorintmsk, uint8_t* hopintmsk, uint
     *startevtintmsk = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_intcntl0_errorintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_errorintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00010000)) >> 16);
 }
 
-__INLINE void ble_intcntl0_errorintmsk_setf(uint8_t errorintmsk)
+__RWIP_INLINE void ble_intcntl0_errorintmsk_setf(uint8_t errorintmsk)
 {
     ASSERT_ERR((((uint32_t)errorintmsk << 16) & ~((uint32_t)0x00010000)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00010000)) | ((uint32_t)errorintmsk << 16));
 }
 
-__INLINE uint8_t ble_intcntl0_hopintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_hopintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_intcntl0_hopintmsk_setf(uint8_t hopintmsk)
+__RWIP_INLINE void ble_intcntl0_hopintmsk_setf(uint8_t hopintmsk)
 {
     ASSERT_ERR((((uint32_t)hopintmsk << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)hopintmsk << 7));
 }
 
-__INLINE uint8_t ble_intcntl0_isorxintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_isorxintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE void ble_intcntl0_isorxintmsk_setf(uint8_t isorxintmsk)
+__RWIP_INLINE void ble_intcntl0_isorxintmsk_setf(uint8_t isorxintmsk)
 {
     ASSERT_ERR((((uint32_t)isorxintmsk << 6) & ~((uint32_t)0x00000040)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00000040)) | ((uint32_t)isorxintmsk << 6));
 }
 
-__INLINE uint8_t ble_intcntl0_isotxintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_isotxintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE void ble_intcntl0_isotxintmsk_setf(uint8_t isotxintmsk)
+__RWIP_INLINE void ble_intcntl0_isotxintmsk_setf(uint8_t isotxintmsk)
 {
     ASSERT_ERR((((uint32_t)isotxintmsk << 5) & ~((uint32_t)0x00000020)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00000020)) | ((uint32_t)isotxintmsk << 5));
 }
 
-__INLINE uint8_t ble_intcntl0_rxintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_rxintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE void ble_intcntl0_rxintmsk_setf(uint8_t rxintmsk)
+__RWIP_INLINE void ble_intcntl0_rxintmsk_setf(uint8_t rxintmsk)
 {
     ASSERT_ERR((((uint32_t)rxintmsk << 4) & ~((uint32_t)0x00000010)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00000010)) | ((uint32_t)rxintmsk << 4));
 }
 
-__INLINE uint8_t ble_intcntl0_txintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_txintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ble_intcntl0_txintmsk_setf(uint8_t txintmsk)
+__RWIP_INLINE void ble_intcntl0_txintmsk_setf(uint8_t txintmsk)
 {
     ASSERT_ERR((((uint32_t)txintmsk << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00000008)) | ((uint32_t)txintmsk << 3));
 }
 
-__INLINE uint8_t ble_intcntl0_skipevtintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_skipevtintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ble_intcntl0_skipevtintmsk_setf(uint8_t skipevtintmsk)
+__RWIP_INLINE void ble_intcntl0_skipevtintmsk_setf(uint8_t skipevtintmsk)
 {
     ASSERT_ERR((((uint32_t)skipevtintmsk << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)skipevtintmsk << 2));
 }
 
-__INLINE uint8_t ble_intcntl0_endevtintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_endevtintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_intcntl0_endevtintmsk_setf(uint8_t endevtintmsk)
+__RWIP_INLINE void ble_intcntl0_endevtintmsk_setf(uint8_t endevtintmsk)
 {
     ASSERT_ERR((((uint32_t)endevtintmsk << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)endevtintmsk << 1));
 }
 
-__INLINE uint8_t ble_intcntl0_startevtintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl0_startevtintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_intcntl0_startevtintmsk_setf(uint8_t startevtintmsk)
+__RWIP_INLINE void ble_intcntl0_startevtintmsk_setf(uint8_t startevtintmsk)
 {
     ASSERT_ERR((((uint32_t)startevtintmsk << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_INTCNTL0_ADDR, (REG_BLE_RD(BLE_INTCNTL0_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)startevtintmsk << 0));
@@ -949,7 +949,7 @@ __INLINE void ble_intcntl0_startevtintmsk_setf(uint8_t startevtintmsk)
 #define BLE_INTSTAT0_INDEX  0x00000004
 #define BLE_INTSTAT0_RESET  0x00000000
 
-__INLINE uint32_t ble_intstat0_get(void)
+__RWIP_INLINE uint32_t ble_intstat0_get(void)
 {
     return REG_BLE_RD(BLE_INTSTAT0_ADDR);
 }
@@ -963,7 +963,7 @@ __INLINE uint32_t ble_intstat0_get(void)
 #define BLE_ERRORINTSTAT_RST    0x0
 #define BLE_HOPINTSTAT_RST      0x0
 
-__INLINE void ble_intstat0_unpack(uint8_t* errorintstat, uint8_t* hopintstat)
+__RWIP_INLINE void ble_intstat0_unpack(uint8_t* errorintstat, uint8_t* hopintstat)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT0_ADDR);
 
@@ -971,13 +971,13 @@ __INLINE void ble_intstat0_unpack(uint8_t* errorintstat, uint8_t* hopintstat)
     *hopintstat = (localVal & ((uint32_t)0x00000080)) >> 7;
 }
 
-__INLINE uint8_t ble_intstat0_errorintstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat0_errorintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT0_ADDR);
     return ((localVal & ((uint32_t)0x00010000)) >> 16);
 }
 
-__INLINE uint8_t ble_intstat0_hopintstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat0_hopintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT0_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
@@ -997,12 +997,12 @@ __INLINE uint8_t ble_intstat0_hopintstat_getf(void)
 #define BLE_INTACK0_INDEX  0x00000005
 #define BLE_INTACK0_RESET  0x00000000
 
-__INLINE uint32_t ble_intack0_get(void)
+__RWIP_INLINE uint32_t ble_intack0_get(void)
 {
     return REG_BLE_RD(BLE_INTACK0_ADDR);
 }
 
-__INLINE void ble_intack0_clear(uint32_t value)
+__RWIP_INLINE void ble_intack0_clear(uint32_t value)
 {
     REG_BLE_WR(BLE_INTACK0_ADDR, value);
 }
@@ -1016,14 +1016,14 @@ __INLINE void ble_intack0_clear(uint32_t value)
 #define BLE_ERRORINTACK_RST    0x0
 #define BLE_HOPINTACK_RST      0x0
 
-__INLINE void ble_intack0_pack(uint8_t errorintack, uint8_t hopintack)
+__RWIP_INLINE void ble_intack0_pack(uint8_t errorintack, uint8_t hopintack)
 {
     ASSERT_ERR((((uint32_t)errorintack << 16) & ~((uint32_t)0x00010000)) == 0);
     ASSERT_ERR((((uint32_t)hopintack << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_INTACK0_ADDR,  ((uint32_t)errorintack << 16) | ((uint32_t)hopintack << 7));
 }
 
-__INLINE void ble_intack0_unpack(uint8_t* errorintack, uint8_t* hopintack)
+__RWIP_INLINE void ble_intack0_unpack(uint8_t* errorintack, uint8_t* hopintack)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK0_ADDR);
 
@@ -1031,25 +1031,25 @@ __INLINE void ble_intack0_unpack(uint8_t* errorintack, uint8_t* hopintack)
     *hopintack = (localVal & ((uint32_t)0x00000080)) >> 7;
 }
 
-__INLINE uint8_t ble_intack0_errorintack_getf(void)
+__RWIP_INLINE uint8_t ble_intack0_errorintack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK0_ADDR);
     return ((localVal & ((uint32_t)0x00010000)) >> 16);
 }
 
-__INLINE void ble_intack0_errorintack_clearf(uint8_t errorintack)
+__RWIP_INLINE void ble_intack0_errorintack_clearf(uint8_t errorintack)
 {
     ASSERT_ERR((((uint32_t)errorintack << 16) & ~((uint32_t)0x00010000)) == 0);
     REG_BLE_WR(BLE_INTACK0_ADDR, (uint32_t)errorintack << 16);
 }
 
-__INLINE uint8_t ble_intack0_hopintack_getf(void)
+__RWIP_INLINE uint8_t ble_intack0_hopintack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK0_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_intack0_hopintack_clearf(uint8_t hopintack)
+__RWIP_INLINE void ble_intack0_hopintack_clearf(uint8_t hopintack)
 {
     ASSERT_ERR((((uint32_t)hopintack << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_INTACK0_ADDR, (uint32_t)hopintack << 7);
@@ -1078,12 +1078,12 @@ __INLINE void ble_intack0_hopintack_clearf(uint8_t hopintack)
 #define BLE_INTCNTL1_INDEX  0x00000006
 #define BLE_INTCNTL1_RESET  0x00008003
 
-__INLINE uint32_t ble_intcntl1_get(void)
+__RWIP_INLINE uint32_t ble_intcntl1_get(void)
 {
     return REG_BLE_RD(BLE_INTCNTL1_ADDR);
 }
 
-__INLINE void ble_intcntl1_set(uint32_t value)
+__RWIP_INLINE void ble_intcntl1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_INTCNTL1_ADDR, value);
 }
@@ -1126,7 +1126,7 @@ __INLINE void ble_intcntl1_set(uint32_t value)
 #define BLE_SLPINTMSK_RST              0x1
 #define BLE_CLKNINTMSK_RST             0x1
 
-__INLINE void ble_intcntl1_pack(uint8_t clknintsrmsk, uint8_t clknintsrval, uint8_t fifointmsk, uint8_t timestamptgt3intmsk, uint8_t timestamptgt2intmsk, uint8_t timestamptgt1intmsk, uint8_t finetgtintmsk, uint8_t swintmsk, uint8_t cryptintmsk, uint8_t slpintmsk, uint8_t clknintmsk)
+__RWIP_INLINE void ble_intcntl1_pack(uint8_t clknintsrmsk, uint8_t clknintsrval, uint8_t fifointmsk, uint8_t timestamptgt3intmsk, uint8_t timestamptgt2intmsk, uint8_t timestamptgt1intmsk, uint8_t finetgtintmsk, uint8_t swintmsk, uint8_t cryptintmsk, uint8_t slpintmsk, uint8_t clknintmsk)
 {
     ASSERT_ERR((((uint32_t)clknintsrmsk << 28) & ~((uint32_t)0x70000000)) == 0);
     ASSERT_ERR((((uint32_t)clknintsrval << 24) & ~((uint32_t)0x0F000000)) == 0);
@@ -1142,7 +1142,7 @@ __INLINE void ble_intcntl1_pack(uint8_t clknintsrmsk, uint8_t clknintsrval, uint
     REG_BLE_WR(BLE_INTCNTL1_ADDR,  ((uint32_t)clknintsrmsk << 28) | ((uint32_t)clknintsrval << 24) | ((uint32_t)fifointmsk << 15) | ((uint32_t)timestamptgt3intmsk << 7) | ((uint32_t)timestamptgt2intmsk << 6) | ((uint32_t)timestamptgt1intmsk << 5) | ((uint32_t)finetgtintmsk << 4) | ((uint32_t)swintmsk << 3) | ((uint32_t)cryptintmsk << 2) | ((uint32_t)slpintmsk << 1) | ((uint32_t)clknintmsk << 0));
 }
 
-__INLINE void ble_intcntl1_unpack(uint8_t* clknintsrmsk, uint8_t* clknintsrval, uint8_t* fifointmsk, uint8_t* timestamptgt3intmsk, uint8_t* timestamptgt2intmsk, uint8_t* timestamptgt1intmsk, uint8_t* finetgtintmsk, uint8_t* swintmsk, uint8_t* cryptintmsk, uint8_t* slpintmsk, uint8_t* clknintmsk)
+__RWIP_INLINE void ble_intcntl1_unpack(uint8_t* clknintsrmsk, uint8_t* clknintsrval, uint8_t* fifointmsk, uint8_t* timestamptgt3intmsk, uint8_t* timestamptgt2intmsk, uint8_t* timestamptgt1intmsk, uint8_t* finetgtintmsk, uint8_t* swintmsk, uint8_t* cryptintmsk, uint8_t* slpintmsk, uint8_t* clknintmsk)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
 
@@ -1159,133 +1159,133 @@ __INLINE void ble_intcntl1_unpack(uint8_t* clknintsrmsk, uint8_t* clknintsrval, 
     *clknintmsk = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_intcntl1_clknintsrmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_clknintsrmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x70000000)) >> 28);
 }
 
-__INLINE void ble_intcntl1_clknintsrmsk_setf(uint8_t clknintsrmsk)
+__RWIP_INLINE void ble_intcntl1_clknintsrmsk_setf(uint8_t clknintsrmsk)
 {
     ASSERT_ERR((((uint32_t)clknintsrmsk << 28) & ~((uint32_t)0x70000000)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x70000000)) | ((uint32_t)clknintsrmsk << 28));
 }
 
-__INLINE uint8_t ble_intcntl1_clknintsrval_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_clknintsrval_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x0F000000)) >> 24);
 }
 
-__INLINE void ble_intcntl1_clknintsrval_setf(uint8_t clknintsrval)
+__RWIP_INLINE void ble_intcntl1_clknintsrval_setf(uint8_t clknintsrval)
 {
     ASSERT_ERR((((uint32_t)clknintsrval << 24) & ~((uint32_t)0x0F000000)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x0F000000)) | ((uint32_t)clknintsrval << 24));
 }
 
-__INLINE uint8_t ble_intcntl1_fifointmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_fifointmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ble_intcntl1_fifointmsk_setf(uint8_t fifointmsk)
+__RWIP_INLINE void ble_intcntl1_fifointmsk_setf(uint8_t fifointmsk)
 {
     ASSERT_ERR((((uint32_t)fifointmsk << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)fifointmsk << 15));
 }
 
-__INLINE uint8_t ble_intcntl1_timestamptgt3intmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_timestamptgt3intmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_intcntl1_timestamptgt3intmsk_setf(uint8_t timestamptgt3intmsk)
+__RWIP_INLINE void ble_intcntl1_timestamptgt3intmsk_setf(uint8_t timestamptgt3intmsk)
 {
     ASSERT_ERR((((uint32_t)timestamptgt3intmsk << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)timestamptgt3intmsk << 7));
 }
 
-__INLINE uint8_t ble_intcntl1_timestamptgt2intmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_timestamptgt2intmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE void ble_intcntl1_timestamptgt2intmsk_setf(uint8_t timestamptgt2intmsk)
+__RWIP_INLINE void ble_intcntl1_timestamptgt2intmsk_setf(uint8_t timestamptgt2intmsk)
 {
     ASSERT_ERR((((uint32_t)timestamptgt2intmsk << 6) & ~((uint32_t)0x00000040)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00000040)) | ((uint32_t)timestamptgt2intmsk << 6));
 }
 
-__INLINE uint8_t ble_intcntl1_timestamptgt1intmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_timestamptgt1intmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE void ble_intcntl1_timestamptgt1intmsk_setf(uint8_t timestamptgt1intmsk)
+__RWIP_INLINE void ble_intcntl1_timestamptgt1intmsk_setf(uint8_t timestamptgt1intmsk)
 {
     ASSERT_ERR((((uint32_t)timestamptgt1intmsk << 5) & ~((uint32_t)0x00000020)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00000020)) | ((uint32_t)timestamptgt1intmsk << 5));
 }
 
-__INLINE uint8_t ble_intcntl1_finetgtintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_finetgtintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE void ble_intcntl1_finetgtintmsk_setf(uint8_t finetgtintmsk)
+__RWIP_INLINE void ble_intcntl1_finetgtintmsk_setf(uint8_t finetgtintmsk)
 {
     ASSERT_ERR((((uint32_t)finetgtintmsk << 4) & ~((uint32_t)0x00000010)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00000010)) | ((uint32_t)finetgtintmsk << 4));
 }
 
-__INLINE uint8_t ble_intcntl1_swintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_swintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ble_intcntl1_swintmsk_setf(uint8_t swintmsk)
+__RWIP_INLINE void ble_intcntl1_swintmsk_setf(uint8_t swintmsk)
 {
     ASSERT_ERR((((uint32_t)swintmsk << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00000008)) | ((uint32_t)swintmsk << 3));
 }
 
-__INLINE uint8_t ble_intcntl1_cryptintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_cryptintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ble_intcntl1_cryptintmsk_setf(uint8_t cryptintmsk)
+__RWIP_INLINE void ble_intcntl1_cryptintmsk_setf(uint8_t cryptintmsk)
 {
     ASSERT_ERR((((uint32_t)cryptintmsk << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)cryptintmsk << 2));
 }
 
-__INLINE uint8_t ble_intcntl1_slpintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_slpintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_intcntl1_slpintmsk_setf(uint8_t slpintmsk)
+__RWIP_INLINE void ble_intcntl1_slpintmsk_setf(uint8_t slpintmsk)
 {
     ASSERT_ERR((((uint32_t)slpintmsk << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)slpintmsk << 1));
 }
 
-__INLINE uint8_t ble_intcntl1_clknintmsk_getf(void)
+__RWIP_INLINE uint8_t ble_intcntl1_clknintmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_intcntl1_clknintmsk_setf(uint8_t clknintmsk)
+__RWIP_INLINE void ble_intcntl1_clknintmsk_setf(uint8_t clknintmsk)
 {
     ASSERT_ERR((((uint32_t)clknintmsk << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_INTCNTL1_ADDR, (REG_BLE_RD(BLE_INTCNTL1_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)clknintmsk << 0));
@@ -1312,7 +1312,7 @@ __INLINE void ble_intcntl1_clknintmsk_setf(uint8_t clknintmsk)
 #define BLE_INTSTAT1_INDEX  0x00000007
 #define BLE_INTSTAT1_RESET  0x00000000
 
-__INLINE uint32_t ble_intstat1_get(void)
+__RWIP_INLINE uint32_t ble_intstat1_get(void)
 {
     return REG_BLE_RD(BLE_INTSTAT1_ADDR);
 }
@@ -1347,7 +1347,7 @@ __INLINE uint32_t ble_intstat1_get(void)
 #define BLE_SLPINTSTAT_RST              0x0
 #define BLE_CLKNINTSTAT_RST             0x0
 
-__INLINE void ble_intstat1_unpack(uint8_t* fifointstat, uint8_t* timestamptgt3intstat, uint8_t* timestamptgt2intstat, uint8_t* timestamptgt1intstat, uint8_t* finetgtintstat, uint8_t* swintstat, uint8_t* cryptintstat, uint8_t* slpintstat, uint8_t* clknintstat)
+__RWIP_INLINE void ble_intstat1_unpack(uint8_t* fifointstat, uint8_t* timestamptgt3intstat, uint8_t* timestamptgt2intstat, uint8_t* timestamptgt1intstat, uint8_t* finetgtintstat, uint8_t* swintstat, uint8_t* cryptintstat, uint8_t* slpintstat, uint8_t* clknintstat)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
 
@@ -1362,55 +1362,55 @@ __INLINE void ble_intstat1_unpack(uint8_t* fifointstat, uint8_t* timestamptgt3in
     *clknintstat = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_intstat1_fifointstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_fifointstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE uint8_t ble_intstat1_timestamptgt3intstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_timestamptgt3intstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE uint8_t ble_intstat1_timestamptgt2intstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_timestamptgt2intstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE uint8_t ble_intstat1_timestamptgt1intstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_timestamptgt1intstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE uint8_t ble_intstat1_finetgtintstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_finetgtintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE uint8_t ble_intstat1_swintstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_swintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE uint8_t ble_intstat1_cryptintstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_cryptintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE uint8_t ble_intstat1_slpintstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_slpintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE uint8_t ble_intstat1_clknintstat_getf(void)
+__RWIP_INLINE uint8_t ble_intstat1_clknintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
@@ -1437,12 +1437,12 @@ __INLINE uint8_t ble_intstat1_clknintstat_getf(void)
 #define BLE_INTACK1_INDEX  0x00000008
 #define BLE_INTACK1_RESET  0x00000000
 
-__INLINE uint32_t ble_intack1_get(void)
+__RWIP_INLINE uint32_t ble_intack1_get(void)
 {
     return REG_BLE_RD(BLE_INTACK1_ADDR);
 }
 
-__INLINE void ble_intack1_clear(uint32_t value)
+__RWIP_INLINE void ble_intack1_clear(uint32_t value)
 {
     REG_BLE_WR(BLE_INTACK1_ADDR, value);
 }
@@ -1477,7 +1477,7 @@ __INLINE void ble_intack1_clear(uint32_t value)
 #define BLE_SLPINTACK_RST              0x0
 #define BLE_CLKNINTACK_RST             0x0
 
-__INLINE void ble_intack1_pack(uint8_t fifointack, uint8_t timestamptgt3intack, uint8_t timestamptgt2intack, uint8_t timestamptgt1intack, uint8_t finetgtintack, uint8_t swintack, uint8_t cryptintack, uint8_t slpintack, uint8_t clknintack)
+__RWIP_INLINE void ble_intack1_pack(uint8_t fifointack, uint8_t timestamptgt3intack, uint8_t timestamptgt2intack, uint8_t timestamptgt1intack, uint8_t finetgtintack, uint8_t swintack, uint8_t cryptintack, uint8_t slpintack, uint8_t clknintack)
 {
     ASSERT_ERR((((uint32_t)fifointack << 15) & ~((uint32_t)0x00008000)) == 0);
     ASSERT_ERR((((uint32_t)timestamptgt3intack << 7) & ~((uint32_t)0x00000080)) == 0);
@@ -1491,7 +1491,7 @@ __INLINE void ble_intack1_pack(uint8_t fifointack, uint8_t timestamptgt3intack, 
     REG_BLE_WR(BLE_INTACK1_ADDR,  ((uint32_t)fifointack << 15) | ((uint32_t)timestamptgt3intack << 7) | ((uint32_t)timestamptgt2intack << 6) | ((uint32_t)timestamptgt1intack << 5) | ((uint32_t)finetgtintack << 4) | ((uint32_t)swintack << 3) | ((uint32_t)cryptintack << 2) | ((uint32_t)slpintack << 1) | ((uint32_t)clknintack << 0));
 }
 
-__INLINE void ble_intack1_unpack(uint8_t* fifointack, uint8_t* timestamptgt3intack, uint8_t* timestamptgt2intack, uint8_t* timestamptgt1intack, uint8_t* finetgtintack, uint8_t* swintack, uint8_t* cryptintack, uint8_t* slpintack, uint8_t* clknintack)
+__RWIP_INLINE void ble_intack1_unpack(uint8_t* fifointack, uint8_t* timestamptgt3intack, uint8_t* timestamptgt2intack, uint8_t* timestamptgt1intack, uint8_t* finetgtintack, uint8_t* swintack, uint8_t* cryptintack, uint8_t* slpintack, uint8_t* clknintack)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
 
@@ -1506,109 +1506,109 @@ __INLINE void ble_intack1_unpack(uint8_t* fifointack, uint8_t* timestamptgt3inta
     *clknintack = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_intack1_fifointack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_fifointack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ble_intack1_fifointack_clearf(uint8_t fifointack)
+__RWIP_INLINE void ble_intack1_fifointack_clearf(uint8_t fifointack)
 {
     ASSERT_ERR((((uint32_t)fifointack << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)fifointack << 15);
 }
 
-__INLINE uint8_t ble_intack1_timestamptgt3intack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_timestamptgt3intack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_intack1_timestamptgt3intack_clearf(uint8_t timestamptgt3intack)
+__RWIP_INLINE void ble_intack1_timestamptgt3intack_clearf(uint8_t timestamptgt3intack)
 {
     ASSERT_ERR((((uint32_t)timestamptgt3intack << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)timestamptgt3intack << 7);
 }
 
-__INLINE uint8_t ble_intack1_timestamptgt2intack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_timestamptgt2intack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE void ble_intack1_timestamptgt2intack_clearf(uint8_t timestamptgt2intack)
+__RWIP_INLINE void ble_intack1_timestamptgt2intack_clearf(uint8_t timestamptgt2intack)
 {
     ASSERT_ERR((((uint32_t)timestamptgt2intack << 6) & ~((uint32_t)0x00000040)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)timestamptgt2intack << 6);
 }
 
-__INLINE uint8_t ble_intack1_timestamptgt1intack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_timestamptgt1intack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE void ble_intack1_timestamptgt1intack_clearf(uint8_t timestamptgt1intack)
+__RWIP_INLINE void ble_intack1_timestamptgt1intack_clearf(uint8_t timestamptgt1intack)
 {
     ASSERT_ERR((((uint32_t)timestamptgt1intack << 5) & ~((uint32_t)0x00000020)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)timestamptgt1intack << 5);
 }
 
-__INLINE uint8_t ble_intack1_finetgtintack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_finetgtintack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE void ble_intack1_finetgtintack_clearf(uint8_t finetgtintack)
+__RWIP_INLINE void ble_intack1_finetgtintack_clearf(uint8_t finetgtintack)
 {
     ASSERT_ERR((((uint32_t)finetgtintack << 4) & ~((uint32_t)0x00000010)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)finetgtintack << 4);
 }
 
-__INLINE uint8_t ble_intack1_swintack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_swintack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ble_intack1_swintack_clearf(uint8_t swintack)
+__RWIP_INLINE void ble_intack1_swintack_clearf(uint8_t swintack)
 {
     ASSERT_ERR((((uint32_t)swintack << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)swintack << 3);
 }
 
-__INLINE uint8_t ble_intack1_cryptintack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_cryptintack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ble_intack1_cryptintack_clearf(uint8_t cryptintack)
+__RWIP_INLINE void ble_intack1_cryptintack_clearf(uint8_t cryptintack)
 {
     ASSERT_ERR((((uint32_t)cryptintack << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)cryptintack << 2);
 }
 
-__INLINE uint8_t ble_intack1_slpintack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_slpintack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_intack1_slpintack_clearf(uint8_t slpintack)
+__RWIP_INLINE void ble_intack1_slpintack_clearf(uint8_t slpintack)
 {
     ASSERT_ERR((((uint32_t)slpintack << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)slpintack << 1);
 }
 
-__INLINE uint8_t ble_intack1_clknintack_getf(void)
+__RWIP_INLINE uint8_t ble_intack1_clknintack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_intack1_clknintack_clearf(uint8_t clknintack)
+__RWIP_INLINE void ble_intack1_clknintack_clearf(uint8_t clknintack)
 {
     ASSERT_ERR((((uint32_t)clknintack << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_INTACK1_ADDR, (uint32_t)clknintack << 0);
@@ -1636,7 +1636,7 @@ __INLINE void ble_intack1_clknintack_clearf(uint8_t clknintack)
 #define BLE_ACTFIFOSTAT_INDEX  0x00000009
 #define BLE_ACTFIFOSTAT_RESET  0x00000000
 
-__INLINE uint32_t ble_actfifostat_get(void)
+__RWIP_INLINE uint32_t ble_actfifostat_get(void)
 {
     return REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
 }
@@ -1676,7 +1676,7 @@ __INLINE uint32_t ble_actfifostat_get(void)
 #define BLE_ENDACTINTSTAT_RST      0x0
 #define BLE_STARTACTINTSTAT_RST    0x0
 
-__INLINE void ble_actfifostat_unpack(uint8_t* skipetidx, uint8_t* currentetidx, uint8_t* actflag, uint8_t* isorxintstat, uint8_t* isotxintstat, uint8_t* rxintstat, uint8_t* txintstat, uint8_t* skipactintstat, uint8_t* endactintstat, uint8_t* startactintstat)
+__RWIP_INLINE void ble_actfifostat_unpack(uint8_t* skipetidx, uint8_t* currentetidx, uint8_t* actflag, uint8_t* isorxintstat, uint8_t* isotxintstat, uint8_t* rxintstat, uint8_t* txintstat, uint8_t* skipactintstat, uint8_t* endactintstat, uint8_t* startactintstat)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
 
@@ -1692,61 +1692,61 @@ __INLINE void ble_actfifostat_unpack(uint8_t* skipetidx, uint8_t* currentetidx, 
     *startactintstat = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_actfifostat_skip_et_idx_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_skip_et_idx_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0xF0000000)) >> 28);
 }
 
-__INLINE uint8_t ble_actfifostat_current_et_idx_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_current_et_idx_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x0F000000)) >> 24);
 }
 
-__INLINE uint8_t ble_actfifostat_actflag_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_actflag_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE uint8_t ble_actfifostat_isorxintstat_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_isorxintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE uint8_t ble_actfifostat_isotxintstat_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_isotxintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE uint8_t ble_actfifostat_rxintstat_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_rxintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE uint8_t ble_actfifostat_txintstat_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_txintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE uint8_t ble_actfifostat_skipactintstat_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_skipactintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE uint8_t ble_actfifostat_endactintstat_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_endactintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE uint8_t ble_actfifostat_startactintstat_getf(void)
+__RWIP_INLINE uint8_t ble_actfifostat_startactintstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
@@ -1765,12 +1765,12 @@ __INLINE uint8_t ble_actfifostat_startactintstat_getf(void)
 #define BLE_CURRENTRXDESCPTR_INDEX  0x0000000A
 #define BLE_CURRENTRXDESCPTR_RESET  0x00000000
 
-__INLINE uint32_t ble_currentrxdescptr_get(void)
+__RWIP_INLINE uint32_t ble_currentrxdescptr_get(void)
 {
     return REG_BLE_RD(BLE_CURRENTRXDESCPTR_ADDR);
 }
 
-__INLINE void ble_currentrxdescptr_set(uint32_t value)
+__RWIP_INLINE void ble_currentrxdescptr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_CURRENTRXDESCPTR_ADDR, value);
 }
@@ -1782,14 +1782,14 @@ __INLINE void ble_currentrxdescptr_set(uint32_t value)
 
 #define BLE_CURRENTRXDESCPTR_RST    0x0
 
-__INLINE uint16_t ble_currentrxdescptr_getf(void)
+__RWIP_INLINE uint16_t ble_currentrxdescptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_CURRENTRXDESCPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_currentrxdescptr_setf(uint16_t currentrxdescptr)
+__RWIP_INLINE void ble_currentrxdescptr_setf(uint16_t currentrxdescptr)
 {
     ASSERT_ERR((((uint32_t)currentrxdescptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_CURRENTRXDESCPTR_ADDR, (uint32_t)currentrxdescptr << 0);
@@ -1808,12 +1808,12 @@ __INLINE void ble_currentrxdescptr_setf(uint16_t currentrxdescptr)
 #define BLE_ETPTR_INDEX  0x0000000B
 #define BLE_ETPTR_RESET  0x00000000
 
-__INLINE uint32_t ble_etptr_get(void)
+__RWIP_INLINE uint32_t ble_etptr_get(void)
 {
     return REG_BLE_RD(BLE_ETPTR_ADDR);
 }
 
-__INLINE void ble_etptr_set(uint32_t value)
+__RWIP_INLINE void ble_etptr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ETPTR_ADDR, value);
 }
@@ -1825,14 +1825,14 @@ __INLINE void ble_etptr_set(uint32_t value)
 
 #define BLE_ETPTR_RST    0x0
 
-__INLINE uint16_t ble_etptr_getf(void)
+__RWIP_INLINE uint16_t ble_etptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ETPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_etptr_setf(uint16_t etptr)
+__RWIP_INLINE void ble_etptr_setf(uint16_t etptr)
 {
     ASSERT_ERR((((uint32_t)etptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_ETPTR_ADDR, (uint32_t)etptr << 0);
@@ -1856,12 +1856,12 @@ __INLINE void ble_etptr_setf(uint16_t etptr)
 #define BLE_DEEPSLCNTL_INDEX  0x0000000C
 #define BLE_DEEPSLCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_deepslcntl_get(void)
+__RWIP_INLINE uint32_t ble_deepslcntl_get(void)
 {
     return REG_BLE_RD(BLE_DEEPSLCNTL_ADDR);
 }
 
-__INLINE void ble_deepslcntl_set(uint32_t value)
+__RWIP_INLINE void ble_deepslcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DEEPSLCNTL_ADDR, value);
 }
@@ -1887,7 +1887,7 @@ __INLINE void ble_deepslcntl_set(uint32_t value)
 #define BLE_RADIO_SLEEP_EN_RST        0x0
 #define BLE_OSC_SLEEP_EN_RST          0x0
 
-__INLINE void ble_deepslcntl_pack(uint8_t extwkupdsb, uint8_t deepsleepcorren, uint8_t deepsleepon, uint8_t radiosleepen, uint8_t oscsleepen)
+__RWIP_INLINE void ble_deepslcntl_pack(uint8_t extwkupdsb, uint8_t deepsleepcorren, uint8_t deepsleepon, uint8_t radiosleepen, uint8_t oscsleepen)
 {
     ASSERT_ERR((((uint32_t)extwkupdsb << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)deepsleepcorren << 3) & ~((uint32_t)0x00000008)) == 0);
@@ -1897,7 +1897,7 @@ __INLINE void ble_deepslcntl_pack(uint8_t extwkupdsb, uint8_t deepsleepcorren, u
     REG_BLE_WR(BLE_DEEPSLCNTL_ADDR,  ((uint32_t)extwkupdsb << 31) | ((uint32_t)deepsleepcorren << 3) | ((uint32_t)deepsleepon << 2) | ((uint32_t)radiosleepen << 1) | ((uint32_t)oscsleepen << 0));
 }
 
-__INLINE void ble_deepslcntl_unpack(uint8_t* extwkupdsb, uint8_t* deepsleepstat, uint8_t* deepsleepcorren, uint8_t* deepsleepon, uint8_t* radiosleepen, uint8_t* oscsleepen)
+__RWIP_INLINE void ble_deepslcntl_unpack(uint8_t* extwkupdsb, uint8_t* deepsleepstat, uint8_t* deepsleepcorren, uint8_t* deepsleepon, uint8_t* radiosleepen, uint8_t* oscsleepen)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLCNTL_ADDR);
 
@@ -1909,67 +1909,67 @@ __INLINE void ble_deepslcntl_unpack(uint8_t* extwkupdsb, uint8_t* deepsleepstat,
     *oscsleepen = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_deepslcntl_extwkupdsb_getf(void)
+__RWIP_INLINE uint8_t ble_deepslcntl_extwkupdsb_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_deepslcntl_extwkupdsb_setf(uint8_t extwkupdsb)
+__RWIP_INLINE void ble_deepslcntl_extwkupdsb_setf(uint8_t extwkupdsb)
 {
     ASSERT_ERR((((uint32_t)extwkupdsb << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_DEEPSLCNTL_ADDR, (REG_BLE_RD(BLE_DEEPSLCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)extwkupdsb << 31));
 }
 
-__INLINE uint8_t ble_deepslcntl_deep_sleep_stat_getf(void)
+__RWIP_INLINE uint8_t ble_deepslcntl_deep_sleep_stat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE uint8_t ble_deepslcntl_deep_sleep_corr_en_getf(void)
+__RWIP_INLINE uint8_t ble_deepslcntl_deep_sleep_corr_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ble_deepslcntl_deep_sleep_corr_en_setf(uint8_t deepsleepcorren)
+__RWIP_INLINE void ble_deepslcntl_deep_sleep_corr_en_setf(uint8_t deepsleepcorren)
 {
     ASSERT_ERR((((uint32_t)deepsleepcorren << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_BLE_WR(BLE_DEEPSLCNTL_ADDR, (REG_BLE_RD(BLE_DEEPSLCNTL_ADDR) & ~((uint32_t)0x00000008)) | ((uint32_t)deepsleepcorren << 3));
 }
 
-__INLINE uint8_t ble_deepslcntl_deep_sleep_on_getf(void)
+__RWIP_INLINE uint8_t ble_deepslcntl_deep_sleep_on_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ble_deepslcntl_deep_sleep_on_setf(uint8_t deepsleepon)
+__RWIP_INLINE void ble_deepslcntl_deep_sleep_on_setf(uint8_t deepsleepon)
 {
     ASSERT_ERR((((uint32_t)deepsleepon << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_BLE_WR(BLE_DEEPSLCNTL_ADDR, (REG_BLE_RD(BLE_DEEPSLCNTL_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)deepsleepon << 2));
 }
 
-__INLINE uint8_t ble_deepslcntl_radio_sleep_en_getf(void)
+__RWIP_INLINE uint8_t ble_deepslcntl_radio_sleep_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_deepslcntl_radio_sleep_en_setf(uint8_t radiosleepen)
+__RWIP_INLINE void ble_deepslcntl_radio_sleep_en_setf(uint8_t radiosleepen)
 {
     ASSERT_ERR((((uint32_t)radiosleepen << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_DEEPSLCNTL_ADDR, (REG_BLE_RD(BLE_DEEPSLCNTL_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)radiosleepen << 1));
 }
 
-__INLINE uint8_t ble_deepslcntl_osc_sleep_en_getf(void)
+__RWIP_INLINE uint8_t ble_deepslcntl_osc_sleep_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_deepslcntl_osc_sleep_en_setf(uint8_t oscsleepen)
+__RWIP_INLINE void ble_deepslcntl_osc_sleep_en_setf(uint8_t oscsleepen)
 {
     ASSERT_ERR((((uint32_t)oscsleepen << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_DEEPSLCNTL_ADDR, (REG_BLE_RD(BLE_DEEPSLCNTL_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)oscsleepen << 0));
@@ -1988,12 +1988,12 @@ __INLINE void ble_deepslcntl_osc_sleep_en_setf(uint8_t oscsleepen)
 #define BLE_DEEPSLWKUP_INDEX  0x0000000D
 #define BLE_DEEPSLWKUP_RESET  0x00000000
 
-__INLINE uint32_t ble_deepslwkup_get(void)
+__RWIP_INLINE uint32_t ble_deepslwkup_get(void)
 {
     return REG_BLE_RD(BLE_DEEPSLWKUP_ADDR);
 }
 
-__INLINE void ble_deepslwkup_set(uint32_t value)
+__RWIP_INLINE void ble_deepslwkup_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DEEPSLWKUP_ADDR, value);
 }
@@ -2005,14 +2005,14 @@ __INLINE void ble_deepslwkup_set(uint32_t value)
 
 #define BLE_DEEPSLTIME_RST    0x0
 
-__INLINE uint32_t ble_deepslwkup_deepsltime_getf(void)
+__RWIP_INLINE uint32_t ble_deepslwkup_deepsltime_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLWKUP_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_deepslwkup_deepsltime_setf(uint32_t deepsltime)
+__RWIP_INLINE void ble_deepslwkup_deepsltime_setf(uint32_t deepsltime)
 {
     ASSERT_ERR((((uint32_t)deepsltime << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_BLE_WR(BLE_DEEPSLWKUP_ADDR, (uint32_t)deepsltime << 0);
@@ -2031,7 +2031,7 @@ __INLINE void ble_deepslwkup_deepsltime_setf(uint32_t deepsltime)
 #define BLE_DEEPSLSTAT_INDEX  0x0000000E
 #define BLE_DEEPSLSTAT_RESET  0x00000000
 
-__INLINE uint32_t ble_deepslstat_get(void)
+__RWIP_INLINE uint32_t ble_deepslstat_get(void)
 {
     return REG_BLE_RD(BLE_DEEPSLSTAT_ADDR);
 }
@@ -2043,7 +2043,7 @@ __INLINE uint32_t ble_deepslstat_get(void)
 
 #define BLE_DEEPSLDUR_RST    0x0
 
-__INLINE uint32_t ble_deepslstat_deepsldur_getf(void)
+__RWIP_INLINE uint32_t ble_deepslstat_deepsldur_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEEPSLSTAT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
@@ -2065,12 +2065,12 @@ __INLINE uint32_t ble_deepslstat_deepsldur_getf(void)
 #define BLE_ENBPRESET_INDEX  0x0000000F
 #define BLE_ENBPRESET_RESET  0x00000000
 
-__INLINE uint32_t ble_enbpreset_get(void)
+__RWIP_INLINE uint32_t ble_enbpreset_get(void)
 {
     return REG_BLE_RD(BLE_ENBPRESET_ADDR);
 }
 
-__INLINE void ble_enbpreset_set(uint32_t value)
+__RWIP_INLINE void ble_enbpreset_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ENBPRESET_ADDR, value);
 }
@@ -2090,7 +2090,7 @@ __INLINE void ble_enbpreset_set(uint32_t value)
 #define BLE_TWOSC_RST    0x0
 #define BLE_TWRM_RST     0x0
 
-__INLINE void ble_enbpreset_pack(uint16_t twext, uint16_t twosc, uint16_t twrm)
+__RWIP_INLINE void ble_enbpreset_pack(uint16_t twext, uint16_t twosc, uint16_t twrm)
 {
     ASSERT_ERR((((uint32_t)twext << 21) & ~((uint32_t)0xFFE00000)) == 0);
     ASSERT_ERR((((uint32_t)twosc << 10) & ~((uint32_t)0x001FFC00)) == 0);
@@ -2098,7 +2098,7 @@ __INLINE void ble_enbpreset_pack(uint16_t twext, uint16_t twosc, uint16_t twrm)
     REG_BLE_WR(BLE_ENBPRESET_ADDR,  ((uint32_t)twext << 21) | ((uint32_t)twosc << 10) | ((uint32_t)twrm << 0));
 }
 
-__INLINE void ble_enbpreset_unpack(uint16_t* twext, uint16_t* twosc, uint16_t* twrm)
+__RWIP_INLINE void ble_enbpreset_unpack(uint16_t* twext, uint16_t* twosc, uint16_t* twrm)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ENBPRESET_ADDR);
 
@@ -2107,37 +2107,37 @@ __INLINE void ble_enbpreset_unpack(uint16_t* twext, uint16_t* twosc, uint16_t* t
     *twrm = (localVal & ((uint32_t)0x000003FF)) >> 0;
 }
 
-__INLINE uint16_t ble_enbpreset_twext_getf(void)
+__RWIP_INLINE uint16_t ble_enbpreset_twext_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ENBPRESET_ADDR);
     return ((localVal & ((uint32_t)0xFFE00000)) >> 21);
 }
 
-__INLINE void ble_enbpreset_twext_setf(uint16_t twext)
+__RWIP_INLINE void ble_enbpreset_twext_setf(uint16_t twext)
 {
     ASSERT_ERR((((uint32_t)twext << 21) & ~((uint32_t)0xFFE00000)) == 0);
     REG_BLE_WR(BLE_ENBPRESET_ADDR, (REG_BLE_RD(BLE_ENBPRESET_ADDR) & ~((uint32_t)0xFFE00000)) | ((uint32_t)twext << 21));
 }
 
-__INLINE uint16_t ble_enbpreset_twosc_getf(void)
+__RWIP_INLINE uint16_t ble_enbpreset_twosc_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ENBPRESET_ADDR);
     return ((localVal & ((uint32_t)0x001FFC00)) >> 10);
 }
 
-__INLINE void ble_enbpreset_twosc_setf(uint16_t twosc)
+__RWIP_INLINE void ble_enbpreset_twosc_setf(uint16_t twosc)
 {
     ASSERT_ERR((((uint32_t)twosc << 10) & ~((uint32_t)0x001FFC00)) == 0);
     REG_BLE_WR(BLE_ENBPRESET_ADDR, (REG_BLE_RD(BLE_ENBPRESET_ADDR) & ~((uint32_t)0x001FFC00)) | ((uint32_t)twosc << 10));
 }
 
-__INLINE uint16_t ble_enbpreset_twrm_getf(void)
+__RWIP_INLINE uint16_t ble_enbpreset_twrm_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ENBPRESET_ADDR);
     return ((localVal & ((uint32_t)0x000003FF)) >> 0);
 }
 
-__INLINE void ble_enbpreset_twrm_setf(uint16_t twrm)
+__RWIP_INLINE void ble_enbpreset_twrm_setf(uint16_t twrm)
 {
     ASSERT_ERR((((uint32_t)twrm << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_BLE_WR(BLE_ENBPRESET_ADDR, (REG_BLE_RD(BLE_ENBPRESET_ADDR) & ~((uint32_t)0x000003FF)) | ((uint32_t)twrm << 0));
@@ -2156,12 +2156,12 @@ __INLINE void ble_enbpreset_twrm_setf(uint16_t twrm)
 #define BLE_FINECNTCORR_INDEX  0x00000010
 #define BLE_FINECNTCORR_RESET  0x00000000
 
-__INLINE uint32_t ble_finecntcorr_get(void)
+__RWIP_INLINE uint32_t ble_finecntcorr_get(void)
 {
     return REG_BLE_RD(BLE_FINECNTCORR_ADDR);
 }
 
-__INLINE void ble_finecntcorr_set(uint32_t value)
+__RWIP_INLINE void ble_finecntcorr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_FINECNTCORR_ADDR, value);
 }
@@ -2173,14 +2173,14 @@ __INLINE void ble_finecntcorr_set(uint32_t value)
 
 #define BLE_FINECNTCORR_RST    0x0
 
-__INLINE uint16_t ble_finecntcorr_getf(void)
+__RWIP_INLINE uint16_t ble_finecntcorr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FINECNTCORR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_finecntcorr_setf(uint16_t finecntcorr)
+__RWIP_INLINE void ble_finecntcorr_setf(uint16_t finecntcorr)
 {
     ASSERT_ERR((((uint32_t)finecntcorr << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_BLE_WR(BLE_FINECNTCORR_ADDR, (uint32_t)finecntcorr << 0);
@@ -2200,12 +2200,12 @@ __INLINE void ble_finecntcorr_setf(uint16_t finecntcorr)
 #define BLE_CLKNCNTCORR_INDEX  0x00000011
 #define BLE_CLKNCNTCORR_RESET  0x00000000
 
-__INLINE uint32_t ble_clkncntcorr_get(void)
+__RWIP_INLINE uint32_t ble_clkncntcorr_get(void)
 {
     return REG_BLE_RD(BLE_CLKNCNTCORR_ADDR);
 }
 
-__INLINE void ble_clkncntcorr_set(uint32_t value)
+__RWIP_INLINE void ble_clkncntcorr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_CLKNCNTCORR_ADDR, value);
 }
@@ -2220,14 +2220,14 @@ __INLINE void ble_clkncntcorr_set(uint32_t value)
 #define BLE_ABS_DELTA_RST      0x0
 #define BLE_CLKNCNTCORR_RST    0x0
 
-__INLINE void ble_clkncntcorr_pack(uint8_t absdelta, uint32_t clkncntcorr)
+__RWIP_INLINE void ble_clkncntcorr_pack(uint8_t absdelta, uint32_t clkncntcorr)
 {
     ASSERT_ERR((((uint32_t)absdelta << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)clkncntcorr << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_BLE_WR(BLE_CLKNCNTCORR_ADDR,  ((uint32_t)absdelta << 31) | ((uint32_t)clkncntcorr << 0));
 }
 
-__INLINE void ble_clkncntcorr_unpack(uint8_t* absdelta, uint32_t* clkncntcorr)
+__RWIP_INLINE void ble_clkncntcorr_unpack(uint8_t* absdelta, uint32_t* clkncntcorr)
 {
     uint32_t localVal = REG_BLE_RD(BLE_CLKNCNTCORR_ADDR);
 
@@ -2235,25 +2235,25 @@ __INLINE void ble_clkncntcorr_unpack(uint8_t* absdelta, uint32_t* clkncntcorr)
     *clkncntcorr = (localVal & ((uint32_t)0x0FFFFFFF)) >> 0;
 }
 
-__INLINE uint8_t ble_clkncntcorr_abs_delta_getf(void)
+__RWIP_INLINE uint8_t ble_clkncntcorr_abs_delta_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_CLKNCNTCORR_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_clkncntcorr_abs_delta_setf(uint8_t absdelta)
+__RWIP_INLINE void ble_clkncntcorr_abs_delta_setf(uint8_t absdelta)
 {
     ASSERT_ERR((((uint32_t)absdelta << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_CLKNCNTCORR_ADDR, (REG_BLE_RD(BLE_CLKNCNTCORR_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)absdelta << 31));
 }
 
-__INLINE uint32_t ble_clkncntcorr_clkncntcorr_getf(void)
+__RWIP_INLINE uint32_t ble_clkncntcorr_clkncntcorr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_CLKNCNTCORR_ADDR);
     return ((localVal & ((uint32_t)0x0FFFFFFF)) >> 0);
 }
 
-__INLINE void ble_clkncntcorr_clkncntcorr_setf(uint32_t clkncntcorr)
+__RWIP_INLINE void ble_clkncntcorr_clkncntcorr_setf(uint32_t clkncntcorr)
 {
     ASSERT_ERR((((uint32_t)clkncntcorr << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_BLE_WR(BLE_CLKNCNTCORR_ADDR, (REG_BLE_RD(BLE_CLKNCNTCORR_ADDR) & ~((uint32_t)0x0FFFFFFF)) | ((uint32_t)clkncntcorr << 0));
@@ -2279,12 +2279,12 @@ __INLINE void ble_clkncntcorr_clkncntcorr_setf(uint32_t clkncntcorr)
 #define BLE_DIAGCNTL_INDEX  0x00000014
 #define BLE_DIAGCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_diagcntl_get(void)
+__RWIP_INLINE uint32_t ble_diagcntl_get(void)
 {
     return REG_BLE_RD(BLE_DIAGCNTL_ADDR);
 }
 
-__INLINE void ble_diagcntl_set(uint32_t value)
+__RWIP_INLINE void ble_diagcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, value);
 }
@@ -2320,7 +2320,7 @@ __INLINE void ble_diagcntl_set(uint32_t value)
 #define BLE_DIAG0_EN_RST    0x0
 #define BLE_DIAG0_RST       0x0
 
-__INLINE void ble_diagcntl_pack(uint8_t diag3en, uint8_t diag3, uint8_t diag2en, uint8_t diag2, uint8_t diag1en, uint8_t diag1, uint8_t diag0en, uint8_t diag0)
+__RWIP_INLINE void ble_diagcntl_pack(uint8_t diag3en, uint8_t diag3, uint8_t diag2en, uint8_t diag2, uint8_t diag1en, uint8_t diag1, uint8_t diag0en, uint8_t diag0)
 {
     ASSERT_ERR((((uint32_t)diag3en << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)diag3 << 24) & ~((uint32_t)0x7F000000)) == 0);
@@ -2333,7 +2333,7 @@ __INLINE void ble_diagcntl_pack(uint8_t diag3en, uint8_t diag3, uint8_t diag2en,
     REG_BLE_WR(BLE_DIAGCNTL_ADDR,  ((uint32_t)diag3en << 31) | ((uint32_t)diag3 << 24) | ((uint32_t)diag2en << 23) | ((uint32_t)diag2 << 16) | ((uint32_t)diag1en << 15) | ((uint32_t)diag1 << 8) | ((uint32_t)diag0en << 7) | ((uint32_t)diag0 << 0));
 }
 
-__INLINE void ble_diagcntl_unpack(uint8_t* diag3en, uint8_t* diag3, uint8_t* diag2en, uint8_t* diag2, uint8_t* diag1en, uint8_t* diag1, uint8_t* diag0en, uint8_t* diag0)
+__RWIP_INLINE void ble_diagcntl_unpack(uint8_t* diag3en, uint8_t* diag3, uint8_t* diag2en, uint8_t* diag2, uint8_t* diag1en, uint8_t* diag1, uint8_t* diag0en, uint8_t* diag0)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
 
@@ -2347,97 +2347,97 @@ __INLINE void ble_diagcntl_unpack(uint8_t* diag3en, uint8_t* diag3, uint8_t* dia
     *diag0 = (localVal & ((uint32_t)0x0000007F)) >> 0;
 }
 
-__INLINE uint8_t ble_diagcntl_diag3_en_getf(void)
+__RWIP_INLINE uint8_t ble_diagcntl_diag3_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_diagcntl_diag3_en_setf(uint8_t diag3en)
+__RWIP_INLINE void ble_diagcntl_diag3_en_setf(uint8_t diag3en)
 {
     ASSERT_ERR((((uint32_t)diag3en << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, (REG_BLE_RD(BLE_DIAGCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)diag3en << 31));
 }
 
-__INLINE uint8_t ble_diagcntl_diag3_getf(void)
+__RWIP_INLINE uint8_t ble_diagcntl_diag3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x7F000000)) >> 24);
 }
 
-__INLINE void ble_diagcntl_diag3_setf(uint8_t diag3)
+__RWIP_INLINE void ble_diagcntl_diag3_setf(uint8_t diag3)
 {
     ASSERT_ERR((((uint32_t)diag3 << 24) & ~((uint32_t)0x7F000000)) == 0);
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, (REG_BLE_RD(BLE_DIAGCNTL_ADDR) & ~((uint32_t)0x7F000000)) | ((uint32_t)diag3 << 24));
 }
 
-__INLINE uint8_t ble_diagcntl_diag2_en_getf(void)
+__RWIP_INLINE uint8_t ble_diagcntl_diag2_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00800000)) >> 23);
 }
 
-__INLINE void ble_diagcntl_diag2_en_setf(uint8_t diag2en)
+__RWIP_INLINE void ble_diagcntl_diag2_en_setf(uint8_t diag2en)
 {
     ASSERT_ERR((((uint32_t)diag2en << 23) & ~((uint32_t)0x00800000)) == 0);
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, (REG_BLE_RD(BLE_DIAGCNTL_ADDR) & ~((uint32_t)0x00800000)) | ((uint32_t)diag2en << 23));
 }
 
-__INLINE uint8_t ble_diagcntl_diag2_getf(void)
+__RWIP_INLINE uint8_t ble_diagcntl_diag2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x007F0000)) >> 16);
 }
 
-__INLINE void ble_diagcntl_diag2_setf(uint8_t diag2)
+__RWIP_INLINE void ble_diagcntl_diag2_setf(uint8_t diag2)
 {
     ASSERT_ERR((((uint32_t)diag2 << 16) & ~((uint32_t)0x007F0000)) == 0);
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, (REG_BLE_RD(BLE_DIAGCNTL_ADDR) & ~((uint32_t)0x007F0000)) | ((uint32_t)diag2 << 16));
 }
 
-__INLINE uint8_t ble_diagcntl_diag1_en_getf(void)
+__RWIP_INLINE uint8_t ble_diagcntl_diag1_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ble_diagcntl_diag1_en_setf(uint8_t diag1en)
+__RWIP_INLINE void ble_diagcntl_diag1_en_setf(uint8_t diag1en)
 {
     ASSERT_ERR((((uint32_t)diag1en << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, (REG_BLE_RD(BLE_DIAGCNTL_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)diag1en << 15));
 }
 
-__INLINE uint8_t ble_diagcntl_diag1_getf(void)
+__RWIP_INLINE uint8_t ble_diagcntl_diag1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_diagcntl_diag1_setf(uint8_t diag1)
+__RWIP_INLINE void ble_diagcntl_diag1_setf(uint8_t diag1)
 {
     ASSERT_ERR((((uint32_t)diag1 << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, (REG_BLE_RD(BLE_DIAGCNTL_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)diag1 << 8));
 }
 
-__INLINE uint8_t ble_diagcntl_diag0_en_getf(void)
+__RWIP_INLINE uint8_t ble_diagcntl_diag0_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_diagcntl_diag0_en_setf(uint8_t diag0en)
+__RWIP_INLINE void ble_diagcntl_diag0_en_setf(uint8_t diag0en)
 {
     ASSERT_ERR((((uint32_t)diag0en << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, (REG_BLE_RD(BLE_DIAGCNTL_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)diag0en << 7));
 }
 
-__INLINE uint8_t ble_diagcntl_diag0_getf(void)
+__RWIP_INLINE uint8_t ble_diagcntl_diag0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x0000007F)) >> 0);
 }
 
-__INLINE void ble_diagcntl_diag0_setf(uint8_t diag0)
+__RWIP_INLINE void ble_diagcntl_diag0_setf(uint8_t diag0)
 {
     ASSERT_ERR((((uint32_t)diag0 << 0) & ~((uint32_t)0x0000007F)) == 0);
     REG_BLE_WR(BLE_DIAGCNTL_ADDR, (REG_BLE_RD(BLE_DIAGCNTL_ADDR) & ~((uint32_t)0x0000007F)) | ((uint32_t)diag0 << 0));
@@ -2459,7 +2459,7 @@ __INLINE void ble_diagcntl_diag0_setf(uint8_t diag0)
 #define BLE_DIAGSTAT_INDEX  0x00000015
 #define BLE_DIAGSTAT_RESET  0x00000000
 
-__INLINE uint32_t ble_diagstat_get(void)
+__RWIP_INLINE uint32_t ble_diagstat_get(void)
 {
     return REG_BLE_RD(BLE_DIAGSTAT_ADDR);
 }
@@ -2483,7 +2483,7 @@ __INLINE uint32_t ble_diagstat_get(void)
 #define BLE_DIAG1STAT_RST    0x0
 #define BLE_DIAG0STAT_RST    0x0
 
-__INLINE void ble_diagstat_unpack(uint8_t* diag3stat, uint8_t* diag2stat, uint8_t* diag1stat, uint8_t* diag0stat)
+__RWIP_INLINE void ble_diagstat_unpack(uint8_t* diag3stat, uint8_t* diag2stat, uint8_t* diag1stat, uint8_t* diag0stat)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGSTAT_ADDR);
 
@@ -2493,25 +2493,25 @@ __INLINE void ble_diagstat_unpack(uint8_t* diag3stat, uint8_t* diag2stat, uint8_
     *diag0stat = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_diagstat_diag3stat_getf(void)
+__RWIP_INLINE uint8_t ble_diagstat_diag3stat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGSTAT_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE uint8_t ble_diagstat_diag2stat_getf(void)
+__RWIP_INLINE uint8_t ble_diagstat_diag2stat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE uint8_t ble_diagstat_diag1stat_getf(void)
+__RWIP_INLINE uint8_t ble_diagstat_diag1stat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGSTAT_ADDR);
     return ((localVal & ((uint32_t)0x0000FF00)) >> 8);
 }
 
-__INLINE uint8_t ble_diagstat_diag0stat_getf(void)
+__RWIP_INLINE uint8_t ble_diagstat_diag0stat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DIAGSTAT_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
@@ -2531,12 +2531,12 @@ __INLINE uint8_t ble_diagstat_diag0stat_getf(void)
 #define BLE_DEBUGADDMAX_INDEX  0x00000016
 #define BLE_DEBUGADDMAX_RESET  0x00000000
 
-__INLINE uint32_t ble_debugaddmax_get(void)
+__RWIP_INLINE uint32_t ble_debugaddmax_get(void)
 {
     return REG_BLE_RD(BLE_DEBUGADDMAX_ADDR);
 }
 
-__INLINE void ble_debugaddmax_set(uint32_t value)
+__RWIP_INLINE void ble_debugaddmax_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DEBUGADDMAX_ADDR, value);
 }
@@ -2552,14 +2552,14 @@ __INLINE void ble_debugaddmax_set(uint32_t value)
 #define BLE_REG_ADDMAX_RST    0x0
 #define BLE_EM_ADDMAX_RST     0x0
 
-__INLINE void ble_debugaddmax_pack(uint16_t regaddmax, uint16_t emaddmax)
+__RWIP_INLINE void ble_debugaddmax_pack(uint16_t regaddmax, uint16_t emaddmax)
 {
     ASSERT_ERR((((uint32_t)regaddmax << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     ASSERT_ERR((((uint32_t)emaddmax << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_BLE_WR(BLE_DEBUGADDMAX_ADDR,  ((uint32_t)regaddmax << 16) | ((uint32_t)emaddmax << 0));
 }
 
-__INLINE void ble_debugaddmax_unpack(uint16_t* regaddmax, uint16_t* emaddmax)
+__RWIP_INLINE void ble_debugaddmax_unpack(uint16_t* regaddmax, uint16_t* emaddmax)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEBUGADDMAX_ADDR);
 
@@ -2567,25 +2567,25 @@ __INLINE void ble_debugaddmax_unpack(uint16_t* regaddmax, uint16_t* emaddmax)
     *emaddmax = (localVal & ((uint32_t)0x0000FFFF)) >> 0;
 }
 
-__INLINE uint16_t ble_debugaddmax_reg_addmax_getf(void)
+__RWIP_INLINE uint16_t ble_debugaddmax_reg_addmax_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEBUGADDMAX_ADDR);
     return ((localVal & ((uint32_t)0xFFFF0000)) >> 16);
 }
 
-__INLINE void ble_debugaddmax_reg_addmax_setf(uint16_t regaddmax)
+__RWIP_INLINE void ble_debugaddmax_reg_addmax_setf(uint16_t regaddmax)
 {
     ASSERT_ERR((((uint32_t)regaddmax << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     REG_BLE_WR(BLE_DEBUGADDMAX_ADDR, (REG_BLE_RD(BLE_DEBUGADDMAX_ADDR) & ~((uint32_t)0xFFFF0000)) | ((uint32_t)regaddmax << 16));
 }
 
-__INLINE uint16_t ble_debugaddmax_em_addmax_getf(void)
+__RWIP_INLINE uint16_t ble_debugaddmax_em_addmax_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEBUGADDMAX_ADDR);
     return ((localVal & ((uint32_t)0x0000FFFF)) >> 0);
 }
 
-__INLINE void ble_debugaddmax_em_addmax_setf(uint16_t emaddmax)
+__RWIP_INLINE void ble_debugaddmax_em_addmax_setf(uint16_t emaddmax)
 {
     ASSERT_ERR((((uint32_t)emaddmax << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_BLE_WR(BLE_DEBUGADDMAX_ADDR, (REG_BLE_RD(BLE_DEBUGADDMAX_ADDR) & ~((uint32_t)0x0000FFFF)) | ((uint32_t)emaddmax << 0));
@@ -2605,12 +2605,12 @@ __INLINE void ble_debugaddmax_em_addmax_setf(uint16_t emaddmax)
 #define BLE_DEBUGADDMIN_INDEX  0x00000017
 #define BLE_DEBUGADDMIN_RESET  0x00000000
 
-__INLINE uint32_t ble_debugaddmin_get(void)
+__RWIP_INLINE uint32_t ble_debugaddmin_get(void)
 {
     return REG_BLE_RD(BLE_DEBUGADDMIN_ADDR);
 }
 
-__INLINE void ble_debugaddmin_set(uint32_t value)
+__RWIP_INLINE void ble_debugaddmin_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DEBUGADDMIN_ADDR, value);
 }
@@ -2626,14 +2626,14 @@ __INLINE void ble_debugaddmin_set(uint32_t value)
 #define BLE_REG_ADDMIN_RST    0x0
 #define BLE_EM_ADDMIN_RST     0x0
 
-__INLINE void ble_debugaddmin_pack(uint16_t regaddmin, uint16_t emaddmin)
+__RWIP_INLINE void ble_debugaddmin_pack(uint16_t regaddmin, uint16_t emaddmin)
 {
     ASSERT_ERR((((uint32_t)regaddmin << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     ASSERT_ERR((((uint32_t)emaddmin << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_BLE_WR(BLE_DEBUGADDMIN_ADDR,  ((uint32_t)regaddmin << 16) | ((uint32_t)emaddmin << 0));
 }
 
-__INLINE void ble_debugaddmin_unpack(uint16_t* regaddmin, uint16_t* emaddmin)
+__RWIP_INLINE void ble_debugaddmin_unpack(uint16_t* regaddmin, uint16_t* emaddmin)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEBUGADDMIN_ADDR);
 
@@ -2641,25 +2641,25 @@ __INLINE void ble_debugaddmin_unpack(uint16_t* regaddmin, uint16_t* emaddmin)
     *emaddmin = (localVal & ((uint32_t)0x0000FFFF)) >> 0;
 }
 
-__INLINE uint16_t ble_debugaddmin_reg_addmin_getf(void)
+__RWIP_INLINE uint16_t ble_debugaddmin_reg_addmin_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEBUGADDMIN_ADDR);
     return ((localVal & ((uint32_t)0xFFFF0000)) >> 16);
 }
 
-__INLINE void ble_debugaddmin_reg_addmin_setf(uint16_t regaddmin)
+__RWIP_INLINE void ble_debugaddmin_reg_addmin_setf(uint16_t regaddmin)
 {
     ASSERT_ERR((((uint32_t)regaddmin << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     REG_BLE_WR(BLE_DEBUGADDMIN_ADDR, (REG_BLE_RD(BLE_DEBUGADDMIN_ADDR) & ~((uint32_t)0xFFFF0000)) | ((uint32_t)regaddmin << 16));
 }
 
-__INLINE uint16_t ble_debugaddmin_em_addmin_getf(void)
+__RWIP_INLINE uint16_t ble_debugaddmin_em_addmin_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DEBUGADDMIN_ADDR);
     return ((localVal & ((uint32_t)0x0000FFFF)) >> 0);
 }
 
-__INLINE void ble_debugaddmin_em_addmin_setf(uint16_t emaddmin)
+__RWIP_INLINE void ble_debugaddmin_em_addmin_setf(uint16_t emaddmin)
 {
     ASSERT_ERR((((uint32_t)emaddmin << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_BLE_WR(BLE_DEBUGADDMIN_ADDR, (REG_BLE_RD(BLE_DEBUGADDMIN_ADDR) & ~((uint32_t)0x0000FFFF)) | ((uint32_t)emaddmin << 0));
@@ -2701,7 +2701,7 @@ __INLINE void ble_debugaddmin_em_addmin_setf(uint16_t emaddmin)
 #define BLE_ERRORTYPESTAT_INDEX  0x00000018
 #define BLE_ERRORTYPESTAT_RESET  0x00000000
 
-__INLINE uint32_t ble_errortypestat_get(void)
+__RWIP_INLINE uint32_t ble_errortypestat_get(void)
 {
     return REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
 }
@@ -2781,7 +2781,7 @@ __INLINE uint32_t ble_errortypestat_get(void)
 #define BLE_RXCRYPT_ERROR_RST            0x0
 #define BLE_TXCRYPT_ERROR_RST            0x0
 
-__INLINE void ble_errortypestat_unpack(uint8_t* freqselerror, uint8_t* dfcntlemaccerror, uint8_t* fifointovf, uint8_t* phyerror, uint8_t* txaeheaderptrerror, uint8_t* tmafsunderrun, uint8_t* ralunderrun, uint8_t* ralerror, uint8_t* rxdataptrerror, uint8_t* txdataptrerror, uint8_t* rxdescemptyerror, uint8_t* txdescemptyerror, uint8_t* csformaterror, uint8_t* llchmaperror, uint8_t* advunderrun, uint8_t* ifsunderrun, uint8_t* listerror, uint8_t* evtcntlapfmerror, uint8_t* actschdlapfmerror, uint8_t* actschdlentryerror, uint8_t* radioemaccerror, uint8_t* pktcntlemaccerror, uint8_t* rxcrypterror, uint8_t* txcrypterror)
+__RWIP_INLINE void ble_errortypestat_unpack(uint8_t* freqselerror, uint8_t* dfcntlemaccerror, uint8_t* fifointovf, uint8_t* phyerror, uint8_t* txaeheaderptrerror, uint8_t* tmafsunderrun, uint8_t* ralunderrun, uint8_t* ralerror, uint8_t* rxdataptrerror, uint8_t* txdataptrerror, uint8_t* rxdescemptyerror, uint8_t* txdescemptyerror, uint8_t* csformaterror, uint8_t* llchmaperror, uint8_t* advunderrun, uint8_t* ifsunderrun, uint8_t* listerror, uint8_t* evtcntlapfmerror, uint8_t* actschdlapfmerror, uint8_t* actschdlentryerror, uint8_t* radioemaccerror, uint8_t* pktcntlemaccerror, uint8_t* rxcrypterror, uint8_t* txcrypterror)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
 
@@ -2811,145 +2811,145 @@ __INLINE void ble_errortypestat_unpack(uint8_t* freqselerror, uint8_t* dfcntlema
     *txcrypterror = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_errortypestat_freqsel_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_freqsel_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00800000)) >> 23);
 }
 
-__INLINE uint8_t ble_errortypestat_dfcntl_emacc_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_dfcntl_emacc_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00400000)) >> 22);
 }
 
-__INLINE uint8_t ble_errortypestat_fifointovf_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_fifointovf_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00200000)) >> 21);
 }
 
-__INLINE uint8_t ble_errortypestat_phy_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_phy_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00100000)) >> 20);
 }
 
-__INLINE uint8_t ble_errortypestat_txaeheader_ptr_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_txaeheader_ptr_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00080000)) >> 19);
 }
 
-__INLINE uint8_t ble_errortypestat_tmafs_underrun_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_tmafs_underrun_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00040000)) >> 18);
 }
 
-__INLINE uint8_t ble_errortypestat_ral_underrun_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_ral_underrun_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00020000)) >> 17);
 }
 
-__INLINE uint8_t ble_errortypestat_ral_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_ral_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00010000)) >> 16);
 }
 
-__INLINE uint8_t ble_errortypestat_rxdata_ptr_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_rxdata_ptr_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE uint8_t ble_errortypestat_txdata_ptr_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_txdata_ptr_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00004000)) >> 14);
 }
 
-__INLINE uint8_t ble_errortypestat_rxdesc_empty_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_rxdesc_empty_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00002000)) >> 13);
 }
 
-__INLINE uint8_t ble_errortypestat_txdesc_empty_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_txdesc_empty_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00001000)) >> 12);
 }
 
-__INLINE uint8_t ble_errortypestat_csformat_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_csformat_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000800)) >> 11);
 }
 
-__INLINE uint8_t ble_errortypestat_llchmap_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_llchmap_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000400)) >> 10);
 }
 
-__INLINE uint8_t ble_errortypestat_adv_underrun_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_adv_underrun_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000200)) >> 9);
 }
 
-__INLINE uint8_t ble_errortypestat_ifs_underrun_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_ifs_underrun_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000100)) >> 8);
 }
 
-__INLINE uint8_t ble_errortypestat_list_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_list_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE uint8_t ble_errortypestat_evt_cntl_apfm_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_evt_cntl_apfm_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE uint8_t ble_errortypestat_act_schdl_apfm_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_act_schdl_apfm_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE uint8_t ble_errortypestat_act_schdl_entry_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_act_schdl_entry_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE uint8_t ble_errortypestat_radio_emacc_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_radio_emacc_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE uint8_t ble_errortypestat_pktcntl_emacc_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_pktcntl_emacc_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE uint8_t ble_errortypestat_rxcrypt_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_rxcrypt_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE uint8_t ble_errortypestat_txcrypt_error_getf(void)
+__RWIP_INLINE uint8_t ble_errortypestat_txcrypt_error_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
@@ -2999,12 +2999,12 @@ __INLINE uint8_t ble_errortypestat_txcrypt_error_getf(void)
 #define BLE_SWPROFILING_INDEX  0x00000019
 #define BLE_SWPROFILING_RESET  0x00000000
 
-__INLINE uint32_t ble_swprofiling_get(void)
+__RWIP_INLINE uint32_t ble_swprofiling_get(void)
 {
     return REG_BLE_RD(BLE_SWPROFILING_ADDR);
 }
 
-__INLINE void ble_swprofiling_set(uint32_t value)
+__RWIP_INLINE void ble_swprofiling_set(uint32_t value)
 {
     REG_BLE_WR(BLE_SWPROFILING_ADDR, value);
 }
@@ -3108,7 +3108,7 @@ __INLINE void ble_swprofiling_set(uint32_t value)
 #define BLE_SWPROF1_RST     0x0
 #define BLE_SWPROF0_RST     0x0
 
-__INLINE void ble_swprofiling_pack(uint8_t swprof31, uint8_t swprof30, uint8_t swprof29, uint8_t swprof28, uint8_t swprof27, uint8_t swprof26, uint8_t swprof25, uint8_t swprof24, uint8_t swprof23, uint8_t swprof22, uint8_t swprof21, uint8_t swprof20, uint8_t swprof19, uint8_t swprof18, uint8_t swprof17, uint8_t swprof16, uint8_t swprof15, uint8_t swprof14, uint8_t swprof13, uint8_t swprof12, uint8_t swprof11, uint8_t swprof10, uint8_t swprof9, uint8_t swprof8, uint8_t swprof7, uint8_t swprof6, uint8_t swprof5, uint8_t swprof4, uint8_t swprof3, uint8_t swprof2, uint8_t swprof1, uint8_t swprof0)
+__RWIP_INLINE void ble_swprofiling_pack(uint8_t swprof31, uint8_t swprof30, uint8_t swprof29, uint8_t swprof28, uint8_t swprof27, uint8_t swprof26, uint8_t swprof25, uint8_t swprof24, uint8_t swprof23, uint8_t swprof22, uint8_t swprof21, uint8_t swprof20, uint8_t swprof19, uint8_t swprof18, uint8_t swprof17, uint8_t swprof16, uint8_t swprof15, uint8_t swprof14, uint8_t swprof13, uint8_t swprof12, uint8_t swprof11, uint8_t swprof10, uint8_t swprof9, uint8_t swprof8, uint8_t swprof7, uint8_t swprof6, uint8_t swprof5, uint8_t swprof4, uint8_t swprof3, uint8_t swprof2, uint8_t swprof1, uint8_t swprof0)
 {
     ASSERT_ERR((((uint32_t)swprof31 << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)swprof30 << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -3145,7 +3145,7 @@ __INLINE void ble_swprofiling_pack(uint8_t swprof31, uint8_t swprof30, uint8_t s
     REG_BLE_WR(BLE_SWPROFILING_ADDR,  ((uint32_t)swprof31 << 31) | ((uint32_t)swprof30 << 30) | ((uint32_t)swprof29 << 29) | ((uint32_t)swprof28 << 28) | ((uint32_t)swprof27 << 27) | ((uint32_t)swprof26 << 26) | ((uint32_t)swprof25 << 25) | ((uint32_t)swprof24 << 24) | ((uint32_t)swprof23 << 23) | ((uint32_t)swprof22 << 22) | ((uint32_t)swprof21 << 21) | ((uint32_t)swprof20 << 20) | ((uint32_t)swprof19 << 19) | ((uint32_t)swprof18 << 18) | ((uint32_t)swprof17 << 17) | ((uint32_t)swprof16 << 16) | ((uint32_t)swprof15 << 15) | ((uint32_t)swprof14 << 14) | ((uint32_t)swprof13 << 13) | ((uint32_t)swprof12 << 12) | ((uint32_t)swprof11 << 11) | ((uint32_t)swprof10 << 10) | ((uint32_t)swprof9 << 9) | ((uint32_t)swprof8 << 8) | ((uint32_t)swprof7 << 7) | ((uint32_t)swprof6 << 6) | ((uint32_t)swprof5 << 5) | ((uint32_t)swprof4 << 4) | ((uint32_t)swprof3 << 3) | ((uint32_t)swprof2 << 2) | ((uint32_t)swprof1 << 1) | ((uint32_t)swprof0 << 0));
 }
 
-__INLINE void ble_swprofiling_unpack(uint8_t* swprof31, uint8_t* swprof30, uint8_t* swprof29, uint8_t* swprof28, uint8_t* swprof27, uint8_t* swprof26, uint8_t* swprof25, uint8_t* swprof24, uint8_t* swprof23, uint8_t* swprof22, uint8_t* swprof21, uint8_t* swprof20, uint8_t* swprof19, uint8_t* swprof18, uint8_t* swprof17, uint8_t* swprof16, uint8_t* swprof15, uint8_t* swprof14, uint8_t* swprof13, uint8_t* swprof12, uint8_t* swprof11, uint8_t* swprof10, uint8_t* swprof9, uint8_t* swprof8, uint8_t* swprof7, uint8_t* swprof6, uint8_t* swprof5, uint8_t* swprof4, uint8_t* swprof3, uint8_t* swprof2, uint8_t* swprof1, uint8_t* swprof0)
+__RWIP_INLINE void ble_swprofiling_unpack(uint8_t* swprof31, uint8_t* swprof30, uint8_t* swprof29, uint8_t* swprof28, uint8_t* swprof27, uint8_t* swprof26, uint8_t* swprof25, uint8_t* swprof24, uint8_t* swprof23, uint8_t* swprof22, uint8_t* swprof21, uint8_t* swprof20, uint8_t* swprof19, uint8_t* swprof18, uint8_t* swprof17, uint8_t* swprof16, uint8_t* swprof15, uint8_t* swprof14, uint8_t* swprof13, uint8_t* swprof12, uint8_t* swprof11, uint8_t* swprof10, uint8_t* swprof9, uint8_t* swprof8, uint8_t* swprof7, uint8_t* swprof6, uint8_t* swprof5, uint8_t* swprof4, uint8_t* swprof3, uint8_t* swprof2, uint8_t* swprof1, uint8_t* swprof0)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
 
@@ -3183,385 +3183,385 @@ __INLINE void ble_swprofiling_unpack(uint8_t* swprof31, uint8_t* swprof30, uint8
     *swprof0 = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_swprofiling_swprof31_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof31_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_swprofiling_swprof31_setf(uint8_t swprof31)
+__RWIP_INLINE void ble_swprofiling_swprof31_setf(uint8_t swprof31)
 {
     ASSERT_ERR((((uint32_t)swprof31 << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)swprof31 << 31));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof30_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof30_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ble_swprofiling_swprof30_setf(uint8_t swprof30)
+__RWIP_INLINE void ble_swprofiling_swprof30_setf(uint8_t swprof30)
 {
     ASSERT_ERR((((uint32_t)swprof30 << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)swprof30 << 30));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof29_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof29_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x20000000)) >> 29);
 }
 
-__INLINE void ble_swprofiling_swprof29_setf(uint8_t swprof29)
+__RWIP_INLINE void ble_swprofiling_swprof29_setf(uint8_t swprof29)
 {
     ASSERT_ERR((((uint32_t)swprof29 << 29) & ~((uint32_t)0x20000000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x20000000)) | ((uint32_t)swprof29 << 29));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof28_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof28_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x10000000)) >> 28);
 }
 
-__INLINE void ble_swprofiling_swprof28_setf(uint8_t swprof28)
+__RWIP_INLINE void ble_swprofiling_swprof28_setf(uint8_t swprof28)
 {
     ASSERT_ERR((((uint32_t)swprof28 << 28) & ~((uint32_t)0x10000000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x10000000)) | ((uint32_t)swprof28 << 28));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof27_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof27_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x08000000)) >> 27);
 }
 
-__INLINE void ble_swprofiling_swprof27_setf(uint8_t swprof27)
+__RWIP_INLINE void ble_swprofiling_swprof27_setf(uint8_t swprof27)
 {
     ASSERT_ERR((((uint32_t)swprof27 << 27) & ~((uint32_t)0x08000000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x08000000)) | ((uint32_t)swprof27 << 27));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof26_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof26_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x04000000)) >> 26);
 }
 
-__INLINE void ble_swprofiling_swprof26_setf(uint8_t swprof26)
+__RWIP_INLINE void ble_swprofiling_swprof26_setf(uint8_t swprof26)
 {
     ASSERT_ERR((((uint32_t)swprof26 << 26) & ~((uint32_t)0x04000000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x04000000)) | ((uint32_t)swprof26 << 26));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof25_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof25_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x02000000)) >> 25);
 }
 
-__INLINE void ble_swprofiling_swprof25_setf(uint8_t swprof25)
+__RWIP_INLINE void ble_swprofiling_swprof25_setf(uint8_t swprof25)
 {
     ASSERT_ERR((((uint32_t)swprof25 << 25) & ~((uint32_t)0x02000000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x02000000)) | ((uint32_t)swprof25 << 25));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof24_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof24_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x01000000)) >> 24);
 }
 
-__INLINE void ble_swprofiling_swprof24_setf(uint8_t swprof24)
+__RWIP_INLINE void ble_swprofiling_swprof24_setf(uint8_t swprof24)
 {
     ASSERT_ERR((((uint32_t)swprof24 << 24) & ~((uint32_t)0x01000000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x01000000)) | ((uint32_t)swprof24 << 24));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof23_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof23_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00800000)) >> 23);
 }
 
-__INLINE void ble_swprofiling_swprof23_setf(uint8_t swprof23)
+__RWIP_INLINE void ble_swprofiling_swprof23_setf(uint8_t swprof23)
 {
     ASSERT_ERR((((uint32_t)swprof23 << 23) & ~((uint32_t)0x00800000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00800000)) | ((uint32_t)swprof23 << 23));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof22_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof22_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00400000)) >> 22);
 }
 
-__INLINE void ble_swprofiling_swprof22_setf(uint8_t swprof22)
+__RWIP_INLINE void ble_swprofiling_swprof22_setf(uint8_t swprof22)
 {
     ASSERT_ERR((((uint32_t)swprof22 << 22) & ~((uint32_t)0x00400000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00400000)) | ((uint32_t)swprof22 << 22));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof21_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof21_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00200000)) >> 21);
 }
 
-__INLINE void ble_swprofiling_swprof21_setf(uint8_t swprof21)
+__RWIP_INLINE void ble_swprofiling_swprof21_setf(uint8_t swprof21)
 {
     ASSERT_ERR((((uint32_t)swprof21 << 21) & ~((uint32_t)0x00200000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00200000)) | ((uint32_t)swprof21 << 21));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof20_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof20_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00100000)) >> 20);
 }
 
-__INLINE void ble_swprofiling_swprof20_setf(uint8_t swprof20)
+__RWIP_INLINE void ble_swprofiling_swprof20_setf(uint8_t swprof20)
 {
     ASSERT_ERR((((uint32_t)swprof20 << 20) & ~((uint32_t)0x00100000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00100000)) | ((uint32_t)swprof20 << 20));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof19_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof19_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00080000)) >> 19);
 }
 
-__INLINE void ble_swprofiling_swprof19_setf(uint8_t swprof19)
+__RWIP_INLINE void ble_swprofiling_swprof19_setf(uint8_t swprof19)
 {
     ASSERT_ERR((((uint32_t)swprof19 << 19) & ~((uint32_t)0x00080000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00080000)) | ((uint32_t)swprof19 << 19));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof18_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof18_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00040000)) >> 18);
 }
 
-__INLINE void ble_swprofiling_swprof18_setf(uint8_t swprof18)
+__RWIP_INLINE void ble_swprofiling_swprof18_setf(uint8_t swprof18)
 {
     ASSERT_ERR((((uint32_t)swprof18 << 18) & ~((uint32_t)0x00040000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00040000)) | ((uint32_t)swprof18 << 18));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof17_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof17_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00020000)) >> 17);
 }
 
-__INLINE void ble_swprofiling_swprof17_setf(uint8_t swprof17)
+__RWIP_INLINE void ble_swprofiling_swprof17_setf(uint8_t swprof17)
 {
     ASSERT_ERR((((uint32_t)swprof17 << 17) & ~((uint32_t)0x00020000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00020000)) | ((uint32_t)swprof17 << 17));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof16_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof16_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00010000)) >> 16);
 }
 
-__INLINE void ble_swprofiling_swprof16_setf(uint8_t swprof16)
+__RWIP_INLINE void ble_swprofiling_swprof16_setf(uint8_t swprof16)
 {
     ASSERT_ERR((((uint32_t)swprof16 << 16) & ~((uint32_t)0x00010000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00010000)) | ((uint32_t)swprof16 << 16));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof15_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof15_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ble_swprofiling_swprof15_setf(uint8_t swprof15)
+__RWIP_INLINE void ble_swprofiling_swprof15_setf(uint8_t swprof15)
 {
     ASSERT_ERR((((uint32_t)swprof15 << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)swprof15 << 15));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof14_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof14_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00004000)) >> 14);
 }
 
-__INLINE void ble_swprofiling_swprof14_setf(uint8_t swprof14)
+__RWIP_INLINE void ble_swprofiling_swprof14_setf(uint8_t swprof14)
 {
     ASSERT_ERR((((uint32_t)swprof14 << 14) & ~((uint32_t)0x00004000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00004000)) | ((uint32_t)swprof14 << 14));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof13_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof13_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00002000)) >> 13);
 }
 
-__INLINE void ble_swprofiling_swprof13_setf(uint8_t swprof13)
+__RWIP_INLINE void ble_swprofiling_swprof13_setf(uint8_t swprof13)
 {
     ASSERT_ERR((((uint32_t)swprof13 << 13) & ~((uint32_t)0x00002000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00002000)) | ((uint32_t)swprof13 << 13));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof12_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof12_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00001000)) >> 12);
 }
 
-__INLINE void ble_swprofiling_swprof12_setf(uint8_t swprof12)
+__RWIP_INLINE void ble_swprofiling_swprof12_setf(uint8_t swprof12)
 {
     ASSERT_ERR((((uint32_t)swprof12 << 12) & ~((uint32_t)0x00001000)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00001000)) | ((uint32_t)swprof12 << 12));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof11_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof11_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000800)) >> 11);
 }
 
-__INLINE void ble_swprofiling_swprof11_setf(uint8_t swprof11)
+__RWIP_INLINE void ble_swprofiling_swprof11_setf(uint8_t swprof11)
 {
     ASSERT_ERR((((uint32_t)swprof11 << 11) & ~((uint32_t)0x00000800)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000800)) | ((uint32_t)swprof11 << 11));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof10_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof10_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000400)) >> 10);
 }
 
-__INLINE void ble_swprofiling_swprof10_setf(uint8_t swprof10)
+__RWIP_INLINE void ble_swprofiling_swprof10_setf(uint8_t swprof10)
 {
     ASSERT_ERR((((uint32_t)swprof10 << 10) & ~((uint32_t)0x00000400)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000400)) | ((uint32_t)swprof10 << 10));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof9_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof9_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000200)) >> 9);
 }
 
-__INLINE void ble_swprofiling_swprof9_setf(uint8_t swprof9)
+__RWIP_INLINE void ble_swprofiling_swprof9_setf(uint8_t swprof9)
 {
     ASSERT_ERR((((uint32_t)swprof9 << 9) & ~((uint32_t)0x00000200)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000200)) | ((uint32_t)swprof9 << 9));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof8_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof8_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000100)) >> 8);
 }
 
-__INLINE void ble_swprofiling_swprof8_setf(uint8_t swprof8)
+__RWIP_INLINE void ble_swprofiling_swprof8_setf(uint8_t swprof8)
 {
     ASSERT_ERR((((uint32_t)swprof8 << 8) & ~((uint32_t)0x00000100)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000100)) | ((uint32_t)swprof8 << 8));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof7_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof7_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_swprofiling_swprof7_setf(uint8_t swprof7)
+__RWIP_INLINE void ble_swprofiling_swprof7_setf(uint8_t swprof7)
 {
     ASSERT_ERR((((uint32_t)swprof7 << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)swprof7 << 7));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof6_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof6_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE void ble_swprofiling_swprof6_setf(uint8_t swprof6)
+__RWIP_INLINE void ble_swprofiling_swprof6_setf(uint8_t swprof6)
 {
     ASSERT_ERR((((uint32_t)swprof6 << 6) & ~((uint32_t)0x00000040)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000040)) | ((uint32_t)swprof6 << 6));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof5_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof5_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE void ble_swprofiling_swprof5_setf(uint8_t swprof5)
+__RWIP_INLINE void ble_swprofiling_swprof5_setf(uint8_t swprof5)
 {
     ASSERT_ERR((((uint32_t)swprof5 << 5) & ~((uint32_t)0x00000020)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000020)) | ((uint32_t)swprof5 << 5));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof4_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof4_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE void ble_swprofiling_swprof4_setf(uint8_t swprof4)
+__RWIP_INLINE void ble_swprofiling_swprof4_setf(uint8_t swprof4)
 {
     ASSERT_ERR((((uint32_t)swprof4 << 4) & ~((uint32_t)0x00000010)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000010)) | ((uint32_t)swprof4 << 4));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof3_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ble_swprofiling_swprof3_setf(uint8_t swprof3)
+__RWIP_INLINE void ble_swprofiling_swprof3_setf(uint8_t swprof3)
 {
     ASSERT_ERR((((uint32_t)swprof3 << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000008)) | ((uint32_t)swprof3 << 3));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof2_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ble_swprofiling_swprof2_setf(uint8_t swprof2)
+__RWIP_INLINE void ble_swprofiling_swprof2_setf(uint8_t swprof2)
 {
     ASSERT_ERR((((uint32_t)swprof2 << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)swprof2 << 2));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof1_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_swprofiling_swprof1_setf(uint8_t swprof1)
+__RWIP_INLINE void ble_swprofiling_swprof1_setf(uint8_t swprof1)
 {
     ASSERT_ERR((((uint32_t)swprof1 << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)swprof1 << 1));
 }
 
-__INLINE uint8_t ble_swprofiling_swprof0_getf(void)
+__RWIP_INLINE uint8_t ble_swprofiling_swprof0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_swprofiling_swprof0_setf(uint8_t swprof0)
+__RWIP_INLINE void ble_swprofiling_swprof0_setf(uint8_t swprof0)
 {
     ASSERT_ERR((((uint32_t)swprof0 << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_SWPROFILING_ADDR, (REG_BLE_RD(BLE_SWPROFILING_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)swprof0 << 0));
@@ -3584,12 +3584,12 @@ __INLINE void ble_swprofiling_swprof0_setf(uint8_t swprof0)
 #define BLE_RADIOCNTL0_INDEX  0x0000001C
 #define BLE_RADIOCNTL0_RESET  0x00000002
 
-__INLINE uint32_t ble_radiocntl0_get(void)
+__RWIP_INLINE uint32_t ble_radiocntl0_get(void)
 {
     return REG_BLE_RD(BLE_RADIOCNTL0_ADDR);
 }
 
-__INLINE void ble_radiocntl0_set(uint32_t value)
+__RWIP_INLINE void ble_radiocntl0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOCNTL0_ADDR, value);
 }
@@ -3614,7 +3614,7 @@ __INLINE void ble_radiocntl0_set(uint32_t value)
 #define BLE_SPICOMP_RST    0x1
 #define BLE_SPIGO_RST      0x0
 
-__INLINE void ble_radiocntl0_pack(uint16_t spiptr, uint8_t spicfg, uint8_t spifreq, uint8_t spigo)
+__RWIP_INLINE void ble_radiocntl0_pack(uint16_t spiptr, uint8_t spicfg, uint8_t spifreq, uint8_t spigo)
 {
     ASSERT_ERR((((uint32_t)spiptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     ASSERT_ERR((((uint32_t)spicfg << 7) & ~((uint32_t)0x00000080)) == 0);
@@ -3623,7 +3623,7 @@ __INLINE void ble_radiocntl0_pack(uint16_t spiptr, uint8_t spicfg, uint8_t spifr
     REG_BLE_WR(BLE_RADIOCNTL0_ADDR,  ((uint32_t)spiptr << 16) | ((uint32_t)spicfg << 7) | ((uint32_t)spifreq << 4) | ((uint32_t)spigo << 0));
 }
 
-__INLINE void ble_radiocntl0_unpack(uint16_t* spiptr, uint8_t* spicfg, uint8_t* spifreq, uint8_t* spicomp, uint8_t* spigo)
+__RWIP_INLINE void ble_radiocntl0_unpack(uint16_t* spiptr, uint8_t* spicfg, uint8_t* spifreq, uint8_t* spicomp, uint8_t* spigo)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL0_ADDR);
 
@@ -3634,55 +3634,55 @@ __INLINE void ble_radiocntl0_unpack(uint16_t* spiptr, uint8_t* spicfg, uint8_t* 
     *spigo = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint16_t ble_radiocntl0_spiptr_getf(void)
+__RWIP_INLINE uint16_t ble_radiocntl0_spiptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x3FFF0000)) >> 16);
 }
 
-__INLINE void ble_radiocntl0_spiptr_setf(uint16_t spiptr)
+__RWIP_INLINE void ble_radiocntl0_spiptr_setf(uint16_t spiptr)
 {
     ASSERT_ERR((((uint32_t)spiptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL0_ADDR, (REG_BLE_RD(BLE_RADIOCNTL0_ADDR) & ~((uint32_t)0x3FFF0000)) | ((uint32_t)spiptr << 16));
 }
 
-__INLINE uint8_t ble_radiocntl0_spicfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl0_spicfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_radiocntl0_spicfg_setf(uint8_t spicfg)
+__RWIP_INLINE void ble_radiocntl0_spicfg_setf(uint8_t spicfg)
 {
     ASSERT_ERR((((uint32_t)spicfg << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL0_ADDR, (REG_BLE_RD(BLE_RADIOCNTL0_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)spicfg << 7));
 }
 
-__INLINE uint8_t ble_radiocntl0_spifreq_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl0_spifreq_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000030)) >> 4);
 }
 
-__INLINE void ble_radiocntl0_spifreq_setf(uint8_t spifreq)
+__RWIP_INLINE void ble_radiocntl0_spifreq_setf(uint8_t spifreq)
 {
     ASSERT_ERR((((uint32_t)spifreq << 4) & ~((uint32_t)0x00000030)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL0_ADDR, (REG_BLE_RD(BLE_RADIOCNTL0_ADDR) & ~((uint32_t)0x00000030)) | ((uint32_t)spifreq << 4));
 }
 
-__INLINE uint8_t ble_radiocntl0_spicomp_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl0_spicomp_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE uint8_t ble_radiocntl0_spigo_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl0_spigo_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_radiocntl0_spigo_setf(uint8_t spigo)
+__RWIP_INLINE void ble_radiocntl0_spigo_setf(uint8_t spigo)
 {
     ASSERT_ERR((((uint32_t)spigo << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL0_ADDR, (REG_BLE_RD(BLE_RADIOCNTL0_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)spigo << 0));
@@ -3711,12 +3711,12 @@ __INLINE void ble_radiocntl0_spigo_setf(uint8_t spigo)
 #define BLE_RADIOCNTL1_INDEX  0x0000001D
 #define BLE_RADIOCNTL1_RESET  0x00000000
 
-__INLINE uint32_t ble_radiocntl1_get(void)
+__RWIP_INLINE uint32_t ble_radiocntl1_get(void)
 {
     return REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
 }
 
-__INLINE void ble_radiocntl1_set(uint32_t value)
+__RWIP_INLINE void ble_radiocntl1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, value);
 }
@@ -3760,7 +3760,7 @@ __INLINE void ble_radiocntl1_set(uint32_t value)
 #define BLE_XRFSEL_RST             0x0
 #define BLE_SUBVERSION_RST         0x0
 
-__INLINE void ble_radiocntl1_pack(uint8_t forceagcen, uint8_t forceiq, uint8_t rxdnsl, uint8_t txdnsl, uint16_t forceagclength, uint8_t syncpulsemode, uint8_t syncpulsesrc, uint8_t dpcorren, uint8_t jefselect, uint8_t xrfsel, uint8_t subversion)
+__RWIP_INLINE void ble_radiocntl1_pack(uint8_t forceagcen, uint8_t forceiq, uint8_t rxdnsl, uint8_t txdnsl, uint16_t forceagclength, uint8_t syncpulsemode, uint8_t syncpulsesrc, uint8_t dpcorren, uint8_t jefselect, uint8_t xrfsel, uint8_t subversion)
 {
     ASSERT_ERR((((uint32_t)forceagcen << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)forceiq << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -3776,7 +3776,7 @@ __INLINE void ble_radiocntl1_pack(uint8_t forceagcen, uint8_t forceiq, uint8_t r
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR,  ((uint32_t)forceagcen << 31) | ((uint32_t)forceiq << 30) | ((uint32_t)rxdnsl << 29) | ((uint32_t)txdnsl << 28) | ((uint32_t)forceagclength << 16) | ((uint32_t)syncpulsemode << 15) | ((uint32_t)syncpulsesrc << 14) | ((uint32_t)dpcorren << 13) | ((uint32_t)jefselect << 12) | ((uint32_t)xrfsel << 4) | ((uint32_t)subversion << 0));
 }
 
-__INLINE void ble_radiocntl1_unpack(uint8_t* forceagcen, uint8_t* forceiq, uint8_t* rxdnsl, uint8_t* txdnsl, uint16_t* forceagclength, uint8_t* syncpulsemode, uint8_t* syncpulsesrc, uint8_t* dpcorren, uint8_t* jefselect, uint8_t* xrfsel, uint8_t* subversion)
+__RWIP_INLINE void ble_radiocntl1_unpack(uint8_t* forceagcen, uint8_t* forceiq, uint8_t* rxdnsl, uint8_t* txdnsl, uint16_t* forceagclength, uint8_t* syncpulsemode, uint8_t* syncpulsesrc, uint8_t* dpcorren, uint8_t* jefselect, uint8_t* xrfsel, uint8_t* subversion)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
 
@@ -3793,133 +3793,133 @@ __INLINE void ble_radiocntl1_unpack(uint8_t* forceagcen, uint8_t* forceiq, uint8
     *subversion = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ble_radiocntl1_forceagc_en_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_forceagc_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_radiocntl1_forceagc_en_setf(uint8_t forceagcen)
+__RWIP_INLINE void ble_radiocntl1_forceagc_en_setf(uint8_t forceagcen)
 {
     ASSERT_ERR((((uint32_t)forceagcen << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)forceagcen << 31));
 }
 
-__INLINE uint8_t ble_radiocntl1_forceiq_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_forceiq_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ble_radiocntl1_forceiq_setf(uint8_t forceiq)
+__RWIP_INLINE void ble_radiocntl1_forceiq_setf(uint8_t forceiq)
 {
     ASSERT_ERR((((uint32_t)forceiq << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)forceiq << 30));
 }
 
-__INLINE uint8_t ble_radiocntl1_rxdnsl_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_rxdnsl_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x20000000)) >> 29);
 }
 
-__INLINE void ble_radiocntl1_rxdnsl_setf(uint8_t rxdnsl)
+__RWIP_INLINE void ble_radiocntl1_rxdnsl_setf(uint8_t rxdnsl)
 {
     ASSERT_ERR((((uint32_t)rxdnsl << 29) & ~((uint32_t)0x20000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x20000000)) | ((uint32_t)rxdnsl << 29));
 }
 
-__INLINE uint8_t ble_radiocntl1_txdnsl_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_txdnsl_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x10000000)) >> 28);
 }
 
-__INLINE void ble_radiocntl1_txdnsl_setf(uint8_t txdnsl)
+__RWIP_INLINE void ble_radiocntl1_txdnsl_setf(uint8_t txdnsl)
 {
     ASSERT_ERR((((uint32_t)txdnsl << 28) & ~((uint32_t)0x10000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x10000000)) | ((uint32_t)txdnsl << 28));
 }
 
-__INLINE uint16_t ble_radiocntl1_forceagc_length_getf(void)
+__RWIP_INLINE uint16_t ble_radiocntl1_forceagc_length_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x0FFF0000)) >> 16);
 }
 
-__INLINE void ble_radiocntl1_forceagc_length_setf(uint16_t forceagclength)
+__RWIP_INLINE void ble_radiocntl1_forceagc_length_setf(uint16_t forceagclength)
 {
     ASSERT_ERR((((uint32_t)forceagclength << 16) & ~((uint32_t)0x0FFF0000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x0FFF0000)) | ((uint32_t)forceagclength << 16));
 }
 
-__INLINE uint8_t ble_radiocntl1_sync_pulse_mode_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_sync_pulse_mode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ble_radiocntl1_sync_pulse_mode_setf(uint8_t syncpulsemode)
+__RWIP_INLINE void ble_radiocntl1_sync_pulse_mode_setf(uint8_t syncpulsemode)
 {
     ASSERT_ERR((((uint32_t)syncpulsemode << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)syncpulsemode << 15));
 }
 
-__INLINE uint8_t ble_radiocntl1_sync_pulse_src_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_sync_pulse_src_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00004000)) >> 14);
 }
 
-__INLINE void ble_radiocntl1_sync_pulse_src_setf(uint8_t syncpulsesrc)
+__RWIP_INLINE void ble_radiocntl1_sync_pulse_src_setf(uint8_t syncpulsesrc)
 {
     ASSERT_ERR((((uint32_t)syncpulsesrc << 14) & ~((uint32_t)0x00004000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x00004000)) | ((uint32_t)syncpulsesrc << 14));
 }
 
-__INLINE uint8_t ble_radiocntl1_dpcorr_en_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_dpcorr_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00002000)) >> 13);
 }
 
-__INLINE void ble_radiocntl1_dpcorr_en_setf(uint8_t dpcorren)
+__RWIP_INLINE void ble_radiocntl1_dpcorr_en_setf(uint8_t dpcorren)
 {
     ASSERT_ERR((((uint32_t)dpcorren << 13) & ~((uint32_t)0x00002000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x00002000)) | ((uint32_t)dpcorren << 13));
 }
 
-__INLINE uint8_t ble_radiocntl1_jef_select_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_jef_select_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00001000)) >> 12);
 }
 
-__INLINE void ble_radiocntl1_jef_select_setf(uint8_t jefselect)
+__RWIP_INLINE void ble_radiocntl1_jef_select_setf(uint8_t jefselect)
 {
     ASSERT_ERR((((uint32_t)jefselect << 12) & ~((uint32_t)0x00001000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x00001000)) | ((uint32_t)jefselect << 12));
 }
 
-__INLINE uint8_t ble_radiocntl1_xrfsel_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_xrfsel_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x000003F0)) >> 4);
 }
 
-__INLINE void ble_radiocntl1_xrfsel_setf(uint8_t xrfsel)
+__RWIP_INLINE void ble_radiocntl1_xrfsel_setf(uint8_t xrfsel)
 {
     ASSERT_ERR((((uint32_t)xrfsel << 4) & ~((uint32_t)0x000003F0)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x000003F0)) | ((uint32_t)xrfsel << 4));
 }
 
-__INLINE uint8_t ble_radiocntl1_subversion_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl1_subversion_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ble_radiocntl1_subversion_setf(uint8_t subversion)
+__RWIP_INLINE void ble_radiocntl1_subversion_setf(uint8_t subversion)
 {
     ASSERT_ERR((((uint32_t)subversion << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL1_ADDR, (REG_BLE_RD(BLE_RADIOCNTL1_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)subversion << 0));
@@ -3944,12 +3944,12 @@ __INLINE void ble_radiocntl1_subversion_setf(uint8_t subversion)
 #define BLE_RADIOCNTL2_INDEX  0x0000001E
 #define BLE_RADIOCNTL2_RESET  0xC8000040
 
-__INLINE uint32_t ble_radiocntl2_get(void)
+__RWIP_INLINE uint32_t ble_radiocntl2_get(void)
 {
     return REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
 }
 
-__INLINE void ble_radiocntl2_set(uint32_t value)
+__RWIP_INLINE void ble_radiocntl2_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR, value);
 }
@@ -3984,7 +3984,7 @@ __INLINE void ble_radiocntl2_set(uint32_t value)
 #define BLE_SYNCERR_RST           0x0
 #define BLE_FREQTABLE_PTR_RST     0x40
 
-__INLINE void ble_radiocntl2_pack(uint8_t lrsynccompmode, uint8_t rxcitermbypass, uint8_t lrvtbflush, uint8_t phymsk, uint8_t lrsyncerr, uint8_t syncerr, uint16_t freqtableptr)
+__RWIP_INLINE void ble_radiocntl2_pack(uint8_t lrsynccompmode, uint8_t rxcitermbypass, uint8_t lrvtbflush, uint8_t phymsk, uint8_t lrsyncerr, uint8_t syncerr, uint16_t freqtableptr)
 {
     ASSERT_ERR((((uint32_t)lrsynccompmode << 30) & ~((uint32_t)0xC0000000)) == 0);
     ASSERT_ERR((((uint32_t)rxcitermbypass << 29) & ~((uint32_t)0x20000000)) == 0);
@@ -3996,7 +3996,7 @@ __INLINE void ble_radiocntl2_pack(uint8_t lrsynccompmode, uint8_t rxcitermbypass
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR,  ((uint32_t)lrsynccompmode << 30) | ((uint32_t)rxcitermbypass << 29) | ((uint32_t)lrvtbflush << 24) | ((uint32_t)phymsk << 22) | ((uint32_t)lrsyncerr << 20) | ((uint32_t)syncerr << 16) | ((uint32_t)freqtableptr << 0));
 }
 
-__INLINE void ble_radiocntl2_unpack(uint8_t* lrsynccompmode, uint8_t* rxcitermbypass, uint8_t* lrvtbflush, uint8_t* phymsk, uint8_t* lrsyncerr, uint8_t* syncerr, uint16_t* freqtableptr)
+__RWIP_INLINE void ble_radiocntl2_unpack(uint8_t* lrsynccompmode, uint8_t* rxcitermbypass, uint8_t* lrvtbflush, uint8_t* phymsk, uint8_t* lrsyncerr, uint8_t* syncerr, uint16_t* freqtableptr)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
 
@@ -4009,85 +4009,85 @@ __INLINE void ble_radiocntl2_unpack(uint8_t* lrsynccompmode, uint8_t* rxcitermby
     *freqtableptr = (localVal & ((uint32_t)0x00003FFF)) >> 0;
 }
 
-__INLINE uint8_t ble_radiocntl2_lrsynccompmode_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl2_lrsynccompmode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
     return ((localVal & ((uint32_t)0xC0000000)) >> 30);
 }
 
-__INLINE void ble_radiocntl2_lrsynccompmode_setf(uint8_t lrsynccompmode)
+__RWIP_INLINE void ble_radiocntl2_lrsynccompmode_setf(uint8_t lrsynccompmode)
 {
     ASSERT_ERR((((uint32_t)lrsynccompmode << 30) & ~((uint32_t)0xC0000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR, (REG_BLE_RD(BLE_RADIOCNTL2_ADDR) & ~((uint32_t)0xC0000000)) | ((uint32_t)lrsynccompmode << 30));
 }
 
-__INLINE uint8_t ble_radiocntl2_rxcitermbypass_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl2_rxcitermbypass_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x20000000)) >> 29);
 }
 
-__INLINE void ble_radiocntl2_rxcitermbypass_setf(uint8_t rxcitermbypass)
+__RWIP_INLINE void ble_radiocntl2_rxcitermbypass_setf(uint8_t rxcitermbypass)
 {
     ASSERT_ERR((((uint32_t)rxcitermbypass << 29) & ~((uint32_t)0x20000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR, (REG_BLE_RD(BLE_RADIOCNTL2_ADDR) & ~((uint32_t)0x20000000)) | ((uint32_t)rxcitermbypass << 29));
 }
 
-__INLINE uint8_t ble_radiocntl2_lrvtbflush_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl2_lrvtbflush_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x1F000000)) >> 24);
 }
 
-__INLINE void ble_radiocntl2_lrvtbflush_setf(uint8_t lrvtbflush)
+__RWIP_INLINE void ble_radiocntl2_lrvtbflush_setf(uint8_t lrvtbflush)
 {
     ASSERT_ERR((((uint32_t)lrvtbflush << 24) & ~((uint32_t)0x1F000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR, (REG_BLE_RD(BLE_RADIOCNTL2_ADDR) & ~((uint32_t)0x1F000000)) | ((uint32_t)lrvtbflush << 24));
 }
 
-__INLINE uint8_t ble_radiocntl2_phymsk_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl2_phymsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x00C00000)) >> 22);
 }
 
-__INLINE void ble_radiocntl2_phymsk_setf(uint8_t phymsk)
+__RWIP_INLINE void ble_radiocntl2_phymsk_setf(uint8_t phymsk)
 {
     ASSERT_ERR((((uint32_t)phymsk << 22) & ~((uint32_t)0x00C00000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR, (REG_BLE_RD(BLE_RADIOCNTL2_ADDR) & ~((uint32_t)0x00C00000)) | ((uint32_t)phymsk << 22));
 }
 
-__INLINE uint8_t ble_radiocntl2_lrsyncerr_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl2_lrsyncerr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x00300000)) >> 20);
 }
 
-__INLINE void ble_radiocntl2_lrsyncerr_setf(uint8_t lrsyncerr)
+__RWIP_INLINE void ble_radiocntl2_lrsyncerr_setf(uint8_t lrsyncerr)
 {
     ASSERT_ERR((((uint32_t)lrsyncerr << 20) & ~((uint32_t)0x00300000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR, (REG_BLE_RD(BLE_RADIOCNTL2_ADDR) & ~((uint32_t)0x00300000)) | ((uint32_t)lrsyncerr << 20));
 }
 
-__INLINE uint8_t ble_radiocntl2_syncerr_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl2_syncerr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x00070000)) >> 16);
 }
 
-__INLINE void ble_radiocntl2_syncerr_setf(uint8_t syncerr)
+__RWIP_INLINE void ble_radiocntl2_syncerr_setf(uint8_t syncerr)
 {
     ASSERT_ERR((((uint32_t)syncerr << 16) & ~((uint32_t)0x00070000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR, (REG_BLE_RD(BLE_RADIOCNTL2_ADDR) & ~((uint32_t)0x00070000)) | ((uint32_t)syncerr << 16));
 }
 
-__INLINE uint16_t ble_radiocntl2_freqtable_ptr_getf(void)
+__RWIP_INLINE uint16_t ble_radiocntl2_freqtable_ptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x00003FFF)) >> 0);
 }
 
-__INLINE void ble_radiocntl2_freqtable_ptr_setf(uint16_t freqtableptr)
+__RWIP_INLINE void ble_radiocntl2_freqtable_ptr_setf(uint16_t freqtableptr)
 {
     ASSERT_ERR((((uint32_t)freqtableptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL2_ADDR, (REG_BLE_RD(BLE_RADIOCNTL2_ADDR) & ~((uint32_t)0x00003FFF)) | ((uint32_t)freqtableptr << 0));
@@ -4117,12 +4117,12 @@ __INLINE void ble_radiocntl2_freqtable_ptr_setf(uint16_t freqtableptr)
 #define BLE_RADIOCNTL3_INDEX  0x0000001F
 #define BLE_RADIOCNTL3_RESET  0xE440E400
 
-__INLINE uint32_t ble_radiocntl3_get(void)
+__RWIP_INLINE uint32_t ble_radiocntl3_get(void)
 {
     return REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
 }
 
-__INLINE void ble_radiocntl3_set(uint32_t value)
+__RWIP_INLINE void ble_radiocntl3_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, value);
 }
@@ -4177,7 +4177,7 @@ __INLINE void ble_radiocntl3_set(uint32_t value)
 #define BLE_TXRATE0CFG_RST        0x0
 #define BLE_TXVALID_BEH_RST       0x0
 
-__INLINE void ble_radiocntl3_pack(uint8_t rxrate3cfg, uint8_t rxrate2cfg, uint8_t rxrate1cfg, uint8_t rxrate0cfg, uint8_t getrssidelay, uint8_t rxsyncrouting, uint8_t rxvalidbeh, uint8_t txrate3cfg, uint8_t txrate2cfg, uint8_t txrate1cfg, uint8_t txrate0cfg, uint8_t txvalidbeh)
+__RWIP_INLINE void ble_radiocntl3_pack(uint8_t rxrate3cfg, uint8_t rxrate2cfg, uint8_t rxrate1cfg, uint8_t rxrate0cfg, uint8_t getrssidelay, uint8_t rxsyncrouting, uint8_t rxvalidbeh, uint8_t txrate3cfg, uint8_t txrate2cfg, uint8_t txrate1cfg, uint8_t txrate0cfg, uint8_t txvalidbeh)
 {
     ASSERT_ERR((((uint32_t)rxrate3cfg << 30) & ~((uint32_t)0xC0000000)) == 0);
     ASSERT_ERR((((uint32_t)rxrate2cfg << 28) & ~((uint32_t)0x30000000)) == 0);
@@ -4194,7 +4194,7 @@ __INLINE void ble_radiocntl3_pack(uint8_t rxrate3cfg, uint8_t rxrate2cfg, uint8_
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR,  ((uint32_t)rxrate3cfg << 30) | ((uint32_t)rxrate2cfg << 28) | ((uint32_t)rxrate1cfg << 26) | ((uint32_t)rxrate0cfg << 24) | ((uint32_t)getrssidelay << 20) | ((uint32_t)rxsyncrouting << 18) | ((uint32_t)rxvalidbeh << 16) | ((uint32_t)txrate3cfg << 14) | ((uint32_t)txrate2cfg << 12) | ((uint32_t)txrate1cfg << 10) | ((uint32_t)txrate0cfg << 8) | ((uint32_t)txvalidbeh << 0));
 }
 
-__INLINE void ble_radiocntl3_unpack(uint8_t* rxrate3cfg, uint8_t* rxrate2cfg, uint8_t* rxrate1cfg, uint8_t* rxrate0cfg, uint8_t* getrssidelay, uint8_t* rxsyncrouting, uint8_t* rxvalidbeh, uint8_t* txrate3cfg, uint8_t* txrate2cfg, uint8_t* txrate1cfg, uint8_t* txrate0cfg, uint8_t* txvalidbeh)
+__RWIP_INLINE void ble_radiocntl3_unpack(uint8_t* rxrate3cfg, uint8_t* rxrate2cfg, uint8_t* rxrate1cfg, uint8_t* rxrate0cfg, uint8_t* getrssidelay, uint8_t* rxsyncrouting, uint8_t* rxvalidbeh, uint8_t* txrate3cfg, uint8_t* txrate2cfg, uint8_t* txrate1cfg, uint8_t* txrate0cfg, uint8_t* txvalidbeh)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
 
@@ -4212,145 +4212,145 @@ __INLINE void ble_radiocntl3_unpack(uint8_t* rxrate3cfg, uint8_t* rxrate2cfg, ui
     *txvalidbeh = (localVal & ((uint32_t)0x00000003)) >> 0;
 }
 
-__INLINE uint8_t ble_radiocntl3_rxrate3cfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_rxrate3cfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0xC0000000)) >> 30);
 }
 
-__INLINE void ble_radiocntl3_rxrate3cfg_setf(uint8_t rxrate3cfg)
+__RWIP_INLINE void ble_radiocntl3_rxrate3cfg_setf(uint8_t rxrate3cfg)
 {
     ASSERT_ERR((((uint32_t)rxrate3cfg << 30) & ~((uint32_t)0xC0000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0xC0000000)) | ((uint32_t)rxrate3cfg << 30));
 }
 
-__INLINE uint8_t ble_radiocntl3_rxrate2cfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_rxrate2cfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x30000000)) >> 28);
 }
 
-__INLINE void ble_radiocntl3_rxrate2cfg_setf(uint8_t rxrate2cfg)
+__RWIP_INLINE void ble_radiocntl3_rxrate2cfg_setf(uint8_t rxrate2cfg)
 {
     ASSERT_ERR((((uint32_t)rxrate2cfg << 28) & ~((uint32_t)0x30000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x30000000)) | ((uint32_t)rxrate2cfg << 28));
 }
 
-__INLINE uint8_t ble_radiocntl3_rxrate1cfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_rxrate1cfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x0C000000)) >> 26);
 }
 
-__INLINE void ble_radiocntl3_rxrate1cfg_setf(uint8_t rxrate1cfg)
+__RWIP_INLINE void ble_radiocntl3_rxrate1cfg_setf(uint8_t rxrate1cfg)
 {
     ASSERT_ERR((((uint32_t)rxrate1cfg << 26) & ~((uint32_t)0x0C000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x0C000000)) | ((uint32_t)rxrate1cfg << 26));
 }
 
-__INLINE uint8_t ble_radiocntl3_rxrate0cfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_rxrate0cfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x03000000)) >> 24);
 }
 
-__INLINE void ble_radiocntl3_rxrate0cfg_setf(uint8_t rxrate0cfg)
+__RWIP_INLINE void ble_radiocntl3_rxrate0cfg_setf(uint8_t rxrate0cfg)
 {
     ASSERT_ERR((((uint32_t)rxrate0cfg << 24) & ~((uint32_t)0x03000000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x03000000)) | ((uint32_t)rxrate0cfg << 24));
 }
 
-__INLINE uint8_t ble_radiocntl3_getrssidelay_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_getrssidelay_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x00700000)) >> 20);
 }
 
-__INLINE void ble_radiocntl3_getrssidelay_setf(uint8_t getrssidelay)
+__RWIP_INLINE void ble_radiocntl3_getrssidelay_setf(uint8_t getrssidelay)
 {
     ASSERT_ERR((((uint32_t)getrssidelay << 20) & ~((uint32_t)0x00700000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x00700000)) | ((uint32_t)getrssidelay << 20));
 }
 
-__INLINE uint8_t ble_radiocntl3_rxsync_routing_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_rxsync_routing_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x00040000)) >> 18);
 }
 
-__INLINE void ble_radiocntl3_rxsync_routing_setf(uint8_t rxsyncrouting)
+__RWIP_INLINE void ble_radiocntl3_rxsync_routing_setf(uint8_t rxsyncrouting)
 {
     ASSERT_ERR((((uint32_t)rxsyncrouting << 18) & ~((uint32_t)0x00040000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x00040000)) | ((uint32_t)rxsyncrouting << 18));
 }
 
-__INLINE uint8_t ble_radiocntl3_rxvalid_beh_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_rxvalid_beh_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x00030000)) >> 16);
 }
 
-__INLINE void ble_radiocntl3_rxvalid_beh_setf(uint8_t rxvalidbeh)
+__RWIP_INLINE void ble_radiocntl3_rxvalid_beh_setf(uint8_t rxvalidbeh)
 {
     ASSERT_ERR((((uint32_t)rxvalidbeh << 16) & ~((uint32_t)0x00030000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x00030000)) | ((uint32_t)rxvalidbeh << 16));
 }
 
-__INLINE uint8_t ble_radiocntl3_txrate3cfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_txrate3cfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x0000C000)) >> 14);
 }
 
-__INLINE void ble_radiocntl3_txrate3cfg_setf(uint8_t txrate3cfg)
+__RWIP_INLINE void ble_radiocntl3_txrate3cfg_setf(uint8_t txrate3cfg)
 {
     ASSERT_ERR((((uint32_t)txrate3cfg << 14) & ~((uint32_t)0x0000C000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x0000C000)) | ((uint32_t)txrate3cfg << 14));
 }
 
-__INLINE uint8_t ble_radiocntl3_txrate2cfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_txrate2cfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x00003000)) >> 12);
 }
 
-__INLINE void ble_radiocntl3_txrate2cfg_setf(uint8_t txrate2cfg)
+__RWIP_INLINE void ble_radiocntl3_txrate2cfg_setf(uint8_t txrate2cfg)
 {
     ASSERT_ERR((((uint32_t)txrate2cfg << 12) & ~((uint32_t)0x00003000)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x00003000)) | ((uint32_t)txrate2cfg << 12));
 }
 
-__INLINE uint8_t ble_radiocntl3_txrate1cfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_txrate1cfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x00000C00)) >> 10);
 }
 
-__INLINE void ble_radiocntl3_txrate1cfg_setf(uint8_t txrate1cfg)
+__RWIP_INLINE void ble_radiocntl3_txrate1cfg_setf(uint8_t txrate1cfg)
 {
     ASSERT_ERR((((uint32_t)txrate1cfg << 10) & ~((uint32_t)0x00000C00)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x00000C00)) | ((uint32_t)txrate1cfg << 10));
 }
 
-__INLINE uint8_t ble_radiocntl3_txrate0cfg_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_txrate0cfg_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x00000300)) >> 8);
 }
 
-__INLINE void ble_radiocntl3_txrate0cfg_setf(uint8_t txrate0cfg)
+__RWIP_INLINE void ble_radiocntl3_txrate0cfg_setf(uint8_t txrate0cfg)
 {
     ASSERT_ERR((((uint32_t)txrate0cfg << 8) & ~((uint32_t)0x00000300)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x00000300)) | ((uint32_t)txrate0cfg << 8));
 }
 
-__INLINE uint8_t ble_radiocntl3_txvalid_beh_getf(void)
+__RWIP_INLINE uint8_t ble_radiocntl3_txvalid_beh_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x00000003)) >> 0);
 }
 
-__INLINE void ble_radiocntl3_txvalid_beh_setf(uint8_t txvalidbeh)
+__RWIP_INLINE void ble_radiocntl3_txvalid_beh_setf(uint8_t txvalidbeh)
 {
     ASSERT_ERR((((uint32_t)txvalidbeh << 0) & ~((uint32_t)0x00000003)) == 0);
     REG_BLE_WR(BLE_RADIOCNTL3_ADDR, (REG_BLE_RD(BLE_RADIOCNTL3_ADDR) & ~((uint32_t)0x00000003)) | ((uint32_t)txvalidbeh << 0));
@@ -4372,12 +4372,12 @@ __INLINE void ble_radiocntl3_txvalid_beh_setf(uint8_t txvalidbeh)
 #define BLE_RADIOPWRUPDN0_INDEX  0x00000020
 #define BLE_RADIOPWRUPDN0_RESET  0x00000000
 
-__INLINE uint32_t ble_radiopwrupdn0_get(void)
+__RWIP_INLINE uint32_t ble_radiopwrupdn0_get(void)
 {
     return REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR);
 }
 
-__INLINE void ble_radiopwrupdn0_set(uint32_t value)
+__RWIP_INLINE void ble_radiopwrupdn0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOPWRUPDN0_ADDR, value);
 }
@@ -4401,7 +4401,7 @@ __INLINE void ble_radiopwrupdn0_set(uint32_t value)
 #define BLE_TXPWRDN0_RST          0x0
 #define BLE_TXPWRUP0_RST          0x0
 
-__INLINE void ble_radiopwrupdn0_pack(uint8_t syncposition0, uint8_t rxpwrup0, uint8_t txpwrdn0, uint8_t txpwrup0)
+__RWIP_INLINE void ble_radiopwrupdn0_pack(uint8_t syncposition0, uint8_t rxpwrup0, uint8_t txpwrdn0, uint8_t txpwrup0)
 {
     ASSERT_ERR((((uint32_t)syncposition0 << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rxpwrup0 << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -4410,7 +4410,7 @@ __INLINE void ble_radiopwrupdn0_pack(uint8_t syncposition0, uint8_t rxpwrup0, ui
     REG_BLE_WR(BLE_RADIOPWRUPDN0_ADDR,  ((uint32_t)syncposition0 << 24) | ((uint32_t)rxpwrup0 << 16) | ((uint32_t)txpwrdn0 << 8) | ((uint32_t)txpwrup0 << 0));
 }
 
-__INLINE void ble_radiopwrupdn0_unpack(uint8_t* syncposition0, uint8_t* rxpwrup0, uint8_t* txpwrdn0, uint8_t* txpwrup0)
+__RWIP_INLINE void ble_radiopwrupdn0_unpack(uint8_t* syncposition0, uint8_t* rxpwrup0, uint8_t* txpwrdn0, uint8_t* txpwrup0)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR);
 
@@ -4420,49 +4420,49 @@ __INLINE void ble_radiopwrupdn0_unpack(uint8_t* syncposition0, uint8_t* rxpwrup0
     *txpwrup0 = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_radiopwrupdn0_sync_position0_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn0_sync_position0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_radiopwrupdn0_sync_position0_setf(uint8_t syncposition0)
+__RWIP_INLINE void ble_radiopwrupdn0_sync_position0_setf(uint8_t syncposition0)
 {
     ASSERT_ERR((((uint32_t)syncposition0 << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN0_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)syncposition0 << 24));
 }
 
-__INLINE uint8_t ble_radiopwrupdn0_rxpwrup0_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn0_rxpwrup0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_radiopwrupdn0_rxpwrup0_setf(uint8_t rxpwrup0)
+__RWIP_INLINE void ble_radiopwrupdn0_rxpwrup0_setf(uint8_t rxpwrup0)
 {
     ASSERT_ERR((((uint32_t)rxpwrup0 << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN0_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rxpwrup0 << 16));
 }
 
-__INLINE uint8_t ble_radiopwrupdn0_txpwrdn0_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn0_txpwrdn0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_radiopwrupdn0_txpwrdn0_setf(uint8_t txpwrdn0)
+__RWIP_INLINE void ble_radiopwrupdn0_txpwrdn0_setf(uint8_t txpwrdn0)
 {
     ASSERT_ERR((((uint32_t)txpwrdn0 << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN0_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)txpwrdn0 << 8));
 }
 
-__INLINE uint8_t ble_radiopwrupdn0_txpwrup0_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn0_txpwrup0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_radiopwrupdn0_txpwrup0_setf(uint8_t txpwrup0)
+__RWIP_INLINE void ble_radiopwrupdn0_txpwrup0_setf(uint8_t txpwrup0)
 {
     ASSERT_ERR((((uint32_t)txpwrup0 << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN0_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN0_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txpwrup0 << 0));
@@ -4484,12 +4484,12 @@ __INLINE void ble_radiopwrupdn0_txpwrup0_setf(uint8_t txpwrup0)
 #define BLE_RADIOPWRUPDN1_INDEX  0x00000021
 #define BLE_RADIOPWRUPDN1_RESET  0x00000000
 
-__INLINE uint32_t ble_radiopwrupdn1_get(void)
+__RWIP_INLINE uint32_t ble_radiopwrupdn1_get(void)
 {
     return REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR);
 }
 
-__INLINE void ble_radiopwrupdn1_set(uint32_t value)
+__RWIP_INLINE void ble_radiopwrupdn1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOPWRUPDN1_ADDR, value);
 }
@@ -4513,7 +4513,7 @@ __INLINE void ble_radiopwrupdn1_set(uint32_t value)
 #define BLE_TXPWRDN1_RST          0x0
 #define BLE_TXPWRUP1_RST          0x0
 
-__INLINE void ble_radiopwrupdn1_pack(uint8_t syncposition1, uint8_t rxpwrup1, uint8_t txpwrdn1, uint8_t txpwrup1)
+__RWIP_INLINE void ble_radiopwrupdn1_pack(uint8_t syncposition1, uint8_t rxpwrup1, uint8_t txpwrdn1, uint8_t txpwrup1)
 {
     ASSERT_ERR((((uint32_t)syncposition1 << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rxpwrup1 << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -4522,7 +4522,7 @@ __INLINE void ble_radiopwrupdn1_pack(uint8_t syncposition1, uint8_t rxpwrup1, ui
     REG_BLE_WR(BLE_RADIOPWRUPDN1_ADDR,  ((uint32_t)syncposition1 << 24) | ((uint32_t)rxpwrup1 << 16) | ((uint32_t)txpwrdn1 << 8) | ((uint32_t)txpwrup1 << 0));
 }
 
-__INLINE void ble_radiopwrupdn1_unpack(uint8_t* syncposition1, uint8_t* rxpwrup1, uint8_t* txpwrdn1, uint8_t* txpwrup1)
+__RWIP_INLINE void ble_radiopwrupdn1_unpack(uint8_t* syncposition1, uint8_t* rxpwrup1, uint8_t* txpwrdn1, uint8_t* txpwrup1)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR);
 
@@ -4532,49 +4532,49 @@ __INLINE void ble_radiopwrupdn1_unpack(uint8_t* syncposition1, uint8_t* rxpwrup1
     *txpwrup1 = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_radiopwrupdn1_sync_position1_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn1_sync_position1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_radiopwrupdn1_sync_position1_setf(uint8_t syncposition1)
+__RWIP_INLINE void ble_radiopwrupdn1_sync_position1_setf(uint8_t syncposition1)
 {
     ASSERT_ERR((((uint32_t)syncposition1 << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN1_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)syncposition1 << 24));
 }
 
-__INLINE uint8_t ble_radiopwrupdn1_rxpwrup1_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn1_rxpwrup1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_radiopwrupdn1_rxpwrup1_setf(uint8_t rxpwrup1)
+__RWIP_INLINE void ble_radiopwrupdn1_rxpwrup1_setf(uint8_t rxpwrup1)
 {
     ASSERT_ERR((((uint32_t)rxpwrup1 << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN1_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rxpwrup1 << 16));
 }
 
-__INLINE uint8_t ble_radiopwrupdn1_txpwrdn1_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn1_txpwrdn1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_radiopwrupdn1_txpwrdn1_setf(uint8_t txpwrdn1)
+__RWIP_INLINE void ble_radiopwrupdn1_txpwrdn1_setf(uint8_t txpwrdn1)
 {
     ASSERT_ERR((((uint32_t)txpwrdn1 << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN1_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)txpwrdn1 << 8));
 }
 
-__INLINE uint8_t ble_radiopwrupdn1_txpwrup1_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn1_txpwrup1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_radiopwrupdn1_txpwrup1_setf(uint8_t txpwrup1)
+__RWIP_INLINE void ble_radiopwrupdn1_txpwrup1_setf(uint8_t txpwrup1)
 {
     ASSERT_ERR((((uint32_t)txpwrup1 << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN1_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN1_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txpwrup1 << 0));
@@ -4596,12 +4596,12 @@ __INLINE void ble_radiopwrupdn1_txpwrup1_setf(uint8_t txpwrup1)
 #define BLE_RADIOPWRUPDN2_INDEX  0x00000022
 #define BLE_RADIOPWRUPDN2_RESET  0x00000000
 
-__INLINE uint32_t ble_radiopwrupdn2_get(void)
+__RWIP_INLINE uint32_t ble_radiopwrupdn2_get(void)
 {
     return REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR);
 }
 
-__INLINE void ble_radiopwrupdn2_set(uint32_t value)
+__RWIP_INLINE void ble_radiopwrupdn2_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOPWRUPDN2_ADDR, value);
 }
@@ -4625,7 +4625,7 @@ __INLINE void ble_radiopwrupdn2_set(uint32_t value)
 #define BLE_TXPWRDN2_RST          0x0
 #define BLE_TXPWRUP2_RST          0x0
 
-__INLINE void ble_radiopwrupdn2_pack(uint8_t syncposition2, uint8_t rxpwrup2, uint8_t txpwrdn2, uint8_t txpwrup2)
+__RWIP_INLINE void ble_radiopwrupdn2_pack(uint8_t syncposition2, uint8_t rxpwrup2, uint8_t txpwrdn2, uint8_t txpwrup2)
 {
     ASSERT_ERR((((uint32_t)syncposition2 << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rxpwrup2 << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -4634,7 +4634,7 @@ __INLINE void ble_radiopwrupdn2_pack(uint8_t syncposition2, uint8_t rxpwrup2, ui
     REG_BLE_WR(BLE_RADIOPWRUPDN2_ADDR,  ((uint32_t)syncposition2 << 24) | ((uint32_t)rxpwrup2 << 16) | ((uint32_t)txpwrdn2 << 8) | ((uint32_t)txpwrup2 << 0));
 }
 
-__INLINE void ble_radiopwrupdn2_unpack(uint8_t* syncposition2, uint8_t* rxpwrup2, uint8_t* txpwrdn2, uint8_t* txpwrup2)
+__RWIP_INLINE void ble_radiopwrupdn2_unpack(uint8_t* syncposition2, uint8_t* rxpwrup2, uint8_t* txpwrdn2, uint8_t* txpwrup2)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR);
 
@@ -4644,49 +4644,49 @@ __INLINE void ble_radiopwrupdn2_unpack(uint8_t* syncposition2, uint8_t* rxpwrup2
     *txpwrup2 = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_radiopwrupdn2_sync_position2_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn2_sync_position2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_radiopwrupdn2_sync_position2_setf(uint8_t syncposition2)
+__RWIP_INLINE void ble_radiopwrupdn2_sync_position2_setf(uint8_t syncposition2)
 {
     ASSERT_ERR((((uint32_t)syncposition2 << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN2_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)syncposition2 << 24));
 }
 
-__INLINE uint8_t ble_radiopwrupdn2_rxpwrup2_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn2_rxpwrup2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_radiopwrupdn2_rxpwrup2_setf(uint8_t rxpwrup2)
+__RWIP_INLINE void ble_radiopwrupdn2_rxpwrup2_setf(uint8_t rxpwrup2)
 {
     ASSERT_ERR((((uint32_t)rxpwrup2 << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN2_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rxpwrup2 << 16));
 }
 
-__INLINE uint8_t ble_radiopwrupdn2_txpwrdn2_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn2_txpwrdn2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_radiopwrupdn2_txpwrdn2_setf(uint8_t txpwrdn2)
+__RWIP_INLINE void ble_radiopwrupdn2_txpwrdn2_setf(uint8_t txpwrdn2)
 {
     ASSERT_ERR((((uint32_t)txpwrdn2 << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN2_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)txpwrdn2 << 8));
 }
 
-__INLINE uint8_t ble_radiopwrupdn2_txpwrup2_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn2_txpwrup2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_radiopwrupdn2_txpwrup2_setf(uint8_t txpwrup2)
+__RWIP_INLINE void ble_radiopwrupdn2_txpwrup2_setf(uint8_t txpwrup2)
 {
     ASSERT_ERR((((uint32_t)txpwrup2 << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN2_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN2_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txpwrup2 << 0));
@@ -4706,12 +4706,12 @@ __INLINE void ble_radiopwrupdn2_txpwrup2_setf(uint8_t txpwrup2)
 #define BLE_RADIOPWRUPDN3_INDEX  0x00000023
 #define BLE_RADIOPWRUPDN3_RESET  0x00000000
 
-__INLINE uint32_t ble_radiopwrupdn3_get(void)
+__RWIP_INLINE uint32_t ble_radiopwrupdn3_get(void)
 {
     return REG_BLE_RD(BLE_RADIOPWRUPDN3_ADDR);
 }
 
-__INLINE void ble_radiopwrupdn3_set(uint32_t value)
+__RWIP_INLINE void ble_radiopwrupdn3_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOPWRUPDN3_ADDR, value);
 }
@@ -4727,14 +4727,14 @@ __INLINE void ble_radiopwrupdn3_set(uint32_t value)
 #define BLE_TXPWRDN3_RST    0x0
 #define BLE_TXPWRUP3_RST    0x0
 
-__INLINE void ble_radiopwrupdn3_pack(uint8_t txpwrdn3, uint8_t txpwrup3)
+__RWIP_INLINE void ble_radiopwrupdn3_pack(uint8_t txpwrdn3, uint8_t txpwrup3)
 {
     ASSERT_ERR((((uint32_t)txpwrdn3 << 8) & ~((uint32_t)0x00007F00)) == 0);
     ASSERT_ERR((((uint32_t)txpwrup3 << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN3_ADDR,  ((uint32_t)txpwrdn3 << 8) | ((uint32_t)txpwrup3 << 0));
 }
 
-__INLINE void ble_radiopwrupdn3_unpack(uint8_t* txpwrdn3, uint8_t* txpwrup3)
+__RWIP_INLINE void ble_radiopwrupdn3_unpack(uint8_t* txpwrdn3, uint8_t* txpwrup3)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN3_ADDR);
 
@@ -4742,25 +4742,25 @@ __INLINE void ble_radiopwrupdn3_unpack(uint8_t* txpwrdn3, uint8_t* txpwrup3)
     *txpwrup3 = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_radiopwrupdn3_txpwrdn3_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn3_txpwrdn3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN3_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_radiopwrupdn3_txpwrdn3_setf(uint8_t txpwrdn3)
+__RWIP_INLINE void ble_radiopwrupdn3_txpwrdn3_setf(uint8_t txpwrdn3)
 {
     ASSERT_ERR((((uint32_t)txpwrdn3 << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN3_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN3_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)txpwrdn3 << 8));
 }
 
-__INLINE uint8_t ble_radiopwrupdn3_txpwrup3_getf(void)
+__RWIP_INLINE uint8_t ble_radiopwrupdn3_txpwrup3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOPWRUPDN3_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_radiopwrupdn3_txpwrup3_setf(uint8_t txpwrup3)
+__RWIP_INLINE void ble_radiopwrupdn3_txpwrup3_setf(uint8_t txpwrup3)
 {
     ASSERT_ERR((((uint32_t)txpwrup3 << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_RADIOPWRUPDN3_ADDR, (REG_BLE_RD(BLE_RADIOPWRUPDN3_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txpwrup3 << 0));
@@ -4781,12 +4781,12 @@ __INLINE void ble_radiopwrupdn3_txpwrup3_setf(uint8_t txpwrup3)
 #define BLE_RADIOTXRXTIM0_INDEX  0x00000024
 #define BLE_RADIOTXRXTIM0_RESET  0x00000000
 
-__INLINE uint32_t ble_radiotxrxtim0_get(void)
+__RWIP_INLINE uint32_t ble_radiotxrxtim0_get(void)
 {
     return REG_BLE_RD(BLE_RADIOTXRXTIM0_ADDR);
 }
 
-__INLINE void ble_radiotxrxtim0_set(uint32_t value)
+__RWIP_INLINE void ble_radiotxrxtim0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOTXRXTIM0_ADDR, value);
 }
@@ -4806,7 +4806,7 @@ __INLINE void ble_radiotxrxtim0_set(uint32_t value)
 #define BLE_RXPATHDLY0_RST    0x0
 #define BLE_TXPATHDLY0_RST    0x0
 
-__INLINE void ble_radiotxrxtim0_pack(uint8_t rfrxtmda0, uint8_t rxpathdly0, uint8_t txpathdly0)
+__RWIP_INLINE void ble_radiotxrxtim0_pack(uint8_t rfrxtmda0, uint8_t rxpathdly0, uint8_t txpathdly0)
 {
     ASSERT_ERR((((uint32_t)rfrxtmda0 << 16) & ~((uint32_t)0x007F0000)) == 0);
     ASSERT_ERR((((uint32_t)rxpathdly0 << 8) & ~((uint32_t)0x00007F00)) == 0);
@@ -4814,7 +4814,7 @@ __INLINE void ble_radiotxrxtim0_pack(uint8_t rfrxtmda0, uint8_t rxpathdly0, uint
     REG_BLE_WR(BLE_RADIOTXRXTIM0_ADDR,  ((uint32_t)rfrxtmda0 << 16) | ((uint32_t)rxpathdly0 << 8) | ((uint32_t)txpathdly0 << 0));
 }
 
-__INLINE void ble_radiotxrxtim0_unpack(uint8_t* rfrxtmda0, uint8_t* rxpathdly0, uint8_t* txpathdly0)
+__RWIP_INLINE void ble_radiotxrxtim0_unpack(uint8_t* rfrxtmda0, uint8_t* rxpathdly0, uint8_t* txpathdly0)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM0_ADDR);
 
@@ -4823,37 +4823,37 @@ __INLINE void ble_radiotxrxtim0_unpack(uint8_t* rfrxtmda0, uint8_t* rxpathdly0, 
     *txpathdly0 = (localVal & ((uint32_t)0x0000007F)) >> 0;
 }
 
-__INLINE uint8_t ble_radiotxrxtim0_rfrxtmda0_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim0_rfrxtmda0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM0_ADDR);
     return ((localVal & ((uint32_t)0x007F0000)) >> 16);
 }
 
-__INLINE void ble_radiotxrxtim0_rfrxtmda0_setf(uint8_t rfrxtmda0)
+__RWIP_INLINE void ble_radiotxrxtim0_rfrxtmda0_setf(uint8_t rfrxtmda0)
 {
     ASSERT_ERR((((uint32_t)rfrxtmda0 << 16) & ~((uint32_t)0x007F0000)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM0_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM0_ADDR) & ~((uint32_t)0x007F0000)) | ((uint32_t)rfrxtmda0 << 16));
 }
 
-__INLINE uint8_t ble_radiotxrxtim0_rxpathdly0_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim0_rxpathdly0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM0_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_radiotxrxtim0_rxpathdly0_setf(uint8_t rxpathdly0)
+__RWIP_INLINE void ble_radiotxrxtim0_rxpathdly0_setf(uint8_t rxpathdly0)
 {
     ASSERT_ERR((((uint32_t)rxpathdly0 << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM0_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM0_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)rxpathdly0 << 8));
 }
 
-__INLINE uint8_t ble_radiotxrxtim0_txpathdly0_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim0_txpathdly0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM0_ADDR);
     return ((localVal & ((uint32_t)0x0000007F)) >> 0);
 }
 
-__INLINE void ble_radiotxrxtim0_txpathdly0_setf(uint8_t txpathdly0)
+__RWIP_INLINE void ble_radiotxrxtim0_txpathdly0_setf(uint8_t txpathdly0)
 {
     ASSERT_ERR((((uint32_t)txpathdly0 << 0) & ~((uint32_t)0x0000007F)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM0_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM0_ADDR) & ~((uint32_t)0x0000007F)) | ((uint32_t)txpathdly0 << 0));
@@ -4874,12 +4874,12 @@ __INLINE void ble_radiotxrxtim0_txpathdly0_setf(uint8_t txpathdly0)
 #define BLE_RADIOTXRXTIM1_INDEX  0x00000025
 #define BLE_RADIOTXRXTIM1_RESET  0x00000000
 
-__INLINE uint32_t ble_radiotxrxtim1_get(void)
+__RWIP_INLINE uint32_t ble_radiotxrxtim1_get(void)
 {
     return REG_BLE_RD(BLE_RADIOTXRXTIM1_ADDR);
 }
 
-__INLINE void ble_radiotxrxtim1_set(uint32_t value)
+__RWIP_INLINE void ble_radiotxrxtim1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOTXRXTIM1_ADDR, value);
 }
@@ -4899,7 +4899,7 @@ __INLINE void ble_radiotxrxtim1_set(uint32_t value)
 #define BLE_RXPATHDLY1_RST    0x0
 #define BLE_TXPATHDLY1_RST    0x0
 
-__INLINE void ble_radiotxrxtim1_pack(uint8_t rfrxtmda1, uint8_t rxpathdly1, uint8_t txpathdly1)
+__RWIP_INLINE void ble_radiotxrxtim1_pack(uint8_t rfrxtmda1, uint8_t rxpathdly1, uint8_t txpathdly1)
 {
     ASSERT_ERR((((uint32_t)rfrxtmda1 << 16) & ~((uint32_t)0x007F0000)) == 0);
     ASSERT_ERR((((uint32_t)rxpathdly1 << 8) & ~((uint32_t)0x00007F00)) == 0);
@@ -4907,7 +4907,7 @@ __INLINE void ble_radiotxrxtim1_pack(uint8_t rfrxtmda1, uint8_t rxpathdly1, uint
     REG_BLE_WR(BLE_RADIOTXRXTIM1_ADDR,  ((uint32_t)rfrxtmda1 << 16) | ((uint32_t)rxpathdly1 << 8) | ((uint32_t)txpathdly1 << 0));
 }
 
-__INLINE void ble_radiotxrxtim1_unpack(uint8_t* rfrxtmda1, uint8_t* rxpathdly1, uint8_t* txpathdly1)
+__RWIP_INLINE void ble_radiotxrxtim1_unpack(uint8_t* rfrxtmda1, uint8_t* rxpathdly1, uint8_t* txpathdly1)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM1_ADDR);
 
@@ -4916,37 +4916,37 @@ __INLINE void ble_radiotxrxtim1_unpack(uint8_t* rfrxtmda1, uint8_t* rxpathdly1, 
     *txpathdly1 = (localVal & ((uint32_t)0x0000007F)) >> 0;
 }
 
-__INLINE uint8_t ble_radiotxrxtim1_rfrxtmda1_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim1_rfrxtmda1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM1_ADDR);
     return ((localVal & ((uint32_t)0x007F0000)) >> 16);
 }
 
-__INLINE void ble_radiotxrxtim1_rfrxtmda1_setf(uint8_t rfrxtmda1)
+__RWIP_INLINE void ble_radiotxrxtim1_rfrxtmda1_setf(uint8_t rfrxtmda1)
 {
     ASSERT_ERR((((uint32_t)rfrxtmda1 << 16) & ~((uint32_t)0x007F0000)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM1_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM1_ADDR) & ~((uint32_t)0x007F0000)) | ((uint32_t)rfrxtmda1 << 16));
 }
 
-__INLINE uint8_t ble_radiotxrxtim1_rxpathdly1_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim1_rxpathdly1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM1_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_radiotxrxtim1_rxpathdly1_setf(uint8_t rxpathdly1)
+__RWIP_INLINE void ble_radiotxrxtim1_rxpathdly1_setf(uint8_t rxpathdly1)
 {
     ASSERT_ERR((((uint32_t)rxpathdly1 << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM1_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM1_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)rxpathdly1 << 8));
 }
 
-__INLINE uint8_t ble_radiotxrxtim1_txpathdly1_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim1_txpathdly1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM1_ADDR);
     return ((localVal & ((uint32_t)0x0000007F)) >> 0);
 }
 
-__INLINE void ble_radiotxrxtim1_txpathdly1_setf(uint8_t txpathdly1)
+__RWIP_INLINE void ble_radiotxrxtim1_txpathdly1_setf(uint8_t txpathdly1)
 {
     ASSERT_ERR((((uint32_t)txpathdly1 << 0) & ~((uint32_t)0x0000007F)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM1_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM1_ADDR) & ~((uint32_t)0x0000007F)) | ((uint32_t)txpathdly1 << 0));
@@ -4968,12 +4968,12 @@ __INLINE void ble_radiotxrxtim1_txpathdly1_setf(uint8_t txpathdly1)
 #define BLE_RADIOTXRXTIM2_INDEX  0x00000026
 #define BLE_RADIOTXRXTIM2_RESET  0x00000000
 
-__INLINE uint32_t ble_radiotxrxtim2_get(void)
+__RWIP_INLINE uint32_t ble_radiotxrxtim2_get(void)
 {
     return REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR);
 }
 
-__INLINE void ble_radiotxrxtim2_set(uint32_t value)
+__RWIP_INLINE void ble_radiotxrxtim2_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOTXRXTIM2_ADDR, value);
 }
@@ -4997,7 +4997,7 @@ __INLINE void ble_radiotxrxtim2_set(uint32_t value)
 #define BLE_RXPATHDLY2_RST         0x0
 #define BLE_TXPATHDLY2_RST         0x0
 
-__INLINE void ble_radiotxrxtim2_pack(uint8_t rxflushpathdly2, uint8_t rfrxtmda2, uint8_t rxpathdly2, uint8_t txpathdly2)
+__RWIP_INLINE void ble_radiotxrxtim2_pack(uint8_t rxflushpathdly2, uint8_t rfrxtmda2, uint8_t rxpathdly2, uint8_t txpathdly2)
 {
     ASSERT_ERR((((uint32_t)rxflushpathdly2 << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rfrxtmda2 << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -5006,7 +5006,7 @@ __INLINE void ble_radiotxrxtim2_pack(uint8_t rxflushpathdly2, uint8_t rfrxtmda2,
     REG_BLE_WR(BLE_RADIOTXRXTIM2_ADDR,  ((uint32_t)rxflushpathdly2 << 24) | ((uint32_t)rfrxtmda2 << 16) | ((uint32_t)rxpathdly2 << 8) | ((uint32_t)txpathdly2 << 0));
 }
 
-__INLINE void ble_radiotxrxtim2_unpack(uint8_t* rxflushpathdly2, uint8_t* rfrxtmda2, uint8_t* rxpathdly2, uint8_t* txpathdly2)
+__RWIP_INLINE void ble_radiotxrxtim2_unpack(uint8_t* rxflushpathdly2, uint8_t* rfrxtmda2, uint8_t* rxpathdly2, uint8_t* txpathdly2)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR);
 
@@ -5016,49 +5016,49 @@ __INLINE void ble_radiotxrxtim2_unpack(uint8_t* rxflushpathdly2, uint8_t* rfrxtm
     *txpathdly2 = (localVal & ((uint32_t)0x0000007F)) >> 0;
 }
 
-__INLINE uint8_t ble_radiotxrxtim2_rxflushpathdly2_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim2_rxflushpathdly2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_radiotxrxtim2_rxflushpathdly2_setf(uint8_t rxflushpathdly2)
+__RWIP_INLINE void ble_radiotxrxtim2_rxflushpathdly2_setf(uint8_t rxflushpathdly2)
 {
     ASSERT_ERR((((uint32_t)rxflushpathdly2 << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM2_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)rxflushpathdly2 << 24));
 }
 
-__INLINE uint8_t ble_radiotxrxtim2_rfrxtmda2_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim2_rfrxtmda2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_radiotxrxtim2_rfrxtmda2_setf(uint8_t rfrxtmda2)
+__RWIP_INLINE void ble_radiotxrxtim2_rfrxtmda2_setf(uint8_t rfrxtmda2)
 {
     ASSERT_ERR((((uint32_t)rfrxtmda2 << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM2_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rfrxtmda2 << 16));
 }
 
-__INLINE uint8_t ble_radiotxrxtim2_rxpathdly2_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim2_rxpathdly2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR);
     return ((localVal & ((uint32_t)0x0000FF00)) >> 8);
 }
 
-__INLINE void ble_radiotxrxtim2_rxpathdly2_setf(uint8_t rxpathdly2)
+__RWIP_INLINE void ble_radiotxrxtim2_rxpathdly2_setf(uint8_t rxpathdly2)
 {
     ASSERT_ERR((((uint32_t)rxpathdly2 << 8) & ~((uint32_t)0x0000FF00)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM2_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR) & ~((uint32_t)0x0000FF00)) | ((uint32_t)rxpathdly2 << 8));
 }
 
-__INLINE uint8_t ble_radiotxrxtim2_txpathdly2_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim2_txpathdly2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR);
     return ((localVal & ((uint32_t)0x0000007F)) >> 0);
 }
 
-__INLINE void ble_radiotxrxtim2_txpathdly2_setf(uint8_t txpathdly2)
+__RWIP_INLINE void ble_radiotxrxtim2_txpathdly2_setf(uint8_t txpathdly2)
 {
     ASSERT_ERR((((uint32_t)txpathdly2 << 0) & ~((uint32_t)0x0000007F)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM2_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM2_ADDR) & ~((uint32_t)0x0000007F)) | ((uint32_t)txpathdly2 << 0));
@@ -5079,12 +5079,12 @@ __INLINE void ble_radiotxrxtim2_txpathdly2_setf(uint8_t txpathdly2)
 #define BLE_RADIOTXRXTIM3_INDEX  0x00000027
 #define BLE_RADIOTXRXTIM3_RESET  0x00000000
 
-__INLINE uint32_t ble_radiotxrxtim3_get(void)
+__RWIP_INLINE uint32_t ble_radiotxrxtim3_get(void)
 {
     return REG_BLE_RD(BLE_RADIOTXRXTIM3_ADDR);
 }
 
-__INLINE void ble_radiotxrxtim3_set(uint32_t value)
+__RWIP_INLINE void ble_radiotxrxtim3_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RADIOTXRXTIM3_ADDR, value);
 }
@@ -5104,7 +5104,7 @@ __INLINE void ble_radiotxrxtim3_set(uint32_t value)
 #define BLE_RFRXTMDA3_RST          0x0
 #define BLE_TXPATHDLY3_RST         0x0
 
-__INLINE void ble_radiotxrxtim3_pack(uint8_t rxflushpathdly3, uint8_t rfrxtmda3, uint8_t txpathdly3)
+__RWIP_INLINE void ble_radiotxrxtim3_pack(uint8_t rxflushpathdly3, uint8_t rfrxtmda3, uint8_t txpathdly3)
 {
     ASSERT_ERR((((uint32_t)rxflushpathdly3 << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rfrxtmda3 << 16) & ~((uint32_t)0x007F0000)) == 0);
@@ -5112,7 +5112,7 @@ __INLINE void ble_radiotxrxtim3_pack(uint8_t rxflushpathdly3, uint8_t rfrxtmda3,
     REG_BLE_WR(BLE_RADIOTXRXTIM3_ADDR,  ((uint32_t)rxflushpathdly3 << 24) | ((uint32_t)rfrxtmda3 << 16) | ((uint32_t)txpathdly3 << 0));
 }
 
-__INLINE void ble_radiotxrxtim3_unpack(uint8_t* rxflushpathdly3, uint8_t* rfrxtmda3, uint8_t* txpathdly3)
+__RWIP_INLINE void ble_radiotxrxtim3_unpack(uint8_t* rxflushpathdly3, uint8_t* rfrxtmda3, uint8_t* txpathdly3)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM3_ADDR);
 
@@ -5121,37 +5121,37 @@ __INLINE void ble_radiotxrxtim3_unpack(uint8_t* rxflushpathdly3, uint8_t* rfrxtm
     *txpathdly3 = (localVal & ((uint32_t)0x0000007F)) >> 0;
 }
 
-__INLINE uint8_t ble_radiotxrxtim3_rxflushpathdly3_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim3_rxflushpathdly3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM3_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_radiotxrxtim3_rxflushpathdly3_setf(uint8_t rxflushpathdly3)
+__RWIP_INLINE void ble_radiotxrxtim3_rxflushpathdly3_setf(uint8_t rxflushpathdly3)
 {
     ASSERT_ERR((((uint32_t)rxflushpathdly3 << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM3_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM3_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)rxflushpathdly3 << 24));
 }
 
-__INLINE uint8_t ble_radiotxrxtim3_rfrxtmda3_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim3_rfrxtmda3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM3_ADDR);
     return ((localVal & ((uint32_t)0x007F0000)) >> 16);
 }
 
-__INLINE void ble_radiotxrxtim3_rfrxtmda3_setf(uint8_t rfrxtmda3)
+__RWIP_INLINE void ble_radiotxrxtim3_rfrxtmda3_setf(uint8_t rfrxtmda3)
 {
     ASSERT_ERR((((uint32_t)rfrxtmda3 << 16) & ~((uint32_t)0x007F0000)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM3_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM3_ADDR) & ~((uint32_t)0x007F0000)) | ((uint32_t)rfrxtmda3 << 16));
 }
 
-__INLINE uint8_t ble_radiotxrxtim3_txpathdly3_getf(void)
+__RWIP_INLINE uint8_t ble_radiotxrxtim3_txpathdly3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RADIOTXRXTIM3_ADDR);
     return ((localVal & ((uint32_t)0x0000007F)) >> 0);
 }
 
-__INLINE void ble_radiotxrxtim3_txpathdly3_setf(uint8_t txpathdly3)
+__RWIP_INLINE void ble_radiotxrxtim3_txpathdly3_setf(uint8_t txpathdly3)
 {
     ASSERT_ERR((((uint32_t)txpathdly3 << 0) & ~((uint32_t)0x0000007F)) == 0);
     REG_BLE_WR(BLE_RADIOTXRXTIM3_ADDR, (REG_BLE_RD(BLE_RADIOTXRXTIM3_ADDR) & ~((uint32_t)0x0000007F)) | ((uint32_t)txpathdly3 << 0));
@@ -5171,12 +5171,12 @@ __INLINE void ble_radiotxrxtim3_txpathdly3_setf(uint8_t txpathdly3)
 #define BLE_SPIPTRCNTL0_INDEX  0x00000028
 #define BLE_SPIPTRCNTL0_RESET  0x00000000
 
-__INLINE uint32_t ble_spiptrcntl0_get(void)
+__RWIP_INLINE uint32_t ble_spiptrcntl0_get(void)
 {
     return REG_BLE_RD(BLE_SPIPTRCNTL0_ADDR);
 }
 
-__INLINE void ble_spiptrcntl0_set(uint32_t value)
+__RWIP_INLINE void ble_spiptrcntl0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_SPIPTRCNTL0_ADDR, value);
 }
@@ -5192,14 +5192,14 @@ __INLINE void ble_spiptrcntl0_set(uint32_t value)
 #define BLE_TXOFFPTR_RST    0x0
 #define BLE_TXONPTR_RST     0x0
 
-__INLINE void ble_spiptrcntl0_pack(uint16_t txoffptr, uint16_t txonptr)
+__RWIP_INLINE void ble_spiptrcntl0_pack(uint16_t txoffptr, uint16_t txonptr)
 {
     ASSERT_ERR((((uint32_t)txoffptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     ASSERT_ERR((((uint32_t)txonptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL0_ADDR,  ((uint32_t)txoffptr << 16) | ((uint32_t)txonptr << 0));
 }
 
-__INLINE void ble_spiptrcntl0_unpack(uint16_t* txoffptr, uint16_t* txonptr)
+__RWIP_INLINE void ble_spiptrcntl0_unpack(uint16_t* txoffptr, uint16_t* txonptr)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL0_ADDR);
 
@@ -5207,25 +5207,25 @@ __INLINE void ble_spiptrcntl0_unpack(uint16_t* txoffptr, uint16_t* txonptr)
     *txonptr = (localVal & ((uint32_t)0x00003FFF)) >> 0;
 }
 
-__INLINE uint16_t ble_spiptrcntl0_txoffptr_getf(void)
+__RWIP_INLINE uint16_t ble_spiptrcntl0_txoffptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x3FFF0000)) >> 16);
 }
 
-__INLINE void ble_spiptrcntl0_txoffptr_setf(uint16_t txoffptr)
+__RWIP_INLINE void ble_spiptrcntl0_txoffptr_setf(uint16_t txoffptr)
 {
     ASSERT_ERR((((uint32_t)txoffptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL0_ADDR, (REG_BLE_RD(BLE_SPIPTRCNTL0_ADDR) & ~((uint32_t)0x3FFF0000)) | ((uint32_t)txoffptr << 16));
 }
 
-__INLINE uint16_t ble_spiptrcntl0_txonptr_getf(void)
+__RWIP_INLINE uint16_t ble_spiptrcntl0_txonptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00003FFF)) >> 0);
 }
 
-__INLINE void ble_spiptrcntl0_txonptr_setf(uint16_t txonptr)
+__RWIP_INLINE void ble_spiptrcntl0_txonptr_setf(uint16_t txonptr)
 {
     ASSERT_ERR((((uint32_t)txonptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL0_ADDR, (REG_BLE_RD(BLE_SPIPTRCNTL0_ADDR) & ~((uint32_t)0x00003FFF)) | ((uint32_t)txonptr << 0));
@@ -5245,12 +5245,12 @@ __INLINE void ble_spiptrcntl0_txonptr_setf(uint16_t txonptr)
 #define BLE_SPIPTRCNTL1_INDEX  0x00000029
 #define BLE_SPIPTRCNTL1_RESET  0x00000000
 
-__INLINE uint32_t ble_spiptrcntl1_get(void)
+__RWIP_INLINE uint32_t ble_spiptrcntl1_get(void)
 {
     return REG_BLE_RD(BLE_SPIPTRCNTL1_ADDR);
 }
 
-__INLINE void ble_spiptrcntl1_set(uint32_t value)
+__RWIP_INLINE void ble_spiptrcntl1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_SPIPTRCNTL1_ADDR, value);
 }
@@ -5266,14 +5266,14 @@ __INLINE void ble_spiptrcntl1_set(uint32_t value)
 #define BLE_RXOFFPTR_RST    0x0
 #define BLE_RXONPTR_RST     0x0
 
-__INLINE void ble_spiptrcntl1_pack(uint16_t rxoffptr, uint16_t rxonptr)
+__RWIP_INLINE void ble_spiptrcntl1_pack(uint16_t rxoffptr, uint16_t rxonptr)
 {
     ASSERT_ERR((((uint32_t)rxoffptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     ASSERT_ERR((((uint32_t)rxonptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL1_ADDR,  ((uint32_t)rxoffptr << 16) | ((uint32_t)rxonptr << 0));
 }
 
-__INLINE void ble_spiptrcntl1_unpack(uint16_t* rxoffptr, uint16_t* rxonptr)
+__RWIP_INLINE void ble_spiptrcntl1_unpack(uint16_t* rxoffptr, uint16_t* rxonptr)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL1_ADDR);
 
@@ -5281,25 +5281,25 @@ __INLINE void ble_spiptrcntl1_unpack(uint16_t* rxoffptr, uint16_t* rxonptr)
     *rxonptr = (localVal & ((uint32_t)0x00003FFF)) >> 0;
 }
 
-__INLINE uint16_t ble_spiptrcntl1_rxoffptr_getf(void)
+__RWIP_INLINE uint16_t ble_spiptrcntl1_rxoffptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x3FFF0000)) >> 16);
 }
 
-__INLINE void ble_spiptrcntl1_rxoffptr_setf(uint16_t rxoffptr)
+__RWIP_INLINE void ble_spiptrcntl1_rxoffptr_setf(uint16_t rxoffptr)
 {
     ASSERT_ERR((((uint32_t)rxoffptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL1_ADDR, (REG_BLE_RD(BLE_SPIPTRCNTL1_ADDR) & ~((uint32_t)0x3FFF0000)) | ((uint32_t)rxoffptr << 16));
 }
 
-__INLINE uint16_t ble_spiptrcntl1_rxonptr_getf(void)
+__RWIP_INLINE uint16_t ble_spiptrcntl1_rxonptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00003FFF)) >> 0);
 }
 
-__INLINE void ble_spiptrcntl1_rxonptr_setf(uint16_t rxonptr)
+__RWIP_INLINE void ble_spiptrcntl1_rxonptr_setf(uint16_t rxonptr)
 {
     ASSERT_ERR((((uint32_t)rxonptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL1_ADDR, (REG_BLE_RD(BLE_SPIPTRCNTL1_ADDR) & ~((uint32_t)0x00003FFF)) | ((uint32_t)rxonptr << 0));
@@ -5319,12 +5319,12 @@ __INLINE void ble_spiptrcntl1_rxonptr_setf(uint16_t rxonptr)
 #define BLE_SPIPTRCNTL2_INDEX  0x0000002A
 #define BLE_SPIPTRCNTL2_RESET  0x00000000
 
-__INLINE uint32_t ble_spiptrcntl2_get(void)
+__RWIP_INLINE uint32_t ble_spiptrcntl2_get(void)
 {
     return REG_BLE_RD(BLE_SPIPTRCNTL2_ADDR);
 }
 
-__INLINE void ble_spiptrcntl2_set(uint32_t value)
+__RWIP_INLINE void ble_spiptrcntl2_set(uint32_t value)
 {
     REG_BLE_WR(BLE_SPIPTRCNTL2_ADDR, value);
 }
@@ -5340,14 +5340,14 @@ __INLINE void ble_spiptrcntl2_set(uint32_t value)
 #define BLE_RXLENGTHPTR_RST    0x0
 #define BLE_RSSIPTR_RST        0x0
 
-__INLINE void ble_spiptrcntl2_pack(uint16_t rxlengthptr, uint16_t rssiptr)
+__RWIP_INLINE void ble_spiptrcntl2_pack(uint16_t rxlengthptr, uint16_t rssiptr)
 {
     ASSERT_ERR((((uint32_t)rxlengthptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     ASSERT_ERR((((uint32_t)rssiptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL2_ADDR,  ((uint32_t)rxlengthptr << 16) | ((uint32_t)rssiptr << 0));
 }
 
-__INLINE void ble_spiptrcntl2_unpack(uint16_t* rxlengthptr, uint16_t* rssiptr)
+__RWIP_INLINE void ble_spiptrcntl2_unpack(uint16_t* rxlengthptr, uint16_t* rssiptr)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL2_ADDR);
 
@@ -5355,25 +5355,25 @@ __INLINE void ble_spiptrcntl2_unpack(uint16_t* rxlengthptr, uint16_t* rssiptr)
     *rssiptr = (localVal & ((uint32_t)0x00003FFF)) >> 0;
 }
 
-__INLINE uint16_t ble_spiptrcntl2_rxlengthptr_getf(void)
+__RWIP_INLINE uint16_t ble_spiptrcntl2_rxlengthptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x3FFF0000)) >> 16);
 }
 
-__INLINE void ble_spiptrcntl2_rxlengthptr_setf(uint16_t rxlengthptr)
+__RWIP_INLINE void ble_spiptrcntl2_rxlengthptr_setf(uint16_t rxlengthptr)
 {
     ASSERT_ERR((((uint32_t)rxlengthptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL2_ADDR, (REG_BLE_RD(BLE_SPIPTRCNTL2_ADDR) & ~((uint32_t)0x3FFF0000)) | ((uint32_t)rxlengthptr << 16));
 }
 
-__INLINE uint16_t ble_spiptrcntl2_rssiptr_getf(void)
+__RWIP_INLINE uint16_t ble_spiptrcntl2_rssiptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x00003FFF)) >> 0);
 }
 
-__INLINE void ble_spiptrcntl2_rssiptr_setf(uint16_t rssiptr)
+__RWIP_INLINE void ble_spiptrcntl2_rssiptr_setf(uint16_t rssiptr)
 {
     ASSERT_ERR((((uint32_t)rssiptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL2_ADDR, (REG_BLE_RD(BLE_SPIPTRCNTL2_ADDR) & ~((uint32_t)0x00003FFF)) | ((uint32_t)rssiptr << 0));
@@ -5393,12 +5393,12 @@ __INLINE void ble_spiptrcntl2_rssiptr_setf(uint16_t rssiptr)
 #define BLE_SPIPTRCNTL3_INDEX  0x0000002B
 #define BLE_SPIPTRCNTL3_RESET  0x00000000
 
-__INLINE uint32_t ble_spiptrcntl3_get(void)
+__RWIP_INLINE uint32_t ble_spiptrcntl3_get(void)
 {
     return REG_BLE_RD(BLE_SPIPTRCNTL3_ADDR);
 }
 
-__INLINE void ble_spiptrcntl3_set(uint32_t value)
+__RWIP_INLINE void ble_spiptrcntl3_set(uint32_t value)
 {
     REG_BLE_WR(BLE_SPIPTRCNTL3_ADDR, value);
 }
@@ -5414,14 +5414,14 @@ __INLINE void ble_spiptrcntl3_set(uint32_t value)
 #define BLE_CTESAMPPTR_RST     0x0
 #define BLE_RXPKTTYPPTR_RST    0x0
 
-__INLINE void ble_spiptrcntl3_pack(uint16_t ctesampptr, uint16_t rxpkttypptr)
+__RWIP_INLINE void ble_spiptrcntl3_pack(uint16_t ctesampptr, uint16_t rxpkttypptr)
 {
     ASSERT_ERR((((uint32_t)ctesampptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     ASSERT_ERR((((uint32_t)rxpkttypptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL3_ADDR,  ((uint32_t)ctesampptr << 16) | ((uint32_t)rxpkttypptr << 0));
 }
 
-__INLINE void ble_spiptrcntl3_unpack(uint16_t* ctesampptr, uint16_t* rxpkttypptr)
+__RWIP_INLINE void ble_spiptrcntl3_unpack(uint16_t* ctesampptr, uint16_t* rxpkttypptr)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL3_ADDR);
 
@@ -5429,25 +5429,25 @@ __INLINE void ble_spiptrcntl3_unpack(uint16_t* ctesampptr, uint16_t* rxpkttypptr
     *rxpkttypptr = (localVal & ((uint32_t)0x00003FFF)) >> 0;
 }
 
-__INLINE uint16_t ble_spiptrcntl3_ctesampptr_getf(void)
+__RWIP_INLINE uint16_t ble_spiptrcntl3_ctesampptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x3FFF0000)) >> 16);
 }
 
-__INLINE void ble_spiptrcntl3_ctesampptr_setf(uint16_t ctesampptr)
+__RWIP_INLINE void ble_spiptrcntl3_ctesampptr_setf(uint16_t ctesampptr)
 {
     ASSERT_ERR((((uint32_t)ctesampptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL3_ADDR, (REG_BLE_RD(BLE_SPIPTRCNTL3_ADDR) & ~((uint32_t)0x3FFF0000)) | ((uint32_t)ctesampptr << 16));
 }
 
-__INLINE uint16_t ble_spiptrcntl3_rxpkttypptr_getf(void)
+__RWIP_INLINE uint16_t ble_spiptrcntl3_rxpkttypptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SPIPTRCNTL3_ADDR);
     return ((localVal & ((uint32_t)0x00003FFF)) >> 0);
 }
 
-__INLINE void ble_spiptrcntl3_rxpkttypptr_setf(uint16_t rxpkttypptr)
+__RWIP_INLINE void ble_spiptrcntl3_rxpkttypptr_setf(uint16_t rxpkttypptr)
 {
     ASSERT_ERR((((uint32_t)rxpkttypptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_SPIPTRCNTL3_ADDR, (REG_BLE_RD(BLE_SPIPTRCNTL3_ADDR) & ~((uint32_t)0x00003FFF)) | ((uint32_t)rxpkttypptr << 0));
@@ -5467,12 +5467,12 @@ __INLINE void ble_spiptrcntl3_rxpkttypptr_setf(uint16_t rxpkttypptr)
 #define BLE_AESCNTL_INDEX  0x0000002C
 #define BLE_AESCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_aescntl_get(void)
+__RWIP_INLINE uint32_t ble_aescntl_get(void)
 {
     return REG_BLE_RD(BLE_AESCNTL_ADDR);
 }
 
-__INLINE void ble_aescntl_set(uint32_t value)
+__RWIP_INLINE void ble_aescntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_AESCNTL_ADDR, value);
 }
@@ -5486,14 +5486,14 @@ __INLINE void ble_aescntl_set(uint32_t value)
 #define BLE_AES_MODE_RST     0x0
 #define BLE_AES_START_RST    0x0
 
-__INLINE void ble_aescntl_pack(uint8_t aesmode, uint8_t aesstart)
+__RWIP_INLINE void ble_aescntl_pack(uint8_t aesmode, uint8_t aesstart)
 {
     ASSERT_ERR((((uint32_t)aesmode << 1) & ~((uint32_t)0x00000002)) == 0);
     ASSERT_ERR((((uint32_t)aesstart << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_AESCNTL_ADDR,  ((uint32_t)aesmode << 1) | ((uint32_t)aesstart << 0));
 }
 
-__INLINE void ble_aescntl_unpack(uint8_t* aesmode, uint8_t* aesstart)
+__RWIP_INLINE void ble_aescntl_unpack(uint8_t* aesmode, uint8_t* aesstart)
 {
     uint32_t localVal = REG_BLE_RD(BLE_AESCNTL_ADDR);
 
@@ -5501,25 +5501,25 @@ __INLINE void ble_aescntl_unpack(uint8_t* aesmode, uint8_t* aesstart)
     *aesstart = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_aescntl_aes_mode_getf(void)
+__RWIP_INLINE uint8_t ble_aescntl_aes_mode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_AESCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_aescntl_aes_mode_setf(uint8_t aesmode)
+__RWIP_INLINE void ble_aescntl_aes_mode_setf(uint8_t aesmode)
 {
     ASSERT_ERR((((uint32_t)aesmode << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_AESCNTL_ADDR, (REG_BLE_RD(BLE_AESCNTL_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)aesmode << 1));
 }
 
-__INLINE uint8_t ble_aescntl_aes_start_getf(void)
+__RWIP_INLINE uint8_t ble_aescntl_aes_start_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_AESCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_aescntl_aes_start_setf(uint8_t aesstart)
+__RWIP_INLINE void ble_aescntl_aes_start_setf(uint8_t aesstart)
 {
     ASSERT_ERR((((uint32_t)aesstart << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_AESCNTL_ADDR, (REG_BLE_RD(BLE_AESCNTL_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)aesstart << 0));
@@ -5538,12 +5538,12 @@ __INLINE void ble_aescntl_aes_start_setf(uint8_t aesstart)
 #define BLE_AESKEY31_0_INDEX  0x0000002D
 #define BLE_AESKEY31_0_RESET  0x00000000
 
-__INLINE uint32_t ble_aeskey31_0_get(void)
+__RWIP_INLINE uint32_t ble_aeskey31_0_get(void)
 {
     return REG_BLE_RD(BLE_AESKEY31_0_ADDR);
 }
 
-__INLINE void ble_aeskey31_0_set(uint32_t value)
+__RWIP_INLINE void ble_aeskey31_0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_AESKEY31_0_ADDR, value);
 }
@@ -5555,14 +5555,14 @@ __INLINE void ble_aeskey31_0_set(uint32_t value)
 
 #define BLE_AESKEY31_0_RST    0x0
 
-__INLINE uint32_t ble_aeskey31_0_getf(void)
+__RWIP_INLINE uint32_t ble_aeskey31_0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_AESKEY31_0_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_aeskey31_0_setf(uint32_t aeskey310)
+__RWIP_INLINE void ble_aeskey31_0_setf(uint32_t aeskey310)
 {
     ASSERT_ERR((((uint32_t)aeskey310 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_BLE_WR(BLE_AESKEY31_0_ADDR, (uint32_t)aeskey310 << 0);
@@ -5581,12 +5581,12 @@ __INLINE void ble_aeskey31_0_setf(uint32_t aeskey310)
 #define BLE_AESKEY63_32_INDEX  0x0000002E
 #define BLE_AESKEY63_32_RESET  0x00000000
 
-__INLINE uint32_t ble_aeskey63_32_get(void)
+__RWIP_INLINE uint32_t ble_aeskey63_32_get(void)
 {
     return REG_BLE_RD(BLE_AESKEY63_32_ADDR);
 }
 
-__INLINE void ble_aeskey63_32_set(uint32_t value)
+__RWIP_INLINE void ble_aeskey63_32_set(uint32_t value)
 {
     REG_BLE_WR(BLE_AESKEY63_32_ADDR, value);
 }
@@ -5598,14 +5598,14 @@ __INLINE void ble_aeskey63_32_set(uint32_t value)
 
 #define BLE_AESKEY63_32_RST    0x0
 
-__INLINE uint32_t ble_aeskey63_32_getf(void)
+__RWIP_INLINE uint32_t ble_aeskey63_32_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_AESKEY63_32_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_aeskey63_32_setf(uint32_t aeskey6332)
+__RWIP_INLINE void ble_aeskey63_32_setf(uint32_t aeskey6332)
 {
     ASSERT_ERR((((uint32_t)aeskey6332 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_BLE_WR(BLE_AESKEY63_32_ADDR, (uint32_t)aeskey6332 << 0);
@@ -5624,12 +5624,12 @@ __INLINE void ble_aeskey63_32_setf(uint32_t aeskey6332)
 #define BLE_AESKEY95_64_INDEX  0x0000002F
 #define BLE_AESKEY95_64_RESET  0x00000000
 
-__INLINE uint32_t ble_aeskey95_64_get(void)
+__RWIP_INLINE uint32_t ble_aeskey95_64_get(void)
 {
     return REG_BLE_RD(BLE_AESKEY95_64_ADDR);
 }
 
-__INLINE void ble_aeskey95_64_set(uint32_t value)
+__RWIP_INLINE void ble_aeskey95_64_set(uint32_t value)
 {
     REG_BLE_WR(BLE_AESKEY95_64_ADDR, value);
 }
@@ -5641,14 +5641,14 @@ __INLINE void ble_aeskey95_64_set(uint32_t value)
 
 #define BLE_AESKEY95_64_RST    0x0
 
-__INLINE uint32_t ble_aeskey95_64_getf(void)
+__RWIP_INLINE uint32_t ble_aeskey95_64_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_AESKEY95_64_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_aeskey95_64_setf(uint32_t aeskey9564)
+__RWIP_INLINE void ble_aeskey95_64_setf(uint32_t aeskey9564)
 {
     ASSERT_ERR((((uint32_t)aeskey9564 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_BLE_WR(BLE_AESKEY95_64_ADDR, (uint32_t)aeskey9564 << 0);
@@ -5667,12 +5667,12 @@ __INLINE void ble_aeskey95_64_setf(uint32_t aeskey9564)
 #define BLE_AESKEY127_96_INDEX  0x00000030
 #define BLE_AESKEY127_96_RESET  0x00000000
 
-__INLINE uint32_t ble_aeskey127_96_get(void)
+__RWIP_INLINE uint32_t ble_aeskey127_96_get(void)
 {
     return REG_BLE_RD(BLE_AESKEY127_96_ADDR);
 }
 
-__INLINE void ble_aeskey127_96_set(uint32_t value)
+__RWIP_INLINE void ble_aeskey127_96_set(uint32_t value)
 {
     REG_BLE_WR(BLE_AESKEY127_96_ADDR, value);
 }
@@ -5684,14 +5684,14 @@ __INLINE void ble_aeskey127_96_set(uint32_t value)
 
 #define BLE_AESKEY127_96_RST    0x0
 
-__INLINE uint32_t ble_aeskey127_96_getf(void)
+__RWIP_INLINE uint32_t ble_aeskey127_96_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_AESKEY127_96_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_aeskey127_96_setf(uint32_t aeskey12796)
+__RWIP_INLINE void ble_aeskey127_96_setf(uint32_t aeskey12796)
 {
     ASSERT_ERR((((uint32_t)aeskey12796 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_BLE_WR(BLE_AESKEY127_96_ADDR, (uint32_t)aeskey12796 << 0);
@@ -5710,12 +5710,12 @@ __INLINE void ble_aeskey127_96_setf(uint32_t aeskey12796)
 #define BLE_AESPTR_INDEX  0x00000031
 #define BLE_AESPTR_RESET  0x00000000
 
-__INLINE uint32_t ble_aesptr_get(void)
+__RWIP_INLINE uint32_t ble_aesptr_get(void)
 {
     return REG_BLE_RD(BLE_AESPTR_ADDR);
 }
 
-__INLINE void ble_aesptr_set(uint32_t value)
+__RWIP_INLINE void ble_aesptr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_AESPTR_ADDR, value);
 }
@@ -5727,14 +5727,14 @@ __INLINE void ble_aesptr_set(uint32_t value)
 
 #define BLE_AESPTR_RST    0x0
 
-__INLINE uint16_t ble_aesptr_getf(void)
+__RWIP_INLINE uint16_t ble_aesptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_AESPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_aesptr_setf(uint16_t aesptr)
+__RWIP_INLINE void ble_aesptr_setf(uint16_t aesptr)
 {
     ASSERT_ERR((((uint32_t)aesptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_AESPTR_ADDR, (uint32_t)aesptr << 0);
@@ -5753,7 +5753,7 @@ __INLINE void ble_aesptr_setf(uint16_t aesptr)
 #define BLE_TXMICVAL_INDEX  0x00000032
 #define BLE_TXMICVAL_RESET  0x00000000
 
-__INLINE uint32_t ble_txmicval_get(void)
+__RWIP_INLINE uint32_t ble_txmicval_get(void)
 {
     return REG_BLE_RD(BLE_TXMICVAL_ADDR);
 }
@@ -5765,7 +5765,7 @@ __INLINE uint32_t ble_txmicval_get(void)
 
 #define BLE_TXMICVAL_RST    0x0
 
-__INLINE uint32_t ble_txmicval_getf(void)
+__RWIP_INLINE uint32_t ble_txmicval_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_TXMICVAL_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
@@ -5785,7 +5785,7 @@ __INLINE uint32_t ble_txmicval_getf(void)
 #define BLE_RXMICVAL_INDEX  0x00000033
 #define BLE_RXMICVAL_RESET  0x00000000
 
-__INLINE uint32_t ble_rxmicval_get(void)
+__RWIP_INLINE uint32_t ble_rxmicval_get(void)
 {
     return REG_BLE_RD(BLE_RXMICVAL_ADDR);
 }
@@ -5797,7 +5797,7 @@ __INLINE uint32_t ble_rxmicval_get(void)
 
 #define BLE_RXMICVAL_RST    0x0
 
-__INLINE uint32_t ble_rxmicval_getf(void)
+__RWIP_INLINE uint32_t ble_rxmicval_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RXMICVAL_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
@@ -5825,12 +5825,12 @@ __INLINE uint32_t ble_rxmicval_getf(void)
 #define BLE_RFTESTCNTL_INDEX  0x00000034
 #define BLE_RFTESTCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_rftestcntl_get(void)
+__RWIP_INLINE uint32_t ble_rftestcntl_get(void)
 {
     return REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
 }
 
-__INLINE void ble_rftestcntl_set(uint32_t value)
+__RWIP_INLINE void ble_rftestcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, value);
 }
@@ -5867,7 +5867,7 @@ __INLINE void ble_rftestcntl_set(uint32_t value)
 #define BLE_TXPKTCNTEN_RST       0x0
 #define BLE_TXLENGTH_RST         0x0
 
-__INLINE void ble_rftestcntl_pack(uint8_t infiniterx, uint8_t rxpktcnten, uint8_t percountmode, uint8_t infinitetx, uint8_t txlengthsrc, uint8_t prbstype, uint8_t txpldsrc, uint8_t txpktcnten, uint8_t txlength)
+__RWIP_INLINE void ble_rftestcntl_pack(uint8_t infiniterx, uint8_t rxpktcnten, uint8_t percountmode, uint8_t infinitetx, uint8_t txlengthsrc, uint8_t prbstype, uint8_t txpldsrc, uint8_t txpktcnten, uint8_t txlength)
 {
     ASSERT_ERR((((uint32_t)infiniterx << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)rxpktcnten << 27) & ~((uint32_t)0x08000000)) == 0);
@@ -5881,7 +5881,7 @@ __INLINE void ble_rftestcntl_pack(uint8_t infiniterx, uint8_t rxpktcnten, uint8_
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR,  ((uint32_t)infiniterx << 31) | ((uint32_t)rxpktcnten << 27) | ((uint32_t)percountmode << 24) | ((uint32_t)infinitetx << 15) | ((uint32_t)txlengthsrc << 14) | ((uint32_t)prbstype << 13) | ((uint32_t)txpldsrc << 12) | ((uint32_t)txpktcnten << 11) | ((uint32_t)txlength << 0));
 }
 
-__INLINE void ble_rftestcntl_unpack(uint8_t* infiniterx, uint8_t* rxpktcnten, uint8_t* percountmode, uint8_t* infinitetx, uint8_t* txlengthsrc, uint8_t* prbstype, uint8_t* txpldsrc, uint8_t* txpktcnten, uint8_t* txlength)
+__RWIP_INLINE void ble_rftestcntl_unpack(uint8_t* infiniterx, uint8_t* rxpktcnten, uint8_t* percountmode, uint8_t* infinitetx, uint8_t* txlengthsrc, uint8_t* prbstype, uint8_t* txpldsrc, uint8_t* txpktcnten, uint8_t* txlength)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
 
@@ -5896,109 +5896,109 @@ __INLINE void ble_rftestcntl_unpack(uint8_t* infiniterx, uint8_t* rxpktcnten, ui
     *txlength = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_rftestcntl_infiniterx_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_infiniterx_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_rftestcntl_infiniterx_setf(uint8_t infiniterx)
+__RWIP_INLINE void ble_rftestcntl_infiniterx_setf(uint8_t infiniterx)
 {
     ASSERT_ERR((((uint32_t)infiniterx << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)infiniterx << 31));
 }
 
-__INLINE uint8_t ble_rftestcntl_rxpktcnten_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_rxpktcnten_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x08000000)) >> 27);
 }
 
-__INLINE void ble_rftestcntl_rxpktcnten_setf(uint8_t rxpktcnten)
+__RWIP_INLINE void ble_rftestcntl_rxpktcnten_setf(uint8_t rxpktcnten)
 {
     ASSERT_ERR((((uint32_t)rxpktcnten << 27) & ~((uint32_t)0x08000000)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x08000000)) | ((uint32_t)rxpktcnten << 27));
 }
 
-__INLINE uint8_t ble_rftestcntl_percount_mode_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_percount_mode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x03000000)) >> 24);
 }
 
-__INLINE void ble_rftestcntl_percount_mode_setf(uint8_t percountmode)
+__RWIP_INLINE void ble_rftestcntl_percount_mode_setf(uint8_t percountmode)
 {
     ASSERT_ERR((((uint32_t)percountmode << 24) & ~((uint32_t)0x03000000)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x03000000)) | ((uint32_t)percountmode << 24));
 }
 
-__INLINE uint8_t ble_rftestcntl_infinitetx_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_infinitetx_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ble_rftestcntl_infinitetx_setf(uint8_t infinitetx)
+__RWIP_INLINE void ble_rftestcntl_infinitetx_setf(uint8_t infinitetx)
 {
     ASSERT_ERR((((uint32_t)infinitetx << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)infinitetx << 15));
 }
 
-__INLINE uint8_t ble_rftestcntl_txlengthsrc_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_txlengthsrc_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00004000)) >> 14);
 }
 
-__INLINE void ble_rftestcntl_txlengthsrc_setf(uint8_t txlengthsrc)
+__RWIP_INLINE void ble_rftestcntl_txlengthsrc_setf(uint8_t txlengthsrc)
 {
     ASSERT_ERR((((uint32_t)txlengthsrc << 14) & ~((uint32_t)0x00004000)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x00004000)) | ((uint32_t)txlengthsrc << 14));
 }
 
-__INLINE uint8_t ble_rftestcntl_prbstype_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_prbstype_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00002000)) >> 13);
 }
 
-__INLINE void ble_rftestcntl_prbstype_setf(uint8_t prbstype)
+__RWIP_INLINE void ble_rftestcntl_prbstype_setf(uint8_t prbstype)
 {
     ASSERT_ERR((((uint32_t)prbstype << 13) & ~((uint32_t)0x00002000)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x00002000)) | ((uint32_t)prbstype << 13));
 }
 
-__INLINE uint8_t ble_rftestcntl_txpldsrc_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_txpldsrc_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00001000)) >> 12);
 }
 
-__INLINE void ble_rftestcntl_txpldsrc_setf(uint8_t txpldsrc)
+__RWIP_INLINE void ble_rftestcntl_txpldsrc_setf(uint8_t txpldsrc)
 {
     ASSERT_ERR((((uint32_t)txpldsrc << 12) & ~((uint32_t)0x00001000)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x00001000)) | ((uint32_t)txpldsrc << 12));
 }
 
-__INLINE uint8_t ble_rftestcntl_txpktcnten_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_txpktcnten_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000800)) >> 11);
 }
 
-__INLINE void ble_rftestcntl_txpktcnten_setf(uint8_t txpktcnten)
+__RWIP_INLINE void ble_rftestcntl_txpktcnten_setf(uint8_t txpktcnten)
 {
     ASSERT_ERR((((uint32_t)txpktcnten << 11) & ~((uint32_t)0x00000800)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x00000800)) | ((uint32_t)txpktcnten << 11));
 }
 
-__INLINE uint8_t ble_rftestcntl_txlength_getf(void)
+__RWIP_INLINE uint8_t ble_rftestcntl_txlength_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_rftestcntl_txlength_setf(uint8_t txlength)
+__RWIP_INLINE void ble_rftestcntl_txlength_setf(uint8_t txlength)
 {
     ASSERT_ERR((((uint32_t)txlength << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_RFTESTCNTL_ADDR, (REG_BLE_RD(BLE_RFTESTCNTL_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txlength << 0));
@@ -6017,7 +6017,7 @@ __INLINE void ble_rftestcntl_txlength_setf(uint8_t txlength)
 #define BLE_RFTESTTXSTAT_INDEX  0x00000035
 #define BLE_RFTESTTXSTAT_RESET  0x00000000
 
-__INLINE uint32_t ble_rftesttxstat_get(void)
+__RWIP_INLINE uint32_t ble_rftesttxstat_get(void)
 {
     return REG_BLE_RD(BLE_RFTESTTXSTAT_ADDR);
 }
@@ -6029,7 +6029,7 @@ __INLINE uint32_t ble_rftesttxstat_get(void)
 
 #define BLE_TXPKTCNT_RST    0x0
 
-__INLINE uint32_t ble_rftesttxstat_txpktcnt_getf(void)
+__RWIP_INLINE uint32_t ble_rftesttxstat_txpktcnt_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTTXSTAT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
@@ -6049,7 +6049,7 @@ __INLINE uint32_t ble_rftesttxstat_txpktcnt_getf(void)
 #define BLE_RFTESTRXSTAT_INDEX  0x00000036
 #define BLE_RFTESTRXSTAT_RESET  0x00000000
 
-__INLINE uint32_t ble_rftestrxstat_get(void)
+__RWIP_INLINE uint32_t ble_rftestrxstat_get(void)
 {
     return REG_BLE_RD(BLE_RFTESTRXSTAT_ADDR);
 }
@@ -6061,7 +6061,7 @@ __INLINE uint32_t ble_rftestrxstat_get(void)
 
 #define BLE_RXPKTCNT_RST    0x0
 
-__INLINE uint32_t ble_rftestrxstat_rxpktcnt_getf(void)
+__RWIP_INLINE uint32_t ble_rftestrxstat_rxpktcnt_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RFTESTRXSTAT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
@@ -6082,12 +6082,12 @@ __INLINE uint32_t ble_rftestrxstat_rxpktcnt_getf(void)
 #define BLE_TIMGENCNTL_INDEX  0x00000038
 #define BLE_TIMGENCNTL_RESET  0x01FE0096
 
-__INLINE uint32_t ble_timgencntl_get(void)
+__RWIP_INLINE uint32_t ble_timgencntl_get(void)
 {
     return REG_BLE_RD(BLE_TIMGENCNTL_ADDR);
 }
 
-__INLINE void ble_timgencntl_set(uint32_t value)
+__RWIP_INLINE void ble_timgencntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_TIMGENCNTL_ADDR, value);
 }
@@ -6103,14 +6103,14 @@ __INLINE void ble_timgencntl_set(uint32_t value)
 #define BLE_PREFETCHABORT_TIME_RST    0x1FE
 #define BLE_PREFETCH_TIME_RST         0x96
 
-__INLINE void ble_timgencntl_pack(uint16_t prefetchaborttime, uint16_t prefetchtime)
+__RWIP_INLINE void ble_timgencntl_pack(uint16_t prefetchaborttime, uint16_t prefetchtime)
 {
     ASSERT_ERR((((uint32_t)prefetchaborttime << 16) & ~((uint32_t)0x03FF0000)) == 0);
     ASSERT_ERR((((uint32_t)prefetchtime << 0) & ~((uint32_t)0x000001FF)) == 0);
     REG_BLE_WR(BLE_TIMGENCNTL_ADDR,  ((uint32_t)prefetchaborttime << 16) | ((uint32_t)prefetchtime << 0));
 }
 
-__INLINE void ble_timgencntl_unpack(uint16_t* prefetchaborttime, uint16_t* prefetchtime)
+__RWIP_INLINE void ble_timgencntl_unpack(uint16_t* prefetchaborttime, uint16_t* prefetchtime)
 {
     uint32_t localVal = REG_BLE_RD(BLE_TIMGENCNTL_ADDR);
 
@@ -6118,25 +6118,25 @@ __INLINE void ble_timgencntl_unpack(uint16_t* prefetchaborttime, uint16_t* prefe
     *prefetchtime = (localVal & ((uint32_t)0x000001FF)) >> 0;
 }
 
-__INLINE uint16_t ble_timgencntl_prefetchabort_time_getf(void)
+__RWIP_INLINE uint16_t ble_timgencntl_prefetchabort_time_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_TIMGENCNTL_ADDR);
     return ((localVal & ((uint32_t)0x03FF0000)) >> 16);
 }
 
-__INLINE void ble_timgencntl_prefetchabort_time_setf(uint16_t prefetchaborttime)
+__RWIP_INLINE void ble_timgencntl_prefetchabort_time_setf(uint16_t prefetchaborttime)
 {
     ASSERT_ERR((((uint32_t)prefetchaborttime << 16) & ~((uint32_t)0x03FF0000)) == 0);
     REG_BLE_WR(BLE_TIMGENCNTL_ADDR, (REG_BLE_RD(BLE_TIMGENCNTL_ADDR) & ~((uint32_t)0x03FF0000)) | ((uint32_t)prefetchaborttime << 16));
 }
 
-__INLINE uint16_t ble_timgencntl_prefetch_time_getf(void)
+__RWIP_INLINE uint16_t ble_timgencntl_prefetch_time_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_TIMGENCNTL_ADDR);
     return ((localVal & ((uint32_t)0x000001FF)) >> 0);
 }
 
-__INLINE void ble_timgencntl_prefetch_time_setf(uint16_t prefetchtime)
+__RWIP_INLINE void ble_timgencntl_prefetch_time_setf(uint16_t prefetchtime)
 {
     ASSERT_ERR((((uint32_t)prefetchtime << 0) & ~((uint32_t)0x000001FF)) == 0);
     REG_BLE_WR(BLE_TIMGENCNTL_ADDR, (REG_BLE_RD(BLE_TIMGENCNTL_ADDR) & ~((uint32_t)0x000001FF)) | ((uint32_t)prefetchtime << 0));
@@ -6155,12 +6155,12 @@ __INLINE void ble_timgencntl_prefetch_time_setf(uint16_t prefetchtime)
 #define BLE_FINETIMTGT_INDEX  0x00000039
 #define BLE_FINETIMTGT_RESET  0x00000000
 
-__INLINE uint32_t ble_finetimtgt_get(void)
+__RWIP_INLINE uint32_t ble_finetimtgt_get(void)
 {
     return REG_BLE_RD(BLE_FINETIMTGT_ADDR);
 }
 
-__INLINE void ble_finetimtgt_set(uint32_t value)
+__RWIP_INLINE void ble_finetimtgt_set(uint32_t value)
 {
     REG_BLE_WR(BLE_FINETIMTGT_ADDR, value);
 }
@@ -6172,14 +6172,14 @@ __INLINE void ble_finetimtgt_set(uint32_t value)
 
 #define BLE_FINETARGET_RST    0x0
 
-__INLINE uint32_t ble_finetimtgt_finetarget_getf(void)
+__RWIP_INLINE uint32_t ble_finetimtgt_finetarget_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FINETIMTGT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_finetimtgt_finetarget_setf(uint32_t finetarget)
+__RWIP_INLINE void ble_finetimtgt_finetarget_setf(uint32_t finetarget)
 {
     ASSERT_ERR((((uint32_t)finetarget << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_BLE_WR(BLE_FINETIMTGT_ADDR, (uint32_t)finetarget << 0);
@@ -6198,12 +6198,12 @@ __INLINE void ble_finetimtgt_finetarget_setf(uint32_t finetarget)
 #define BLE_CLKNTGT1_INDEX  0x0000003A
 #define BLE_CLKNTGT1_RESET  0x00000000
 
-__INLINE uint32_t ble_clkntgt1_get(void)
+__RWIP_INLINE uint32_t ble_clkntgt1_get(void)
 {
     return REG_BLE_RD(BLE_CLKNTGT1_ADDR);
 }
 
-__INLINE void ble_clkntgt1_set(uint32_t value)
+__RWIP_INLINE void ble_clkntgt1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_CLKNTGT1_ADDR, value);
 }
@@ -6215,14 +6215,14 @@ __INLINE void ble_clkntgt1_set(uint32_t value)
 
 #define BLE_CLKNTGT1_RST    0x0
 
-__INLINE uint32_t ble_clkntgt1_getf(void)
+__RWIP_INLINE uint32_t ble_clkntgt1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_CLKNTGT1_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_clkntgt1_setf(uint32_t clkntgt1)
+__RWIP_INLINE void ble_clkntgt1_setf(uint32_t clkntgt1)
 {
     ASSERT_ERR((((uint32_t)clkntgt1 << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_BLE_WR(BLE_CLKNTGT1_ADDR, (uint32_t)clkntgt1 << 0);
@@ -6241,12 +6241,12 @@ __INLINE void ble_clkntgt1_setf(uint32_t clkntgt1)
 #define BLE_HMICROSECTGT1_INDEX  0x0000003B
 #define BLE_HMICROSECTGT1_RESET  0x00000000
 
-__INLINE uint32_t ble_hmicrosectgt1_get(void)
+__RWIP_INLINE uint32_t ble_hmicrosectgt1_get(void)
 {
     return REG_BLE_RD(BLE_HMICROSECTGT1_ADDR);
 }
 
-__INLINE void ble_hmicrosectgt1_set(uint32_t value)
+__RWIP_INLINE void ble_hmicrosectgt1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_HMICROSECTGT1_ADDR, value);
 }
@@ -6258,14 +6258,14 @@ __INLINE void ble_hmicrosectgt1_set(uint32_t value)
 
 #define BLE_HMICROSECTGT1_RST    0x0
 
-__INLINE uint16_t ble_hmicrosectgt1_getf(void)
+__RWIP_INLINE uint16_t ble_hmicrosectgt1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_HMICROSECTGT1_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_hmicrosectgt1_setf(uint16_t hmicrosectgt1)
+__RWIP_INLINE void ble_hmicrosectgt1_setf(uint16_t hmicrosectgt1)
 {
     ASSERT_ERR((((uint32_t)hmicrosectgt1 << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_BLE_WR(BLE_HMICROSECTGT1_ADDR, (uint32_t)hmicrosectgt1 << 0);
@@ -6284,12 +6284,12 @@ __INLINE void ble_hmicrosectgt1_setf(uint16_t hmicrosectgt1)
 #define BLE_CLKNTGT2_INDEX  0x0000003C
 #define BLE_CLKNTGT2_RESET  0x00000000
 
-__INLINE uint32_t ble_clkntgt2_get(void)
+__RWIP_INLINE uint32_t ble_clkntgt2_get(void)
 {
     return REG_BLE_RD(BLE_CLKNTGT2_ADDR);
 }
 
-__INLINE void ble_clkntgt2_set(uint32_t value)
+__RWIP_INLINE void ble_clkntgt2_set(uint32_t value)
 {
     REG_BLE_WR(BLE_CLKNTGT2_ADDR, value);
 }
@@ -6301,14 +6301,14 @@ __INLINE void ble_clkntgt2_set(uint32_t value)
 
 #define BLE_CLKNTGT2_RST    0x0
 
-__INLINE uint32_t ble_clkntgt2_getf(void)
+__RWIP_INLINE uint32_t ble_clkntgt2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_CLKNTGT2_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_clkntgt2_setf(uint32_t clkntgt2)
+__RWIP_INLINE void ble_clkntgt2_setf(uint32_t clkntgt2)
 {
     ASSERT_ERR((((uint32_t)clkntgt2 << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_BLE_WR(BLE_CLKNTGT2_ADDR, (uint32_t)clkntgt2 << 0);
@@ -6327,12 +6327,12 @@ __INLINE void ble_clkntgt2_setf(uint32_t clkntgt2)
 #define BLE_HMICROSECTGT2_INDEX  0x0000003D
 #define BLE_HMICROSECTGT2_RESET  0x00000000
 
-__INLINE uint32_t ble_hmicrosectgt2_get(void)
+__RWIP_INLINE uint32_t ble_hmicrosectgt2_get(void)
 {
     return REG_BLE_RD(BLE_HMICROSECTGT2_ADDR);
 }
 
-__INLINE void ble_hmicrosectgt2_set(uint32_t value)
+__RWIP_INLINE void ble_hmicrosectgt2_set(uint32_t value)
 {
     REG_BLE_WR(BLE_HMICROSECTGT2_ADDR, value);
 }
@@ -6344,14 +6344,14 @@ __INLINE void ble_hmicrosectgt2_set(uint32_t value)
 
 #define BLE_HMICROSECTGT2_RST    0x0
 
-__INLINE uint16_t ble_hmicrosectgt2_getf(void)
+__RWIP_INLINE uint16_t ble_hmicrosectgt2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_HMICROSECTGT2_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_hmicrosectgt2_setf(uint16_t hmicrosectgt2)
+__RWIP_INLINE void ble_hmicrosectgt2_setf(uint16_t hmicrosectgt2)
 {
     ASSERT_ERR((((uint32_t)hmicrosectgt2 << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_BLE_WR(BLE_HMICROSECTGT2_ADDR, (uint32_t)hmicrosectgt2 << 0);
@@ -6370,12 +6370,12 @@ __INLINE void ble_hmicrosectgt2_setf(uint16_t hmicrosectgt2)
 #define BLE_CLKNTGT3_INDEX  0x0000003E
 #define BLE_CLKNTGT3_RESET  0x00000000
 
-__INLINE uint32_t ble_clkntgt3_get(void)
+__RWIP_INLINE uint32_t ble_clkntgt3_get(void)
 {
     return REG_BLE_RD(BLE_CLKNTGT3_ADDR);
 }
 
-__INLINE void ble_clkntgt3_set(uint32_t value)
+__RWIP_INLINE void ble_clkntgt3_set(uint32_t value)
 {
     REG_BLE_WR(BLE_CLKNTGT3_ADDR, value);
 }
@@ -6387,14 +6387,14 @@ __INLINE void ble_clkntgt3_set(uint32_t value)
 
 #define BLE_CLKNTGT3_RST    0x0
 
-__INLINE uint32_t ble_clkntgt3_getf(void)
+__RWIP_INLINE uint32_t ble_clkntgt3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_CLKNTGT3_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_clkntgt3_setf(uint32_t clkntgt3)
+__RWIP_INLINE void ble_clkntgt3_setf(uint32_t clkntgt3)
 {
     ASSERT_ERR((((uint32_t)clkntgt3 << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_BLE_WR(BLE_CLKNTGT3_ADDR, (uint32_t)clkntgt3 << 0);
@@ -6413,12 +6413,12 @@ __INLINE void ble_clkntgt3_setf(uint32_t clkntgt3)
 #define BLE_HMICROSECTGT3_INDEX  0x0000003F
 #define BLE_HMICROSECTGT3_RESET  0x00000000
 
-__INLINE uint32_t ble_hmicrosectgt3_get(void)
+__RWIP_INLINE uint32_t ble_hmicrosectgt3_get(void)
 {
     return REG_BLE_RD(BLE_HMICROSECTGT3_ADDR);
 }
 
-__INLINE void ble_hmicrosectgt3_set(uint32_t value)
+__RWIP_INLINE void ble_hmicrosectgt3_set(uint32_t value)
 {
     REG_BLE_WR(BLE_HMICROSECTGT3_ADDR, value);
 }
@@ -6430,14 +6430,14 @@ __INLINE void ble_hmicrosectgt3_set(uint32_t value)
 
 #define BLE_HMICROSECTGT3_RST    0x0
 
-__INLINE uint16_t ble_hmicrosectgt3_getf(void)
+__RWIP_INLINE uint16_t ble_hmicrosectgt3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_HMICROSECTGT3_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_hmicrosectgt3_setf(uint16_t hmicrosectgt3)
+__RWIP_INLINE void ble_hmicrosectgt3_setf(uint16_t hmicrosectgt3)
 {
     ASSERT_ERR((((uint32_t)hmicrosectgt3 << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_BLE_WR(BLE_HMICROSECTGT3_ADDR, (uint32_t)hmicrosectgt3 << 0);
@@ -6458,12 +6458,12 @@ __INLINE void ble_hmicrosectgt3_setf(uint16_t hmicrosectgt3)
 #define BLE_SLOTCLK_INDEX  0x00000040
 #define BLE_SLOTCLK_RESET  0x00000000
 
-__INLINE uint32_t ble_slotclk_get(void)
+__RWIP_INLINE uint32_t ble_slotclk_get(void)
 {
     return REG_BLE_RD(BLE_SLOTCLK_ADDR);
 }
 
-__INLINE void ble_slotclk_set(uint32_t value)
+__RWIP_INLINE void ble_slotclk_set(uint32_t value)
 {
     REG_BLE_WR(BLE_SLOTCLK_ADDR, value);
 }
@@ -6481,7 +6481,7 @@ __INLINE void ble_slotclk_set(uint32_t value)
 #define BLE_CLKN_UPD_RST    0x0
 #define BLE_SCLK_RST        0x0
 
-__INLINE void ble_slotclk_pack(uint8_t samp, uint8_t clknupd, uint32_t sclk)
+__RWIP_INLINE void ble_slotclk_pack(uint8_t samp, uint8_t clknupd, uint32_t sclk)
 {
     ASSERT_ERR((((uint32_t)samp << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)clknupd << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -6489,7 +6489,7 @@ __INLINE void ble_slotclk_pack(uint8_t samp, uint8_t clknupd, uint32_t sclk)
     REG_BLE_WR(BLE_SLOTCLK_ADDR,  ((uint32_t)samp << 31) | ((uint32_t)clknupd << 30) | ((uint32_t)sclk << 0));
 }
 
-__INLINE void ble_slotclk_unpack(uint8_t* samp, uint8_t* clknupd, uint32_t* sclk)
+__RWIP_INLINE void ble_slotclk_unpack(uint8_t* samp, uint8_t* clknupd, uint32_t* sclk)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SLOTCLK_ADDR);
 
@@ -6498,37 +6498,37 @@ __INLINE void ble_slotclk_unpack(uint8_t* samp, uint8_t* clknupd, uint32_t* sclk
     *sclk = (localVal & ((uint32_t)0x0FFFFFFF)) >> 0;
 }
 
-__INLINE uint8_t ble_slotclk_samp_getf(void)
+__RWIP_INLINE uint8_t ble_slotclk_samp_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SLOTCLK_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_slotclk_samp_setf(uint8_t samp)
+__RWIP_INLINE void ble_slotclk_samp_setf(uint8_t samp)
 {
     ASSERT_ERR((((uint32_t)samp << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_SLOTCLK_ADDR, (REG_BLE_RD(BLE_SLOTCLK_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)samp << 31));
 }
 
-__INLINE uint8_t ble_slotclk_clkn_upd_getf(void)
+__RWIP_INLINE uint8_t ble_slotclk_clkn_upd_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SLOTCLK_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ble_slotclk_clkn_upd_setf(uint8_t clknupd)
+__RWIP_INLINE void ble_slotclk_clkn_upd_setf(uint8_t clknupd)
 {
     ASSERT_ERR((((uint32_t)clknupd << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_BLE_WR(BLE_SLOTCLK_ADDR, (REG_BLE_RD(BLE_SLOTCLK_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)clknupd << 30));
 }
 
-__INLINE uint32_t ble_slotclk_sclk_getf(void)
+__RWIP_INLINE uint32_t ble_slotclk_sclk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SLOTCLK_ADDR);
     return ((localVal & ((uint32_t)0x0FFFFFFF)) >> 0);
 }
 
-__INLINE void ble_slotclk_sclk_setf(uint32_t sclk)
+__RWIP_INLINE void ble_slotclk_sclk_setf(uint32_t sclk)
 {
     ASSERT_ERR((((uint32_t)sclk << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_BLE_WR(BLE_SLOTCLK_ADDR, (REG_BLE_RD(BLE_SLOTCLK_ADDR) & ~((uint32_t)0x0FFFFFFF)) | ((uint32_t)sclk << 0));
@@ -6547,7 +6547,7 @@ __INLINE void ble_slotclk_sclk_setf(uint32_t sclk)
 #define BLE_FINETIMECNT_INDEX  0x00000041
 #define BLE_FINETIMECNT_RESET  0x00000000
 
-__INLINE uint32_t ble_finetimecnt_get(void)
+__RWIP_INLINE uint32_t ble_finetimecnt_get(void)
 {
     return REG_BLE_RD(BLE_FINETIMECNT_ADDR);
 }
@@ -6559,7 +6559,7 @@ __INLINE uint32_t ble_finetimecnt_get(void)
 
 #define BLE_FINECNT_RST    0x0
 
-__INLINE uint16_t ble_finetimecnt_finecnt_getf(void)
+__RWIP_INLINE uint16_t ble_finetimecnt_finecnt_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FINETIMECNT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
@@ -6580,12 +6580,12 @@ __INLINE uint16_t ble_finetimecnt_finecnt_getf(void)
 #define BLE_ACTSCHCNTL_INDEX  0x00000044
 #define BLE_ACTSCHCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_actschcntl_get(void)
+__RWIP_INLINE uint32_t ble_actschcntl_get(void)
 {
     return REG_BLE_RD(BLE_ACTSCHCNTL_ADDR);
 }
 
-__INLINE void ble_actschcntl_set(uint32_t value)
+__RWIP_INLINE void ble_actschcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ACTSCHCNTL_ADDR, value);
 }
@@ -6600,14 +6600,14 @@ __INLINE void ble_actschcntl_set(uint32_t value)
 #define BLE_START_ACT_RST    0x0
 #define BLE_ENTRY_IDX_RST    0x0
 
-__INLINE void ble_actschcntl_pack(uint8_t startact, uint8_t entryidx)
+__RWIP_INLINE void ble_actschcntl_pack(uint8_t startact, uint8_t entryidx)
 {
     ASSERT_ERR((((uint32_t)startact << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)entryidx << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_ACTSCHCNTL_ADDR,  ((uint32_t)startact << 31) | ((uint32_t)entryidx << 0));
 }
 
-__INLINE void ble_actschcntl_unpack(uint8_t* startact, uint8_t* entryidx)
+__RWIP_INLINE void ble_actschcntl_unpack(uint8_t* startact, uint8_t* entryidx)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTSCHCNTL_ADDR);
 
@@ -6615,25 +6615,25 @@ __INLINE void ble_actschcntl_unpack(uint8_t* startact, uint8_t* entryidx)
     *entryidx = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ble_actschcntl_start_act_getf(void)
+__RWIP_INLINE uint8_t ble_actschcntl_start_act_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTSCHCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_actschcntl_start_act_setf(uint8_t startact)
+__RWIP_INLINE void ble_actschcntl_start_act_setf(uint8_t startact)
 {
     ASSERT_ERR((((uint32_t)startact << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_ACTSCHCNTL_ADDR, (REG_BLE_RD(BLE_ACTSCHCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)startact << 31));
 }
 
-__INLINE uint8_t ble_actschcntl_entry_idx_getf(void)
+__RWIP_INLINE uint8_t ble_actschcntl_entry_idx_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTSCHCNTL_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ble_actschcntl_entry_idx_setf(uint8_t entryidx)
+__RWIP_INLINE void ble_actschcntl_entry_idx_setf(uint8_t entryidx)
 {
     ASSERT_ERR((((uint32_t)entryidx << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_ACTSCHCNTL_ADDR, (REG_BLE_RD(BLE_ACTSCHCNTL_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)entryidx << 0));
@@ -6652,7 +6652,7 @@ __INLINE void ble_actschcntl_entry_idx_setf(uint8_t entryidx)
 #define BLE_STARTEVTCLKNTS_INDEX  0x00000045
 #define BLE_STARTEVTCLKNTS_RESET  0x00000000
 
-__INLINE uint32_t ble_startevtclknts_get(void)
+__RWIP_INLINE uint32_t ble_startevtclknts_get(void)
 {
     return REG_BLE_RD(BLE_STARTEVTCLKNTS_ADDR);
 }
@@ -6664,7 +6664,7 @@ __INLINE uint32_t ble_startevtclknts_get(void)
 
 #define BLE_STARTEVTCLKNTS_RST    0x0
 
-__INLINE uint32_t ble_startevtclknts_getf(void)
+__RWIP_INLINE uint32_t ble_startevtclknts_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_STARTEVTCLKNTS_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
@@ -6684,7 +6684,7 @@ __INLINE uint32_t ble_startevtclknts_getf(void)
 #define BLE_STARTEVTFINECNTTS_INDEX  0x00000046
 #define BLE_STARTEVTFINECNTTS_RESET  0x00000000
 
-__INLINE uint32_t ble_startevtfinecntts_get(void)
+__RWIP_INLINE uint32_t ble_startevtfinecntts_get(void)
 {
     return REG_BLE_RD(BLE_STARTEVTFINECNTTS_ADDR);
 }
@@ -6696,7 +6696,7 @@ __INLINE uint32_t ble_startevtfinecntts_get(void)
 
 #define BLE_STARTEVTFINECNTTS_RST    0x0
 
-__INLINE uint16_t ble_startevtfinecntts_getf(void)
+__RWIP_INLINE uint16_t ble_startevtfinecntts_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_STARTEVTFINECNTTS_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
@@ -6716,7 +6716,7 @@ __INLINE uint16_t ble_startevtfinecntts_getf(void)
 #define BLE_ENDEVTCLKNTS_INDEX  0x00000047
 #define BLE_ENDEVTCLKNTS_RESET  0x00000000
 
-__INLINE uint32_t ble_endevtclknts_get(void)
+__RWIP_INLINE uint32_t ble_endevtclknts_get(void)
 {
     return REG_BLE_RD(BLE_ENDEVTCLKNTS_ADDR);
 }
@@ -6728,7 +6728,7 @@ __INLINE uint32_t ble_endevtclknts_get(void)
 
 #define BLE_ENDEVTCLKNTS_RST    0x0
 
-__INLINE uint32_t ble_endevtclknts_getf(void)
+__RWIP_INLINE uint32_t ble_endevtclknts_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ENDEVTCLKNTS_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
@@ -6748,7 +6748,7 @@ __INLINE uint32_t ble_endevtclknts_getf(void)
 #define BLE_ENDEVTFINECNTTS_INDEX  0x00000048
 #define BLE_ENDEVTFINECNTTS_RESET  0x00000000
 
-__INLINE uint32_t ble_endevtfinecntts_get(void)
+__RWIP_INLINE uint32_t ble_endevtfinecntts_get(void)
 {
     return REG_BLE_RD(BLE_ENDEVTFINECNTTS_ADDR);
 }
@@ -6760,7 +6760,7 @@ __INLINE uint32_t ble_endevtfinecntts_get(void)
 
 #define BLE_ENDEVTFINECNTTS_RST    0x0
 
-__INLINE uint16_t ble_endevtfinecntts_getf(void)
+__RWIP_INLINE uint16_t ble_endevtfinecntts_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ENDEVTFINECNTTS_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
@@ -6780,7 +6780,7 @@ __INLINE uint16_t ble_endevtfinecntts_getf(void)
 #define BLE_SKIPEVTCLKNTS_INDEX  0x00000049
 #define BLE_SKIPEVTCLKNTS_RESET  0x00000000
 
-__INLINE uint32_t ble_skipevtclknts_get(void)
+__RWIP_INLINE uint32_t ble_skipevtclknts_get(void)
 {
     return REG_BLE_RD(BLE_SKIPEVTCLKNTS_ADDR);
 }
@@ -6792,7 +6792,7 @@ __INLINE uint32_t ble_skipevtclknts_get(void)
 
 #define BLE_SKIPEVTCLKNTS_RST    0x0
 
-__INLINE uint32_t ble_skipevtclknts_getf(void)
+__RWIP_INLINE uint32_t ble_skipevtclknts_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SKIPEVTCLKNTS_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
@@ -6812,7 +6812,7 @@ __INLINE uint32_t ble_skipevtclknts_getf(void)
 #define BLE_SKIPEVTFINECNTTS_INDEX  0x0000004A
 #define BLE_SKIPEVTFINECNTTS_RESET  0x00000000
 
-__INLINE uint32_t ble_skipevtfinecntts_get(void)
+__RWIP_INLINE uint32_t ble_skipevtfinecntts_get(void)
 {
     return REG_BLE_RD(BLE_SKIPEVTFINECNTTS_ADDR);
 }
@@ -6824,7 +6824,7 @@ __INLINE uint32_t ble_skipevtfinecntts_get(void)
 
 #define BLE_SKIPEVTFINECNTTS_RST    0x0
 
-__INLINE uint16_t ble_skipevtfinecntts_getf(void)
+__RWIP_INLINE uint16_t ble_skipevtfinecntts_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SKIPEVTFINECNTTS_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
@@ -6846,12 +6846,12 @@ __INLINE uint16_t ble_skipevtfinecntts_getf(void)
 #define BLE_ADVTIM_INDEX  0x0000004C
 #define BLE_ADVTIM_RESET  0x00000000
 
-__INLINE uint32_t ble_advtim_get(void)
+__RWIP_INLINE uint32_t ble_advtim_get(void)
 {
     return REG_BLE_RD(BLE_ADVTIM_ADDR);
 }
 
-__INLINE void ble_advtim_set(uint32_t value)
+__RWIP_INLINE void ble_advtim_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ADVTIM_ADDR, value);
 }
@@ -6871,7 +6871,7 @@ __INLINE void ble_advtim_set(uint32_t value)
 #define BLE_RX_AUXPTR_THR_RST    0x0
 #define BLE_ADVINT_RST           0x0
 
-__INLINE void ble_advtim_pack(uint8_t txauxptrthr, uint8_t rxauxptrthr, uint16_t advint)
+__RWIP_INLINE void ble_advtim_pack(uint8_t txauxptrthr, uint8_t rxauxptrthr, uint16_t advint)
 {
     ASSERT_ERR((((uint32_t)txauxptrthr << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rxauxptrthr << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -6879,7 +6879,7 @@ __INLINE void ble_advtim_pack(uint8_t txauxptrthr, uint8_t rxauxptrthr, uint16_t
     REG_BLE_WR(BLE_ADVTIM_ADDR,  ((uint32_t)txauxptrthr << 24) | ((uint32_t)rxauxptrthr << 16) | ((uint32_t)advint << 0));
 }
 
-__INLINE void ble_advtim_unpack(uint8_t* txauxptrthr, uint8_t* rxauxptrthr, uint16_t* advint)
+__RWIP_INLINE void ble_advtim_unpack(uint8_t* txauxptrthr, uint8_t* rxauxptrthr, uint16_t* advint)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ADVTIM_ADDR);
 
@@ -6888,37 +6888,37 @@ __INLINE void ble_advtim_unpack(uint8_t* txauxptrthr, uint8_t* rxauxptrthr, uint
     *advint = (localVal & ((uint32_t)0x00003FFF)) >> 0;
 }
 
-__INLINE uint8_t ble_advtim_tx_auxptr_thr_getf(void)
+__RWIP_INLINE uint8_t ble_advtim_tx_auxptr_thr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ADVTIM_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_advtim_tx_auxptr_thr_setf(uint8_t txauxptrthr)
+__RWIP_INLINE void ble_advtim_tx_auxptr_thr_setf(uint8_t txauxptrthr)
 {
     ASSERT_ERR((((uint32_t)txauxptrthr << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_ADVTIM_ADDR, (REG_BLE_RD(BLE_ADVTIM_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)txauxptrthr << 24));
 }
 
-__INLINE uint8_t ble_advtim_rx_auxptr_thr_getf(void)
+__RWIP_INLINE uint8_t ble_advtim_rx_auxptr_thr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ADVTIM_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_advtim_rx_auxptr_thr_setf(uint8_t rxauxptrthr)
+__RWIP_INLINE void ble_advtim_rx_auxptr_thr_setf(uint8_t rxauxptrthr)
 {
     ASSERT_ERR((((uint32_t)rxauxptrthr << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_ADVTIM_ADDR, (REG_BLE_RD(BLE_ADVTIM_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rxauxptrthr << 16));
 }
 
-__INLINE uint16_t ble_advtim_advint_getf(void)
+__RWIP_INLINE uint16_t ble_advtim_advint_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ADVTIM_ADDR);
     return ((localVal & ((uint32_t)0x00003FFF)) >> 0);
 }
 
-__INLINE void ble_advtim_advint_setf(uint16_t advint)
+__RWIP_INLINE void ble_advtim_advint_setf(uint16_t advint)
 {
     ASSERT_ERR((((uint32_t)advint << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_ADVTIM_ADDR, (REG_BLE_RD(BLE_ADVTIM_ADDR) & ~((uint32_t)0x00003FFF)) | ((uint32_t)advint << 0));
@@ -6938,12 +6938,12 @@ __INLINE void ble_advtim_advint_setf(uint16_t advint)
 #define BLE_ACTSCANCNTL_INDEX  0x0000004D
 #define BLE_ACTSCANCNTL_RESET  0x00010001
 
-__INLINE uint32_t ble_actscancntl_get(void)
+__RWIP_INLINE uint32_t ble_actscancntl_get(void)
 {
     return REG_BLE_RD(BLE_ACTSCANCNTL_ADDR);
 }
 
-__INLINE void ble_actscancntl_set(uint32_t value)
+__RWIP_INLINE void ble_actscancntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ACTSCANCNTL_ADDR, value);
 }
@@ -6959,14 +6959,14 @@ __INLINE void ble_actscancntl_set(uint32_t value)
 #define BLE_BACKOFF_RST       0x1
 #define BLE_UPPERLIMIT_RST    0x1
 
-__INLINE void ble_actscancntl_pack(uint16_t backoff, uint16_t upperlimit)
+__RWIP_INLINE void ble_actscancntl_pack(uint16_t backoff, uint16_t upperlimit)
 {
     ASSERT_ERR((((uint32_t)backoff << 16) & ~((uint32_t)0x01FF0000)) == 0);
     ASSERT_ERR((((uint32_t)upperlimit << 0) & ~((uint32_t)0x000001FF)) == 0);
     REG_BLE_WR(BLE_ACTSCANCNTL_ADDR,  ((uint32_t)backoff << 16) | ((uint32_t)upperlimit << 0));
 }
 
-__INLINE void ble_actscancntl_unpack(uint16_t* backoff, uint16_t* upperlimit)
+__RWIP_INLINE void ble_actscancntl_unpack(uint16_t* backoff, uint16_t* upperlimit)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTSCANCNTL_ADDR);
 
@@ -6974,25 +6974,25 @@ __INLINE void ble_actscancntl_unpack(uint16_t* backoff, uint16_t* upperlimit)
     *upperlimit = (localVal & ((uint32_t)0x000001FF)) >> 0;
 }
 
-__INLINE uint16_t ble_actscancntl_backoff_getf(void)
+__RWIP_INLINE uint16_t ble_actscancntl_backoff_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTSCANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x01FF0000)) >> 16);
 }
 
-__INLINE void ble_actscancntl_backoff_setf(uint16_t backoff)
+__RWIP_INLINE void ble_actscancntl_backoff_setf(uint16_t backoff)
 {
     ASSERT_ERR((((uint32_t)backoff << 16) & ~((uint32_t)0x01FF0000)) == 0);
     REG_BLE_WR(BLE_ACTSCANCNTL_ADDR, (REG_BLE_RD(BLE_ACTSCANCNTL_ADDR) & ~((uint32_t)0x01FF0000)) | ((uint32_t)backoff << 16));
 }
 
-__INLINE uint16_t ble_actscancntl_upperlimit_getf(void)
+__RWIP_INLINE uint16_t ble_actscancntl_upperlimit_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ACTSCANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x000001FF)) >> 0);
 }
 
-__INLINE void ble_actscancntl_upperlimit_setf(uint16_t upperlimit)
+__RWIP_INLINE void ble_actscancntl_upperlimit_setf(uint16_t upperlimit)
 {
     ASSERT_ERR((((uint32_t)upperlimit << 0) & ~((uint32_t)0x000001FF)) == 0);
     REG_BLE_WR(BLE_ACTSCANCNTL_ADDR, (REG_BLE_RD(BLE_ACTSCANCNTL_ADDR) & ~((uint32_t)0x000001FF)) | ((uint32_t)upperlimit << 0));
@@ -7012,12 +7012,12 @@ __INLINE void ble_actscancntl_upperlimit_setf(uint16_t upperlimit)
 #define BLE_WPALCNTL_INDEX  0x00000050
 #define BLE_WPALCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_wpalcntl_get(void)
+__RWIP_INLINE uint32_t ble_wpalcntl_get(void)
 {
     return REG_BLE_RD(BLE_WPALCNTL_ADDR);
 }
 
-__INLINE void ble_wpalcntl_set(uint32_t value)
+__RWIP_INLINE void ble_wpalcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_WPALCNTL_ADDR, value);
 }
@@ -7033,14 +7033,14 @@ __INLINE void ble_wpalcntl_set(uint32_t value)
 #define BLE_WPALNBDEV_RST      0x0
 #define BLE_WPALBASEPTR_RST    0x0
 
-__INLINE void ble_wpalcntl_pack(uint8_t wpalnbdev, uint16_t wpalbaseptr)
+__RWIP_INLINE void ble_wpalcntl_pack(uint8_t wpalnbdev, uint16_t wpalbaseptr)
 {
     ASSERT_ERR((((uint32_t)wpalnbdev << 16) & ~((uint32_t)0x00FF0000)) == 0);
     ASSERT_ERR((((uint32_t)wpalbaseptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_WPALCNTL_ADDR,  ((uint32_t)wpalnbdev << 16) | ((uint32_t)wpalbaseptr << 0));
 }
 
-__INLINE void ble_wpalcntl_unpack(uint8_t* wpalnbdev, uint16_t* wpalbaseptr)
+__RWIP_INLINE void ble_wpalcntl_unpack(uint8_t* wpalnbdev, uint16_t* wpalbaseptr)
 {
     uint32_t localVal = REG_BLE_RD(BLE_WPALCNTL_ADDR);
 
@@ -7048,25 +7048,25 @@ __INLINE void ble_wpalcntl_unpack(uint8_t* wpalnbdev, uint16_t* wpalbaseptr)
     *wpalbaseptr = (localVal & ((uint32_t)0x00003FFF)) >> 0;
 }
 
-__INLINE uint8_t ble_wpalcntl_wpalnbdev_getf(void)
+__RWIP_INLINE uint8_t ble_wpalcntl_wpalnbdev_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_WPALCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_wpalcntl_wpalnbdev_setf(uint8_t wpalnbdev)
+__RWIP_INLINE void ble_wpalcntl_wpalnbdev_setf(uint8_t wpalnbdev)
 {
     ASSERT_ERR((((uint32_t)wpalnbdev << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_WPALCNTL_ADDR, (REG_BLE_RD(BLE_WPALCNTL_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)wpalnbdev << 16));
 }
 
-__INLINE uint16_t ble_wpalcntl_wpalbaseptr_getf(void)
+__RWIP_INLINE uint16_t ble_wpalcntl_wpalbaseptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_WPALCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00003FFF)) >> 0);
 }
 
-__INLINE void ble_wpalcntl_wpalbaseptr_setf(uint16_t wpalbaseptr)
+__RWIP_INLINE void ble_wpalcntl_wpalbaseptr_setf(uint16_t wpalbaseptr)
 {
     ASSERT_ERR((((uint32_t)wpalbaseptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_WPALCNTL_ADDR, (REG_BLE_RD(BLE_WPALCNTL_ADDR) & ~((uint32_t)0x00003FFF)) | ((uint32_t)wpalbaseptr << 0));
@@ -7085,12 +7085,12 @@ __INLINE void ble_wpalcntl_wpalbaseptr_setf(uint16_t wpalbaseptr)
 #define BLE_WPALCURRENTPTR_INDEX  0x00000051
 #define BLE_WPALCURRENTPTR_RESET  0x00000000
 
-__INLINE uint32_t ble_wpalcurrentptr_get(void)
+__RWIP_INLINE uint32_t ble_wpalcurrentptr_get(void)
 {
     return REG_BLE_RD(BLE_WPALCURRENTPTR_ADDR);
 }
 
-__INLINE void ble_wpalcurrentptr_set(uint32_t value)
+__RWIP_INLINE void ble_wpalcurrentptr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_WPALCURRENTPTR_ADDR, value);
 }
@@ -7102,14 +7102,14 @@ __INLINE void ble_wpalcurrentptr_set(uint32_t value)
 
 #define BLE_WPALCURRENTPTR_RST    0x0
 
-__INLINE uint16_t ble_wpalcurrentptr_getf(void)
+__RWIP_INLINE uint16_t ble_wpalcurrentptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_WPALCURRENTPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_wpalcurrentptr_setf(uint16_t wpalcurrentptr)
+__RWIP_INLINE void ble_wpalcurrentptr_setf(uint16_t wpalcurrentptr)
 {
     ASSERT_ERR((((uint32_t)wpalcurrentptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_WPALCURRENTPTR_ADDR, (uint32_t)wpalcurrentptr << 0);
@@ -7128,12 +7128,12 @@ __INLINE void ble_wpalcurrentptr_setf(uint16_t wpalcurrentptr)
 #define BLE_SEARCH_TIMEOUT_INDEX  0x00000052
 #define BLE_SEARCH_TIMEOUT_RESET  0x00000010
 
-__INLINE uint32_t ble_search_timeout_get(void)
+__RWIP_INLINE uint32_t ble_search_timeout_get(void)
 {
     return REG_BLE_RD(BLE_SEARCH_TIMEOUT_ADDR);
 }
 
-__INLINE void ble_search_timeout_set(uint32_t value)
+__RWIP_INLINE void ble_search_timeout_set(uint32_t value)
 {
     REG_BLE_WR(BLE_SEARCH_TIMEOUT_ADDR, value);
 }
@@ -7145,14 +7145,14 @@ __INLINE void ble_search_timeout_set(uint32_t value)
 
 #define BLE_SEARCH_TIMEOUT_RST    0x10
 
-__INLINE uint8_t ble_search_timeout_getf(void)
+__RWIP_INLINE uint8_t ble_search_timeout_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_SEARCH_TIMEOUT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0000003F)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_search_timeout_setf(uint8_t searchtimeout)
+__RWIP_INLINE void ble_search_timeout_setf(uint8_t searchtimeout)
 {
     ASSERT_ERR((((uint32_t)searchtimeout << 0) & ~((uint32_t)0x0000003F)) == 0);
     REG_BLE_WR(BLE_SEARCH_TIMEOUT_ADDR, (uint32_t)searchtimeout << 0);
@@ -7183,12 +7183,12 @@ __INLINE void ble_search_timeout_setf(uint8_t searchtimeout)
 #define BLE_COEXIFCNTL0_INDEX  0x00000054
 #define BLE_COEXIFCNTL0_RESET  0x00000010
 
-__INLINE uint32_t ble_coexifcntl0_get(void)
+__RWIP_INLINE uint32_t ble_coexifcntl0_get(void)
 {
     return REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
 }
 
-__INLINE void ble_coexifcntl0_set(uint32_t value)
+__RWIP_INLINE void ble_coexifcntl0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, value);
 }
@@ -7244,7 +7244,7 @@ __INLINE void ble_coexifcntl0_set(uint32_t value)
 #define BLE_SYNCGEN_EN_RST        0x0
 #define BLE_WLANCOEX_EN_RST       0x0
 
-__INLINE void ble_coexifcntl0_pack(uint8_t mwsscanfreqmsk, uint8_t wlcrxpriomode, uint8_t wlctxpriomode, uint8_t mwstxfrqmsk, uint8_t mwsrxfrqmsk, uint8_t mwstxmsk, uint8_t mwsrxmsk, uint8_t wlantxmsk, uint8_t wlanrxmsk, uint8_t mwswcien, uint8_t mwscoexen, uint8_t syncgenen, uint8_t wlancoexen)
+__RWIP_INLINE void ble_coexifcntl0_pack(uint8_t mwsscanfreqmsk, uint8_t wlcrxpriomode, uint8_t wlctxpriomode, uint8_t mwstxfrqmsk, uint8_t mwsrxfrqmsk, uint8_t mwstxmsk, uint8_t mwsrxmsk, uint8_t wlantxmsk, uint8_t wlanrxmsk, uint8_t mwswcien, uint8_t mwscoexen, uint8_t syncgenen, uint8_t wlancoexen)
 {
     ASSERT_ERR((((uint32_t)mwsscanfreqmsk << 20) & ~((uint32_t)0x00300000)) == 0);
     ASSERT_ERR((((uint32_t)wlcrxpriomode << 18) & ~((uint32_t)0x000C0000)) == 0);
@@ -7262,7 +7262,7 @@ __INLINE void ble_coexifcntl0_pack(uint8_t mwsscanfreqmsk, uint8_t wlcrxpriomode
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR,  ((uint32_t)mwsscanfreqmsk << 20) | ((uint32_t)wlcrxpriomode << 18) | ((uint32_t)wlctxpriomode << 16) | ((uint32_t)mwstxfrqmsk << 14) | ((uint32_t)mwsrxfrqmsk << 12) | ((uint32_t)mwstxmsk << 10) | ((uint32_t)mwsrxmsk << 8) | ((uint32_t)wlantxmsk << 6) | ((uint32_t)wlanrxmsk << 4) | ((uint32_t)mwswcien << 3) | ((uint32_t)mwscoexen << 2) | ((uint32_t)syncgenen << 1) | ((uint32_t)wlancoexen << 0));
 }
 
-__INLINE void ble_coexifcntl0_unpack(uint8_t* mwsscanfreqmsk, uint8_t* wlcrxpriomode, uint8_t* wlctxpriomode, uint8_t* mwstxfrqmsk, uint8_t* mwsrxfrqmsk, uint8_t* mwstxmsk, uint8_t* mwsrxmsk, uint8_t* wlantxmsk, uint8_t* wlanrxmsk, uint8_t* mwswcien, uint8_t* mwscoexen, uint8_t* syncgenen, uint8_t* wlancoexen)
+__RWIP_INLINE void ble_coexifcntl0_unpack(uint8_t* mwsscanfreqmsk, uint8_t* wlcrxpriomode, uint8_t* wlctxpriomode, uint8_t* mwstxfrqmsk, uint8_t* mwsrxfrqmsk, uint8_t* mwstxmsk, uint8_t* mwsrxmsk, uint8_t* wlantxmsk, uint8_t* wlanrxmsk, uint8_t* mwswcien, uint8_t* mwscoexen, uint8_t* syncgenen, uint8_t* wlancoexen)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
 
@@ -7281,157 +7281,157 @@ __INLINE void ble_coexifcntl0_unpack(uint8_t* mwsscanfreqmsk, uint8_t* wlcrxprio
     *wlancoexen = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_coexifcntl0_mwsscanfreqmsk_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_mwsscanfreqmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00300000)) >> 20);
 }
 
-__INLINE void ble_coexifcntl0_mwsscanfreqmsk_setf(uint8_t mwsscanfreqmsk)
+__RWIP_INLINE void ble_coexifcntl0_mwsscanfreqmsk_setf(uint8_t mwsscanfreqmsk)
 {
     ASSERT_ERR((((uint32_t)mwsscanfreqmsk << 20) & ~((uint32_t)0x00300000)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00300000)) | ((uint32_t)mwsscanfreqmsk << 20));
 }
 
-__INLINE uint8_t ble_coexifcntl0_wlcrxpriomode_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_wlcrxpriomode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x000C0000)) >> 18);
 }
 
-__INLINE void ble_coexifcntl0_wlcrxpriomode_setf(uint8_t wlcrxpriomode)
+__RWIP_INLINE void ble_coexifcntl0_wlcrxpriomode_setf(uint8_t wlcrxpriomode)
 {
     ASSERT_ERR((((uint32_t)wlcrxpriomode << 18) & ~((uint32_t)0x000C0000)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x000C0000)) | ((uint32_t)wlcrxpriomode << 18));
 }
 
-__INLINE uint8_t ble_coexifcntl0_wlctxpriomode_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_wlctxpriomode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00030000)) >> 16);
 }
 
-__INLINE void ble_coexifcntl0_wlctxpriomode_setf(uint8_t wlctxpriomode)
+__RWIP_INLINE void ble_coexifcntl0_wlctxpriomode_setf(uint8_t wlctxpriomode)
 {
     ASSERT_ERR((((uint32_t)wlctxpriomode << 16) & ~((uint32_t)0x00030000)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00030000)) | ((uint32_t)wlctxpriomode << 16));
 }
 
-__INLINE uint8_t ble_coexifcntl0_mwstxfrqmsk_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_mwstxfrqmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x0000C000)) >> 14);
 }
 
-__INLINE void ble_coexifcntl0_mwstxfrqmsk_setf(uint8_t mwstxfrqmsk)
+__RWIP_INLINE void ble_coexifcntl0_mwstxfrqmsk_setf(uint8_t mwstxfrqmsk)
 {
     ASSERT_ERR((((uint32_t)mwstxfrqmsk << 14) & ~((uint32_t)0x0000C000)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x0000C000)) | ((uint32_t)mwstxfrqmsk << 14));
 }
 
-__INLINE uint8_t ble_coexifcntl0_mwsrxfrqmsk_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_mwsrxfrqmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00003000)) >> 12);
 }
 
-__INLINE void ble_coexifcntl0_mwsrxfrqmsk_setf(uint8_t mwsrxfrqmsk)
+__RWIP_INLINE void ble_coexifcntl0_mwsrxfrqmsk_setf(uint8_t mwsrxfrqmsk)
 {
     ASSERT_ERR((((uint32_t)mwsrxfrqmsk << 12) & ~((uint32_t)0x00003000)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00003000)) | ((uint32_t)mwsrxfrqmsk << 12));
 }
 
-__INLINE uint8_t ble_coexifcntl0_mwstxmsk_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_mwstxmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000C00)) >> 10);
 }
 
-__INLINE void ble_coexifcntl0_mwstxmsk_setf(uint8_t mwstxmsk)
+__RWIP_INLINE void ble_coexifcntl0_mwstxmsk_setf(uint8_t mwstxmsk)
 {
     ASSERT_ERR((((uint32_t)mwstxmsk << 10) & ~((uint32_t)0x00000C00)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00000C00)) | ((uint32_t)mwstxmsk << 10));
 }
 
-__INLINE uint8_t ble_coexifcntl0_mwsrxmsk_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_mwsrxmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000300)) >> 8);
 }
 
-__INLINE void ble_coexifcntl0_mwsrxmsk_setf(uint8_t mwsrxmsk)
+__RWIP_INLINE void ble_coexifcntl0_mwsrxmsk_setf(uint8_t mwsrxmsk)
 {
     ASSERT_ERR((((uint32_t)mwsrxmsk << 8) & ~((uint32_t)0x00000300)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00000300)) | ((uint32_t)mwsrxmsk << 8));
 }
 
-__INLINE uint8_t ble_coexifcntl0_wlantxmsk_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_wlantxmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x000000C0)) >> 6);
 }
 
-__INLINE void ble_coexifcntl0_wlantxmsk_setf(uint8_t wlantxmsk)
+__RWIP_INLINE void ble_coexifcntl0_wlantxmsk_setf(uint8_t wlantxmsk)
 {
     ASSERT_ERR((((uint32_t)wlantxmsk << 6) & ~((uint32_t)0x000000C0)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x000000C0)) | ((uint32_t)wlantxmsk << 6));
 }
 
-__INLINE uint8_t ble_coexifcntl0_wlanrxmsk_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_wlanrxmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000030)) >> 4);
 }
 
-__INLINE void ble_coexifcntl0_wlanrxmsk_setf(uint8_t wlanrxmsk)
+__RWIP_INLINE void ble_coexifcntl0_wlanrxmsk_setf(uint8_t wlanrxmsk)
 {
     ASSERT_ERR((((uint32_t)wlanrxmsk << 4) & ~((uint32_t)0x00000030)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00000030)) | ((uint32_t)wlanrxmsk << 4));
 }
 
-__INLINE uint8_t ble_coexifcntl0_mwswci_en_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_mwswci_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ble_coexifcntl0_mwswci_en_setf(uint8_t mwswcien)
+__RWIP_INLINE void ble_coexifcntl0_mwswci_en_setf(uint8_t mwswcien)
 {
     ASSERT_ERR((((uint32_t)mwswcien << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00000008)) | ((uint32_t)mwswcien << 3));
 }
 
-__INLINE uint8_t ble_coexifcntl0_mwscoex_en_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_mwscoex_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ble_coexifcntl0_mwscoex_en_setf(uint8_t mwscoexen)
+__RWIP_INLINE void ble_coexifcntl0_mwscoex_en_setf(uint8_t mwscoexen)
 {
     ASSERT_ERR((((uint32_t)mwscoexen << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)mwscoexen << 2));
 }
 
-__INLINE uint8_t ble_coexifcntl0_syncgen_en_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_syncgen_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_coexifcntl0_syncgen_en_setf(uint8_t syncgenen)
+__RWIP_INLINE void ble_coexifcntl0_syncgen_en_setf(uint8_t syncgenen)
 {
     ASSERT_ERR((((uint32_t)syncgenen << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)syncgenen << 1));
 }
 
-__INLINE uint8_t ble_coexifcntl0_wlancoex_en_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl0_wlancoex_en_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_coexifcntl0_wlancoex_en_setf(uint8_t wlancoexen)
+__RWIP_INLINE void ble_coexifcntl0_wlancoex_en_setf(uint8_t wlancoexen)
 {
     ASSERT_ERR((((uint32_t)wlancoexen << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL0_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL0_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)wlancoexen << 0));
@@ -7453,12 +7453,12 @@ __INLINE void ble_coexifcntl0_wlancoex_en_setf(uint8_t wlancoexen)
 #define BLE_COEXIFCNTL1_INDEX  0x00000055
 #define BLE_COEXIFCNTL1_RESET  0x00000000
 
-__INLINE uint32_t ble_coexifcntl1_get(void)
+__RWIP_INLINE uint32_t ble_coexifcntl1_get(void)
 {
     return REG_BLE_RD(BLE_COEXIFCNTL1_ADDR);
 }
 
-__INLINE void ble_coexifcntl1_set(uint32_t value)
+__RWIP_INLINE void ble_coexifcntl1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_COEXIFCNTL1_ADDR, value);
 }
@@ -7482,7 +7482,7 @@ __INLINE void ble_coexifcntl1_set(uint32_t value)
 #define BLE_WLCPDURATION_RST    0x0
 #define BLE_WLCPDELAY_RST       0x0
 
-__INLINE void ble_coexifcntl1_pack(uint8_t wlcprxthr, uint8_t wlcptxthr, uint8_t wlcpduration, uint8_t wlcpdelay)
+__RWIP_INLINE void ble_coexifcntl1_pack(uint8_t wlcprxthr, uint8_t wlcptxthr, uint8_t wlcpduration, uint8_t wlcpdelay)
 {
     ASSERT_ERR((((uint32_t)wlcprxthr << 24) & ~((uint32_t)0x1F000000)) == 0);
     ASSERT_ERR((((uint32_t)wlcptxthr << 16) & ~((uint32_t)0x001F0000)) == 0);
@@ -7491,7 +7491,7 @@ __INLINE void ble_coexifcntl1_pack(uint8_t wlcprxthr, uint8_t wlcptxthr, uint8_t
     REG_BLE_WR(BLE_COEXIFCNTL1_ADDR,  ((uint32_t)wlcprxthr << 24) | ((uint32_t)wlcptxthr << 16) | ((uint32_t)wlcpduration << 8) | ((uint32_t)wlcpdelay << 0));
 }
 
-__INLINE void ble_coexifcntl1_unpack(uint8_t* wlcprxthr, uint8_t* wlcptxthr, uint8_t* wlcpduration, uint8_t* wlcpdelay)
+__RWIP_INLINE void ble_coexifcntl1_unpack(uint8_t* wlcprxthr, uint8_t* wlcptxthr, uint8_t* wlcpduration, uint8_t* wlcpdelay)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL1_ADDR);
 
@@ -7501,49 +7501,49 @@ __INLINE void ble_coexifcntl1_unpack(uint8_t* wlcprxthr, uint8_t* wlcptxthr, uin
     *wlcpdelay = (localVal & ((uint32_t)0x0000007F)) >> 0;
 }
 
-__INLINE uint8_t ble_coexifcntl1_wlcprxthr_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl1_wlcprxthr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x1F000000)) >> 24);
 }
 
-__INLINE void ble_coexifcntl1_wlcprxthr_setf(uint8_t wlcprxthr)
+__RWIP_INLINE void ble_coexifcntl1_wlcprxthr_setf(uint8_t wlcprxthr)
 {
     ASSERT_ERR((((uint32_t)wlcprxthr << 24) & ~((uint32_t)0x1F000000)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL1_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL1_ADDR) & ~((uint32_t)0x1F000000)) | ((uint32_t)wlcprxthr << 24));
 }
 
-__INLINE uint8_t ble_coexifcntl1_wlcptxthr_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl1_wlcptxthr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x001F0000)) >> 16);
 }
 
-__INLINE void ble_coexifcntl1_wlcptxthr_setf(uint8_t wlcptxthr)
+__RWIP_INLINE void ble_coexifcntl1_wlcptxthr_setf(uint8_t wlcptxthr)
 {
     ASSERT_ERR((((uint32_t)wlcptxthr << 16) & ~((uint32_t)0x001F0000)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL1_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL1_ADDR) & ~((uint32_t)0x001F0000)) | ((uint32_t)wlcptxthr << 16));
 }
 
-__INLINE uint8_t ble_coexifcntl1_wlcpduration_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl1_wlcpduration_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_coexifcntl1_wlcpduration_setf(uint8_t wlcpduration)
+__RWIP_INLINE void ble_coexifcntl1_wlcpduration_setf(uint8_t wlcpduration)
 {
     ASSERT_ERR((((uint32_t)wlcpduration << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL1_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL1_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)wlcpduration << 8));
 }
 
-__INLINE uint8_t ble_coexifcntl1_wlcpdelay_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl1_wlcpdelay_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x0000007F)) >> 0);
 }
 
-__INLINE void ble_coexifcntl1_wlcpdelay_setf(uint8_t wlcpdelay)
+__RWIP_INLINE void ble_coexifcntl1_wlcpdelay_setf(uint8_t wlcpdelay)
 {
     ASSERT_ERR((((uint32_t)wlcpdelay << 0) & ~((uint32_t)0x0000007F)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL1_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL1_ADDR) & ~((uint32_t)0x0000007F)) | ((uint32_t)wlcpdelay << 0));
@@ -7563,12 +7563,12 @@ __INLINE void ble_coexifcntl1_wlcpdelay_setf(uint8_t wlcpdelay)
 #define BLE_COEXIFCNTL2_INDEX  0x00000056
 #define BLE_COEXIFCNTL2_RESET  0x00000000
 
-__INLINE uint32_t ble_coexifcntl2_get(void)
+__RWIP_INLINE uint32_t ble_coexifcntl2_get(void)
 {
     return REG_BLE_RD(BLE_COEXIFCNTL2_ADDR);
 }
 
-__INLINE void ble_coexifcntl2_set(uint32_t value)
+__RWIP_INLINE void ble_coexifcntl2_set(uint32_t value)
 {
     REG_BLE_WR(BLE_COEXIFCNTL2_ADDR, value);
 }
@@ -7584,14 +7584,14 @@ __INLINE void ble_coexifcntl2_set(uint32_t value)
 #define BLE_RX_ANT_DELAY_RST    0x0
 #define BLE_TX_ANT_DELAY_RST    0x0
 
-__INLINE void ble_coexifcntl2_pack(uint8_t rxantdelay, uint8_t txantdelay)
+__RWIP_INLINE void ble_coexifcntl2_pack(uint8_t rxantdelay, uint8_t txantdelay)
 {
     ASSERT_ERR((((uint32_t)rxantdelay << 8) & ~((uint32_t)0x00000F00)) == 0);
     ASSERT_ERR((((uint32_t)txantdelay << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL2_ADDR,  ((uint32_t)rxantdelay << 8) | ((uint32_t)txantdelay << 0));
 }
 
-__INLINE void ble_coexifcntl2_unpack(uint8_t* rxantdelay, uint8_t* txantdelay)
+__RWIP_INLINE void ble_coexifcntl2_unpack(uint8_t* rxantdelay, uint8_t* txantdelay)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL2_ADDR);
 
@@ -7599,25 +7599,25 @@ __INLINE void ble_coexifcntl2_unpack(uint8_t* rxantdelay, uint8_t* txantdelay)
     *txantdelay = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ble_coexifcntl2_rx_ant_delay_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl2_rx_ant_delay_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x00000F00)) >> 8);
 }
 
-__INLINE void ble_coexifcntl2_rx_ant_delay_setf(uint8_t rxantdelay)
+__RWIP_INLINE void ble_coexifcntl2_rx_ant_delay_setf(uint8_t rxantdelay)
 {
     ASSERT_ERR((((uint32_t)rxantdelay << 8) & ~((uint32_t)0x00000F00)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL2_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL2_ADDR) & ~((uint32_t)0x00000F00)) | ((uint32_t)rxantdelay << 8));
 }
 
-__INLINE uint8_t ble_coexifcntl2_tx_ant_delay_getf(void)
+__RWIP_INLINE uint8_t ble_coexifcntl2_tx_ant_delay_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_COEXIFCNTL2_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ble_coexifcntl2_tx_ant_delay_setf(uint8_t txantdelay)
+__RWIP_INLINE void ble_coexifcntl2_tx_ant_delay_setf(uint8_t txantdelay)
 {
     ASSERT_ERR((((uint32_t)txantdelay << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_COEXIFCNTL2_ADDR, (REG_BLE_RD(BLE_COEXIFCNTL2_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)txantdelay << 0));
@@ -7643,12 +7643,12 @@ __INLINE void ble_coexifcntl2_tx_ant_delay_setf(uint8_t txantdelay)
 #define BLE_BLEMPRIO0_INDEX  0x00000057
 #define BLE_BLEMPRIO0_RESET  0x3489ADEF
 
-__INLINE uint32_t ble_blemprio0_get(void)
+__RWIP_INLINE uint32_t ble_blemprio0_get(void)
 {
     return REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
 }
 
-__INLINE void ble_blemprio0_set(uint32_t value)
+__RWIP_INLINE void ble_blemprio0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, value);
 }
@@ -7688,7 +7688,7 @@ __INLINE void ble_blemprio0_set(uint32_t value)
 #define BLE_BLEM1_RST    0xE
 #define BLE_BLEM0_RST    0xF
 
-__INLINE void ble_blemprio0_pack(uint8_t blem7, uint8_t blem6, uint8_t blem5, uint8_t blem4, uint8_t blem3, uint8_t blem2, uint8_t blem1, uint8_t blem0)
+__RWIP_INLINE void ble_blemprio0_pack(uint8_t blem7, uint8_t blem6, uint8_t blem5, uint8_t blem4, uint8_t blem3, uint8_t blem2, uint8_t blem1, uint8_t blem0)
 {
     ASSERT_ERR((((uint32_t)blem7 << 28) & ~((uint32_t)0xF0000000)) == 0);
     ASSERT_ERR((((uint32_t)blem6 << 24) & ~((uint32_t)0x0F000000)) == 0);
@@ -7701,7 +7701,7 @@ __INLINE void ble_blemprio0_pack(uint8_t blem7, uint8_t blem6, uint8_t blem5, ui
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR,  ((uint32_t)blem7 << 28) | ((uint32_t)blem6 << 24) | ((uint32_t)blem5 << 20) | ((uint32_t)blem4 << 16) | ((uint32_t)blem3 << 12) | ((uint32_t)blem2 << 8) | ((uint32_t)blem1 << 4) | ((uint32_t)blem0 << 0));
 }
 
-__INLINE void ble_blemprio0_unpack(uint8_t* blem7, uint8_t* blem6, uint8_t* blem5, uint8_t* blem4, uint8_t* blem3, uint8_t* blem2, uint8_t* blem1, uint8_t* blem0)
+__RWIP_INLINE void ble_blemprio0_unpack(uint8_t* blem7, uint8_t* blem6, uint8_t* blem5, uint8_t* blem4, uint8_t* blem3, uint8_t* blem2, uint8_t* blem1, uint8_t* blem0)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
 
@@ -7715,97 +7715,97 @@ __INLINE void ble_blemprio0_unpack(uint8_t* blem7, uint8_t* blem6, uint8_t* blem
     *blem0 = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ble_blemprio0_blem7_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio0_blem7_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
     return ((localVal & ((uint32_t)0xF0000000)) >> 28);
 }
 
-__INLINE void ble_blemprio0_blem7_setf(uint8_t blem7)
+__RWIP_INLINE void ble_blemprio0_blem7_setf(uint8_t blem7)
 {
     ASSERT_ERR((((uint32_t)blem7 << 28) & ~((uint32_t)0xF0000000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, (REG_BLE_RD(BLE_BLEMPRIO0_ADDR) & ~((uint32_t)0xF0000000)) | ((uint32_t)blem7 << 28));
 }
 
-__INLINE uint8_t ble_blemprio0_blem6_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio0_blem6_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
     return ((localVal & ((uint32_t)0x0F000000)) >> 24);
 }
 
-__INLINE void ble_blemprio0_blem6_setf(uint8_t blem6)
+__RWIP_INLINE void ble_blemprio0_blem6_setf(uint8_t blem6)
 {
     ASSERT_ERR((((uint32_t)blem6 << 24) & ~((uint32_t)0x0F000000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, (REG_BLE_RD(BLE_BLEMPRIO0_ADDR) & ~((uint32_t)0x0F000000)) | ((uint32_t)blem6 << 24));
 }
 
-__INLINE uint8_t ble_blemprio0_blem5_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio0_blem5_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
     return ((localVal & ((uint32_t)0x00F00000)) >> 20);
 }
 
-__INLINE void ble_blemprio0_blem5_setf(uint8_t blem5)
+__RWIP_INLINE void ble_blemprio0_blem5_setf(uint8_t blem5)
 {
     ASSERT_ERR((((uint32_t)blem5 << 20) & ~((uint32_t)0x00F00000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, (REG_BLE_RD(BLE_BLEMPRIO0_ADDR) & ~((uint32_t)0x00F00000)) | ((uint32_t)blem5 << 20));
 }
 
-__INLINE uint8_t ble_blemprio0_blem4_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio0_blem4_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
     return ((localVal & ((uint32_t)0x000F0000)) >> 16);
 }
 
-__INLINE void ble_blemprio0_blem4_setf(uint8_t blem4)
+__RWIP_INLINE void ble_blemprio0_blem4_setf(uint8_t blem4)
 {
     ASSERT_ERR((((uint32_t)blem4 << 16) & ~((uint32_t)0x000F0000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, (REG_BLE_RD(BLE_BLEMPRIO0_ADDR) & ~((uint32_t)0x000F0000)) | ((uint32_t)blem4 << 16));
 }
 
-__INLINE uint8_t ble_blemprio0_blem3_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio0_blem3_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
     return ((localVal & ((uint32_t)0x0000F000)) >> 12);
 }
 
-__INLINE void ble_blemprio0_blem3_setf(uint8_t blem3)
+__RWIP_INLINE void ble_blemprio0_blem3_setf(uint8_t blem3)
 {
     ASSERT_ERR((((uint32_t)blem3 << 12) & ~((uint32_t)0x0000F000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, (REG_BLE_RD(BLE_BLEMPRIO0_ADDR) & ~((uint32_t)0x0000F000)) | ((uint32_t)blem3 << 12));
 }
 
-__INLINE uint8_t ble_blemprio0_blem2_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio0_blem2_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
     return ((localVal & ((uint32_t)0x00000F00)) >> 8);
 }
 
-__INLINE void ble_blemprio0_blem2_setf(uint8_t blem2)
+__RWIP_INLINE void ble_blemprio0_blem2_setf(uint8_t blem2)
 {
     ASSERT_ERR((((uint32_t)blem2 << 8) & ~((uint32_t)0x00000F00)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, (REG_BLE_RD(BLE_BLEMPRIO0_ADDR) & ~((uint32_t)0x00000F00)) | ((uint32_t)blem2 << 8));
 }
 
-__INLINE uint8_t ble_blemprio0_blem1_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio0_blem1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
     return ((localVal & ((uint32_t)0x000000F0)) >> 4);
 }
 
-__INLINE void ble_blemprio0_blem1_setf(uint8_t blem1)
+__RWIP_INLINE void ble_blemprio0_blem1_setf(uint8_t blem1)
 {
     ASSERT_ERR((((uint32_t)blem1 << 4) & ~((uint32_t)0x000000F0)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, (REG_BLE_RD(BLE_BLEMPRIO0_ADDR) & ~((uint32_t)0x000000F0)) | ((uint32_t)blem1 << 4));
 }
 
-__INLINE uint8_t ble_blemprio0_blem0_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio0_blem0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO0_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ble_blemprio0_blem0_setf(uint8_t blem0)
+__RWIP_INLINE void ble_blemprio0_blem0_setf(uint8_t blem0)
 {
     ASSERT_ERR((((uint32_t)blem0 << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO0_ADDR, (REG_BLE_RD(BLE_BLEMPRIO0_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)blem0 << 0));
@@ -7831,12 +7831,12 @@ __INLINE void ble_blemprio0_blem0_setf(uint8_t blem0)
 #define BLE_BLEMPRIO1_INDEX  0x00000058
 #define BLE_BLEMPRIO1_RESET  0x3489AFDC
 
-__INLINE uint32_t ble_blemprio1_get(void)
+__RWIP_INLINE uint32_t ble_blemprio1_get(void)
 {
     return REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
 }
 
-__INLINE void ble_blemprio1_set(uint32_t value)
+__RWIP_INLINE void ble_blemprio1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, value);
 }
@@ -7876,7 +7876,7 @@ __INLINE void ble_blemprio1_set(uint32_t value)
 #define BLE_BLEM9_RST     0xD
 #define BLE_BLEM8_RST     0xC
 
-__INLINE void ble_blemprio1_pack(uint8_t blem15, uint8_t blem14, uint8_t blem13, uint8_t blem12, uint8_t blem11, uint8_t blem10, uint8_t blem9, uint8_t blem8)
+__RWIP_INLINE void ble_blemprio1_pack(uint8_t blem15, uint8_t blem14, uint8_t blem13, uint8_t blem12, uint8_t blem11, uint8_t blem10, uint8_t blem9, uint8_t blem8)
 {
     ASSERT_ERR((((uint32_t)blem15 << 28) & ~((uint32_t)0xF0000000)) == 0);
     ASSERT_ERR((((uint32_t)blem14 << 24) & ~((uint32_t)0x0F000000)) == 0);
@@ -7889,7 +7889,7 @@ __INLINE void ble_blemprio1_pack(uint8_t blem15, uint8_t blem14, uint8_t blem13,
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR,  ((uint32_t)blem15 << 28) | ((uint32_t)blem14 << 24) | ((uint32_t)blem13 << 20) | ((uint32_t)blem12 << 16) | ((uint32_t)blem11 << 12) | ((uint32_t)blem10 << 8) | ((uint32_t)blem9 << 4) | ((uint32_t)blem8 << 0));
 }
 
-__INLINE void ble_blemprio1_unpack(uint8_t* blem15, uint8_t* blem14, uint8_t* blem13, uint8_t* blem12, uint8_t* blem11, uint8_t* blem10, uint8_t* blem9, uint8_t* blem8)
+__RWIP_INLINE void ble_blemprio1_unpack(uint8_t* blem15, uint8_t* blem14, uint8_t* blem13, uint8_t* blem12, uint8_t* blem11, uint8_t* blem10, uint8_t* blem9, uint8_t* blem8)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
 
@@ -7903,97 +7903,97 @@ __INLINE void ble_blemprio1_unpack(uint8_t* blem15, uint8_t* blem14, uint8_t* bl
     *blem8 = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ble_blemprio1_blem15_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio1_blem15_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
     return ((localVal & ((uint32_t)0xF0000000)) >> 28);
 }
 
-__INLINE void ble_blemprio1_blem15_setf(uint8_t blem15)
+__RWIP_INLINE void ble_blemprio1_blem15_setf(uint8_t blem15)
 {
     ASSERT_ERR((((uint32_t)blem15 << 28) & ~((uint32_t)0xF0000000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, (REG_BLE_RD(BLE_BLEMPRIO1_ADDR) & ~((uint32_t)0xF0000000)) | ((uint32_t)blem15 << 28));
 }
 
-__INLINE uint8_t ble_blemprio1_blem14_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio1_blem14_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
     return ((localVal & ((uint32_t)0x0F000000)) >> 24);
 }
 
-__INLINE void ble_blemprio1_blem14_setf(uint8_t blem14)
+__RWIP_INLINE void ble_blemprio1_blem14_setf(uint8_t blem14)
 {
     ASSERT_ERR((((uint32_t)blem14 << 24) & ~((uint32_t)0x0F000000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, (REG_BLE_RD(BLE_BLEMPRIO1_ADDR) & ~((uint32_t)0x0F000000)) | ((uint32_t)blem14 << 24));
 }
 
-__INLINE uint8_t ble_blemprio1_blem13_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio1_blem13_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
     return ((localVal & ((uint32_t)0x00F00000)) >> 20);
 }
 
-__INLINE void ble_blemprio1_blem13_setf(uint8_t blem13)
+__RWIP_INLINE void ble_blemprio1_blem13_setf(uint8_t blem13)
 {
     ASSERT_ERR((((uint32_t)blem13 << 20) & ~((uint32_t)0x00F00000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, (REG_BLE_RD(BLE_BLEMPRIO1_ADDR) & ~((uint32_t)0x00F00000)) | ((uint32_t)blem13 << 20));
 }
 
-__INLINE uint8_t ble_blemprio1_blem12_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio1_blem12_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
     return ((localVal & ((uint32_t)0x000F0000)) >> 16);
 }
 
-__INLINE void ble_blemprio1_blem12_setf(uint8_t blem12)
+__RWIP_INLINE void ble_blemprio1_blem12_setf(uint8_t blem12)
 {
     ASSERT_ERR((((uint32_t)blem12 << 16) & ~((uint32_t)0x000F0000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, (REG_BLE_RD(BLE_BLEMPRIO1_ADDR) & ~((uint32_t)0x000F0000)) | ((uint32_t)blem12 << 16));
 }
 
-__INLINE uint8_t ble_blemprio1_blem11_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio1_blem11_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
     return ((localVal & ((uint32_t)0x0000F000)) >> 12);
 }
 
-__INLINE void ble_blemprio1_blem11_setf(uint8_t blem11)
+__RWIP_INLINE void ble_blemprio1_blem11_setf(uint8_t blem11)
 {
     ASSERT_ERR((((uint32_t)blem11 << 12) & ~((uint32_t)0x0000F000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, (REG_BLE_RD(BLE_BLEMPRIO1_ADDR) & ~((uint32_t)0x0000F000)) | ((uint32_t)blem11 << 12));
 }
 
-__INLINE uint8_t ble_blemprio1_blem10_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio1_blem10_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
     return ((localVal & ((uint32_t)0x00000F00)) >> 8);
 }
 
-__INLINE void ble_blemprio1_blem10_setf(uint8_t blem10)
+__RWIP_INLINE void ble_blemprio1_blem10_setf(uint8_t blem10)
 {
     ASSERT_ERR((((uint32_t)blem10 << 8) & ~((uint32_t)0x00000F00)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, (REG_BLE_RD(BLE_BLEMPRIO1_ADDR) & ~((uint32_t)0x00000F00)) | ((uint32_t)blem10 << 8));
 }
 
-__INLINE uint8_t ble_blemprio1_blem9_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio1_blem9_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
     return ((localVal & ((uint32_t)0x000000F0)) >> 4);
 }
 
-__INLINE void ble_blemprio1_blem9_setf(uint8_t blem9)
+__RWIP_INLINE void ble_blemprio1_blem9_setf(uint8_t blem9)
 {
     ASSERT_ERR((((uint32_t)blem9 << 4) & ~((uint32_t)0x000000F0)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, (REG_BLE_RD(BLE_BLEMPRIO1_ADDR) & ~((uint32_t)0x000000F0)) | ((uint32_t)blem9 << 4));
 }
 
-__INLINE uint8_t ble_blemprio1_blem8_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio1_blem8_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO1_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ble_blemprio1_blem8_setf(uint8_t blem8)
+__RWIP_INLINE void ble_blemprio1_blem8_setf(uint8_t blem8)
 {
     ASSERT_ERR((((uint32_t)blem8 << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO1_ADDR, (REG_BLE_RD(BLE_BLEMPRIO1_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)blem8 << 0));
@@ -8015,12 +8015,12 @@ __INLINE void ble_blemprio1_blem8_setf(uint8_t blem8)
 #define BLE_BLEMPRIO2_INDEX  0x00000059
 #define BLE_BLEMPRIO2_RESET  0x30000277
 
-__INLINE uint32_t ble_blemprio2_get(void)
+__RWIP_INLINE uint32_t ble_blemprio2_get(void)
 {
     return REG_BLE_RD(BLE_BLEMPRIO2_ADDR);
 }
 
-__INLINE void ble_blemprio2_set(uint32_t value)
+__RWIP_INLINE void ble_blemprio2_set(uint32_t value)
 {
     REG_BLE_WR(BLE_BLEMPRIO2_ADDR, value);
 }
@@ -8044,7 +8044,7 @@ __INLINE void ble_blemprio2_set(uint32_t value)
 #define BLE_BLEM17_RST         0x7
 #define BLE_BLEM16_RST         0x7
 
-__INLINE void ble_blemprio2_pack(uint8_t blemdefault, uint8_t blem18, uint8_t blem17, uint8_t blem16)
+__RWIP_INLINE void ble_blemprio2_pack(uint8_t blemdefault, uint8_t blem18, uint8_t blem17, uint8_t blem16)
 {
     ASSERT_ERR((((uint32_t)blemdefault << 28) & ~((uint32_t)0xF0000000)) == 0);
     ASSERT_ERR((((uint32_t)blem18 << 8) & ~((uint32_t)0x00000F00)) == 0);
@@ -8053,7 +8053,7 @@ __INLINE void ble_blemprio2_pack(uint8_t blemdefault, uint8_t blem18, uint8_t bl
     REG_BLE_WR(BLE_BLEMPRIO2_ADDR,  ((uint32_t)blemdefault << 28) | ((uint32_t)blem18 << 8) | ((uint32_t)blem17 << 4) | ((uint32_t)blem16 << 0));
 }
 
-__INLINE void ble_blemprio2_unpack(uint8_t* blemdefault, uint8_t* blem18, uint8_t* blem17, uint8_t* blem16)
+__RWIP_INLINE void ble_blemprio2_unpack(uint8_t* blemdefault, uint8_t* blem18, uint8_t* blem17, uint8_t* blem16)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO2_ADDR);
 
@@ -8063,49 +8063,49 @@ __INLINE void ble_blemprio2_unpack(uint8_t* blemdefault, uint8_t* blem18, uint8_
     *blem16 = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ble_blemprio2_blemdefault_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio2_blemdefault_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO2_ADDR);
     return ((localVal & ((uint32_t)0xF0000000)) >> 28);
 }
 
-__INLINE void ble_blemprio2_blemdefault_setf(uint8_t blemdefault)
+__RWIP_INLINE void ble_blemprio2_blemdefault_setf(uint8_t blemdefault)
 {
     ASSERT_ERR((((uint32_t)blemdefault << 28) & ~((uint32_t)0xF0000000)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO2_ADDR, (REG_BLE_RD(BLE_BLEMPRIO2_ADDR) & ~((uint32_t)0xF0000000)) | ((uint32_t)blemdefault << 28));
 }
 
-__INLINE uint8_t ble_blemprio2_blem18_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio2_blem18_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO2_ADDR);
     return ((localVal & ((uint32_t)0x00000F00)) >> 8);
 }
 
-__INLINE void ble_blemprio2_blem18_setf(uint8_t blem18)
+__RWIP_INLINE void ble_blemprio2_blem18_setf(uint8_t blem18)
 {
     ASSERT_ERR((((uint32_t)blem18 << 8) & ~((uint32_t)0x00000F00)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO2_ADDR, (REG_BLE_RD(BLE_BLEMPRIO2_ADDR) & ~((uint32_t)0x00000F00)) | ((uint32_t)blem18 << 8));
 }
 
-__INLINE uint8_t ble_blemprio2_blem17_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio2_blem17_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO2_ADDR);
     return ((localVal & ((uint32_t)0x000000F0)) >> 4);
 }
 
-__INLINE void ble_blemprio2_blem17_setf(uint8_t blem17)
+__RWIP_INLINE void ble_blemprio2_blem17_setf(uint8_t blem17)
 {
     ASSERT_ERR((((uint32_t)blem17 << 4) & ~((uint32_t)0x000000F0)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO2_ADDR, (REG_BLE_RD(BLE_BLEMPRIO2_ADDR) & ~((uint32_t)0x000000F0)) | ((uint32_t)blem17 << 4));
 }
 
-__INLINE uint8_t ble_blemprio2_blem16_getf(void)
+__RWIP_INLINE uint8_t ble_blemprio2_blem16_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_BLEMPRIO2_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ble_blemprio2_blem16_setf(uint8_t blem16)
+__RWIP_INLINE void ble_blemprio2_blem16_setf(uint8_t blem16)
 {
     ASSERT_ERR((((uint32_t)blem16 << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_BLE_WR(BLE_BLEMPRIO2_ADDR, (REG_BLE_RD(BLE_BLEMPRIO2_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)blem16 << 0));
@@ -8125,12 +8125,12 @@ __INLINE void ble_blemprio2_blem16_setf(uint8_t blem16)
 #define BLE_RALCNTL_INDEX  0x0000005C
 #define BLE_RALCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_ralcntl_get(void)
+__RWIP_INLINE uint32_t ble_ralcntl_get(void)
 {
     return REG_BLE_RD(BLE_RALCNTL_ADDR);
 }
 
-__INLINE void ble_ralcntl_set(uint32_t value)
+__RWIP_INLINE void ble_ralcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RALCNTL_ADDR, value);
 }
@@ -8146,14 +8146,14 @@ __INLINE void ble_ralcntl_set(uint32_t value)
 #define BLE_RALNBDEV_RST      0x0
 #define BLE_RALBASEPTR_RST    0x0
 
-__INLINE void ble_ralcntl_pack(uint8_t ralnbdev, uint16_t ralbaseptr)
+__RWIP_INLINE void ble_ralcntl_pack(uint8_t ralnbdev, uint16_t ralbaseptr)
 {
     ASSERT_ERR((((uint32_t)ralnbdev << 16) & ~((uint32_t)0x00FF0000)) == 0);
     ASSERT_ERR((((uint32_t)ralbaseptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_RALCNTL_ADDR,  ((uint32_t)ralnbdev << 16) | ((uint32_t)ralbaseptr << 0));
 }
 
-__INLINE void ble_ralcntl_unpack(uint8_t* ralnbdev, uint16_t* ralbaseptr)
+__RWIP_INLINE void ble_ralcntl_unpack(uint8_t* ralnbdev, uint16_t* ralbaseptr)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RALCNTL_ADDR);
 
@@ -8161,25 +8161,25 @@ __INLINE void ble_ralcntl_unpack(uint8_t* ralnbdev, uint16_t* ralbaseptr)
     *ralbaseptr = (localVal & ((uint32_t)0x00003FFF)) >> 0;
 }
 
-__INLINE uint8_t ble_ralcntl_ralnbdev_getf(void)
+__RWIP_INLINE uint8_t ble_ralcntl_ralnbdev_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RALCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_ralcntl_ralnbdev_setf(uint8_t ralnbdev)
+__RWIP_INLINE void ble_ralcntl_ralnbdev_setf(uint8_t ralnbdev)
 {
     ASSERT_ERR((((uint32_t)ralnbdev << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_RALCNTL_ADDR, (REG_BLE_RD(BLE_RALCNTL_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)ralnbdev << 16));
 }
 
-__INLINE uint16_t ble_ralcntl_ralbaseptr_getf(void)
+__RWIP_INLINE uint16_t ble_ralcntl_ralbaseptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RALCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00003FFF)) >> 0);
 }
 
-__INLINE void ble_ralcntl_ralbaseptr_setf(uint16_t ralbaseptr)
+__RWIP_INLINE void ble_ralcntl_ralbaseptr_setf(uint16_t ralbaseptr)
 {
     ASSERT_ERR((((uint32_t)ralbaseptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_RALCNTL_ADDR, (REG_BLE_RD(BLE_RALCNTL_ADDR) & ~((uint32_t)0x00003FFF)) | ((uint32_t)ralbaseptr << 0));
@@ -8198,12 +8198,12 @@ __INLINE void ble_ralcntl_ralbaseptr_setf(uint16_t ralbaseptr)
 #define BLE_RALCURRENTPTR_INDEX  0x0000005D
 #define BLE_RALCURRENTPTR_RESET  0x00000000
 
-__INLINE uint32_t ble_ralcurrentptr_get(void)
+__RWIP_INLINE uint32_t ble_ralcurrentptr_get(void)
 {
     return REG_BLE_RD(BLE_RALCURRENTPTR_ADDR);
 }
 
-__INLINE void ble_ralcurrentptr_set(uint32_t value)
+__RWIP_INLINE void ble_ralcurrentptr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RALCURRENTPTR_ADDR, value);
 }
@@ -8215,14 +8215,14 @@ __INLINE void ble_ralcurrentptr_set(uint32_t value)
 
 #define BLE_RALCURRENTPTR_RST    0x0
 
-__INLINE uint16_t ble_ralcurrentptr_getf(void)
+__RWIP_INLINE uint16_t ble_ralcurrentptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RALCURRENTPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_ralcurrentptr_setf(uint16_t ralcurrentptr)
+__RWIP_INLINE void ble_ralcurrentptr_setf(uint16_t ralcurrentptr)
 {
     ASSERT_ERR((((uint32_t)ralcurrentptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_RALCURRENTPTR_ADDR, (uint32_t)ralcurrentptr << 0);
@@ -8242,12 +8242,12 @@ __INLINE void ble_ralcurrentptr_setf(uint16_t ralcurrentptr)
 #define BLE_RAL_LOCAL_RND_INDEX  0x0000005E
 #define BLE_RAL_LOCAL_RND_RESET  0x003F0F0F
 
-__INLINE uint32_t ble_ral_local_rnd_get(void)
+__RWIP_INLINE uint32_t ble_ral_local_rnd_get(void)
 {
     return REG_BLE_RD(BLE_RAL_LOCAL_RND_ADDR);
 }
 
-__INLINE void ble_ral_local_rnd_set(uint32_t value)
+__RWIP_INLINE void ble_ral_local_rnd_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RAL_LOCAL_RND_ADDR, value);
 }
@@ -8262,14 +8262,14 @@ __INLINE void ble_ral_local_rnd_set(uint32_t value)
 #define BLE_LRND_INIT_RST    0x0
 #define BLE_LRND_VAL_RST     0x3F0F0F
 
-__INLINE void ble_ral_local_rnd_pack(uint8_t lrndinit, uint32_t lrndval)
+__RWIP_INLINE void ble_ral_local_rnd_pack(uint8_t lrndinit, uint32_t lrndval)
 {
     ASSERT_ERR((((uint32_t)lrndinit << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)lrndval << 0) & ~((uint32_t)0x003FFFFF)) == 0);
     REG_BLE_WR(BLE_RAL_LOCAL_RND_ADDR,  ((uint32_t)lrndinit << 31) | ((uint32_t)lrndval << 0));
 }
 
-__INLINE void ble_ral_local_rnd_unpack(uint8_t* lrndinit, uint32_t* lrndval)
+__RWIP_INLINE void ble_ral_local_rnd_unpack(uint8_t* lrndinit, uint32_t* lrndval)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RAL_LOCAL_RND_ADDR);
 
@@ -8277,25 +8277,25 @@ __INLINE void ble_ral_local_rnd_unpack(uint8_t* lrndinit, uint32_t* lrndval)
     *lrndval = (localVal & ((uint32_t)0x003FFFFF)) >> 0;
 }
 
-__INLINE uint8_t ble_ral_local_rnd_lrnd_init_getf(void)
+__RWIP_INLINE uint8_t ble_ral_local_rnd_lrnd_init_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RAL_LOCAL_RND_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_ral_local_rnd_lrnd_init_setf(uint8_t lrndinit)
+__RWIP_INLINE void ble_ral_local_rnd_lrnd_init_setf(uint8_t lrndinit)
 {
     ASSERT_ERR((((uint32_t)lrndinit << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_RAL_LOCAL_RND_ADDR, (REG_BLE_RD(BLE_RAL_LOCAL_RND_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)lrndinit << 31));
 }
 
-__INLINE uint32_t ble_ral_local_rnd_lrnd_val_getf(void)
+__RWIP_INLINE uint32_t ble_ral_local_rnd_lrnd_val_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RAL_LOCAL_RND_ADDR);
     return ((localVal & ((uint32_t)0x003FFFFF)) >> 0);
 }
 
-__INLINE void ble_ral_local_rnd_lrnd_val_setf(uint32_t lrndval)
+__RWIP_INLINE void ble_ral_local_rnd_lrnd_val_setf(uint32_t lrndval)
 {
     ASSERT_ERR((((uint32_t)lrndval << 0) & ~((uint32_t)0x003FFFFF)) == 0);
     REG_BLE_WR(BLE_RAL_LOCAL_RND_ADDR, (REG_BLE_RD(BLE_RAL_LOCAL_RND_ADDR) & ~((uint32_t)0x003FFFFF)) | ((uint32_t)lrndval << 0));
@@ -8315,12 +8315,12 @@ __INLINE void ble_ral_local_rnd_lrnd_val_setf(uint32_t lrndval)
 #define BLE_RAL_PEER_RND_INDEX  0x0000005F
 #define BLE_RAL_PEER_RND_RESET  0x0030F0F0
 
-__INLINE uint32_t ble_ral_peer_rnd_get(void)
+__RWIP_INLINE uint32_t ble_ral_peer_rnd_get(void)
 {
     return REG_BLE_RD(BLE_RAL_PEER_RND_ADDR);
 }
 
-__INLINE void ble_ral_peer_rnd_set(uint32_t value)
+__RWIP_INLINE void ble_ral_peer_rnd_set(uint32_t value)
 {
     REG_BLE_WR(BLE_RAL_PEER_RND_ADDR, value);
 }
@@ -8335,14 +8335,14 @@ __INLINE void ble_ral_peer_rnd_set(uint32_t value)
 #define BLE_PRND_INIT_RST    0x0
 #define BLE_PRND_VAL_RST     0x30F0F0
 
-__INLINE void ble_ral_peer_rnd_pack(uint8_t prndinit, uint32_t prndval)
+__RWIP_INLINE void ble_ral_peer_rnd_pack(uint8_t prndinit, uint32_t prndval)
 {
     ASSERT_ERR((((uint32_t)prndinit << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)prndval << 0) & ~((uint32_t)0x003FFFFF)) == 0);
     REG_BLE_WR(BLE_RAL_PEER_RND_ADDR,  ((uint32_t)prndinit << 31) | ((uint32_t)prndval << 0));
 }
 
-__INLINE void ble_ral_peer_rnd_unpack(uint8_t* prndinit, uint32_t* prndval)
+__RWIP_INLINE void ble_ral_peer_rnd_unpack(uint8_t* prndinit, uint32_t* prndval)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RAL_PEER_RND_ADDR);
 
@@ -8350,25 +8350,25 @@ __INLINE void ble_ral_peer_rnd_unpack(uint8_t* prndinit, uint32_t* prndval)
     *prndval = (localVal & ((uint32_t)0x003FFFFF)) >> 0;
 }
 
-__INLINE uint8_t ble_ral_peer_rnd_prnd_init_getf(void)
+__RWIP_INLINE uint8_t ble_ral_peer_rnd_prnd_init_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RAL_PEER_RND_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_ral_peer_rnd_prnd_init_setf(uint8_t prndinit)
+__RWIP_INLINE void ble_ral_peer_rnd_prnd_init_setf(uint8_t prndinit)
 {
     ASSERT_ERR((((uint32_t)prndinit << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_RAL_PEER_RND_ADDR, (REG_BLE_RD(BLE_RAL_PEER_RND_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)prndinit << 31));
 }
 
-__INLINE uint32_t ble_ral_peer_rnd_prnd_val_getf(void)
+__RWIP_INLINE uint32_t ble_ral_peer_rnd_prnd_val_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_RAL_PEER_RND_ADDR);
     return ((localVal & ((uint32_t)0x003FFFFF)) >> 0);
 }
 
-__INLINE void ble_ral_peer_rnd_prnd_val_setf(uint32_t prndval)
+__RWIP_INLINE void ble_ral_peer_rnd_prnd_val_setf(uint32_t prndval)
 {
     ASSERT_ERR((((uint32_t)prndval << 0) & ~((uint32_t)0x003FFFFF)) == 0);
     REG_BLE_WR(BLE_RAL_PEER_RND_ADDR, (REG_BLE_RD(BLE_RAL_PEER_RND_ADDR) & ~((uint32_t)0x003FFFFF)) | ((uint32_t)prndval << 0));
@@ -8389,12 +8389,12 @@ __INLINE void ble_ral_peer_rnd_prnd_val_setf(uint32_t prndval)
 #define BLE_DFCNTL0_1US_INDEX  0x00000060
 #define BLE_DFCNTL0_1US_RESET  0x00000000
 
-__INLINE uint32_t ble_dfcntl0_1us_get(void)
+__RWIP_INLINE uint32_t ble_dfcntl0_1us_get(void)
 {
     return REG_BLE_RD(BLE_DFCNTL0_1US_ADDR);
 }
 
-__INLINE void ble_dfcntl0_1us_set(uint32_t value)
+__RWIP_INLINE void ble_dfcntl0_1us_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DFCNTL0_1US_ADDR, value);
 }
@@ -8414,7 +8414,7 @@ __INLINE void ble_dfcntl0_1us_set(uint32_t value)
 #define BLE_RXSWSTINST0_1US_RST      0x0
 #define BLE_TXSWSTINST0_1US_RST      0x0
 
-__INLINE void ble_dfcntl0_1us_pack(uint8_t rxsampstinst01us, uint8_t rxswstinst01us, uint8_t txswstinst01us)
+__RWIP_INLINE void ble_dfcntl0_1us_pack(uint8_t rxsampstinst01us, uint8_t rxswstinst01us, uint8_t txswstinst01us)
 {
     ASSERT_ERR((((uint32_t)rxsampstinst01us << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rxswstinst01us << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -8422,7 +8422,7 @@ __INLINE void ble_dfcntl0_1us_pack(uint8_t rxsampstinst01us, uint8_t rxswstinst0
     REG_BLE_WR(BLE_DFCNTL0_1US_ADDR,  ((uint32_t)rxsampstinst01us << 24) | ((uint32_t)rxswstinst01us << 16) | ((uint32_t)txswstinst01us << 0));
 }
 
-__INLINE void ble_dfcntl0_1us_unpack(uint8_t* rxsampstinst01us, uint8_t* rxswstinst01us, uint8_t* txswstinst01us)
+__RWIP_INLINE void ble_dfcntl0_1us_unpack(uint8_t* rxsampstinst01us, uint8_t* rxswstinst01us, uint8_t* txswstinst01us)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL0_1US_ADDR);
 
@@ -8431,37 +8431,37 @@ __INLINE void ble_dfcntl0_1us_unpack(uint8_t* rxsampstinst01us, uint8_t* rxswsti
     *txswstinst01us = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_dfcntl0_1us_rxsampstinst0_1us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl0_1us_rxsampstinst0_1us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL0_1US_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_dfcntl0_1us_rxsampstinst0_1us_setf(uint8_t rxsampstinst01us)
+__RWIP_INLINE void ble_dfcntl0_1us_rxsampstinst0_1us_setf(uint8_t rxsampstinst01us)
 {
     ASSERT_ERR((((uint32_t)rxsampstinst01us << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_DFCNTL0_1US_ADDR, (REG_BLE_RD(BLE_DFCNTL0_1US_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)rxsampstinst01us << 24));
 }
 
-__INLINE uint8_t ble_dfcntl0_1us_rxswstinst0_1us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl0_1us_rxswstinst0_1us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL0_1US_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_dfcntl0_1us_rxswstinst0_1us_setf(uint8_t rxswstinst01us)
+__RWIP_INLINE void ble_dfcntl0_1us_rxswstinst0_1us_setf(uint8_t rxswstinst01us)
 {
     ASSERT_ERR((((uint32_t)rxswstinst01us << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_DFCNTL0_1US_ADDR, (REG_BLE_RD(BLE_DFCNTL0_1US_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rxswstinst01us << 16));
 }
 
-__INLINE uint8_t ble_dfcntl0_1us_txswstinst0_1us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl0_1us_txswstinst0_1us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL0_1US_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_dfcntl0_1us_txswstinst0_1us_setf(uint8_t txswstinst01us)
+__RWIP_INLINE void ble_dfcntl0_1us_txswstinst0_1us_setf(uint8_t txswstinst01us)
 {
     ASSERT_ERR((((uint32_t)txswstinst01us << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_DFCNTL0_1US_ADDR, (REG_BLE_RD(BLE_DFCNTL0_1US_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txswstinst01us << 0));
@@ -8482,12 +8482,12 @@ __INLINE void ble_dfcntl0_1us_txswstinst0_1us_setf(uint8_t txswstinst01us)
 #define BLE_DFCNTL0_2US_INDEX  0x00000061
 #define BLE_DFCNTL0_2US_RESET  0x00000000
 
-__INLINE uint32_t ble_dfcntl0_2us_get(void)
+__RWIP_INLINE uint32_t ble_dfcntl0_2us_get(void)
 {
     return REG_BLE_RD(BLE_DFCNTL0_2US_ADDR);
 }
 
-__INLINE void ble_dfcntl0_2us_set(uint32_t value)
+__RWIP_INLINE void ble_dfcntl0_2us_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DFCNTL0_2US_ADDR, value);
 }
@@ -8507,7 +8507,7 @@ __INLINE void ble_dfcntl0_2us_set(uint32_t value)
 #define BLE_RXSWSTINST0_2US_RST      0x0
 #define BLE_TXSWSTINST0_2US_RST      0x0
 
-__INLINE void ble_dfcntl0_2us_pack(uint8_t rxsampstinst02us, uint8_t rxswstinst02us, uint8_t txswstinst02us)
+__RWIP_INLINE void ble_dfcntl0_2us_pack(uint8_t rxsampstinst02us, uint8_t rxswstinst02us, uint8_t txswstinst02us)
 {
     ASSERT_ERR((((uint32_t)rxsampstinst02us << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rxswstinst02us << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -8515,7 +8515,7 @@ __INLINE void ble_dfcntl0_2us_pack(uint8_t rxsampstinst02us, uint8_t rxswstinst0
     REG_BLE_WR(BLE_DFCNTL0_2US_ADDR,  ((uint32_t)rxsampstinst02us << 24) | ((uint32_t)rxswstinst02us << 16) | ((uint32_t)txswstinst02us << 0));
 }
 
-__INLINE void ble_dfcntl0_2us_unpack(uint8_t* rxsampstinst02us, uint8_t* rxswstinst02us, uint8_t* txswstinst02us)
+__RWIP_INLINE void ble_dfcntl0_2us_unpack(uint8_t* rxsampstinst02us, uint8_t* rxswstinst02us, uint8_t* txswstinst02us)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL0_2US_ADDR);
 
@@ -8524,37 +8524,37 @@ __INLINE void ble_dfcntl0_2us_unpack(uint8_t* rxsampstinst02us, uint8_t* rxswsti
     *txswstinst02us = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_dfcntl0_2us_rxsampstinst0_2us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl0_2us_rxsampstinst0_2us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL0_2US_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_dfcntl0_2us_rxsampstinst0_2us_setf(uint8_t rxsampstinst02us)
+__RWIP_INLINE void ble_dfcntl0_2us_rxsampstinst0_2us_setf(uint8_t rxsampstinst02us)
 {
     ASSERT_ERR((((uint32_t)rxsampstinst02us << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_DFCNTL0_2US_ADDR, (REG_BLE_RD(BLE_DFCNTL0_2US_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)rxsampstinst02us << 24));
 }
 
-__INLINE uint8_t ble_dfcntl0_2us_rxswstinst0_2us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl0_2us_rxswstinst0_2us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL0_2US_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_dfcntl0_2us_rxswstinst0_2us_setf(uint8_t rxswstinst02us)
+__RWIP_INLINE void ble_dfcntl0_2us_rxswstinst0_2us_setf(uint8_t rxswstinst02us)
 {
     ASSERT_ERR((((uint32_t)rxswstinst02us << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_DFCNTL0_2US_ADDR, (REG_BLE_RD(BLE_DFCNTL0_2US_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rxswstinst02us << 16));
 }
 
-__INLINE uint8_t ble_dfcntl0_2us_txswstinst0_2us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl0_2us_txswstinst0_2us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL0_2US_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_dfcntl0_2us_txswstinst0_2us_setf(uint8_t txswstinst02us)
+__RWIP_INLINE void ble_dfcntl0_2us_txswstinst0_2us_setf(uint8_t txswstinst02us)
 {
     ASSERT_ERR((((uint32_t)txswstinst02us << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_DFCNTL0_2US_ADDR, (REG_BLE_RD(BLE_DFCNTL0_2US_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txswstinst02us << 0));
@@ -8575,12 +8575,12 @@ __INLINE void ble_dfcntl0_2us_txswstinst0_2us_setf(uint8_t txswstinst02us)
 #define BLE_DFCNTL1_1US_INDEX  0x00000062
 #define BLE_DFCNTL1_1US_RESET  0x00000000
 
-__INLINE uint32_t ble_dfcntl1_1us_get(void)
+__RWIP_INLINE uint32_t ble_dfcntl1_1us_get(void)
 {
     return REG_BLE_RD(BLE_DFCNTL1_1US_ADDR);
 }
 
-__INLINE void ble_dfcntl1_1us_set(uint32_t value)
+__RWIP_INLINE void ble_dfcntl1_1us_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DFCNTL1_1US_ADDR, value);
 }
@@ -8600,7 +8600,7 @@ __INLINE void ble_dfcntl1_1us_set(uint32_t value)
 #define BLE_RXSWSTINST1_1US_RST      0x0
 #define BLE_TXSWSTINST1_1US_RST      0x0
 
-__INLINE void ble_dfcntl1_1us_pack(uint8_t rxsampstinst11us, uint8_t rxswstinst11us, uint8_t txswstinst11us)
+__RWIP_INLINE void ble_dfcntl1_1us_pack(uint8_t rxsampstinst11us, uint8_t rxswstinst11us, uint8_t txswstinst11us)
 {
     ASSERT_ERR((((uint32_t)rxsampstinst11us << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rxswstinst11us << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -8608,7 +8608,7 @@ __INLINE void ble_dfcntl1_1us_pack(uint8_t rxsampstinst11us, uint8_t rxswstinst1
     REG_BLE_WR(BLE_DFCNTL1_1US_ADDR,  ((uint32_t)rxsampstinst11us << 24) | ((uint32_t)rxswstinst11us << 16) | ((uint32_t)txswstinst11us << 0));
 }
 
-__INLINE void ble_dfcntl1_1us_unpack(uint8_t* rxsampstinst11us, uint8_t* rxswstinst11us, uint8_t* txswstinst11us)
+__RWIP_INLINE void ble_dfcntl1_1us_unpack(uint8_t* rxsampstinst11us, uint8_t* rxswstinst11us, uint8_t* txswstinst11us)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL1_1US_ADDR);
 
@@ -8617,37 +8617,37 @@ __INLINE void ble_dfcntl1_1us_unpack(uint8_t* rxsampstinst11us, uint8_t* rxswsti
     *txswstinst11us = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_dfcntl1_1us_rxsampstinst1_1us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl1_1us_rxsampstinst1_1us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL1_1US_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_dfcntl1_1us_rxsampstinst1_1us_setf(uint8_t rxsampstinst11us)
+__RWIP_INLINE void ble_dfcntl1_1us_rxsampstinst1_1us_setf(uint8_t rxsampstinst11us)
 {
     ASSERT_ERR((((uint32_t)rxsampstinst11us << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_DFCNTL1_1US_ADDR, (REG_BLE_RD(BLE_DFCNTL1_1US_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)rxsampstinst11us << 24));
 }
 
-__INLINE uint8_t ble_dfcntl1_1us_rxswstinst1_1us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl1_1us_rxswstinst1_1us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL1_1US_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_dfcntl1_1us_rxswstinst1_1us_setf(uint8_t rxswstinst11us)
+__RWIP_INLINE void ble_dfcntl1_1us_rxswstinst1_1us_setf(uint8_t rxswstinst11us)
 {
     ASSERT_ERR((((uint32_t)rxswstinst11us << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_DFCNTL1_1US_ADDR, (REG_BLE_RD(BLE_DFCNTL1_1US_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rxswstinst11us << 16));
 }
 
-__INLINE uint8_t ble_dfcntl1_1us_txswstinst1_1us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl1_1us_txswstinst1_1us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL1_1US_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_dfcntl1_1us_txswstinst1_1us_setf(uint8_t txswstinst11us)
+__RWIP_INLINE void ble_dfcntl1_1us_txswstinst1_1us_setf(uint8_t txswstinst11us)
 {
     ASSERT_ERR((((uint32_t)txswstinst11us << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_DFCNTL1_1US_ADDR, (REG_BLE_RD(BLE_DFCNTL1_1US_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txswstinst11us << 0));
@@ -8668,12 +8668,12 @@ __INLINE void ble_dfcntl1_1us_txswstinst1_1us_setf(uint8_t txswstinst11us)
 #define BLE_DFCNTL1_2US_INDEX  0x00000063
 #define BLE_DFCNTL1_2US_RESET  0x00000000
 
-__INLINE uint32_t ble_dfcntl1_2us_get(void)
+__RWIP_INLINE uint32_t ble_dfcntl1_2us_get(void)
 {
     return REG_BLE_RD(BLE_DFCNTL1_2US_ADDR);
 }
 
-__INLINE void ble_dfcntl1_2us_set(uint32_t value)
+__RWIP_INLINE void ble_dfcntl1_2us_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DFCNTL1_2US_ADDR, value);
 }
@@ -8693,7 +8693,7 @@ __INLINE void ble_dfcntl1_2us_set(uint32_t value)
 #define BLE_RXSWSTINST1_2US_RST      0x0
 #define BLE_TXSWSTINST1_2US_RST      0x0
 
-__INLINE void ble_dfcntl1_2us_pack(uint8_t rxsampstinst12us, uint8_t rxswstinst12us, uint8_t txswstinst12us)
+__RWIP_INLINE void ble_dfcntl1_2us_pack(uint8_t rxsampstinst12us, uint8_t rxswstinst12us, uint8_t txswstinst12us)
 {
     ASSERT_ERR((((uint32_t)rxsampstinst12us << 24) & ~((uint32_t)0xFF000000)) == 0);
     ASSERT_ERR((((uint32_t)rxswstinst12us << 16) & ~((uint32_t)0x00FF0000)) == 0);
@@ -8701,7 +8701,7 @@ __INLINE void ble_dfcntl1_2us_pack(uint8_t rxsampstinst12us, uint8_t rxswstinst1
     REG_BLE_WR(BLE_DFCNTL1_2US_ADDR,  ((uint32_t)rxsampstinst12us << 24) | ((uint32_t)rxswstinst12us << 16) | ((uint32_t)txswstinst12us << 0));
 }
 
-__INLINE void ble_dfcntl1_2us_unpack(uint8_t* rxsampstinst12us, uint8_t* rxswstinst12us, uint8_t* txswstinst12us)
+__RWIP_INLINE void ble_dfcntl1_2us_unpack(uint8_t* rxsampstinst12us, uint8_t* rxswstinst12us, uint8_t* txswstinst12us)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL1_2US_ADDR);
 
@@ -8710,37 +8710,37 @@ __INLINE void ble_dfcntl1_2us_unpack(uint8_t* rxsampstinst12us, uint8_t* rxswsti
     *txswstinst12us = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_dfcntl1_2us_rxsampstinst1_2us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl1_2us_rxsampstinst1_2us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL1_2US_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE void ble_dfcntl1_2us_rxsampstinst1_2us_setf(uint8_t rxsampstinst12us)
+__RWIP_INLINE void ble_dfcntl1_2us_rxsampstinst1_2us_setf(uint8_t rxsampstinst12us)
 {
     ASSERT_ERR((((uint32_t)rxsampstinst12us << 24) & ~((uint32_t)0xFF000000)) == 0);
     REG_BLE_WR(BLE_DFCNTL1_2US_ADDR, (REG_BLE_RD(BLE_DFCNTL1_2US_ADDR) & ~((uint32_t)0xFF000000)) | ((uint32_t)rxsampstinst12us << 24));
 }
 
-__INLINE uint8_t ble_dfcntl1_2us_rxswstinst1_2us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl1_2us_rxswstinst1_2us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL1_2US_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_dfcntl1_2us_rxswstinst1_2us_setf(uint8_t rxswstinst12us)
+__RWIP_INLINE void ble_dfcntl1_2us_rxswstinst1_2us_setf(uint8_t rxswstinst12us)
 {
     ASSERT_ERR((((uint32_t)rxswstinst12us << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_DFCNTL1_2US_ADDR, (REG_BLE_RD(BLE_DFCNTL1_2US_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)rxswstinst12us << 16));
 }
 
-__INLINE uint8_t ble_dfcntl1_2us_txswstinst1_2us_getf(void)
+__RWIP_INLINE uint8_t ble_dfcntl1_2us_txswstinst1_2us_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCNTL1_2US_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_dfcntl1_2us_txswstinst1_2us_setf(uint8_t txswstinst12us)
+__RWIP_INLINE void ble_dfcntl1_2us_txswstinst1_2us_setf(uint8_t txswstinst12us)
 {
     ASSERT_ERR((((uint32_t)txswstinst12us << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_DFCNTL1_2US_ADDR, (REG_BLE_RD(BLE_DFCNTL1_2US_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)txswstinst12us << 0));
@@ -8759,12 +8759,12 @@ __INLINE void ble_dfcntl1_2us_txswstinst1_2us_setf(uint8_t txswstinst12us)
 #define BLE_DFCURRENTPTR_INDEX  0x00000064
 #define BLE_DFCURRENTPTR_RESET  0x00000000
 
-__INLINE uint32_t ble_dfcurrentptr_get(void)
+__RWIP_INLINE uint32_t ble_dfcurrentptr_get(void)
 {
     return REG_BLE_RD(BLE_DFCURRENTPTR_ADDR);
 }
 
-__INLINE void ble_dfcurrentptr_set(uint32_t value)
+__RWIP_INLINE void ble_dfcurrentptr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DFCURRENTPTR_ADDR, value);
 }
@@ -8776,14 +8776,14 @@ __INLINE void ble_dfcurrentptr_set(uint32_t value)
 
 #define BLE_DFCURRENTPTR_RST    0x0
 
-__INLINE uint16_t ble_dfcurrentptr_getf(void)
+__RWIP_INLINE uint16_t ble_dfcurrentptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFCURRENTPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_dfcurrentptr_setf(uint16_t dfcurrentptr)
+__RWIP_INLINE void ble_dfcurrentptr_setf(uint16_t dfcurrentptr)
 {
     ASSERT_ERR((((uint32_t)dfcurrentptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_DFCURRENTPTR_ADDR, (uint32_t)dfcurrentptr << 0);
@@ -8805,12 +8805,12 @@ __INLINE void ble_dfcurrentptr_setf(uint16_t dfcurrentptr)
 #define BLE_DFANTCNTL_INDEX  0x00000065
 #define BLE_DFANTCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_dfantcntl_get(void)
+__RWIP_INLINE uint32_t ble_dfantcntl_get(void)
 {
     return REG_BLE_RD(BLE_DFANTCNTL_ADDR);
 }
 
-__INLINE void ble_dfantcntl_set(uint32_t value)
+__RWIP_INLINE void ble_dfantcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DFANTCNTL_ADDR, value);
 }
@@ -8832,7 +8832,7 @@ __INLINE void ble_dfantcntl_set(uint32_t value)
 #define BLE_TXPRIMIDCNTLEN_RST    0x0
 #define BLE_TXPRIMANTID_RST       0x0
 
-__INLINE void ble_dfantcntl_pack(uint8_t rxprimidcntlen, uint8_t rxprimantid, uint8_t txprimidcntlen, uint8_t txprimantid)
+__RWIP_INLINE void ble_dfantcntl_pack(uint8_t rxprimidcntlen, uint8_t rxprimantid, uint8_t txprimidcntlen, uint8_t txprimantid)
 {
     ASSERT_ERR((((uint32_t)rxprimidcntlen << 15) & ~((uint32_t)0x00008000)) == 0);
     ASSERT_ERR((((uint32_t)rxprimantid << 8) & ~((uint32_t)0x00007F00)) == 0);
@@ -8841,7 +8841,7 @@ __INLINE void ble_dfantcntl_pack(uint8_t rxprimidcntlen, uint8_t rxprimantid, ui
     REG_BLE_WR(BLE_DFANTCNTL_ADDR,  ((uint32_t)rxprimidcntlen << 15) | ((uint32_t)rxprimantid << 8) | ((uint32_t)txprimidcntlen << 7) | ((uint32_t)txprimantid << 0));
 }
 
-__INLINE void ble_dfantcntl_unpack(uint8_t* rxprimidcntlen, uint8_t* rxprimantid, uint8_t* txprimidcntlen, uint8_t* txprimantid)
+__RWIP_INLINE void ble_dfantcntl_unpack(uint8_t* rxprimidcntlen, uint8_t* rxprimantid, uint8_t* txprimidcntlen, uint8_t* txprimantid)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFANTCNTL_ADDR);
 
@@ -8851,49 +8851,49 @@ __INLINE void ble_dfantcntl_unpack(uint8_t* rxprimidcntlen, uint8_t* rxprimantid
     *txprimantid = (localVal & ((uint32_t)0x0000007F)) >> 0;
 }
 
-__INLINE uint8_t ble_dfantcntl_rxprimidcntlen_getf(void)
+__RWIP_INLINE uint8_t ble_dfantcntl_rxprimidcntlen_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFANTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ble_dfantcntl_rxprimidcntlen_setf(uint8_t rxprimidcntlen)
+__RWIP_INLINE void ble_dfantcntl_rxprimidcntlen_setf(uint8_t rxprimidcntlen)
 {
     ASSERT_ERR((((uint32_t)rxprimidcntlen << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_BLE_WR(BLE_DFANTCNTL_ADDR, (REG_BLE_RD(BLE_DFANTCNTL_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)rxprimidcntlen << 15));
 }
 
-__INLINE uint8_t ble_dfantcntl_rxprimantid_getf(void)
+__RWIP_INLINE uint8_t ble_dfantcntl_rxprimantid_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFANTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ble_dfantcntl_rxprimantid_setf(uint8_t rxprimantid)
+__RWIP_INLINE void ble_dfantcntl_rxprimantid_setf(uint8_t rxprimantid)
 {
     ASSERT_ERR((((uint32_t)rxprimantid << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_BLE_WR(BLE_DFANTCNTL_ADDR, (REG_BLE_RD(BLE_DFANTCNTL_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)rxprimantid << 8));
 }
 
-__INLINE uint8_t ble_dfantcntl_txprimidcntlen_getf(void)
+__RWIP_INLINE uint8_t ble_dfantcntl_txprimidcntlen_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFANTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_dfantcntl_txprimidcntlen_setf(uint8_t txprimidcntlen)
+__RWIP_INLINE void ble_dfantcntl_txprimidcntlen_setf(uint8_t txprimidcntlen)
 {
     ASSERT_ERR((((uint32_t)txprimidcntlen << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_DFANTCNTL_ADDR, (REG_BLE_RD(BLE_DFANTCNTL_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)txprimidcntlen << 7));
 }
 
-__INLINE uint8_t ble_dfantcntl_txprimantid_getf(void)
+__RWIP_INLINE uint8_t ble_dfantcntl_txprimantid_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFANTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x0000007F)) >> 0);
 }
 
-__INLINE void ble_dfantcntl_txprimantid_setf(uint8_t txprimantid)
+__RWIP_INLINE void ble_dfantcntl_txprimantid_setf(uint8_t txprimantid)
 {
     ASSERT_ERR((((uint32_t)txprimantid << 0) & ~((uint32_t)0x0000007F)) == 0);
     REG_BLE_WR(BLE_DFANTCNTL_ADDR, (REG_BLE_RD(BLE_DFANTCNTL_ADDR) & ~((uint32_t)0x0000007F)) | ((uint32_t)txprimantid << 0));
@@ -8917,12 +8917,12 @@ __INLINE void ble_dfantcntl_txprimantid_setf(uint8_t txprimantid)
 #define BLE_DFIFCNTL_INDEX  0x00000066
 #define BLE_DFIFCNTL_RESET  0x0000000C
 
-__INLINE uint32_t ble_dfifcntl_get(void)
+__RWIP_INLINE uint32_t ble_dfifcntl_get(void)
 {
     return REG_BLE_RD(BLE_DFIFCNTL_ADDR);
 }
 
-__INLINE void ble_dfifcntl_set(uint32_t value)
+__RWIP_INLINE void ble_dfifcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_DFIFCNTL_ADDR, value);
 }
@@ -8950,7 +8950,7 @@ __INLINE void ble_dfifcntl_set(uint32_t value)
 #define BLE_MSB_LSB_ORDER_RST    0x0
 #define BLE_SYMBOL_ORDER_RST     0x0
 
-__INLINE void ble_dfifcntl_pack(uint8_t antswitchbeh, uint8_t sampreqbeh, uint8_t sampvalidbeh, uint8_t ifwidth, uint8_t msblsborder, uint8_t symbolorder)
+__RWIP_INLINE void ble_dfifcntl_pack(uint8_t antswitchbeh, uint8_t sampreqbeh, uint8_t sampvalidbeh, uint8_t ifwidth, uint8_t msblsborder, uint8_t symbolorder)
 {
     ASSERT_ERR((((uint32_t)antswitchbeh << 7) & ~((uint32_t)0x00000080)) == 0);
     ASSERT_ERR((((uint32_t)sampreqbeh << 6) & ~((uint32_t)0x00000040)) == 0);
@@ -8961,7 +8961,7 @@ __INLINE void ble_dfifcntl_pack(uint8_t antswitchbeh, uint8_t sampreqbeh, uint8_
     REG_BLE_WR(BLE_DFIFCNTL_ADDR,  ((uint32_t)antswitchbeh << 7) | ((uint32_t)sampreqbeh << 6) | ((uint32_t)sampvalidbeh << 4) | ((uint32_t)ifwidth << 2) | ((uint32_t)msblsborder << 1) | ((uint32_t)symbolorder << 0));
 }
 
-__INLINE void ble_dfifcntl_unpack(uint8_t* antswitchbeh, uint8_t* sampreqbeh, uint8_t* sampvalidbeh, uint8_t* ifwidth, uint8_t* msblsborder, uint8_t* symbolorder)
+__RWIP_INLINE void ble_dfifcntl_unpack(uint8_t* antswitchbeh, uint8_t* sampreqbeh, uint8_t* sampvalidbeh, uint8_t* ifwidth, uint8_t* msblsborder, uint8_t* symbolorder)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFIFCNTL_ADDR);
 
@@ -8973,73 +8973,73 @@ __INLINE void ble_dfifcntl_unpack(uint8_t* antswitchbeh, uint8_t* sampreqbeh, ui
     *symbolorder = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_dfifcntl_antswitch_beh_getf(void)
+__RWIP_INLINE uint8_t ble_dfifcntl_antswitch_beh_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFIFCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ble_dfifcntl_antswitch_beh_setf(uint8_t antswitchbeh)
+__RWIP_INLINE void ble_dfifcntl_antswitch_beh_setf(uint8_t antswitchbeh)
 {
     ASSERT_ERR((((uint32_t)antswitchbeh << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_BLE_WR(BLE_DFIFCNTL_ADDR, (REG_BLE_RD(BLE_DFIFCNTL_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)antswitchbeh << 7));
 }
 
-__INLINE uint8_t ble_dfifcntl_sampreq_beh_getf(void)
+__RWIP_INLINE uint8_t ble_dfifcntl_sampreq_beh_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFIFCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE void ble_dfifcntl_sampreq_beh_setf(uint8_t sampreqbeh)
+__RWIP_INLINE void ble_dfifcntl_sampreq_beh_setf(uint8_t sampreqbeh)
 {
     ASSERT_ERR((((uint32_t)sampreqbeh << 6) & ~((uint32_t)0x00000040)) == 0);
     REG_BLE_WR(BLE_DFIFCNTL_ADDR, (REG_BLE_RD(BLE_DFIFCNTL_ADDR) & ~((uint32_t)0x00000040)) | ((uint32_t)sampreqbeh << 6));
 }
 
-__INLINE uint8_t ble_dfifcntl_sampvalid_beh_getf(void)
+__RWIP_INLINE uint8_t ble_dfifcntl_sampvalid_beh_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFIFCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000030)) >> 4);
 }
 
-__INLINE void ble_dfifcntl_sampvalid_beh_setf(uint8_t sampvalidbeh)
+__RWIP_INLINE void ble_dfifcntl_sampvalid_beh_setf(uint8_t sampvalidbeh)
 {
     ASSERT_ERR((((uint32_t)sampvalidbeh << 4) & ~((uint32_t)0x00000030)) == 0);
     REG_BLE_WR(BLE_DFIFCNTL_ADDR, (REG_BLE_RD(BLE_DFIFCNTL_ADDR) & ~((uint32_t)0x00000030)) | ((uint32_t)sampvalidbeh << 4));
 }
 
-__INLINE uint8_t ble_dfifcntl_if_width_getf(void)
+__RWIP_INLINE uint8_t ble_dfifcntl_if_width_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFIFCNTL_ADDR);
     return ((localVal & ((uint32_t)0x0000000C)) >> 2);
 }
 
-__INLINE void ble_dfifcntl_if_width_setf(uint8_t ifwidth)
+__RWIP_INLINE void ble_dfifcntl_if_width_setf(uint8_t ifwidth)
 {
     ASSERT_ERR((((uint32_t)ifwidth << 2) & ~((uint32_t)0x0000000C)) == 0);
     REG_BLE_WR(BLE_DFIFCNTL_ADDR, (REG_BLE_RD(BLE_DFIFCNTL_ADDR) & ~((uint32_t)0x0000000C)) | ((uint32_t)ifwidth << 2));
 }
 
-__INLINE uint8_t ble_dfifcntl_msb_lsb_order_getf(void)
+__RWIP_INLINE uint8_t ble_dfifcntl_msb_lsb_order_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFIFCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_dfifcntl_msb_lsb_order_setf(uint8_t msblsborder)
+__RWIP_INLINE void ble_dfifcntl_msb_lsb_order_setf(uint8_t msblsborder)
 {
     ASSERT_ERR((((uint32_t)msblsborder << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_DFIFCNTL_ADDR, (REG_BLE_RD(BLE_DFIFCNTL_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)msblsborder << 1));
 }
 
-__INLINE uint8_t ble_dfifcntl_symbol_order_getf(void)
+__RWIP_INLINE uint8_t ble_dfifcntl_symbol_order_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_DFIFCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_dfifcntl_symbol_order_setf(uint8_t symbolorder)
+__RWIP_INLINE void ble_dfifcntl_symbol_order_setf(uint8_t symbolorder)
 {
     ASSERT_ERR((((uint32_t)symbolorder << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_DFIFCNTL_ADDR, (REG_BLE_RD(BLE_DFIFCNTL_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)symbolorder << 0));
@@ -9060,12 +9060,12 @@ __INLINE void ble_dfifcntl_symbol_order_setf(uint8_t symbolorder)
 #define BLE_FREQSELCNTL_INDEX  0x00000068
 #define BLE_FREQSELCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_freqselcntl_get(void)
+__RWIP_INLINE uint32_t ble_freqselcntl_get(void)
 {
     return REG_BLE_RD(BLE_FREQSELCNTL_ADDR);
 }
 
-__INLINE void ble_freqselcntl_set(uint32_t value)
+__RWIP_INLINE void ble_freqselcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_FREQSELCNTL_ADDR, value);
 }
@@ -9083,7 +9083,7 @@ __INLINE void ble_freqselcntl_set(uint32_t value)
 #define BLE_FREQSEL_MODE_RST     0x0
 #define BLE_FREQSEL_START_RST    0x0
 
-__INLINE void ble_freqselcntl_pack(uint8_t nbloops, uint8_t freqselmode, uint8_t freqselstart)
+__RWIP_INLINE void ble_freqselcntl_pack(uint8_t nbloops, uint8_t freqselmode, uint8_t freqselstart)
 {
     ASSERT_ERR((((uint32_t)nbloops << 16) & ~((uint32_t)0x00FF0000)) == 0);
     ASSERT_ERR((((uint32_t)freqselmode << 1) & ~((uint32_t)0x00000002)) == 0);
@@ -9091,7 +9091,7 @@ __INLINE void ble_freqselcntl_pack(uint8_t nbloops, uint8_t freqselmode, uint8_t
     REG_BLE_WR(BLE_FREQSELCNTL_ADDR,  ((uint32_t)nbloops << 16) | ((uint32_t)freqselmode << 1) | ((uint32_t)freqselstart << 0));
 }
 
-__INLINE void ble_freqselcntl_unpack(uint8_t* nbloops, uint8_t* freqselmode, uint8_t* freqselstart)
+__RWIP_INLINE void ble_freqselcntl_unpack(uint8_t* nbloops, uint8_t* freqselmode, uint8_t* freqselstart)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSELCNTL_ADDR);
 
@@ -9100,37 +9100,37 @@ __INLINE void ble_freqselcntl_unpack(uint8_t* nbloops, uint8_t* freqselmode, uin
     *freqselstart = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_freqselcntl_nbloops_getf(void)
+__RWIP_INLINE uint8_t ble_freqselcntl_nbloops_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSELCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE void ble_freqselcntl_nbloops_setf(uint8_t nbloops)
+__RWIP_INLINE void ble_freqselcntl_nbloops_setf(uint8_t nbloops)
 {
     ASSERT_ERR((((uint32_t)nbloops << 16) & ~((uint32_t)0x00FF0000)) == 0);
     REG_BLE_WR(BLE_FREQSELCNTL_ADDR, (REG_BLE_RD(BLE_FREQSELCNTL_ADDR) & ~((uint32_t)0x00FF0000)) | ((uint32_t)nbloops << 16));
 }
 
-__INLINE uint8_t ble_freqselcntl_freqsel_mode_getf(void)
+__RWIP_INLINE uint8_t ble_freqselcntl_freqsel_mode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSELCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_freqselcntl_freqsel_mode_setf(uint8_t freqselmode)
+__RWIP_INLINE void ble_freqselcntl_freqsel_mode_setf(uint8_t freqselmode)
 {
     ASSERT_ERR((((uint32_t)freqselmode << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_FREQSELCNTL_ADDR, (REG_BLE_RD(BLE_FREQSELCNTL_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)freqselmode << 1));
 }
 
-__INLINE uint8_t ble_freqselcntl_freqsel_start_getf(void)
+__RWIP_INLINE uint8_t ble_freqselcntl_freqsel_start_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSELCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_freqselcntl_freqsel_start_setf(uint8_t freqselstart)
+__RWIP_INLINE void ble_freqselcntl_freqsel_start_setf(uint8_t freqselstart)
 {
     ASSERT_ERR((((uint32_t)freqselstart << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_FREQSELCNTL_ADDR, (REG_BLE_RD(BLE_FREQSELCNTL_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)freqselstart << 0));
@@ -9149,12 +9149,12 @@ __INLINE void ble_freqselcntl_freqsel_start_setf(uint8_t freqselstart)
 #define BLE_FREQSELPTR_INDEX  0x00000069
 #define BLE_FREQSELPTR_RESET  0x00000000
 
-__INLINE uint32_t ble_freqselptr_get(void)
+__RWIP_INLINE uint32_t ble_freqselptr_get(void)
 {
     return REG_BLE_RD(BLE_FREQSELPTR_ADDR);
 }
 
-__INLINE void ble_freqselptr_set(uint32_t value)
+__RWIP_INLINE void ble_freqselptr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_FREQSELPTR_ADDR, value);
 }
@@ -9166,14 +9166,14 @@ __INLINE void ble_freqselptr_set(uint32_t value)
 
 #define BLE_FREQSELPTR_RST    0x0
 
-__INLINE uint16_t ble_freqselptr_getf(void)
+__RWIP_INLINE uint16_t ble_freqselptr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSELPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_freqselptr_setf(uint16_t freqselptr)
+__RWIP_INLINE void ble_freqselptr_setf(uint16_t freqselptr)
 {
     ASSERT_ERR((((uint32_t)freqselptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_BLE_WR(BLE_FREQSELPTR_ADDR, (uint32_t)freqselptr << 0);
@@ -9193,12 +9193,12 @@ __INLINE void ble_freqselptr_setf(uint16_t freqselptr)
 #define BLE_FREQSEL_CS1_SEED_INDEX  0x0000006A
 #define BLE_FREQSEL_CS1_SEED_RESET  0x00000000
 
-__INLINE uint32_t ble_freqsel_cs1_seed_get(void)
+__RWIP_INLINE uint32_t ble_freqsel_cs1_seed_get(void)
 {
     return REG_BLE_RD(BLE_FREQSEL_CS1_SEED_ADDR);
 }
 
-__INLINE void ble_freqsel_cs1_seed_set(uint32_t value)
+__RWIP_INLINE void ble_freqsel_cs1_seed_set(uint32_t value)
 {
     REG_BLE_WR(BLE_FREQSEL_CS1_SEED_ADDR, value);
 }
@@ -9214,14 +9214,14 @@ __INLINE void ble_freqsel_cs1_seed_set(uint32_t value)
 #define BLE_FREQSEL_LAST_CHIDX_RST    0x0
 #define BLE_FREQSEL_HOPINT_RST        0x0
 
-__INLINE void ble_freqsel_cs1_seed_pack(uint8_t freqsellastchidx, uint8_t freqselhopint)
+__RWIP_INLINE void ble_freqsel_cs1_seed_pack(uint8_t freqsellastchidx, uint8_t freqselhopint)
 {
     ASSERT_ERR((((uint32_t)freqsellastchidx << 16) & ~((uint32_t)0x003F0000)) == 0);
     ASSERT_ERR((((uint32_t)freqselhopint << 0) & ~((uint32_t)0x0000001F)) == 0);
     REG_BLE_WR(BLE_FREQSEL_CS1_SEED_ADDR,  ((uint32_t)freqsellastchidx << 16) | ((uint32_t)freqselhopint << 0));
 }
 
-__INLINE void ble_freqsel_cs1_seed_unpack(uint8_t* freqsellastchidx, uint8_t* freqselhopint)
+__RWIP_INLINE void ble_freqsel_cs1_seed_unpack(uint8_t* freqsellastchidx, uint8_t* freqselhopint)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSEL_CS1_SEED_ADDR);
 
@@ -9229,25 +9229,25 @@ __INLINE void ble_freqsel_cs1_seed_unpack(uint8_t* freqsellastchidx, uint8_t* fr
     *freqselhopint = (localVal & ((uint32_t)0x0000001F)) >> 0;
 }
 
-__INLINE uint8_t ble_freqsel_cs1_seed_freqsel_last_chidx_getf(void)
+__RWIP_INLINE uint8_t ble_freqsel_cs1_seed_freqsel_last_chidx_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSEL_CS1_SEED_ADDR);
     return ((localVal & ((uint32_t)0x003F0000)) >> 16);
 }
 
-__INLINE void ble_freqsel_cs1_seed_freqsel_last_chidx_setf(uint8_t freqsellastchidx)
+__RWIP_INLINE void ble_freqsel_cs1_seed_freqsel_last_chidx_setf(uint8_t freqsellastchidx)
 {
     ASSERT_ERR((((uint32_t)freqsellastchidx << 16) & ~((uint32_t)0x003F0000)) == 0);
     REG_BLE_WR(BLE_FREQSEL_CS1_SEED_ADDR, (REG_BLE_RD(BLE_FREQSEL_CS1_SEED_ADDR) & ~((uint32_t)0x003F0000)) | ((uint32_t)freqsellastchidx << 16));
 }
 
-__INLINE uint8_t ble_freqsel_cs1_seed_freqsel_hopint_getf(void)
+__RWIP_INLINE uint8_t ble_freqsel_cs1_seed_freqsel_hopint_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSEL_CS1_SEED_ADDR);
     return ((localVal & ((uint32_t)0x0000001F)) >> 0);
 }
 
-__INLINE void ble_freqsel_cs1_seed_freqsel_hopint_setf(uint8_t freqselhopint)
+__RWIP_INLINE void ble_freqsel_cs1_seed_freqsel_hopint_setf(uint8_t freqselhopint)
 {
     ASSERT_ERR((((uint32_t)freqselhopint << 0) & ~((uint32_t)0x0000001F)) == 0);
     REG_BLE_WR(BLE_FREQSEL_CS1_SEED_ADDR, (REG_BLE_RD(BLE_FREQSEL_CS1_SEED_ADDR) & ~((uint32_t)0x0000001F)) | ((uint32_t)freqselhopint << 0));
@@ -9267,12 +9267,12 @@ __INLINE void ble_freqsel_cs1_seed_freqsel_hopint_setf(uint8_t freqselhopint)
 #define BLE_FREQSEL_CS2_SEED_INDEX  0x0000006B
 #define BLE_FREQSEL_CS2_SEED_RESET  0x00000000
 
-__INLINE uint32_t ble_freqsel_cs2_seed_get(void)
+__RWIP_INLINE uint32_t ble_freqsel_cs2_seed_get(void)
 {
     return REG_BLE_RD(BLE_FREQSEL_CS2_SEED_ADDR);
 }
 
-__INLINE void ble_freqsel_cs2_seed_set(uint32_t value)
+__RWIP_INLINE void ble_freqsel_cs2_seed_set(uint32_t value)
 {
     REG_BLE_WR(BLE_FREQSEL_CS2_SEED_ADDR, value);
 }
@@ -9288,14 +9288,14 @@ __INLINE void ble_freqsel_cs2_seed_set(uint32_t value)
 #define BLE_CHANNEL_IDENTIFIER_RST    0x0
 #define BLE_FREQSEL_EVTCNT_RST        0x0
 
-__INLINE void ble_freqsel_cs2_seed_pack(uint16_t channelidentifier, uint16_t freqselevtcnt)
+__RWIP_INLINE void ble_freqsel_cs2_seed_pack(uint16_t channelidentifier, uint16_t freqselevtcnt)
 {
     ASSERT_ERR((((uint32_t)channelidentifier << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     ASSERT_ERR((((uint32_t)freqselevtcnt << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_BLE_WR(BLE_FREQSEL_CS2_SEED_ADDR,  ((uint32_t)channelidentifier << 16) | ((uint32_t)freqselevtcnt << 0));
 }
 
-__INLINE void ble_freqsel_cs2_seed_unpack(uint16_t* channelidentifier, uint16_t* freqselevtcnt)
+__RWIP_INLINE void ble_freqsel_cs2_seed_unpack(uint16_t* channelidentifier, uint16_t* freqselevtcnt)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSEL_CS2_SEED_ADDR);
 
@@ -9303,25 +9303,25 @@ __INLINE void ble_freqsel_cs2_seed_unpack(uint16_t* channelidentifier, uint16_t*
     *freqselevtcnt = (localVal & ((uint32_t)0x0000FFFF)) >> 0;
 }
 
-__INLINE uint16_t ble_freqsel_cs2_seed_channel_identifier_getf(void)
+__RWIP_INLINE uint16_t ble_freqsel_cs2_seed_channel_identifier_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSEL_CS2_SEED_ADDR);
     return ((localVal & ((uint32_t)0xFFFF0000)) >> 16);
 }
 
-__INLINE void ble_freqsel_cs2_seed_channel_identifier_setf(uint16_t channelidentifier)
+__RWIP_INLINE void ble_freqsel_cs2_seed_channel_identifier_setf(uint16_t channelidentifier)
 {
     ASSERT_ERR((((uint32_t)channelidentifier << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     REG_BLE_WR(BLE_FREQSEL_CS2_SEED_ADDR, (REG_BLE_RD(BLE_FREQSEL_CS2_SEED_ADDR) & ~((uint32_t)0xFFFF0000)) | ((uint32_t)channelidentifier << 16));
 }
 
-__INLINE uint16_t ble_freqsel_cs2_seed_freqsel_evtcnt_getf(void)
+__RWIP_INLINE uint16_t ble_freqsel_cs2_seed_freqsel_evtcnt_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSEL_CS2_SEED_ADDR);
     return ((localVal & ((uint32_t)0x0000FFFF)) >> 0);
 }
 
-__INLINE void ble_freqsel_cs2_seed_freqsel_evtcnt_setf(uint16_t freqselevtcnt)
+__RWIP_INLINE void ble_freqsel_cs2_seed_freqsel_evtcnt_setf(uint16_t freqselevtcnt)
 {
     ASSERT_ERR((((uint32_t)freqselevtcnt << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_BLE_WR(BLE_FREQSEL_CS2_SEED_ADDR, (REG_BLE_RD(BLE_FREQSEL_CS2_SEED_ADDR) & ~((uint32_t)0x0000FFFF)) | ((uint32_t)freqselevtcnt << 0));
@@ -9340,12 +9340,12 @@ __INLINE void ble_freqsel_cs2_seed_freqsel_evtcnt_setf(uint16_t freqselevtcnt)
 #define BLE_FREQSEL_LLCHMAP0_INDEX  0x0000006C
 #define BLE_FREQSEL_LLCHMAP0_RESET  0x00000000
 
-__INLINE uint32_t ble_freqsel_llchmap0_get(void)
+__RWIP_INLINE uint32_t ble_freqsel_llchmap0_get(void)
 {
     return REG_BLE_RD(BLE_FREQSEL_LLCHMAP0_ADDR);
 }
 
-__INLINE void ble_freqsel_llchmap0_set(uint32_t value)
+__RWIP_INLINE void ble_freqsel_llchmap0_set(uint32_t value)
 {
     REG_BLE_WR(BLE_FREQSEL_LLCHMAP0_ADDR, value);
 }
@@ -9357,14 +9357,14 @@ __INLINE void ble_freqsel_llchmap0_set(uint32_t value)
 
 #define BLE_FREQSEL_LLCHMAP0_RST    0x0
 
-__INLINE uint32_t ble_freqsel_llchmap0_getf(void)
+__RWIP_INLINE uint32_t ble_freqsel_llchmap0_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSEL_LLCHMAP0_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_freqsel_llchmap0_setf(uint32_t freqselllchmap0)
+__RWIP_INLINE void ble_freqsel_llchmap0_setf(uint32_t freqselllchmap0)
 {
     ASSERT_ERR((((uint32_t)freqselllchmap0 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_BLE_WR(BLE_FREQSEL_LLCHMAP0_ADDR, (uint32_t)freqselllchmap0 << 0);
@@ -9383,12 +9383,12 @@ __INLINE void ble_freqsel_llchmap0_setf(uint32_t freqselllchmap0)
 #define BLE_FREQSEL_LLCHMAP1_INDEX  0x0000006D
 #define BLE_FREQSEL_LLCHMAP1_RESET  0x00000000
 
-__INLINE uint32_t ble_freqsel_llchmap1_get(void)
+__RWIP_INLINE uint32_t ble_freqsel_llchmap1_get(void)
 {
     return REG_BLE_RD(BLE_FREQSEL_LLCHMAP1_ADDR);
 }
 
-__INLINE void ble_freqsel_llchmap1_set(uint32_t value)
+__RWIP_INLINE void ble_freqsel_llchmap1_set(uint32_t value)
 {
     REG_BLE_WR(BLE_FREQSEL_LLCHMAP1_ADDR, value);
 }
@@ -9400,14 +9400,14 @@ __INLINE void ble_freqsel_llchmap1_set(uint32_t value)
 
 #define BLE_FREQSEL_LLCHMAP1_RST    0x0
 
-__INLINE uint8_t ble_freqsel_llchmap1_getf(void)
+__RWIP_INLINE uint8_t ble_freqsel_llchmap1_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_FREQSEL_LLCHMAP1_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0000001F)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_freqsel_llchmap1_setf(uint8_t freqselllchmap1)
+__RWIP_INLINE void ble_freqsel_llchmap1_setf(uint8_t freqselllchmap1)
 {
     ASSERT_ERR((((uint32_t)freqselllchmap1 << 0) & ~((uint32_t)0x0000001F)) == 0);
     REG_BLE_WR(BLE_FREQSEL_LLCHMAP1_ADDR, (uint32_t)freqselllchmap1 << 0);
@@ -9430,12 +9430,12 @@ __INLINE void ble_freqsel_llchmap1_setf(uint8_t freqselllchmap1)
 #define BLE_ISOCNTCNTL_INDEX  0x00000070
 #define BLE_ISOCNTCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_isocntcntl_get(void)
+__RWIP_INLINE uint32_t ble_isocntcntl_get(void)
 {
     return REG_BLE_RD(BLE_ISOCNTCNTL_ADDR);
 }
 
-__INLINE void ble_isocntcntl_set(uint32_t value)
+__RWIP_INLINE void ble_isocntcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ISOCNTCNTL_ADDR, value);
 }
@@ -9458,7 +9458,7 @@ __INLINE void ble_isocntcntl_set(uint32_t value)
 #define BLE_ISO_PHASE_SHIFT_MODE_RST    0x0
 #define BLE_ISOCORRMODE_RST             0x0
 
-__INLINE void ble_isocntcntl_pack(uint8_t isosamp, uint8_t isoupd, uint8_t isoclkshiftmode, uint8_t isophaseshiftmode, uint8_t isocorrmode)
+__RWIP_INLINE void ble_isocntcntl_pack(uint8_t isosamp, uint8_t isoupd, uint8_t isoclkshiftmode, uint8_t isophaseshiftmode, uint8_t isocorrmode)
 {
     ASSERT_ERR((((uint32_t)isosamp << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)isoupd << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -9468,7 +9468,7 @@ __INLINE void ble_isocntcntl_pack(uint8_t isosamp, uint8_t isoupd, uint8_t isocl
     REG_BLE_WR(BLE_ISOCNTCNTL_ADDR,  ((uint32_t)isosamp << 31) | ((uint32_t)isoupd << 30) | ((uint32_t)isoclkshiftmode << 2) | ((uint32_t)isophaseshiftmode << 1) | ((uint32_t)isocorrmode << 0));
 }
 
-__INLINE void ble_isocntcntl_unpack(uint8_t* isosamp, uint8_t* isoupd, uint8_t* isoclkshiftmode, uint8_t* isophaseshiftmode, uint8_t* isocorrmode)
+__RWIP_INLINE void ble_isocntcntl_unpack(uint8_t* isosamp, uint8_t* isoupd, uint8_t* isoclkshiftmode, uint8_t* isophaseshiftmode, uint8_t* isocorrmode)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTCNTL_ADDR);
 
@@ -9479,61 +9479,61 @@ __INLINE void ble_isocntcntl_unpack(uint8_t* isosamp, uint8_t* isoupd, uint8_t* 
     *isocorrmode = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ble_isocntcntl_isosamp_getf(void)
+__RWIP_INLINE uint8_t ble_isocntcntl_isosamp_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_isocntcntl_isosamp_setf(uint8_t isosamp)
+__RWIP_INLINE void ble_isocntcntl_isosamp_setf(uint8_t isosamp)
 {
     ASSERT_ERR((((uint32_t)isosamp << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_ISOCNTCNTL_ADDR, (REG_BLE_RD(BLE_ISOCNTCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)isosamp << 31));
 }
 
-__INLINE uint8_t ble_isocntcntl_iso_upd_getf(void)
+__RWIP_INLINE uint8_t ble_isocntcntl_iso_upd_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ble_isocntcntl_iso_upd_setf(uint8_t isoupd)
+__RWIP_INLINE void ble_isocntcntl_iso_upd_setf(uint8_t isoupd)
 {
     ASSERT_ERR((((uint32_t)isoupd << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_BLE_WR(BLE_ISOCNTCNTL_ADDR, (REG_BLE_RD(BLE_ISOCNTCNTL_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)isoupd << 30));
 }
 
-__INLINE uint8_t ble_isocntcntl_iso_clkshift_mode_getf(void)
+__RWIP_INLINE uint8_t ble_isocntcntl_iso_clkshift_mode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ble_isocntcntl_iso_clkshift_mode_setf(uint8_t isoclkshiftmode)
+__RWIP_INLINE void ble_isocntcntl_iso_clkshift_mode_setf(uint8_t isoclkshiftmode)
 {
     ASSERT_ERR((((uint32_t)isoclkshiftmode << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_BLE_WR(BLE_ISOCNTCNTL_ADDR, (REG_BLE_RD(BLE_ISOCNTCNTL_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)isoclkshiftmode << 2));
 }
 
-__INLINE uint8_t ble_isocntcntl_iso_phase_shift_mode_getf(void)
+__RWIP_INLINE uint8_t ble_isocntcntl_iso_phase_shift_mode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ble_isocntcntl_iso_phase_shift_mode_setf(uint8_t isophaseshiftmode)
+__RWIP_INLINE void ble_isocntcntl_iso_phase_shift_mode_setf(uint8_t isophaseshiftmode)
 {
     ASSERT_ERR((((uint32_t)isophaseshiftmode << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_BLE_WR(BLE_ISOCNTCNTL_ADDR, (REG_BLE_RD(BLE_ISOCNTCNTL_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)isophaseshiftmode << 1));
 }
 
-__INLINE uint8_t ble_isocntcntl_isocorrmode_getf(void)
+__RWIP_INLINE uint8_t ble_isocntcntl_isocorrmode_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ble_isocntcntl_isocorrmode_setf(uint8_t isocorrmode)
+__RWIP_INLINE void ble_isocntcntl_isocorrmode_setf(uint8_t isocorrmode)
 {
     ASSERT_ERR((((uint32_t)isocorrmode << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_ISOCNTCNTL_ADDR, (REG_BLE_RD(BLE_ISOCNTCNTL_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)isocorrmode << 0));
@@ -9552,12 +9552,12 @@ __INLINE void ble_isocntcntl_isocorrmode_setf(uint8_t isocorrmode)
 #define BLE_ISOCNTSAMP_INDEX  0x00000071
 #define BLE_ISOCNTSAMP_RESET  0x00000000
 
-__INLINE uint32_t ble_isocntsamp_get(void)
+__RWIP_INLINE uint32_t ble_isocntsamp_get(void)
 {
     return REG_BLE_RD(BLE_ISOCNTSAMP_ADDR);
 }
 
-__INLINE void ble_isocntsamp_set(uint32_t value)
+__RWIP_INLINE void ble_isocntsamp_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ISOCNTSAMP_ADDR, value);
 }
@@ -9569,14 +9569,14 @@ __INLINE void ble_isocntsamp_set(uint32_t value)
 
 #define BLE_ISOCNTSAMP_RST    0x0
 
-__INLINE uint32_t ble_isocntsamp_getf(void)
+__RWIP_INLINE uint32_t ble_isocntsamp_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTSAMP_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_isocntsamp_setf(uint32_t isocntsamp)
+__RWIP_INLINE void ble_isocntsamp_setf(uint32_t isocntsamp)
 {
     ASSERT_ERR((((uint32_t)isocntsamp << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_BLE_WR(BLE_ISOCNTSAMP_ADDR, (uint32_t)isocntsamp << 0);
@@ -9595,12 +9595,12 @@ __INLINE void ble_isocntsamp_setf(uint32_t isocntsamp)
 #define BLE_ISOCNTCORR_INDEX  0x00000072
 #define BLE_ISOCNTCORR_RESET  0x00000000
 
-__INLINE uint32_t ble_isocntcorr_get(void)
+__RWIP_INLINE uint32_t ble_isocntcorr_get(void)
 {
     return REG_BLE_RD(BLE_ISOCNTCORR_ADDR);
 }
 
-__INLINE void ble_isocntcorr_set(uint32_t value)
+__RWIP_INLINE void ble_isocntcorr_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ISOCNTCORR_ADDR, value);
 }
@@ -9612,14 +9612,14 @@ __INLINE void ble_isocntcorr_set(uint32_t value)
 
 #define BLE_ISOCNTCORR_RST    0x0
 
-__INLINE uint32_t ble_isocntcorr_getf(void)
+__RWIP_INLINE uint32_t ble_isocntcorr_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTCORR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_isocntcorr_setf(uint32_t isocntcorr)
+__RWIP_INLINE void ble_isocntcorr_setf(uint32_t isocntcorr)
 {
     ASSERT_ERR((((uint32_t)isocntcorr << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_BLE_WR(BLE_ISOCNTCORR_ADDR, (uint32_t)isocntcorr << 0);
@@ -9638,12 +9638,12 @@ __INLINE void ble_isocntcorr_setf(uint32_t isocntcorr)
 #define BLE_ISOCNTCORR_HUS_INDEX  0x00000073
 #define BLE_ISOCNTCORR_HUS_RESET  0x00000000
 
-__INLINE uint32_t ble_isocntcorr_hus_get(void)
+__RWIP_INLINE uint32_t ble_isocntcorr_hus_get(void)
 {
     return REG_BLE_RD(BLE_ISOCNTCORR_HUS_ADDR);
 }
 
-__INLINE void ble_isocntcorr_hus_set(uint32_t value)
+__RWIP_INLINE void ble_isocntcorr_hus_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ISOCNTCORR_HUS_ADDR, value);
 }
@@ -9654,14 +9654,14 @@ __INLINE void ble_isocntcorr_hus_set(uint32_t value)
 
 #define BLE_ISOCNTCORR_HUS_RST    0x0
 
-__INLINE uint8_t ble_isocntcorr_hus_getf(void)
+__RWIP_INLINE uint8_t ble_isocntcorr_hus_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOCNTCORR_HUS_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00000001)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_isocntcorr_hus_setf(uint8_t isocntcorrhus)
+__RWIP_INLINE void ble_isocntcorr_hus_setf(uint8_t isocntcorrhus)
 {
     ASSERT_ERR((((uint32_t)isocntcorrhus << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_BLE_WR(BLE_ISOCNTCORR_HUS_ADDR, (uint32_t)isocntcorrhus << 0);
@@ -9680,12 +9680,12 @@ __INLINE void ble_isocntcorr_hus_setf(uint8_t isocntcorrhus)
 #define BLE_ISOINTCNTL_INDEX  0x00000074
 #define BLE_ISOINTCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_isointcntl_get(void)
+__RWIP_INLINE uint32_t ble_isointcntl_get(void)
 {
     return REG_BLE_RD(BLE_ISOINTCNTL_ADDR);
 }
 
-__INLINE void ble_isointcntl_set(uint32_t value)
+__RWIP_INLINE void ble_isointcntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ISOINTCNTL_ADDR, value);
 }
@@ -9697,14 +9697,14 @@ __INLINE void ble_isointcntl_set(uint32_t value)
 
 #define BLE_ISOINTMSK_RST    0x0
 
-__INLINE uint8_t ble_isointcntl_isointmsk_getf(void)
+__RWIP_INLINE uint8_t ble_isointcntl_isointmsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOINTCNTL_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000000FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_isointcntl_isointmsk_setf(uint8_t isointmsk)
+__RWIP_INLINE void ble_isointcntl_isointmsk_setf(uint8_t isointmsk)
 {
     ASSERT_ERR((((uint32_t)isointmsk << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_ISOINTCNTL_ADDR, (uint32_t)isointmsk << 0);
@@ -9723,7 +9723,7 @@ __INLINE void ble_isointcntl_isointmsk_setf(uint8_t isointmsk)
 #define BLE_ISOINTSTAT_INDEX  0x00000075
 #define BLE_ISOINTSTAT_RESET  0x00000000
 
-__INLINE uint32_t ble_isointstat_get(void)
+__RWIP_INLINE uint32_t ble_isointstat_get(void)
 {
     return REG_BLE_RD(BLE_ISOINTSTAT_ADDR);
 }
@@ -9735,7 +9735,7 @@ __INLINE uint32_t ble_isointstat_get(void)
 
 #define BLE_ISOINTSTAT_RST    0x0
 
-__INLINE uint8_t ble_isointstat_getf(void)
+__RWIP_INLINE uint8_t ble_isointstat_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOINTSTAT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000000FF)) == 0);
@@ -9755,12 +9755,12 @@ __INLINE uint8_t ble_isointstat_getf(void)
 #define BLE_ISOINTACK_INDEX  0x00000076
 #define BLE_ISOINTACK_RESET  0x00000000
 
-__INLINE uint32_t ble_isointack_get(void)
+__RWIP_INLINE uint32_t ble_isointack_get(void)
 {
     return REG_BLE_RD(BLE_ISOINTACK_ADDR);
 }
 
-__INLINE void ble_isointack_clear(uint32_t value)
+__RWIP_INLINE void ble_isointack_clear(uint32_t value)
 {
     REG_BLE_WR(BLE_ISOINTACK_ADDR, value);
 }
@@ -9772,14 +9772,14 @@ __INLINE void ble_isointack_clear(uint32_t value)
 
 #define BLE_ISOINTACK_RST    0x0
 
-__INLINE uint8_t ble_isointack_getf(void)
+__RWIP_INLINE uint8_t ble_isointack_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOINTACK_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000000FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ble_isointack_clearf(uint8_t isointack)
+__RWIP_INLINE void ble_isointack_clearf(uint8_t isointack)
 {
     ASSERT_ERR((((uint32_t)isointack << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_ISOINTACK_ADDR, (uint32_t)isointack << 0);
@@ -9799,12 +9799,12 @@ __INLINE void ble_isointack_clearf(uint8_t isointack)
 #define BLE_ISOGPIOCNTL_INDEX  0x00000078
 #define BLE_ISOGPIOCNTL_RESET  0x00000000
 
-__INLINE uint32_t ble_isogpiocntl_get(void)
+__RWIP_INLINE uint32_t ble_isogpiocntl_get(void)
 {
     return REG_BLE_RD(BLE_ISOGPIOCNTL_ADDR);
 }
 
-__INLINE void ble_isogpiocntl_set(uint32_t value)
+__RWIP_INLINE void ble_isogpiocntl_set(uint32_t value)
 {
     REG_BLE_WR(BLE_ISOGPIOCNTL_ADDR, value);
 }
@@ -9819,14 +9819,14 @@ __INLINE void ble_isogpiocntl_set(uint32_t value)
 #define BLE_ISOGPIOBEH_RST    0x0
 #define BLE_ISOGPIOMSK_RST    0x0
 
-__INLINE void ble_isogpiocntl_pack(uint8_t isogpiobeh, uint8_t isogpiomsk)
+__RWIP_INLINE void ble_isogpiocntl_pack(uint8_t isogpiobeh, uint8_t isogpiomsk)
 {
     ASSERT_ERR((((uint32_t)isogpiobeh << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)isogpiomsk << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_ISOGPIOCNTL_ADDR,  ((uint32_t)isogpiobeh << 31) | ((uint32_t)isogpiomsk << 0));
 }
 
-__INLINE void ble_isogpiocntl_unpack(uint8_t* isogpiobeh, uint8_t* isogpiomsk)
+__RWIP_INLINE void ble_isogpiocntl_unpack(uint8_t* isogpiobeh, uint8_t* isogpiomsk)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOGPIOCNTL_ADDR);
 
@@ -9834,25 +9834,25 @@ __INLINE void ble_isogpiocntl_unpack(uint8_t* isogpiobeh, uint8_t* isogpiomsk)
     *isogpiomsk = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ble_isogpiocntl_isogpiobeh_getf(void)
+__RWIP_INLINE uint8_t ble_isogpiocntl_isogpiobeh_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOGPIOCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ble_isogpiocntl_isogpiobeh_setf(uint8_t isogpiobeh)
+__RWIP_INLINE void ble_isogpiocntl_isogpiobeh_setf(uint8_t isogpiobeh)
 {
     ASSERT_ERR((((uint32_t)isogpiobeh << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_BLE_WR(BLE_ISOGPIOCNTL_ADDR, (REG_BLE_RD(BLE_ISOGPIOCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)isogpiobeh << 31));
 }
 
-__INLINE uint8_t ble_isogpiocntl_isogpiomsk_getf(void)
+__RWIP_INLINE uint8_t ble_isogpiocntl_isogpiomsk_getf(void)
 {
     uint32_t localVal = REG_BLE_RD(BLE_ISOGPIOCNTL_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ble_isogpiocntl_isogpiomsk_setf(uint8_t isogpiomsk)
+__RWIP_INLINE void ble_isogpiocntl_isogpiomsk_setf(uint8_t isogpiomsk)
 {
     ASSERT_ERR((((uint32_t)isogpiomsk << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_BLE_WR(BLE_ISOGPIOCNTL_ADDR, (REG_BLE_RD(BLE_ISOGPIOCNTL_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)isogpiomsk << 0));
@@ -9872,13 +9872,13 @@ __INLINE void ble_isogpiocntl_isogpiomsk_setf(uint8_t isogpiomsk)
 #define BLE_ISOTIMERTGT_RESET  0x00000000
 #define BLE_ISOTIMERTGT_COUNT  8
 
-__INLINE uint32_t ble_isotimertgt_get(int reg_idx)
+__RWIP_INLINE uint32_t ble_isotimertgt_get(int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 7);
     return REG_BLE_RD(BLE_ISOTIMERTGT_ADDR + reg_idx * 4);
 }
 
-__INLINE void ble_isotimertgt_set(int reg_idx, uint32_t value)
+__RWIP_INLINE void ble_isotimertgt_set(int reg_idx, uint32_t value)
 {
     ASSERT_ERR(reg_idx <= 7);
     REG_BLE_WR(BLE_ISOTIMERTGT_ADDR + reg_idx * 4, value);
@@ -9891,7 +9891,7 @@ __INLINE void ble_isotimertgt_set(int reg_idx, uint32_t value)
 
 #define BLE_ISOTIMERTGT_RST    0x0
 
-__INLINE uint32_t ble_isotimertgt_getf(int reg_idx)
+__RWIP_INLINE uint32_t ble_isotimertgt_getf(int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 7);
     uint32_t localVal = REG_BLE_RD(BLE_ISOTIMERTGT_ADDR + reg_idx * 4);
@@ -9899,7 +9899,7 @@ __INLINE uint32_t ble_isotimertgt_getf(int reg_idx)
     return (localVal >> 0);
 }
 
-__INLINE void ble_isotimertgt_setf(int reg_idx, uint32_t isotimertgt)
+__RWIP_INLINE void ble_isotimertgt_setf(int reg_idx, uint32_t isotimertgt)
 {
     ASSERT_ERR(reg_idx <= 7);
     ASSERT_ERR((((uint32_t)isotimertgt << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);

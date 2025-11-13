@@ -1,0 +1,85 @@
+# Copyright (c) 2024-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_PC_LL_CFG
+	bool "Atmosic pc_ll_cfg module"
+	default y if ATM_BLE
+	depends on ATM_PC_CTR
+
+if ATM_PC_LL_CFG
+
+config ATM_ENA_LL_FEAT_PC
+	bool "When available, enable LL power control feature"
+	default n if ATMWSTK_PD50
+	default y
+
+config ATM_ENA_LL_FEAT_CENTRAL
+	bool "When available, enable as capable of being a central"
+	default n if ATMWSTK_PD50
+	default y
+
+config ATM_ENA_LL_FEAT_PERIPHERAL
+	bool "When available, enable as capable of being a peripheral"
+	default y
+
+config ATM_ENA_LL_FEAT_BROADCASTER
+	bool "When available, enable as capable of being a broadcaster"
+	default y
+
+config ATM_ENA_LL_FEAT_OBSERVER
+	bool "When available, enable as capable of being an observer"
+	default n if ATMWSTK_PD50
+	default y
+
+config ATM_ENA_LL_FEAT_CS
+	bool "When available, enable LL channel sounding feature"
+	default n if (ATMWSTK_PD50 || ATMWSTK_CPD200)
+	default y
+
+config ATM_ENA_LL_FEAT_ISO
+	bool "When available, enable LL ISO feature"
+	default y if ATMWSTK_FULL
+
+config ATM_ENA_LL_FEAT_BIS
+	bool "When available, enable LL BIS (Broadcast Isochronous Stream) feature"
+	depends on ATM_ENA_LL_FEAT_ISO
+	default y if ATMWSTK_FULL
+
+config ATM_ENA_LL_FEAT_CIS
+	bool "When available, enable LL CIS (Connected Isochronous Stream) feature"
+	depends on ATM_ENA_LL_FEAT_ISO
+	default y if ATMWSTK_FULL
+
+config ATM_ENA_LL_FEAT_PAWR
+	bool "When available, enable LL PAWR (Periodic Advertising with Responses) feature"
+	default n if ATMWSTK_PD50
+	default y
+
+config ATM_ENA_LL_FEAT_EXT
+	bool "When available, enable LL EXTFEAT (Extended Features)"
+	default y if ATMWSTK_FULL
+
+config ATM_ENA_LL_FEAT_DBAF
+	bool "When available, enable LL DBAF (Decision Based Advertising Filtering) feature"
+	default y if ATMWSTK_FULL
+
+config ATM_ENA_LL_FEAT_MONADV
+	bool "When available, enable LL MONADV (Monitored Advertisers) feature"
+	default y if ATMWSTK_FULL
+
+config ATM_BLE_CS_NUM_ANTENNAS
+	int "Number of BLE CS antennas supported"
+	range 1 4
+	default 2 if $(dt_nodelabel_enabled,atm_antenna)
+	default 1
+	depends on ATM_ENA_LL_FEAT_CS
+
+config ATM_LL_ECC_SUPPORT
+	bool "Support HCI ECC commands in the LL"
+	default y if !BT_ECC
+
+config ATM_DTM_SUPPORT
+	bool "Support LE directed test mode"
+	default y
+endif # ATM_PC_LL_CFG

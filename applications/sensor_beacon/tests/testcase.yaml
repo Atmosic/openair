@@ -11,6 +11,6 @@ common:
 
 tests:
   applications.sensor_beacon.tests.atm:
-    tags: sensor_beacon_tests no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
+    tags:
+      - sensor_beacon_tests
+      - no_mcuboot

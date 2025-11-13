@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		sw1 = &button1;
+	};
+};
+
+&atm_antenna {
+	status = "okay";
+	ant-out5-pin = <5>;
+	mdm-ant-rx-3to0 = <0x00002000>;
+	mdm-ant-tx-3to0 = <0x00002000>;
+	mdm-ant-idle = <0x0>;
+};
+
+&wdog0 {
+	status = "okay";
+};

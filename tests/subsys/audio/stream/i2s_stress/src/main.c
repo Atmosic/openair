@@ -8,6 +8,10 @@
 #include <zephyr/ztest.h>
 #include <zephyr/device.h>
 #include <zephyr/audio/audio_stream.h>
+#ifdef CONFIG_PM
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
+#endif
 
 #define TIMEOUT		2000
 #define SAMPLE_BIT_WIDTH 16U
@@ -41,6 +45,9 @@ static struct i2s_config *get_config(const struct device *dev_i2s)
 static void before(void *fixture)
 {
 	ARG_UNUSED(fixture);
+#ifdef CONFIG_PM
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
 	struct audio_stream_config audio_cfg = {
 		.i2s_dev = dev_i2s_tx,
 		.codec_dev = codec_dev,
@@ -50,5 +57,12 @@ static void before(void *fixture)
 	zassert_equal(audio_stream_init(&audio_cfg), 0, "audio_playback_init failed");
 }
 
+static void after(void *fixture)
+{
+	ARG_UNUSED(fixture);
+#ifdef CONFIG_PM
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+}
 
-ZTEST_SUITE(i2s_stress, NULL, NULL, before, NULL, NULL);
+ZTEST_SUITE(i2s_stress, NULL, NULL, before, after, NULL);

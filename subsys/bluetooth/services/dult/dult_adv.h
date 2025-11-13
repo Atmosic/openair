@@ -27,6 +27,8 @@
 extern "C" {
 #endif
 
+#ifdef CONFIG_DULT_ADV_SUPPORT
+
 /**
  * @brief dult adv enable with near owner mode
  * @param[in] mode dult mode
@@ -43,6 +45,8 @@ void dult_adv_disable(void);
  * @param[in] bt_id dult bt_id
  */
 void dult_adv_bt_id_set(uint8_t bt_id);
+
+#endif /* CONFIG_DULT_ADV_SUPPORT */
 
 #ifdef __cplusplus
 }

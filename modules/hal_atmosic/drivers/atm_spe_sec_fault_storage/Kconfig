@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_SPE_FAULT_STORAGE
+        bool "Atmosic SPE Secure Fault Storage module"
+	default y if DT_HAS_ATMOSIC_SPE_FAULT_STORAGE_ENABLED
+	depends on !MCUBOOT

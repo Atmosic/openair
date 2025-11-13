@@ -1,4 +1,4 @@
-.. _ble_periodic_adv:
+.. _periodic_adv-sample:
 
 Bluetooth: periodic advertising
 ###############################
@@ -24,7 +24,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/bluetooth/periodic_adv --sysbuild -T samples.bluetooth.periodic_adv.atm
+   west build -p always -b <BOARD> openair/samples/bluetooth/periodic_adv --sysbuild -T samples.bluetooth.periodic_adv.atm
 
 Flash command:
 

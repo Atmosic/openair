@@ -41,36 +41,36 @@ typedef enum {
 
 typedef void (*hw_cfg_dynamic_rf_mode_t)(bool);
 
-__INLINE void hw_cfg_optimize_scan_params(bool active_scan,
+__STATIC_FORCEINLINE void hw_cfg_optimize_scan_params(bool active_scan,
     struct hw_cfg_scan_params *params)
 {
 }
 
-__INLINE void hw_cfg_restore_scan_params(struct hw_cfg_scan_params *params)
+__STATIC_FORCEINLINE void hw_cfg_restore_scan_params(struct hw_cfg_scan_params *params)
 {
 }
 
-__INLINE void hw_cfg_max_interference_perf(void)
+__STATIC_FORCEINLINE void hw_cfg_max_interference_perf(void)
 {
 }
 
-__INLINE void hw_cfg_max_range_perf(void)
+__STATIC_FORCEINLINE void hw_cfg_max_range_perf(void)
 {
 }
 
-__INLINE void hw_cfg_single_link_dynamic_rf_mode_ctrl(bool enable)
+__STATIC_FORCEINLINE void hw_cfg_single_link_dynamic_rf_mode_ctrl(bool enable)
 {
 }
 
-__INLINE void hw_cfg_dynamic_rf_mode_ctrl_reg(hw_cfg_dynamic_rf_mode_t cb)
+__STATIC_FORCEINLINE void hw_cfg_dynamic_rf_mode_ctrl_reg(hw_cfg_dynamic_rf_mode_t cb)
 {
 }
 
-__INLINE void hw_cfg_optimize_rx_scan(scan_cfg_id_t scan_cfg_id)
+__STATIC_FORCEINLINE void hw_cfg_optimize_rx_scan(scan_cfg_id_t scan_cfg_id)
 {
 }
 
-__INLINE void hw_cfg_restore_rx_scan(scan_cfg_id_t scan_cfg_id)
+__STATIC_FORCEINLINE void hw_cfg_restore_rx_scan(scan_cfg_id_t scan_cfg_id)
 {
 }
 

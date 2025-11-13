@@ -17,16 +17,15 @@ This application tests the following:
  * Removes all saved logs.
 
 Here are the example build commands for the application:
-    Without MCUboot::
 
-        west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- \
-            -DCONFIG_SPE_PATH=\"build/<BOARD>/<SPE>\"
+Without MCUboot::
 
-    With MCUboot::
+    west build -p -s <APP> -b <BOARD> -d build/<BOARD>/<APP>
 
-        west build -p -s <APP> -b <BOARD>@mcuboot//ns -d build/<BOARD>_ns/<APP> -- \
-            -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" \
-            -DCONFIG_SPE_PATH=\"build/<BOARD>/<SPE>\"
+With MCUboot::
+
+    west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- \
+        -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\"
 
 flash_map
 =========
@@ -45,9 +44,3 @@ This application tests the following APIs:
 * ``flash_area_flatten()``.
 * ``flash_write()``.
 * ``flash_read()``.
-
-Here are the example build commands for the application with MCUboot::
-
-    west build -p -s <APP> -b <BOARD>@mcuboot//ns -d build/<BOARD>_ns/<APP> -- \
-            -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" \
-            -DCONFIG_SPE_PATH=\"build/<BOARD>/<SPE>\" \

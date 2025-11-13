@@ -1,0 +1,12 @@
+sample:
+  name: PWM FIFO mode sample
+tests:
+  samples.drivers.pwm.pwm_atm_fifo.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - PWM FIFO sample finished successfully
+    tags:
+      - no_mcuboot

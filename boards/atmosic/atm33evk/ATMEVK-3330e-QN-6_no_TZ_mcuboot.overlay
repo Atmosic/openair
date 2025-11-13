@@ -1,8 +1,0 @@
-/*
- * Copyright (c) 2025 Atmosic
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
-#define ATM_SPE_SIZE 0
-#include <arm/atmosic/ATM33xx_mcuboot_partitions.dtsi>

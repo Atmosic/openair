@@ -1,0 +1,362 @@
+name: Build OpenAir Applications
+
+# This workflow builds OpenAir applications using the standard Zephyr development
+# environment setup (Option 1 from the OpenAir installation guide).
+# It installs the Zephyr SDK and uses west to build applications with sysbuild.
+#
+# The workflow automatically discovers all applications and samples with a sample.yaml
+# or testcase.yaml file and builds all test configurations on all configured boards.
+# Builds are grouped by application directory for efficiency, and .atm files are
+# bundled into archives for release.
+
+on:
+  pull_request:
+    branches:
+      - 'rel_*'
+  push:
+    branches:
+      - 'rel_*'
+  workflow_dispatch:
+
+jobs:
+  discover-applications:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PyYAML
+        run: pip3 install --user PyYAML
+
+      - name: Discover applications and tests
+        id: set-matrix
+        run: |
+          python3 << 'EOF'
+          import os
+          import yaml
+          import json
+
+          # Discover boards from board.yml files under boards/atmosic
+          boards = []
+          boards_dir = 'boards/atmosic'
+
+          for board_subdir in os.listdir(boards_dir):
+              # Exclude atmevk-02
+              if board_subdir == 'atmevk-02':
+                  continue
+
+              board_yml_path = os.path.join(boards_dir, board_subdir, 'board.yml')
+              if os.path.isfile(board_yml_path):
+                  with open(board_yml_path, 'r') as f:
+                      try:
+                          board_data = yaml.safe_load(f)
+                          if board_data and 'boards' in board_data:
+                              for board_entry in board_data['boards']:
+                                  board_name = board_entry.get('name')
+                                  if board_name:
+                                      boards.append(f"{board_name}")
+                      except Exception as e:
+                          print(f"Warning: Failed to parse {board_yml_path}: {e}")
+
+          boards.sort()
+          print(f"Discovered {len(boards)} boards:")
+          for board in boards:
+              print(f"  - {board}")
+
+          # Find all sample.yaml and testcase.yaml files and group by app_dir
+          app_tests = {}  # app_dir -> list of (test_name, board) tuples
+
+          for root, dirs, files in os.walk('.'):
+              for yaml_file in ['sample.yaml', 'testcase.yaml']:
+                  if yaml_file in files:
+                      yaml_path = os.path.join(root, yaml_file)
+                      app_dir = root[2:]  # Remove leading './'
+
+                      # Parse the YAML file
+                      with open(yaml_path, 'r') as f:
+                          try:
+                              data = yaml.safe_load(f)
+                              if data and 'tests' in data:
+                                  for test_name in data['tests'].keys():
+                                      # Create entries for all boards
+                                      for board in boards:
+                                          if app_dir not in app_tests:
+                                              app_tests[app_dir] = []
+                                          app_tests[app_dir].append({
+                                              'test_name': test_name,
+                                              'board': board
+                                          })
+                          except Exception as e:
+                              print(f"Warning: Failed to parse {yaml_path}: {e}")
+
+          # Create matrix entries - one per app_dir with all its test/board combinations
+          applications = []
+          for app_dir, tests in app_tests.items():
+              applications.append({
+                  'app_dir': app_dir,
+                  'builds': tests
+              })
+
+          # Output the matrix
+          matrix = {'include': applications}
+          total_builds = sum(len(app['builds']) for app in applications)
+          print(f"Found {len(applications)} applications with {total_builds} total builds")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+          EOF
+
+  build:
+    needs: discover-applications
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-applications.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: openair
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build gperf \
+            ccache dfu-util device-tree-compiler wget \
+            python3-dev python3-pip python3-setuptools python3-tk python3-wheel \
+            xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev \
+            libmagic1
+
+      - name: Set up Python environment
+        run: |
+          python3 -m pip install --user -U pip
+          python3 -m pip install --user west
+
+      - name: Cache Zephyr SDK
+        id: cache-zephyr-sdk
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyr-sdk-0.16.8
+          key: ${{ runner.os }}-zephyr-sdk-0.16.8
+
+      - name: Install Zephyr SDK
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        run: |
+          cd ~
+          # Using Zephyr SDK 0.16.8 which is compatible with Zephyr-based projects
+          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.8/zephyr-sdk-0.16.8_linux-x86_64.tar.xz
+          wget -O - https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.8/sha256.sum | shasum --check --ignore-missing
+          tar xvf zephyr-sdk-0.16.8_linux-x86_64.tar.xz
+          cd zephyr-sdk-0.16.8
+          ./setup.sh -t arm-zephyr-eabi
+
+      - name: Cache West modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/zephyr
+            ${{ github.workspace }}/bootloader
+            ${{ github.workspace }}/modules
+            ${{ github.workspace }}/.west
+          key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-west-modules-
+
+      - name: Initialize West workspace
+        run: |
+          cd ${{ github.workspace }}
+          # If .west directory exists from cache, remove it to reinitialize
+          if [ -d .west ]; then
+            rm -rf .west
+          fi
+          west init -l openair
+          west update
+          west zephyr-export
+
+      - name: Install Python dependencies
+        run: |
+          pip3 install --user -r ${{ github.workspace }}/zephyr/scripts/requirements.txt
+          pip3 install --user -r ${{ github.workspace }}/openair/scripts/requirements.txt
+
+      - name: Build all configurations for ${{ matrix.app_dir }}
+        run: |
+          python3 << 'EOF'
+          import subprocess
+          import json
+          import os
+          import glob
+
+          builds = ${{ toJson(matrix.builds) }}
+          app_dir = '${{ matrix.app_dir }}'
+          workspace = '${{ github.workspace }}'
+
+          # Create sanitized app_dir name for the tar file
+          app_dir_safe = app_dir.replace('/', '-')
+          tar_file = os.path.join(workspace, f'{app_dir_safe}.tar')
+
+          success_count = 0
+          fail_count = 0
+
+          for build in builds:
+              test_name = build['test_name']
+              board = build['board']
+
+              print(f"\n{'='*80}")
+              print(f"Building {test_name} on {board}")
+              print(f"{'='*80}\n")
+
+              try:
+                  result = subprocess.run(
+                      [
+                          'west', 'build', '-p', 'always',
+                          '-b', board,
+                          f'openair/{app_dir}',
+                          '--sysbuild',
+                          '-T', test_name,
+                          '--',
+                          '-DSB_CONFIG_ATM_ARCH=y',
+                          '-DSB_CONFIG_ATM_ARCH_ERASE_ALL=y'
+                      ],
+                      cwd=workspace,
+                      check=True,
+                      capture_output=False
+                  )
+
+                  # Find .atm files from this build
+                  build_dir = os.path.join(workspace, 'build')
+                  atm_files = glob.glob(os.path.join(build_dir, '**', '*.atm'), recursive=True)
+
+                  if atm_files:
+                      # Append .atm files to tar archive with renamed paths
+                      board_safe = board.replace('/', '-')
+
+                      for atm_file in atm_files:
+                          basename = os.path.basename(atm_file)
+                          new_name = f"{test_name}-{board_safe}-{basename}"
+
+                          # Use tar to append with transform to rename the file
+                          tar_cmd = [
+                              'tar', '-rf', tar_file,
+                              '--transform', f's|.*|{new_name}|',
+                              '-C', os.path.dirname(atm_file),
+                              basename
+                          ]
+
+                          print(f"  Adding {basename} -> {new_name}")
+                          subprocess.run(tar_cmd, check=True, capture_output=True)
+
+                      success_count += 1
+                      print(f"✅ Successfully built {test_name} on {board} ({len(atm_files)} .atm files)")
+                  else:
+                      print(f"⚠️  Build succeeded but no .atm files found for {test_name} on {board}")
+                      success_count += 1
+
+              except subprocess.CalledProcessError as e:
+                  fail_count += 1
+                  print(f"❌ Failed to build {test_name} on {board}")
+                  # Continue with next build instead of failing
+
+          print(f"\n{'='*80}")
+          print(f"Build Summary: {success_count} succeeded, {fail_count} failed")
+          print(f"{'='*80}\n")
+
+          # Exit with error if all builds failed
+          if success_count == 0 and fail_count > 0:
+              exit(1)
+          EOF
+
+      - name: Compress tar archive
+        if: success()
+        id: create-archive
+        run: |
+          # Create a sanitized app_dir name for the archive
+          APP_DIR_SAFE=$(echo "${{ matrix.app_dir }}" | tr '/' '-')
+          TAR_FILE="${{ github.workspace }}/${APP_DIR_SAFE}.tar"
+          ARCHIVE_NAME="${APP_DIR_SAFE}.tar.gz"
+
+          # Check if tar file exists and has content
+          if [ ! -f "$TAR_FILE" ]; then
+            echo "No tar file found - no .atm files were generated"
+            echo "has_archive=false" >> $GITHUB_OUTPUT
+          else
+            echo "Compressing tar file..."
+            echo "Contents of tar file:"
+            tar -tvf "$TAR_FILE"
+
+            # Compress the tar file
+            gzip "$TAR_FILE"
+
+            echo "Created archive: ${ARCHIVE_NAME}"
+            echo "has_archive=true" >> $GITHUB_OUTPUT
+            echo "archive_name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
+            echo "archive_path=${{ github.workspace }}/${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload archive to release
+        if: success() && steps.create-archive.outputs.has_archive == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the release tag from the event or create one based on the run
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            TAG_NAME="pr-${{ github.event.pull_request.number }}-${{ github.run_number }}"
+            RELEASE_NAME="PR #${{ github.event.pull_request.number }} - Build ${{ github.run_number }}"
+            IS_PRERELEASE="--prerelease"
+          else
+            TAG_NAME="build-${{ github.run_number }}"
+            RELEASE_NAME="Build ${{ github.run_number }}"
+            IS_PRERELEASE=""
+          fi
+
+          # Check if release exists, create if not
+          if ! gh release view "$TAG_NAME" --repo ${{ github.repository }} > /dev/null 2>&1; then
+            echo "Creating release $TAG_NAME"
+            gh release create "$TAG_NAME" \
+              --repo ${{ github.repository }} \
+              --title "$RELEASE_NAME" \
+              --notes "Automated build from workflow run ${{ github.run_number }}<br>Commit: ${{ github.sha }}" \
+              $IS_PRERELEASE \
+              --target ${{ github.sha }}
+          fi
+
+          # Upload the archive to the release
+          ARCHIVE_PATH="${{ steps.create-archive.outputs.archive_path }}"
+          ARCHIVE_NAME="${{ steps.create-archive.outputs.archive_name }}"
+
+          echo "Uploading ${ARCHIVE_NAME}"
+          gh release upload "$TAG_NAME" "$ARCHIVE_PATH" --repo ${{ github.repository }} --clobber
+
+      - name: Build summary
+        if: always()
+        run: |
+          echo "## Build Summary: ${{ matrix.app_dir }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Application:** \`${{ matrix.app_dir }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Count builds
+          BUILDS='${{ toJson(matrix.builds) }}'
+          BUILD_COUNT=$(echo "$BUILDS" | python3 -c "import sys, json; print(len(json.load(sys.stdin)))")
+          echo "**Total builds:** $BUILD_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Show archive info if it exists
+          if [ "${{ steps.create-archive.outputs.has_archive }}" == "true" ]; then
+            ARCHIVE_PATH="${{ steps.create-archive.outputs.archive_path }}"
+            ARCHIVE_SIZE=$(du -h "$ARCHIVE_PATH" | cut -f1)
+            echo "**Archive:** \`${{ steps.create-archive.outputs.archive_name }}\` ($ARCHIVE_SIZE)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # List contents of the archive
+            echo "### Archive contents:" >> $GITHUB_STEP_SUMMARY
+            tar -tzf "$ARCHIVE_PATH" | while read file; do
+              echo "- $file" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "⚠️ No .atm files generated" >> $GITHUB_STEP_SUMMARY
+          fi
+

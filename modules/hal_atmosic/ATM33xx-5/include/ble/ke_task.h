@@ -6,7 +6,7 @@
  * @brief This file contains the definition related to kernel task management.
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -64,18 +64,18 @@ typedef int (*ke_msg_func_t)(ke_msg_id_t const msgid, void const *param,
                              ke_task_id_t const dest_id, ke_task_id_t const src_id);
 
 /// Macro for message handler function declaration or definition
-#define KE_MSG_HANDLER(msg_name, param_struct)   __STATIC int msg_name##_handler(ke_msg_id_t const msgid,     \
-                                                                                param_struct const *param,  \
-                                                                                ke_task_id_t const dest_id, \
-                                                                                ke_task_id_t const src_id)
+#define KE_MSG_HANDLER(msg_name, param_struct)   __RWIP_STATIC int msg_name##_handler(ke_msg_id_t const msgid,     \
+                                                                                      param_struct const *param,  \
+                                                                                      ke_task_id_t const dest_id, \
+                                                                                      ke_task_id_t const src_id)
 
 #define KE_MSG_HANDLER_NO_STATIC(msg_name, param_struct)   int msg_name##_handler(ke_msg_id_t const msgid,     \
-                                                                                param_struct const *param,  \
-                                                                                ke_task_id_t const dest_id, \
-                                                                                ke_task_id_t const src_id)
+                                                                                  param_struct const *param,  \
+                                                                                  ke_task_id_t const dest_id, \
+                                                                                  ke_task_id_t const src_id)
 
 /// Macro for message handlers table declaration or definition
-#define KE_MSG_HANDLER_TAB(task)   __STATIC const struct ke_msg_handler task##_msg_handler_tab[] =
+#define KE_MSG_HANDLER_TAB(task) __RWIP_STATIC_VAR const struct ke_msg_handler task##_msg_handler_tab[] =
 
 /// Element of a message handler table.
 typedef struct ke_msg_handler

@@ -9,6 +9,16 @@
 #include <zephyr/dt-bindings/i2c/i2c.h>
 #include <zephyr/dt-bindings/pwm/pwm.h>
 
+#if !defined(ATM_SPE_APP) && !defined(ATM_NS_APP)
+#define ATM_NO_TZ
+#endif
+
+#if !defined(ATM_DTS_MCUBOOT) && (defined(ATM_NO_TZ) || defined(ATM_NS_APP))
+// device tree is being processed as the user application in
+// either a no-TZ image or an NS image configurations
+#define ATM_DTS_USER_APP
+#endif
+
 / {
 	power-states {
 		idle: idle {
@@ -40,6 +50,7 @@
 			power-state-name = "soft-off";
 			substate-id = <1>;
 			min-residency-us = <100000>;
+			status = "disabled";
 		};
 	};
 
@@ -80,11 +91,18 @@
 	};
 
 	soc {
+#ifdef ATM_NS_APP
+		peripheral@40000000 {
+#else
 		peripheral@50000000 {
+#endif
 			#address-cells = <1>;
 			#size-cells = <1>;
+#ifdef ATM_NS_APP
+			ranges = <0x0 0x40000000 0x10000000>;
+#else
 			ranges = <0x0 0x50000000 0x10000000>;
-
+#endif
 			#include "ATM34_peripherals.dtsi"
 		};
 
@@ -92,6 +110,17 @@
 			compatible = "atmosic,retained-hib";
 		};
 	};
+
+	aliases {
+		watchdog0 = &wdog0;
+	};
+};
+
+&wdog0 {
+#ifdef ATM_NS_APP
+	// non-secure watchdog uses interrupts
+	interrupts = <1 2>;
+#endif
 };
 
 &nvic {

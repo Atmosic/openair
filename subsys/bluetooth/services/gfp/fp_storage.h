@@ -97,6 +97,59 @@ void fp_storage_utp_mode_save(fp_fmdn_utp_mode_t mode);
 uint8_t fp_storage_utp_mode_get(void);
 
 /**
+ * @brief fp save utp_ignore_ring_auth flag
+ * @param[in] ignore_auth flag value (0 or 1)
+ */
+void fp_storage_utp_ignore_ring_auth_save(uint8_t ignore_auth);
+
+/**
+ * @brief fp get saved utp_ignore_ring_auth flag
+ *
+ * @return saved utp_ignore_ring_auth flag
+ */
+uint8_t fp_storage_utp_ignore_ring_auth_get(void);
+
+/*
+ * @brief Save personalized name received via Fast Pair Additional Data
+ * @param[in] name Personalized name string (null-terminated)
+ *
+ * @return 0 if successful. Otherwise, a (negative) error code is returned
+ */
+__NONNULL_ALL
+int fp_storage_personalized_name_save(const char *name);
+
+/**
+ * @brief Delete saved personalized name
+ *
+ * @return 0 if successful. Otherwise, a (negative) error code is returned
+ */
+int fp_storage_personalized_name_delete(void);
+
+/**
+ * @brief Get saved personalized name
+ * @param[out] name Buffer to store the personalized name
+ * @param[in] name_size Size of the name buffer
+ *
+ * @return 0 if successful. Otherwise, a (negative) error code is returned
+ */
+__NONNULL_ALL
+int fp_storage_personalized_name_get(char *name, size_t name_size);
+
+/**
+ * @brief Check if personalized name is saved
+ *
+ * @return true if personalized name is saved
+ */
+bool fp_storage_personalized_name_valid(void);
+
+/**
+ * @brief Get the effective device name (personalized name if available, otherwise default)
+ *
+ * @return Pointer to the effective device name string
+ */
+const char *fp_storage_get_effective_name(void);
+
+/**
  * @brief fp clear current account key
  */
 void fp_storage_cur_account_key_clear(void);
@@ -203,6 +256,13 @@ void fp_storage_bt_id_base_save(uint8_t id);
  * @return bt id base
  */
 uint8_t fp_storage_bt_id_base_get(void);
+
+/**
+ * @brief fp storage bt id base valid
+ *
+ * @return true if bt id base valid
+ */
+bool fp_storage_bt_id_base_valid(void);
 
 #ifdef __cplusplus
 }

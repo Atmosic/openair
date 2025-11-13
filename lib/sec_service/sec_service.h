@@ -45,18 +45,6 @@ extern "C" {
 
 #include <stdbool.h>
 
-/**
- * @brief checks if caller has access to passed address range
- *
- * @param ptr ptr to address in question
- * @param len length of region
- * @param ns_caller true if from NS space
- * @param write check for write access
- * @return true if access is OK, false otherwise
- */
-bool mem_check_has_access(void const *ptr, uint32_t len, bool ns_caller,
-    bool write);
-
 #if VERIFY_ATMWSTK
 /**
  * @brief Verify the integrity of the ATMWSTK
@@ -70,6 +58,17 @@ bool verify_atmwstk(void);
  */
 void sec_lockdown(void);
 
+#ifdef SECURE_PROC_ENV
+/**
+ * @brief checks if caller has access to passed address range
+ *
+ * @param ptr ptr to address in question
+ * @param len length of region
+ * @param ns_caller true if from NS space
+ * @param write check for write access
+ * @return true if access is OK, false otherwise
+ */
+bool mem_check_has_access(void const *ptr, uint32_t len, bool ns_caller, bool write);
 
 /**
  * @brief Perform secure PPC configuration.
@@ -77,6 +76,7 @@ void sec_lockdown(void);
  * @note, weak alias, override-able via SPE extensions
  */
 void sec_ppc_cfg(void);
+#endif
 
 #ifdef __cplusplus
 }

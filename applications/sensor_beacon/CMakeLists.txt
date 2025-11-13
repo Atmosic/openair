@@ -14,6 +14,7 @@ set(app_sources
   src/sensor_interface.c
   src/battery_monitor.c
   src/beacon_adv.c
+  src/led_button_ctrl.c
 )
 
 target_sources(app PRIVATE

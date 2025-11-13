@@ -26,3 +26,15 @@
 		status = "okay";
 	};
 };
+
+&wdog0 {
+	status = "okay";
+};
+
+&soc_off {
+        status = "okay";
+};
+
+&cpu0 {
+	cpu-power-states = <&idle &sleep &retain &hibernate &soc_off>;
+};

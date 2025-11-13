@@ -1,0 +1,20 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Ranging Capability Out-of-Band Data Element Library Configuration
+
+config RANGING_OOB_DE
+	bool "Ranging Capability Out-of-Band Data Element Library"
+	help
+	  Enable the Ranging Capability Out-of-Band (OOB) Data Element library.
+	  This library provides APIs for creating, parsing, and validating
+	  ranging capability data elements used in Fast Pair Find My Device
+	  Network and other ranging applications.
+
+config RANGING_OOB_DE_TYPE_BLE_CS_CONFIG_SEC_TYPE
+	bool "Include security type in BLE CS configuration"
+	depends on RANGING_OOB_DE
+	help
+	  Include security type in BLE CS configuration data element.
+	  This is required for Fast Pair Find My Device Network.

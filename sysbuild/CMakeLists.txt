@@ -6,7 +6,7 @@
 sysbuild_add_subdirectory(module)
 
 # Include SPE if enabled.
-if(SB_CONFIG_SPE)
+if(SB_CONFIG_SPE AND NOT SB_CONFIG_OVERRIDE_NO_SPE)
   sysbuild_add_subdirectory(spe)
 endif()
 

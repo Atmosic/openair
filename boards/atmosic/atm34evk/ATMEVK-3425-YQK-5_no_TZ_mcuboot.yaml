@@ -1,7 +1,0 @@
-identifier: ATMEVK-3425-YQK-5@mcuboot/ATM34xx-5/no_TZ
-name: ATMEVK-3425-YQK-5_mcuboot_no_TZ
-type: mcu
-arch: arm
-toolchain:
-  - zephyr
-vendor: atmosic

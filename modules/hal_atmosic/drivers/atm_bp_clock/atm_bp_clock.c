@@ -20,9 +20,9 @@
 #include <inttypes.h>
 #include "arch.h"
 #include "atm_bp_clock.h"
-#define __CLKRSTGEN_GET_STATIC_INLINE __STATIC
+#define __CLKRSTGEN_GET_STATIC_INLINE static
 #define __CLKRSTGEN_SET_STATIC_INLINE \
-    __attribute__((section(".data_text"))) __STATIC
+    __attribute__((section(".data_text"))) static
 #include "at_clkrstgen.h"
 #ifdef SECURE_MODE
 #include "rep_vec.h"

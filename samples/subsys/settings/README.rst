@@ -36,7 +36,7 @@ Build command:
 
 .. code-block:: bash
 
-    west build -p always -b <BOARD>//ns openair/samples/subsys/settings --sysbuild -T samples.subsys.settings.atm
+    west build -p always -b <BOARD> openair/samples/subsys/settings --sysbuild -T samples.subsys.settings.atm
 
 Flash command:
 

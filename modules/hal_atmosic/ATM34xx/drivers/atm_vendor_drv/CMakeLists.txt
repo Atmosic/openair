@@ -4,7 +4,5 @@
 
 if(CONFIG_ATM_VENDOR_DRIVER)
   zephyr_include_directories(.)
-  zephyr_link_libraries(
-    ${LINKERFLAGPREFIX},"${PRECOMPILED_DRIVER_DIR}/atm_vendor_drv/atm_vendor_drv_core.po"
-  )
+  atm_source_core_file(atm_vendor_drv_core atm_vendor_drv)
 endif()

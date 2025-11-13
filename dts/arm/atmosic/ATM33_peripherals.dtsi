@@ -26,6 +26,7 @@ wdog0: wdog@81000 {
 	compatible = "arm,cmsdk-watchdog";
 	clocks = <&sysclk>;
 	reg = <0x00081000 0x1000>;
+	status = "disabled";
 };
 
 gpio0: gpio@100000 {
@@ -166,8 +167,8 @@ spi0: spi@147000 {
 	status = "disabled";
 };
 
-kscan: kscan@14a000 {
-	compatible = "atmosic,kscan";
+input_kbd_matrix: input_kbd_matrix@14a000 {
+	compatible = "atmosic,input-kbd-matrix";
 	reg = <0x0014a000 0x1000>;
 	interrupts = <43 2>;
 	status = "disabled";
@@ -271,6 +272,7 @@ adc: adc@15a000 {
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <11>;
 	};
 
 	/* VStore channel (ch-store = <2>) */
@@ -279,6 +281,16 @@ adc: adc@15a000 {
 		zephyr,gain = "ADC_GAIN_1_4";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <11>;
+	};
+
+	/* Vdd1a channel (ch-core = <3>) */
+	channel@3 {
+		reg = <3>;
+		zephyr,gain = "ADC_GAIN_1_2";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <11>;
 	};
 };
 
@@ -315,6 +327,13 @@ brownout: brownout {
 };
 
 pinctrl: pin-controller {
-	compatible = "atmosic,atm-pinctrl";
+	compatible = "atmosic,atm33-pinctrl";
 	num-pins = <31>;
+};
+
+wurx: wurx {
+	compatible = "atmosic,wurx";
+	wurx0-enabled;
+	wurx1-enabled;
+	status = "disabled";
 };

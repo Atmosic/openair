@@ -42,6 +42,12 @@ config RRSP_LED_IND
 	    >2.6V 2 GREEN blinks
 	    <= 2.6V single GREEN blink
 
+config BTN_FAKE_CS_DATA
+	bool "Fake CS data with button"
+	select RAS_PTS_FAKE_CS_DATA
+	help
+	  Press button in connected state to generate fake CS data
+
 config RRSP_BUZZER_IND
 	bool "Enable Buzzer indication"
 	select ATM_BUZZER

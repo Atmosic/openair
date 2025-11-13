@@ -6,7 +6,7 @@
  * @brief RW Transport Layer header file. Defines a common interface for any transport layers
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */
@@ -164,7 +164,7 @@ void rwtl_init(bool reset);
 void rwtl_rx_client_subscribe(const rwtl_rx_client_t* p_client);
 
 /// Prepare TX Client structure before requesting transmission
-__INLINE void rwtl_tx_prepare(rwtl_tx_client_t* p_client, uint8_t lc, uint16_t data_len, uint8_t* p_data)
+__RWIP_INLINE void rwtl_tx_prepare(rwtl_tx_client_t* p_client, uint8_t lc, uint16_t data_len, uint8_t* p_data)
 {
     p_client->lc = lc;
     p_client->data_len = data_len;

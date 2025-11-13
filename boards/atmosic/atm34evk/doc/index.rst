@@ -102,22 +102,20 @@ It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to `
 
 Applications for the Atmosic EVK boards can be built, flashed, and debugged using the familiar `west build` and `west flash`.
 
-The atm34evk boards require at least two images to be built: the SPE and the application.  SPE is the Secure Processing Environment, and the application typically resides in the non-secure (NSPE) portion.
+The atm34evk boards can be built with a single application image using the default secure board files. For advanced security requirements, applications can optionally be built with separate SPE (Secure Processing Environment) and NSPE (Non-Secure Processing Environment) images. See :ref:`spe_nspe_architecture` for details on SPE/NSPE builds.
 
 The Atmosic SPE can be found under ``<WEST_TOPDIR>/openair/samples/spe``.
 
 .. _variable assignments:
 
-In the remainder of this document, substitute for ``<ZEPHYR_TOOLCHAIN_VARIANT>``, ``<ZEPHYR_SDK_INSTALL_DIR>``, ``<WEST_TOPDIR>``, ``<SPE>``, ``<APP>``, ``<APP_NAME>``, ``<MCUBOOT>``, ``<ATMWSTK>``, ``<BOARD>``, and ``<DEVICE_ID>`` appropriately.  For example::
+In the remainder of this document, substitute for ``<ZEPHYR_TOOLCHAIN_VARIANT>``, ``<ZEPHYR_SDK_INSTALL_DIR>``, ``<WEST_TOPDIR>``, , ``<APP>``, ``<APP_NAME>``, ``<MCUBOOT>``, ``<BOARD>``, and ``<DEVICE_ID>`` appropriately.  For example::
 
  <ZEPHYR_TOOLCHAIN_VARIANT>: zephyr
  <ZEPHYR_SDK_INSTALL_DIR>: /absolute/path/to/zephyrSDK
  <WEST_TOPDIR>: /absolute/path/to/zephyrproject
- <SPE>: openair/samples/spe
  <APP>: zephyr/samples/bluetooth/peripheral
  <APP_NAME>: APP Name for ISP section
  <MCUBOOT>: bootloader/mcuboot/boot/zephyr
- <ATMWSTK>: PD50 or CPD200
  <BOARD>: ATMEVK-3430e-YQN-5
  <DEVICE_ID>: 000900036960
 
@@ -150,84 +148,58 @@ There are two main options as stated above:
 A. Non-MCUboot Option
 ---------------------
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Using Statically Linked BLE Link Controller Library for Atmosic Wireless Stack
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. Build the Application:
 
-1. Build the SPE:
+Build the application with the default secure board::
 
-::
+  west build -p -s <APP> -b <BOARD> -d build/<BOARD>/<APP> -- -DCONFIG_ATM_EUI_ALLOW_RANDOM=y
 
-  west build -p -s <SPE> -b <BOARD> -d build/<BOARD>/<SPE>
-
-2. Build the Application:
-
-Note: ``<BOARD>//ns`` is the non-secure variant of ``<BOARD>``.
-
-Build the app with the non-secure board variant and the SPE configured as follows::
-
-  west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DCONFIG_ATM_EUI_ALLOW_RANDOM=y
-
-Passing the path to the SPE is for linking in the non-secure-callable veneer file generated in building the SPE.
-
-With this approach, each built image has to be flashed separately.  Optionally, build a single merged image by enabling ``CONFIG_MERGE_SPE_NSPE``, thereby minimizing the flashing steps::
-
-  west build -p -s <APP> -b <BOARD>//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DCONFIG_MERGE_SPE_NSPE=y
-
-3. Flashing the SPE and the Application:
+2. Flashing the Application:
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.
 
-Flash the SPE and the application separately if ``CONFIG_MERGE_SPE_NSPE`` was not enabled::
+Flash the application::
 
-  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<SPE> --noreset
-  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>_ns/<APP>
+  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<APP>
 
-Alternatively, if ``CONFIG_MERGE_SPE_NSPE`` was enabled in building the application, the first step (programming the SPE) can be skipped.
+.. note::
+  For advanced security requirements using separate SPE and NSPE images, see :ref:`spe_nspe_architecture`.
 
 -----------------
 B. MCUboot Option
 -----------------
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Using Statically Linked BLE Link Controller Library for Atmosic Wireless Stack
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 .. _MCUboot option:
 
-1. Build the MCUboot and the SPE:
+1. Build the MCUboot:
 
 To build with MCUboot, for example, DFU is needed, first build MCUboot::
 
-  west build -p -s <MCUBOOT> -b <BOARD>@mcuboot_bl -d build/<BOARD>/<MCUBOOT>
-
-and then the Atmosic SPE::
-
-  west build -p -s <SPE> -b <BOARD>@mcuboot -d build/<BOARD>/<SPE> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_GENERATE_UNSIGNED_IMAGE=n -DDTS_EXTRA_CPPFLAGS=";"
+  west build -p -s <MCUBOOT> -b <BOARD>@mcuboot_bl -d build/<BOARD>/mcuboot
 
 Note that make use of "board revision" to configure our board partitions to work for MCUboot.  On top of the "revisions," MCUboot currently needs an additional overlay that must be provided through the command line to give it the entire SRAM.
 
-2. Build the Application with MCUboot and SPE:
+2. Build the Application with MCUboot:
 
-Build the application with MCUboot and SPE as follows::
+Build the application with MCUboot as follows::
 
-  west build -p -s <APP> -b <BOARD>@mcuboot//ns -d build/<BOARD>_ns/<APP> -- -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DCONFIG_SPE_PATH=\"<WEST_TOPDIR>/build/<BOARD>/<SPE>\" -DCONFIG_ATMWSTK_<ATMWSTK>=y -DDTS_EXTRA_CPPFLAGS=";" -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
+  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DDTS_EXTRA_CPPFLAGS=";" -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
 
-This is somewhat of a non-standard workflow.  When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command line, ``west`` automatically creates a signed, merged image (``zephyr.signed.{bin,hex}``), which is ultimately used by ``west flash`` to program the device.  The original application binaries are renamed with a ``.nspe`` suffixed to the file basename (``zephyr.{bin,hex,elf}`` renamed to ``zephyr.nspe.{bin,hex,elf}``) and are the ones that should be supplied to a debugger.
+When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command line, ``west`` automatically creates a signed image (``zephyr.signed.{bin,hex}``), which is ultimately used by ``west flash`` to program the device.
 
-3. Flashing the MCUboot, SPE, and the Application:
+3. Flashing the MCUboot and the Application:
 
 Flash MCUboot
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
 
-   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<MCUBOOT> --noreset
+   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/mcuboot --noreset
 
 Note that adding ``--erase_flash`` is an option to erase Flash if needed.
 
-Flash the signed application image (merged with SPE)::
+Flash the signed application image::
 
-   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>_ns/<APP>
+   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<APP>
 
 ===========================
 BLE Link Controller Options
@@ -235,9 +207,11 @@ BLE Link Controller Options
 
 When building a Bluetooth application (``CONFIG_BT``) the BLE driver component provides a statically linked BLE link controller library.  The BLE link controller sits at the lowest layer of the Zephyr Bluetooth protocol stack.  Zephyr provides the upper Bluetooth Host stack that can interface with BLE link controllers that conform to the standard Bluetooth Host Controller Interface specification.
 
-BLE Link Controller comes as a library that can be statically linked along with user application. Three flavors of the BLE link controller library are provided as mentioned below and applications can choose one among them depending on their needs.
-The flavor defaults to ``CONFIG_ATMWSTK_PD50=y`` which is a designation of a peripheral-only device (PD) with a reduced feature set (50).  The PD50 controller offers basic BLE 6.0 features that can support most peripheral-only applications.  The use of static linkage and reduced feature sets can help reduce the total code memory footprint of the application. The other supported choice is ``CONFIG_ATMWSTK_CPD200=y``.
+BLE Link Controller comes as a library that can be statically linked along with user application. Two flavors of the BLE link controller library are provided as mentioned below and applications can choose one among them depending on their needs.
 
+On ATM34 platforms, Kconfig can automatically select the appropriate BLE stack flavor based on the ``CONFIG_BT_*`` settings in the application's ``prj.conf`` file. The automatically-selected flavor can be overridden by bullding with ``-DCONFIG_ATMWSTK_<ATMWSTK>=y`` on the command line.
+
+The flavor ``CONFIG_ATMWSTK_PD50=y`` is a designation of a peripheral-only device (PD) with a reduced feature set (50).  The PD50 controller offers basic BLE 6.0 features that can support most peripheral-only applications.  The use of static linkage and reduced feature sets can help reduce the total code memory footprint of the application. The other supported choice is ``CONFIG_ATMWSTK_CPD200=y``.
 
 -------------------
 CONFIG_ATMWSTK_PD50

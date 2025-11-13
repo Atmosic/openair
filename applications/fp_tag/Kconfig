@@ -1,9 +1,0 @@
-# Copyright (c) 2025 Atmosic
-#
-# SPDX-License-Identifier: Apache-2.0
-
-source "Kconfig.zephyr"
-
-module = FP_TAG
-module-str = fp_tag
-source "subsys/logging/Kconfig.template.log_config"

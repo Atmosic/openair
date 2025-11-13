@@ -133,7 +133,7 @@ static void batt_coin_init(batt_cbs const *init)
 #ifdef CONFIG_SOC_FAMILY_ATM
     ASSERT_ERR(coin != NULL);
 
-    int ret = adc_channel_setup(coin, &channel_cfg);
+    __unused int ret = adc_channel_setup(coin, &channel_cfg);
     ASSERT_INFO(ret == 0, ret, 0);
 #endif
 }

@@ -1,4 +1,4 @@
-.. _peripheral:
+.. _peripheral-sample:
 
 Bluetooth: peripheral
 #####################
@@ -24,7 +24,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/bluetooth/peripheral --sysbuild -T samples.bluetooth.peripheral.atm
+   west build -p always -b <BOARD> openair/samples/bluetooth/peripheral --sysbuild -T samples.bluetooth.peripheral.atm
 
 Flash command:
 

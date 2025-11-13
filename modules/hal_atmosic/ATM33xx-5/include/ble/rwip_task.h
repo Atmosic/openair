@@ -6,7 +6,7 @@
  * @brief Task Identifier description for the RW IP
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */
@@ -87,7 +87,6 @@ enum TASK_API_ID
     // -----------------------------------------------------------------------------------
     TASK_ID_AHI          = 16,   // Application Host Interface
     TASK_ID_HCI          = 17,   // Host to Control Interface
-    TASK_ID_DISPLAY      = 19,   // LCD/Display task
 
     // -----------------------------------------------------------------------------------
     // --------------------- BLE Profile TASK API Identifiers ----------------------------

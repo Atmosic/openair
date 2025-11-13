@@ -1,0 +1,15 @@
+common:
+  tags:
+    - drivers
+    - flash
+  sysbuild: true
+  expect_reboot: true
+
+tests:
+  tests.drivers.flash.atm_abnormal.atm.before_erase:
+    extra_configs:
+      - CONFIG_FLASH_ATM_ABNORMAL_TEST_BEFORE_ERASE=y
+
+  tests.drivers.flash.atm_abnormal.atm.during_erase:
+    extra_configs:
+      - CONFIG_FLASH_ATM_ABNORMAL_TEST_DURING_ERASE=y

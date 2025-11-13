@@ -26,6 +26,7 @@ static enum {
 	PLAYBACK_IDLE, /* codec is off */
 	PLAYBACK_READY, /* codec is on*/
 	PLAYBACK_BUSY, /* playing */
+	PLAYBACK_STOPPING, /* force stopping */
 } pb_sts;
 
 #ifdef CONFIG_ATM_FIFO_TX_ISR
@@ -77,13 +78,19 @@ int audio_stream_init(const struct audio_stream_config *cfg)
 		audio_codec_set_property(codec_dev_handle, AUDIO_PROPERTY_OUTPUT_VOLUME, AUDIO_CHANNEL_ALL, prop);
 	}
 
-    return 0;
+	pb_sts = PLAYBACK_IDLE;
+	return 0;
 }
 
 static inline int write_samples(const struct device *dev_i2s, uint8_t **buf, int *residue)
 {
 	void *mem_block;
 	int size;
+
+	// Forcing stop support
+	if (pb_sts != PLAYBACK_BUSY) {
+		return -EINVAL;
+	}
 
 #ifdef CONFIG_ATM_FIFO_TX_ISR
 	size = MIN(*residue, BLOCK_SIZE >> 1);
@@ -144,7 +151,12 @@ static int codec_onoff(const struct device *dev_i2s, struct i2s_config const *i2
 	}
 	i2s_configure(dev_i2s, I2S_DIR_TX, i2s_cfg);
 	i2s_write(dev_i2s, (void *)dummy, sizeof(dummy));
-	i2s_trigger(dev_i2s, I2S_DIR_TX, I2S_TRIGGER_START);
+	int ret = i2s_trigger(dev_i2s, I2S_DIR_TX, I2S_TRIGGER_START);
+	if (ret < 0) {
+		// If START fails, try to reset the I2S to a known state
+		i2s_trigger(dev_i2s, I2S_DIR_TX, I2S_TRIGGER_PREPARE);
+		return ret;
+	}
 
 	/* friendly for non-codec environment */
 	if (codec_dev_handle && device_is_ready(codec_dev_handle)) {
@@ -164,6 +176,11 @@ static void i2s_write_cb(const struct device *dev, void *ctx)
 {
 	struct write_context *w_ctx = ctx;
 	write_samples(dev, &w_ctx->buf, &w_ctx->size);
+
+	// force stop
+	if (pb_sts == PLAYBACK_STOPPING) {
+		w_ctx->size = 0;
+	}
 }
 #endif
 
@@ -189,6 +206,12 @@ int audio_stream_write(const void *pcm_data, size_t size_bytes,
 		return -EINVAL;
 	}
 
+	if (pb_sts != PLAYBACK_READY) {
+		return -EBUSY;
+	}
+
+	pb_sts = PLAYBACK_BUSY;
+
 #ifdef CONFIG_ATM_FIFO_TX_ISR
 	BLOCK_SIZE = i2s_atm_get_tx_buffer_size(i2s_dev_handle);
 #endif
@@ -196,19 +219,19 @@ int audio_stream_write(const void *pcm_data, size_t size_bytes,
 	// configure I2S
 	int ret = i2s_configure(i2s_dev_handle, I2S_DIR_TX, &i2s_config_handle);
 	if (ret < 0) {
-		return ret;
+		goto cleanup;
 	}
 
 	switch (mode) {
 	case AUDIO_PLAYBACK_MODE_NORMAL: {
 		// I2s_write directly from audio data.
 		if ((ret = i2s_write(i2s_dev_handle, (void *)pcm_data, size_bytes))) {
-			return ret;
+			goto cleanup;
 		}
 
 		// Start I2S
 		if ((ret = i2s_trigger(i2s_dev_handle, I2S_DIR_TX, I2S_TRIGGER_START))) {
-			return ret;
+			goto cleanup;
 		}
 	} break;
 	case AUDIO_PLAYBACK_MODE_PADDED_SAMPLE: {
@@ -224,9 +247,9 @@ int audio_stream_write(const void *pcm_data, size_t size_bytes,
 #endif
 
 		// Start I2S
-		int ret = i2s_trigger(i2s_dev_handle, I2S_DIR_TX, I2S_TRIGGER_START);
+		ret = i2s_trigger(i2s_dev_handle, I2S_DIR_TX, I2S_TRIGGER_START);
 		if (ret < 0) {
-			return ret;
+			goto cleanup;
 		}
 
 #ifdef CONFIG_ATM_FIFO_TX_ISR
@@ -234,38 +257,53 @@ int audio_stream_write(const void *pcm_data, size_t size_bytes,
 			k_yield();
 		}
 #else
-		// write until data is consumped
+		// write until data is consumed
 		while (size_bytes) {
-			if (write_samples(i2s_dev_handle, &buf, &size_bytes) == -ENOMEM) {
+			int ret = write_samples(i2s_dev_handle, &buf, &size_bytes);
+			if (ret == -ENOMEM) {
 				k_yield();
+			} else if (ret) {
+				break;
 			}
 		}
 #endif
 	} break;
 
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		goto cleanup;
 	}
 
 	// Drain all data from queue, then stop.
 	ret = i2s_trigger(i2s_dev_handle, I2S_DIR_TX, I2S_TRIGGER_DRAIN);
 	if (ret) {
-		return ret;
+		goto cleanup;
 	}
 
 	// wait for last I2S to be ready
 	while (i2s_config_get(i2s_dev_handle, I2S_DIR_TX)) {
 		k_yield();
-	};
+	}
 
+	pb_sts = PLAYBACK_READY;
 	return 0;
+
+cleanup:
+	return ret;
 }
 
 int audio_stream_stop(void)
 {
-	if (pb_sts != PLAYBACK_READY) {
-		return -EINVAL;
+	if (!i2s_dev_handle || (pb_sts == PLAYBACK_IDLE)) {
+		return 0; // Already stopped
 	}
+
+	if (pb_sts == PLAYBACK_BUSY) {
+		pb_sts = PLAYBACK_STOPPING;
+		return 0;
+	}
+
+	// In ready or stopping
 	int ret = codec_onoff(i2s_dev_handle, &i2s_config_handle, false);
 	pb_sts = PLAYBACK_IDLE;
 	return ret;

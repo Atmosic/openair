@@ -28,6 +28,8 @@ LOG_MODULE_DECLARE(gfps, CONFIG_ATM_GFPS_LOG_LEVEL);
 #define SS_KEY_OWNER_KEY       "owner_key"
 #define SS_KEY_EID_KEY         "eid_key"
 #define SS_KEY_UTP_MODE        "utp_mode"
+#define SS_KEY_UTP_IGNORE_RING_AUTH "utp_ignore_ring_auth"
+#define SS_KEY_PERSONALIZED_NAME    "pers_name"
 #define SS_KEY_BT_ID_BASE      "bt_id_base"
 #define FP_STORAGE_KEY(subkey) S_KEY_MAIN "/" subkey
 
@@ -42,6 +44,10 @@ static int account_key_list_len;
 static uint8_t account_key_list[FP_ACCOUNT_KEY_CNT * FP_ACCOUNT_KEY_LEN];
 static fp_account_data_t account_key_data_list[FP_ACCOUNT_KEY_CNT];
 
+// Personalized name storage (core Fast Pair feature, not FMDN-specific)
+static char personalized_name[FP_PERSONALIZED_NAME_MAX_LEN];
+static bool personalized_name_valid;
+
 #ifdef CONFIG_FAST_PAIR_FMDN
 static uint8_t eid_key[FP_EIK_LEN];
 static bool eid_key_valid;
@@ -49,9 +55,11 @@ static uint8_t cur_account_key[FP_ACCOUNT_KEY_LEN];
 static uint8_t owner_key[FP_ACCOUNT_KEY_LEN];
 static bool owner_key_valid;
 static fp_fmdn_utp_mode_t utp_mode = FP_FMDN_UTP_MODE_OFF;
+static uint8_t utp_ignore_ring_auth = false;
 #endif // CONFIG_FAST_PAIR_FMDN
 static uint8_t bt_id_base;
-bool fp_storage_init_done;
+static bool bt_id_base_valid;
+static bool fp_storage_init_done;
 
 static void fp_storage_account_key_data_list_update(void)
 {
@@ -102,12 +110,32 @@ static int settings_storage_handle_set(char const *name, size_t len, settings_re
 		read_cb(cb_arg, &utp_mode, sizeof(utp_mode));
 		return 0;
 	}
+	if (settings_name_steq(name, SS_KEY_UTP_IGNORE_RING_AUTH, &next) && !next) {
+		if (len != sizeof(utp_ignore_ring_auth)) {
+			return -EINVAL;
+		}
+		read_cb(cb_arg, &utp_ignore_ring_auth, sizeof(utp_ignore_ring_auth));
+		return 0;
+	}
 #endif
+	if (settings_name_steq(name, SS_KEY_PERSONALIZED_NAME, &next) && !next) {
+		if (len >= sizeof(personalized_name)) {
+			LOG_ERR("Personalized name too long: %zu >= %zu", len,
+				sizeof(personalized_name));
+			return -EINVAL;
+		}
+		read_cb(cb_arg, personalized_name, len);
+		personalized_name[len] = '\0'; // Ensure null termination
+		personalized_name_valid = true;
+		LOG_INF("Loaded personalized name: '%s'", personalized_name);
+		return 0;
+	}
 	if (settings_name_steq(name, SS_KEY_BT_ID_BASE, &next) && !next) {
 		if (len != sizeof(bt_id_base)) {
 			return -EINVAL;
 		}
 		read_cb(cb_arg, &bt_id_base, sizeof(bt_id_base));
+		bt_id_base_valid = true;
 		return 0;
 	}
 	return -ENOENT;
@@ -139,6 +167,9 @@ static void fp_storage_show(void)
 	LOG_INF("utp_mode: %u", utp_mode);
 #endif
 	LOG_INF("bt_id_base: %u", bt_id_base);
+	if (personalized_name_valid) {
+		LOG_INF("personalized_name: '%s'", personalized_name);
+	}
 }
 #endif
 
@@ -204,6 +235,30 @@ void fp_storage_utp_mode_save(fp_fmdn_utp_mode_t mode)
 uint8_t fp_storage_utp_mode_get(void)
 {
 	return utp_mode;
+}
+
+void fp_storage_utp_ignore_ring_auth_save(uint8_t ignore_auth)
+{
+	utp_ignore_ring_auth = ignore_auth;
+	int err = settings_save_one(FP_STORAGE_KEY(SS_KEY_UTP_IGNORE_RING_AUTH),
+				    &utp_ignore_ring_auth, sizeof(utp_ignore_ring_auth));
+	if (err) {
+		LOG_ERR("save utp ignore ring auth failed %d", err);
+	}
+}
+
+uint8_t fp_storage_utp_ignore_ring_auth_get(void)
+{
+	return utp_ignore_ring_auth;
+}
+
+static void fp_storage_utp_ignore_ring_auth_delete(void)
+{
+	utp_ignore_ring_auth = false;
+	int err = settings_delete(FP_STORAGE_KEY(SS_KEY_UTP_IGNORE_RING_AUTH));
+	if (err) {
+		LOG_ERR("delete utp ignore ring auth failed (err: %d)", err);
+	}
 }
 
 void fp_storage_cur_account_key_clear(void)
@@ -277,6 +332,72 @@ static int fp_storage_owner_key_delete(void)
 }
 #endif // CONFIG_FAST_PAIR_FMDN
 
+int fp_storage_personalized_name_save(const char *name)
+{
+	size_t name_len = strlen(name);
+	if (name_len >= sizeof(personalized_name)) {
+		LOG_ERR("Personalized name too long: %zu >= %zu", name_len,
+			sizeof(personalized_name));
+		return -EINVAL;
+	}
+
+	strncpy(personalized_name, name, sizeof(personalized_name) - 1);
+	personalized_name[sizeof(personalized_name) - 1] = '\0';
+	personalized_name_valid = true;
+
+	int err = settings_save_one(FP_STORAGE_KEY(SS_KEY_PERSONALIZED_NAME),
+				    (uint8_t *)personalized_name, name_len);
+	if (err) {
+		LOG_ERR("Save personalized name failed: %d", err);
+		return err;
+	}
+	LOG_INF("Personalized name saved: '%s'", personalized_name);
+	return err;
+}
+
+int fp_storage_personalized_name_delete(void)
+{
+	if (personalized_name_valid) {
+		memset(personalized_name, 0, sizeof(personalized_name));
+		personalized_name_valid = false;
+	}
+	int err = settings_delete(FP_STORAGE_KEY(SS_KEY_PERSONALIZED_NAME));
+	if (err) {
+		LOG_ERR("Delete personalized name failed: %d", err);
+		return err;
+	}
+	LOG_DBG("Personalized name deleted");
+	return err;
+}
+
+int fp_storage_personalized_name_get(char *name, size_t name_size)
+{
+	if (!personalized_name_valid) {
+		return -ENODATA;
+	}
+
+	if (!name_size) {
+		return -EINVAL;
+	}
+
+	strncpy(name, personalized_name, name_size - 1);
+	name[name_size - 1] = '\0';
+	return 0;
+}
+
+bool fp_storage_personalized_name_valid(void)
+{
+	return personalized_name_valid;
+}
+
+const char *fp_storage_get_effective_name(void)
+{
+	if (personalized_name_valid && (strlen(personalized_name) > 0)) {
+		return personalized_name;
+	}
+	return "";
+}
+
 void fp_storage_bt_id_base_save(uint8_t id)
 {
 	bt_id_base = id;
@@ -285,11 +406,17 @@ void fp_storage_bt_id_base_save(uint8_t id)
 	if (err) {
 		LOG_ERR("save bt_id_base failed %d", err);
 	}
+	bt_id_base_valid = true;
 }
 
 uint8_t fp_storage_bt_id_base_get(void)
 {
 	return bt_id_base;
+}
+
+bool fp_storage_bt_id_base_valid(void)
+{
+	return bt_id_base_valid;
 }
 
 static void fp_storage_account_key_list_reload(void)
@@ -400,6 +527,7 @@ uint8_t fp_storage_account_key_list_get(uint8_t *key_list)
 void fp_storage_eid_reset(void)
 {
 	fp_storage_utp_mode_delete();
+	fp_storage_utp_ignore_ring_auth_delete();
 	fp_storage_eid_key_delete();
 }
 #endif
@@ -415,6 +543,8 @@ int fp_storage_reset(void)
 	fp_storage_eid_reset();
 #endif
 	fp_storge_account_key_reset();
+	// Clear personalized name when resetting account keys
+	fp_storage_personalized_name_delete();
 #ifdef CONFIG_FAST_PAIR_STORAGE_DEBUG_EN
 	fp_storage_show();
 #endif

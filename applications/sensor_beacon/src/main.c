@@ -7,9 +7,25 @@
 #include <zephyr/drivers/watchdog.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
 
 #include "sensor_beacon.h"
-#include <inttypes.h>
+#include "led_button_ctrl.h"
+#include "reset.h"
+
+#ifdef CONFIG_PM
+#include "power.h"
+#endif
+
+#ifdef CONFIG_WURX
+#include <zephyr/logging/log_ctrl.h>
+#include "wurx.h"
+#ifdef CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL
+STATIC_ASSERT(
+	false,
+	"CONFIG_WURX and CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL cannot both be set together.");
+#endif
+#endif
 
 LOG_MODULE_REGISTER(main, CONFIG_SENSOR_BEACON_LOG_LEVEL);
 
@@ -19,6 +35,12 @@ LOG_MODULE_REGISTER(main, CONFIG_SENSOR_BEACON_LOG_LEVEL);
 
 static const struct device *const wdog_dev = DEVICE_DT_GET(DT_NODELABEL(wdog0));
 static int wdt_channel_id;
+
+#ifdef CONFIG_WURX
+static const struct device *wurx_dev = NULL;
+static struct k_timer wurx_adv_timer;
+static struct k_work hibernate_work;
+#endif
 
 #ifdef CONFIG_PM
 static void wdog_poke(enum pm_state state)
@@ -32,9 +54,72 @@ static struct pm_notifier notifier = {
 };
 #endif
 
+/**
+ * @brief Check boot status and determine initial device state
+ *
+ * @return true if device should start in ON state, false for OFF state
+ */
+#ifdef CONFIG_PM
+static bool device_startup_state(void)
+{
+	/* Check if this is a cold boot (power-on reset) */
+	if (is_boot_type(TYPE_POWER_ON) && IS_ENABLED(CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL)) {
+		return false;
+	}
+
+#ifdef CONFIG_WURX
+	if (is_boot_reason(BOOT_STATUS_HIB_WKUP_WURX0) ||
+	    is_boot_reason(BOOT_STATUS_HIB_WKUP_WURX1) ||
+	    is_boot_reason(BOOT_STATUS_HIB_WKUP_WURX)) {
+		LOG_INF("  - Wakeup from hibernation (WURX)");
+	}
+#endif
+
+	return true;
+}
+#endif
+
+#ifdef CONFIG_WURX
+static void hibernate_work_handler(struct k_work *work)
+{
+	LOG_INF("Stopping sensor beacon before entering hibernation");
+
+	/* Stop sensor beacon synchronously */
+	int ret = sensor_beacon_stop();
+	if (ret) {
+		LOG_ERR("Failed to stop sensor beacon: %d", ret);
+	}
+
+#ifdef CONFIG_PM
+	LOG_INF("Entering hibernation");
+	LOG_INF("Waiting for WuRx wake-up signal...");
+
+	/* Enter hibernation - device will wake up on WURX signal */
+	sensor_beacon_unlock_soft_off_state();
+#endif
+}
+
+static void wurx_adv_timer_handler(struct k_timer *timer)
+{
+	LOG_INF("Initial advertising period complete");
+
+	/* Submit work to stop beacon and enter hibernation from thread context */
+	k_work_submit(&hibernate_work);
+}
+#endif
+
 int main(void)
 {
-	LOG_INF("Starting Sensor Beacon Application");
+	LOG_INF("Starting Sensor Beacon Application: %#x", boot_status());
+
+#ifdef CONFIG_PM
+	if (!device_startup_state()) {
+		sensor_beacon_unlock_soft_off_state();
+		atm_socoff_wakeup_gpio_set(true);
+		LOG_INF("SOC_OFF state unlocked - device will enter deep sleep when idle");
+		return 0;
+	}
+#endif
 
 	/* Initialize watchdog */
 	struct wdt_timeout_cfg wdt_config = {
@@ -46,25 +131,55 @@ int main(void)
 
 	wdt_channel_id = wdt_install_timeout(wdog_dev, &wdt_config);
 	if (wdt_channel_id < 0) {
-		LOG_ERR("Watchdog install error: %" PRId32, wdt_channel_id);
+		LOG_ERR("Watchdog install error: %d", wdt_channel_id);
 		return 1;
 	}
 
+	int ret = wdt_setup(wdog_dev, 0);
+	if (ret < 0) {
+		LOG_ERR("Watchdog setup error: %d", ret);
+		return 1;
+	}
+
+#ifdef CONFIG_WURX
+	/* Get WURX device */
+	wurx_dev = DEVICE_DT_GET(DT_NODELABEL(wurx));
+	if (!device_is_ready(wurx_dev)) {
+		LOG_ERR("WuRx device not ready");
+		return -ENODEV;
+	}
+
+	LOG_INF("WuRx device initialized");
+#endif
+
 	/* Initialize sensor beacon */
-	int ret = sensor_beacon_init();
+	ret = sensor_beacon_init();
 	if (ret) {
-		LOG_ERR("Sensor beacon init failed: %" PRId32, ret);
+		LOG_ERR("Sensor beacon init failed: %d", ret);
 		return ret;
 	}
 
-	/* Start sensor beacon operation */
-	ret = sensor_beacon_start();
-	if (ret) {
-		LOG_ERR("Sensor beacon start failed: %" PRId32, ret);
-		return ret;
-	}
+#ifdef CONFIG_PM
+	sensor_beacon_unlock_soft_off_state();
+#endif
 
-	LOG_INF("Sensor beacon started successfully");
+	/* Set the device to ON state */
+	led_button_ctrl_set_device_state(DEVICE_STATE_ON);
+
+#ifdef CONFIG_WURX
+	LOG_INF("WURX mode enabled - advertising for %d ms before hibernation",
+		CONFIG_SENSOR_BEACON_WURX_ACTIVE_ADV_TIME_MS);
+
+	/* Initialize work item for hibernation */
+	k_work_init(&hibernate_work, hibernate_work_handler);
+
+	/* Initialize timer for initial advertising period */
+	k_timer_init(&wurx_adv_timer, wurx_adv_timer_handler, NULL);
+
+	/* Start timer for initial advertising period */
+	k_timer_start(&wurx_adv_timer, K_MSEC(CONFIG_SENSOR_BEACON_WURX_ACTIVE_ADV_TIME_MS),
+		      K_NO_WAIT);
+#endif /* CONFIG_WURX */
 
 #ifdef CONFIG_PM
 	pm_notifier_register(&notifier);

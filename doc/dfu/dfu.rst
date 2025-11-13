@@ -36,24 +36,22 @@ There are three methods for using the provided overlay files:
 Building for DFU
 ================
 
-When building an application that supports DFU, MCUboot must be built and flashed (and the SPE with MCUboot enabled for platforms with TrustZone).
+When building an application that supports DFU, MCUboot must be built and flashed.
 Please see the `platform specific instructions <../../README.rst#supported-platforms>`_ on how to build MCUboot.
 
-For some configurations, additional (external) flash is not required but is supported if desired.
-When additional flash is used, the ``-DDFU_IN_FLASH`` flag should be added to ``-DDTS_EXTRA_CPPFLAGS``.
+External flash is always required for DFU operations. The secondary slot (slot1) for MCUboot is always located in external flash.
 
-* On the ATMx2 platform additional flash is not required.
-* On the ATM33 platform additional flash **IS** required when using BLE OTA with BLE stack library (default, ``CONFIG_ATMWSTK_PD50=y`` uses library), but **IS NOT** required when using fixed BLE stack image (``CONFIG_ATMWSTK_FULL=y`` uses fixed image).
-* On the ATM34 platform additional flash is always required. ``DFU_IN_FLASH`` is the default and does not need to be specified manually in ``-DDTS_EXTRA_CPPFLAGS``.
+  .. note::
 
-Here is an example build command for the ATM33 platform that uses the FULL fixed BLE stack image (``CONFIG_ATMWSTK_FULL=y``, FULL stack for ATM33 is only using fixed image, see :ref:`Platform support for different BLE Stack variations - ATM33xx <platform-support-for-different-ble-stack-variations>`) with external flash, which uses `method 2 <#using-the-overlay-files>`_ to provide both overlay files to enable BLE and UART based DFU:
+    External flash is always required for DFU, but no flag is needed. The ``DFU_IN_FLASH`` flag is no longer required as external flash is now the default and the only configuration for DFU operations.
+
+Here is an example build command for the ATM33 platform that uses the CPD200 fixed BLE stack image (CPD200 stack for ATM33 is only using fixed image, see :ref:`Platform support for different BLE Stack variations - ATM33xx <platform-support-for-different-ble-stack-variations>`), which uses `method 2 <#using-the-overlay-files>`_ to provide both overlay files to enable BLE and UART based DFU:
 
   .. code-block:: bash
 
-    west build -p -s <APP> -b <BOARD>@mcuboot//ns -d build/<BOARD>_ns/<APP> -- \
-        -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" \
-        -DCONFIG_SPE_PATH=\"build/<BOARD>/<SPE>\" \
-        -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=FULL;-DDFU_IN_FLASH" -DCONFIG_ATMWSTK_FULL=y \
+    west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- \
+        -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\"
+        -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=CPD200" \
         -DEXTRA_CONF_FILE="overlay-bt-dfu.conf;overlay-serial-dfu.conf"
 
 To perform a BLE OTA update the Atmosic Mobile Application may be used, and for Serial DFU the ``mcumgr`` utility may be used.
@@ -83,7 +81,6 @@ For Atmosic EVKs this can be found in ``<WEST_TOPDIR>/openair/boards/atmosic/``:
   .. note::
 
     Make sure to use the DTS file that is being used for the application.
-    For platforms with TrustZone this will usually be the Non-Secure version, typically indicated by ``_ns``.
 
 When performing Serial DFU the ``mcumgr`` Golang utility is used. It may be installed using the following command:
 

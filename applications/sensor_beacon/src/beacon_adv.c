@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "beacon_adv.h"
+#include "sensor_beacon.h"
 #include <inttypes.h>
 
 LOG_MODULE_REGISTER(beacon_adv, CONFIG_SENSOR_BEACON_LOG_LEVEL);
@@ -27,26 +28,24 @@ static struct bt_le_adv_param adv_params;
 static uint8_t dev_name[] = CONFIG_BT_DEVICE_NAME;
 
 static uint8_t sensor_data[ADV_SENSOR_DATA_SIZE + ADV_SENSOR_HEADER_SIZE] = {
-	ATMOSIC_COMPANY_ID & 0xFF,
-	(ATMOSIC_COMPANY_ID >> 8) & 0xFF,
-	0x00  /* Type field */
+	ATMOSIC_COMPANY_ID & 0xFF, (ATMOSIC_COMPANY_ID >> 8) & 0xFF, 0x00 /* Type field */
 };
 
 #define ADV_DATA_FIXED                                                                             \
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),                      \
-	BT_DATA(BT_DATA_NAME_COMPLETE, dev_name, sizeof(dev_name) - 1),                            \
-	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),                                             \
-	BT_DATA_BYTES(BT_DATA_SVC_DATA16, 0xaa, 0xfe, /* Eddystone UUID */                         \
-		      0x10,                           /* Eddystone-URL frame type */               \
-		      0x00,                           /* Calibrated Tx power at 0m */              \
-		      0x01,                           /* URL Scheme Prefix https://www. */         \
-		      'a', 't', 'm', 'o', 's', 'i', 'c', 0x07), /* .com */                         \
-	BT_DATA(BT_DATA_MANUFACTURER_DATA, sensor_data, sizeof(sensor_data))
+		BT_DATA(BT_DATA_NAME_COMPLETE, dev_name, sizeof(dev_name) - 1),                    \
+		BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),                                     \
+		BT_DATA_BYTES(BT_DATA_SVC_DATA16, 0xaa, 0xfe, /* Eddystone UUID */                 \
+			      0x10,                           /* Eddystone-URL frame type */       \
+			      0x00,                           /* Calibrated Tx power at 0m */      \
+			      0x01,                           /* URL Scheme Prefix https://www. */ \
+			      'a', 't', 'm', 'o', 's', 'i', 'c', 0x07), /* .com */                 \
+		BT_DATA(BT_DATA_MANUFACTURER_DATA, sensor_data, sizeof(sensor_data))
 
 static int beacon_set_adv_data(void)
 {
 	/* Standard advertising: fixed elements only */
-	const struct bt_data adata[] = { ADV_DATA_FIXED };
+	const struct bt_data adata[] = {ADV_DATA_FIXED};
 	int err = bt_le_ext_adv_set_data(adv_set, adata, ARRAY_SIZE(adata), NULL, 0);
 	if (err) {
 		LOG_ERR("Failed to set advertising data (err %" PRId32 ")", err);
@@ -155,6 +154,9 @@ int beacon_adv_update_data(const sensor_beacon_data_t *data)
 	}
 
 	LOG_DBG("Advertisement data updated using live update method");
+
+	/* Notify sensor beacon about beacon transmission for LED indication */
+	sensor_beacon_notify_beacon_tx();
 
 	return 0;
 }

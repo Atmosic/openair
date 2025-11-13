@@ -47,6 +47,10 @@ LOG_MODULE_REGISTER(brownout, LOG_LEVEL_INF);
 #define BRWNOUT_THR_VBAT CONFIG_BROWNOUT_THR_VBAT
 #endif
 
+#if defined(CONFIG_BROWNOUT_THR_VSTORE) && (CONFIG_BROWNOUT_THR_VSTORE != -1)
+#define BRWNOUT_THR_VSTORE CONFIG_BROWNOUT_THR_VSTORE
+#endif
+
 #ifndef BRWNOUT_THR_VBAT
 #define BRWNOUT_THR_VBAT 0
 #endif
@@ -67,6 +71,11 @@ static bool brwnout_stat;
 static bool brwnout_disabled;
 #ifndef CONFIG_SOC_FAMILY_ATM
 static sw_event_id_t brwnout_event_id;
+#endif
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+STATIC_ASSERT(DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off)),
+    "Brownout requires soc_off PM state enabled");
 #endif
 
 static void brwnout_plf_off(void)

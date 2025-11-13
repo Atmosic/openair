@@ -105,7 +105,7 @@ __NONNULL(1) bool nsc_atm_otp_read(atm_otp_t *otp_value);
  *
  * @return true if a bit set in otp_mask is set in otp
  */
-__INLINE bool atm_otp_check_bit(atm_otp_t otp_mask)
+__STATIC_FORCEINLINE bool atm_otp_check_bit(atm_otp_t otp_mask)
 {
     atm_otp_t otp = 0;
     __UNUSED bool success = OTP_READ(&otp);
@@ -118,7 +118,7 @@ __INLINE bool atm_otp_check_bit(atm_otp_t otp_mask)
  *
  * @return true if supported
  */
-__INLINE bool atm_otp_15_4_radio_supported(void)
+__STATIC_FORCEINLINE bool atm_otp_15_4_radio_supported(void)
 {
     return atm_otp_check_bit(ATM_OTP_MASK_IEEE_15_4_RADIO_CONFIG) == 0;
 }
@@ -133,7 +133,7 @@ typedef enum {
  *
  * @return the sysram config
  */
-__INLINE atm_otp_sysram_config_t atm_otp_sysram_config(void)
+__STATIC_FORCEINLINE atm_otp_sysram_config_t atm_otp_sysram_config(void)
 {
     if (atm_otp_check_bit(ATM_OTP_MASK_SYSRAM_CONFIG) == 0) {
 	return ATM_OTP_SYSRAM_CONFIG_256KB;

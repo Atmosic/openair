@@ -1,0 +1,15 @@
+# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+config WURX
+	bool "Atmosic WuRx driver"
+	depends on DT_HAS_ATMOSIC_WURX_ENABLED
+	select PM
+	select SETTINGS
+	help
+	  This driver provides wake-up radio functionality with configurable
+	  dual-channel detection and power management integration.
+
+module = WURX
+module-str = wurx
+source "subsys/logging/Kconfig.template.log_config"

@@ -2,7 +2,9 @@ sample:
   description: Sample demonstrating adding NS-callable functions
   name: NSC hello world
 common:
-  tags: introduction
+  tags:
+    - introduction
+    - requires_trustzone
   harness: console
   harness_config:
     type: one_line
@@ -10,10 +12,13 @@ common:
       - "Hello from Secure World"
 tests:
   sample.nsc_hello_world:
-    tags: introduction
+    tags:
+      - introduction
   samples.nsc_hello_world.atm:
     sysbuild: true
-    tags: introduction atm33 atm34 no_mcuboot
+    tags:
+      - introduction
+      - no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
       - spe_CONFIG_ATM_ENABLE_NSC_EXAMPLE=y

@@ -60,7 +60,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/bluetooth/beacon --sysbuild -T samples.bluetooth.beacon.atm
+   west build -p always -b <BOARD> openair/samples/bluetooth/beacon --sysbuild -T samples.bluetooth.beacon.atm
 
 Flash command:
 
@@ -139,23 +139,23 @@ ATMEVK-3430e-YQN-5, additional configuration is required. The battery management
 functionality is only enabled when both Li-ion battery type is configured AND
 harvesting is enabled.
 
-**Required Configuration in boards/ATMEVK-3430e-YQN-5_ns.conf:**
+**Required Configuration in boards/ATMEVK-3430e-YQN-5.conf:**
 
 .. code-block:: kconfig
 
    # Battery monitoring support
    CONFIG_BATT_MODEL_HSC_LIION=y
-   CONFIG_BATT_MODEL_HSC=y
    CONFIG_ADC=y
    CONFIG_RETAINED_MEM=y
    CONFIG_RETAINED_MEM_ATM_HIB=y
 
-**Required Device Tree Configuration in boards/ATMEVK-3430e-YQN-5_ns.overlay:**
+**Required Device Tree Configuration in boards/ATMEVK-3430e-YQN-5.overlay:**
 
 .. code-block:: devicetree
 
    &pmu {
        batt-type = <0>;
+       hsc-mode;
        batt-level = <1>;
        vddio-type = <0>;
        vstore-max = <3300>;

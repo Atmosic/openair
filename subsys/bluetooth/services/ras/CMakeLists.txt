@@ -11,3 +11,5 @@ if(CONFIG_BT_RAS_CLIENT)
   zephyr_include_directories(include)
   zephyr_sources(ras_client.c)
 endif()
+
+add_subdirectory_ifdef(CONFIG_RAS_CLIENT_SHELL shell)

@@ -7,10 +7,13 @@ config POWER_OFF_SBRK
 	default y if NEWLIB_LIBC
 	depends on PM
 
-config ATM_SOCOFF_DURATION_SEC
-	int "SOC off duration in seconds"
+config ATM_SOCOFF_MAX_DURATION_SEC
+	int "Maximum SOC off duration in seconds"
 	depends on PM
 	default 0
 	help
-	Override SOC off duration. Can be used to poke PMU watchdog for non-timer based
-	soc off wakeup configuration (LPCOMP, GPIO).
+	  Maximum duration to remain in SOC off state, in seconds. When set to a non-zero
+	  value, this acts as a cap on the SOC off duration regardless of the requested
+	  idle time. This is useful for periodically waking up to service the PMU watchdog
+	  when using non-timer based wakeup sources (LPCOMP, GPIO). When set to 0 (default),
+	  no maximum duration limit is applied.

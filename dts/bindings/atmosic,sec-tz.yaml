@@ -1,0 +1,16 @@
+# Copyright 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: Atmosic TrustZone platform support
+
+compatible: "atmosic,sec-tz"
+
+include: base.yaml
+
+properties:
+  allow_nsc_in_ram:
+    type: boolean
+    description: Non-secure callable region can be placed in RAM
+  ns_app:
+    type: boolean
+    description: Non-secure (NS) application configuration

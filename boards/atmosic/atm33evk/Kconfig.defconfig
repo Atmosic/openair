@@ -4,6 +4,67 @@
 
 if SOC_ATM33XX_5
 
+config CORTEX_M_SYSTICK
+	bool
+	default y
+
+config RUNTIME_NMI
+	bool
+	default y
+
+config USE_DT_CODE_PARTITION
+	bool
+	default y
+
+# Enable MPU
+config ARM_MPU
+	bool
+	default y
+
+# Enable hardware stack protection
+config HW_STACK_PROTECTION
+	bool
+	default y
+
+# Enable TrustZone-M
+config ARM_TRUSTZONE_M
+	bool
+	default y
+
+config TRUSTED_EXECUTION_SECURE
+	bool
+	default y
+	depends on !$(dt_nodelabel_bool_prop,sec_tz,ns_app)
+
+config TRUSTED_EXECUTION_NONSECURE
+	bool
+	default y
+	depends on $(dt_nodelabel_bool_prop,sec_tz,ns_app)
+
+# enable uart driver
+config SERIAL
+	bool
+	default y
+
+# enable console
+config CONSOLE
+	bool
+	default y
+
+config UART_CONSOLE
+	bool
+	default y
+
+# GPIOs
+config GPIO
+	bool
+	default y
+
+# Watchdog
+config WATCHDOG
+	bool
+	default y if DT_HAS_ARM_CMSDK_WATCHDOG_ENABLED
+
 config ROM_START_OFFSET
 	default 0 if MERGE_SPE_NSPE && BOOTLOADER_MCUBOOT
 	default 0x800 if BOOTLOADER_MCUBOOT
@@ -28,11 +89,24 @@ config IDLE_STACK_SIZE
 endif # PM
 
 config ATM_NO_SPE
-	bool "Application uses ATM No-SPE feature in a single image"
+	bool
+	help
+	  Application will operate a single secure image without the SPE. This promptless
+	  setting is selected by ATM_NO_TZ option which implies that no SPE will be used.
 
 config ATM_NO_TZ
-	bool "Application uses ATM No-Trustzone feature in a single image"
+	bool
+	default y
 	select ATM_NO_SPE
+	depends on !DT_HAS_ATMOSIC_SEC_TZ_ENABLED
+	depends on !MCUBOOT
+	depends on !TRUSTED_EXECUTION_NONSECURE
+	help
+	  This setting is configured through a device tree configuration to
+	  remove both the SPE partition as well as the use of Trustzone application
+	  isolation features. This configuration runs the single application as a
+	  secure image without the Atmosic sample SPE. TrustZone protection mechanisms
+	  on the platform will not be enabled and Trustzone will be minimally initialized.
 
 # MCUBOOT uses BOOT_MAX_IMG_SECTORS to size the sector swap map for SLOT1. The
 # value needs to be sufficiently large to handle the largest number of sectors
@@ -69,15 +143,12 @@ config ATM_ARM_ENTRY_VENEERS_LIB_NAME
 	  Library file as ARM_ENTRY_VENEERS_LIB_NAME.
 
 config MERGE_SPE_NSPE
-	bool "Merge SPE and application into single image"
+	bool
 	depends on SPE_PATH != ""
 	default y if BOOTLOADER_MCUBOOT
-	default n
 	help
 	  Option to merge SPE and NSPE to a single image. This config must
 	  be set if building with MCUboot as the merged image is signed.
-	  However, it can also be set to allow a single `west flash` to flash
-	  both the spe and nspe.
 
 if BOOTLOADER_MCUBOOT
 
@@ -90,6 +161,11 @@ endif # BOOTLOADER_MCUBOOT
 endif # TRUSTED_EXECUTION_NONSECURE
 
 if BT
+
+# Controller provides random numbers via HCI_LE_RAND; host-side PRNG not needed.
+# Disabling avoids redundant HMAC-based PRNG in host and reduces memory footprint.
+config BT_HOST_CRYPTO_PRNG
+	default n
 
 config HEAP_MEM_POOL_SIZE
 	default 32768

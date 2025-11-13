@@ -410,11 +410,13 @@ class Tools:
                 # zephry ATMx2xx-x1x to bare metal atm2/ATM22xx-x1x
                 platform_family = 'atm2'
                 platform_name = 'ATM22xx-x1x'
-            elif Tools.platform_family == 'atm34' and \
-                '-' not in Tools.platform_name:
-                # zephry ATM34xx to bare metal atm34/ATM34xx-2
+            elif Tools.platform_family == 'atm34':
                 platform_family = Tools.platform_family
-                platform_name = f"{Tools.platform_name}-2"
+                # zephry ATM34xx to bare metal atm34/ATM34xx-2
+                if '-' not in Tools.platform_name:
+                    platform_name = f"{Tools.platform_name}-2"
+                else:
+                    platform_name = f"{Tools.platform_name.split('-')[0]}-2"
             else:
                 platform_family = Tools.platform_family
                 platform_name = Tools.platform_name

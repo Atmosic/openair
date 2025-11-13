@@ -8,56 +8,36 @@ common:
     type: one_line
     regex:
       - "Atmosic Sysbuild Hello World"
-  tags: introduction
+  tags:
+    - introduction
 tests:
   samples.sysbuild.hello_world.atm:
     sysbuild: true
-    tags: introduction atm33 atm34 no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
+    tags:
+      - introduction
+      - no_mcuboot
   samples.sysbuild.hello_world.atm.mcuboot:
     sysbuild: true
-    tags: introduction atm33 atm34 mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
-  samples.sysbuild.hello_world.atm.mcuboot.rram_only:
-    sysbuild: true
-    tags: introduction atm33 mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM33"
-  samples.sysbuild.hello_world.atm.no_tz:
-    sysbuild: true
-    tags: introduction atm33 atm34 no_tz
-  samples.sysbuild.hello_world.atm.mcuboot.no_tz:
-    sysbuild: true
-    tags: introduction atm34 mcuboot mcuboot_no_tz
+    tags:
+      - introduction
+      - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
-  samples.sysbuild.hello_world.atm.mcuboot.no_tz.rram_only:
+  samples.sysbuild.hello_world.atm.mcuboot.overwrite:
     sysbuild: true
-    tags: introduction atm33 mcuboot mcuboot_no_tz
+    tags:
+      - introduction
+      - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM33"
-  samples.sysbuild.hello_world.atm.mcuboot.atmx2:
+  samples.sysbuild.hello_world.atm.spe.flash_xip:
     sysbuild: true
-    tags: introduction atmx2
+    tags:
+      - introduction
     extra_args:
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_SPE=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"

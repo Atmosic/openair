@@ -60,4 +60,7 @@ config FMDN_RING_COMP_THREE
 
 endchoice
 
+# Include precision finding (FHPF) configuration
+rsource "Kconfig.fhpf"
+
 endif #  ATM_FMDN

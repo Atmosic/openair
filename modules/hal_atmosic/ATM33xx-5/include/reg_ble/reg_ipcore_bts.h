@@ -28,12 +28,12 @@
 #define IP_ISOCNTCNTL_INDEX  0x00000070
 #define IP_ISOCNTCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_isocntcntl_get(void)
+__RWIP_INLINE uint32_t ip_isocntcntl_get(void)
 {
     return REG_IP_RD(IP_ISOCNTCNTL_ADDR);
 }
 
-__INLINE void ip_isocntcntl_set(uint32_t value)
+__RWIP_INLINE void ip_isocntcntl_set(uint32_t value)
 {
     REG_IP_WR(IP_ISOCNTCNTL_ADDR, value);
 }
@@ -56,7 +56,7 @@ __INLINE void ip_isocntcntl_set(uint32_t value)
 #define IP_ISO_PHASE_SHIFT_MODE_RST    0x0
 #define IP_ISOCORRMODE_RST             0x0
 
-__INLINE void ip_isocntcntl_pack(uint8_t isosamp, uint8_t isoupd, uint8_t isoclkshiftmode, uint8_t isophaseshiftmode, uint8_t isocorrmode)
+__RWIP_INLINE void ip_isocntcntl_pack(uint8_t isosamp, uint8_t isoupd, uint8_t isoclkshiftmode, uint8_t isophaseshiftmode, uint8_t isocorrmode)
 {
     ASSERT_ERR((((uint32_t)isosamp << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)isoupd << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -66,7 +66,7 @@ __INLINE void ip_isocntcntl_pack(uint8_t isosamp, uint8_t isoupd, uint8_t isoclk
     REG_IP_WR(IP_ISOCNTCNTL_ADDR,  ((uint32_t)isosamp << 31) | ((uint32_t)isoupd << 30) | ((uint32_t)isoclkshiftmode << 2) | ((uint32_t)isophaseshiftmode << 1) | ((uint32_t)isocorrmode << 0));
 }
 
-__INLINE void ip_isocntcntl_unpack(uint8_t* isosamp, uint8_t* isoupd, uint8_t* isoclkshiftmode, uint8_t* isophaseshiftmode, uint8_t* isocorrmode)
+__RWIP_INLINE void ip_isocntcntl_unpack(uint8_t* isosamp, uint8_t* isoupd, uint8_t* isoclkshiftmode, uint8_t* isophaseshiftmode, uint8_t* isocorrmode)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTCNTL_ADDR);
 
@@ -77,61 +77,61 @@ __INLINE void ip_isocntcntl_unpack(uint8_t* isosamp, uint8_t* isoupd, uint8_t* i
     *isocorrmode = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_isocntcntl_isosamp_getf(void)
+__RWIP_INLINE uint8_t ip_isocntcntl_isosamp_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_isocntcntl_isosamp_setf(uint8_t isosamp)
+__RWIP_INLINE void ip_isocntcntl_isosamp_setf(uint8_t isosamp)
 {
     ASSERT_ERR((((uint32_t)isosamp << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_ISOCNTCNTL_ADDR, (REG_IP_RD(IP_ISOCNTCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)isosamp << 31));
 }
 
-__INLINE uint8_t ip_isocntcntl_iso_upd_getf(void)
+__RWIP_INLINE uint8_t ip_isocntcntl_iso_upd_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ip_isocntcntl_iso_upd_setf(uint8_t isoupd)
+__RWIP_INLINE void ip_isocntcntl_iso_upd_setf(uint8_t isoupd)
 {
     ASSERT_ERR((((uint32_t)isoupd << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_IP_WR(IP_ISOCNTCNTL_ADDR, (REG_IP_RD(IP_ISOCNTCNTL_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)isoupd << 30));
 }
 
-__INLINE uint8_t ip_isocntcntl_iso_clkshift_mode_getf(void)
+__RWIP_INLINE uint8_t ip_isocntcntl_iso_clkshift_mode_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ip_isocntcntl_iso_clkshift_mode_setf(uint8_t isoclkshiftmode)
+__RWIP_INLINE void ip_isocntcntl_iso_clkshift_mode_setf(uint8_t isoclkshiftmode)
 {
     ASSERT_ERR((((uint32_t)isoclkshiftmode << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_IP_WR(IP_ISOCNTCNTL_ADDR, (REG_IP_RD(IP_ISOCNTCNTL_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)isoclkshiftmode << 2));
 }
 
-__INLINE uint8_t ip_isocntcntl_iso_phase_shift_mode_getf(void)
+__RWIP_INLINE uint8_t ip_isocntcntl_iso_phase_shift_mode_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ip_isocntcntl_iso_phase_shift_mode_setf(uint8_t isophaseshiftmode)
+__RWIP_INLINE void ip_isocntcntl_iso_phase_shift_mode_setf(uint8_t isophaseshiftmode)
 {
     ASSERT_ERR((((uint32_t)isophaseshiftmode << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_IP_WR(IP_ISOCNTCNTL_ADDR, (REG_IP_RD(IP_ISOCNTCNTL_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)isophaseshiftmode << 1));
 }
 
-__INLINE uint8_t ip_isocntcntl_isocorrmode_getf(void)
+__RWIP_INLINE uint8_t ip_isocntcntl_isocorrmode_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ip_isocntcntl_isocorrmode_setf(uint8_t isocorrmode)
+__RWIP_INLINE void ip_isocntcntl_isocorrmode_setf(uint8_t isocorrmode)
 {
     ASSERT_ERR((((uint32_t)isocorrmode << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_ISOCNTCNTL_ADDR, (REG_IP_RD(IP_ISOCNTCNTL_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)isocorrmode << 0));
@@ -150,12 +150,12 @@ __INLINE void ip_isocntcntl_isocorrmode_setf(uint8_t isocorrmode)
 #define IP_ISOCNTSAMP_INDEX  0x00000071
 #define IP_ISOCNTSAMP_RESET  0x00000000
 
-__INLINE uint32_t ip_isocntsamp_get(void)
+__RWIP_INLINE uint32_t ip_isocntsamp_get(void)
 {
     return REG_IP_RD(IP_ISOCNTSAMP_ADDR);
 }
 
-__INLINE void ip_isocntsamp_set(uint32_t value)
+__RWIP_INLINE void ip_isocntsamp_set(uint32_t value)
 {
     REG_IP_WR(IP_ISOCNTSAMP_ADDR, value);
 }
@@ -167,14 +167,14 @@ __INLINE void ip_isocntsamp_set(uint32_t value)
 
 #define IP_ISOCNTSAMP_RST    0x0
 
-__INLINE uint32_t ip_isocntsamp_getf(void)
+__RWIP_INLINE uint32_t ip_isocntsamp_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTSAMP_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_isocntsamp_setf(uint32_t isocntsamp)
+__RWIP_INLINE void ip_isocntsamp_setf(uint32_t isocntsamp)
 {
     ASSERT_ERR((((uint32_t)isocntsamp << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_IP_WR(IP_ISOCNTSAMP_ADDR, (uint32_t)isocntsamp << 0);
@@ -193,12 +193,12 @@ __INLINE void ip_isocntsamp_setf(uint32_t isocntsamp)
 #define IP_ISOCNTCORR_INDEX  0x00000072
 #define IP_ISOCNTCORR_RESET  0x00000000
 
-__INLINE uint32_t ip_isocntcorr_get(void)
+__RWIP_INLINE uint32_t ip_isocntcorr_get(void)
 {
     return REG_IP_RD(IP_ISOCNTCORR_ADDR);
 }
 
-__INLINE void ip_isocntcorr_set(uint32_t value)
+__RWIP_INLINE void ip_isocntcorr_set(uint32_t value)
 {
     REG_IP_WR(IP_ISOCNTCORR_ADDR, value);
 }
@@ -210,14 +210,14 @@ __INLINE void ip_isocntcorr_set(uint32_t value)
 
 #define IP_ISOCNTCORR_RST    0x0
 
-__INLINE uint32_t ip_isocntcorr_getf(void)
+__RWIP_INLINE uint32_t ip_isocntcorr_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTCORR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_isocntcorr_setf(uint32_t isocntcorr)
+__RWIP_INLINE void ip_isocntcorr_setf(uint32_t isocntcorr)
 {
     ASSERT_ERR((((uint32_t)isocntcorr << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_IP_WR(IP_ISOCNTCORR_ADDR, (uint32_t)isocntcorr << 0);
@@ -236,12 +236,12 @@ __INLINE void ip_isocntcorr_setf(uint32_t isocntcorr)
 #define IP_ISOCNTCORR_HUS_INDEX  0x00000073
 #define IP_ISOCNTCORR_HUS_RESET  0x00000000
 
-__INLINE uint32_t ip_isocntcorr_hus_get(void)
+__RWIP_INLINE uint32_t ip_isocntcorr_hus_get(void)
 {
     return REG_IP_RD(IP_ISOCNTCORR_HUS_ADDR);
 }
 
-__INLINE void ip_isocntcorr_hus_set(uint32_t value)
+__RWIP_INLINE void ip_isocntcorr_hus_set(uint32_t value)
 {
     REG_IP_WR(IP_ISOCNTCORR_HUS_ADDR, value);
 }
@@ -252,14 +252,14 @@ __INLINE void ip_isocntcorr_hus_set(uint32_t value)
 
 #define IP_ISOCNTCORR_HUS_RST    0x0
 
-__INLINE uint8_t ip_isocntcorr_hus_getf(void)
+__RWIP_INLINE uint8_t ip_isocntcorr_hus_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOCNTCORR_HUS_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00000001)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_isocntcorr_hus_setf(uint8_t isocntcorrhus)
+__RWIP_INLINE void ip_isocntcorr_hus_setf(uint8_t isocntcorrhus)
 {
     ASSERT_ERR((((uint32_t)isocntcorrhus << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_ISOCNTCORR_HUS_ADDR, (uint32_t)isocntcorrhus << 0);
@@ -278,12 +278,12 @@ __INLINE void ip_isocntcorr_hus_setf(uint8_t isocntcorrhus)
 #define IP_ISOINTCNTL_INDEX  0x00000074
 #define IP_ISOINTCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_isointcntl_get(void)
+__RWIP_INLINE uint32_t ip_isointcntl_get(void)
 {
     return REG_IP_RD(IP_ISOINTCNTL_ADDR);
 }
 
-__INLINE void ip_isointcntl_set(uint32_t value)
+__RWIP_INLINE void ip_isointcntl_set(uint32_t value)
 {
     REG_IP_WR(IP_ISOINTCNTL_ADDR, value);
 }
@@ -295,14 +295,14 @@ __INLINE void ip_isointcntl_set(uint32_t value)
 
 #define IP_ISOINTMSK_RST    0x0
 
-__INLINE uint8_t ip_isointcntl_isointmsk_getf(void)
+__RWIP_INLINE uint8_t ip_isointcntl_isointmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOINTCNTL_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000000FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_isointcntl_isointmsk_setf(uint8_t isointmsk)
+__RWIP_INLINE void ip_isointcntl_isointmsk_setf(uint8_t isointmsk)
 {
     ASSERT_ERR((((uint32_t)isointmsk << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_IP_WR(IP_ISOINTCNTL_ADDR, (uint32_t)isointmsk << 0);
@@ -321,7 +321,7 @@ __INLINE void ip_isointcntl_isointmsk_setf(uint8_t isointmsk)
 #define IP_ISOINTSTAT_INDEX  0x00000075
 #define IP_ISOINTSTAT_RESET  0x00000000
 
-__INLINE uint32_t ip_isointstat_get(void)
+__RWIP_INLINE uint32_t ip_isointstat_get(void)
 {
     return REG_IP_RD(IP_ISOINTSTAT_ADDR);
 }
@@ -333,7 +333,7 @@ __INLINE uint32_t ip_isointstat_get(void)
 
 #define IP_ISOINTSTAT_RST    0x0
 
-__INLINE uint8_t ip_isointstat_getf(void)
+__RWIP_INLINE uint8_t ip_isointstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOINTSTAT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000000FF)) == 0);
@@ -353,12 +353,12 @@ __INLINE uint8_t ip_isointstat_getf(void)
 #define IP_ISOINTACK_INDEX  0x00000076
 #define IP_ISOINTACK_RESET  0x00000000
 
-__INLINE uint32_t ip_isointack_get(void)
+__RWIP_INLINE uint32_t ip_isointack_get(void)
 {
     return REG_IP_RD(IP_ISOINTACK_ADDR);
 }
 
-__INLINE void ip_isointack_clear(uint32_t value)
+__RWIP_INLINE void ip_isointack_clear(uint32_t value)
 {
     REG_IP_WR(IP_ISOINTACK_ADDR, value);
 }
@@ -370,14 +370,14 @@ __INLINE void ip_isointack_clear(uint32_t value)
 
 #define IP_ISOINTACK_RST    0x0
 
-__INLINE uint8_t ip_isointack_getf(void)
+__RWIP_INLINE uint8_t ip_isointack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOINTACK_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000000FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_isointack_clearf(uint8_t isointack)
+__RWIP_INLINE void ip_isointack_clearf(uint8_t isointack)
 {
     ASSERT_ERR((((uint32_t)isointack << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_IP_WR(IP_ISOINTACK_ADDR, (uint32_t)isointack << 0);
@@ -397,12 +397,12 @@ __INLINE void ip_isointack_clearf(uint8_t isointack)
 #define IP_ISOGPIOCNTL_INDEX  0x00000078
 #define IP_ISOGPIOCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_isogpiocntl_get(void)
+__RWIP_INLINE uint32_t ip_isogpiocntl_get(void)
 {
     return REG_IP_RD(IP_ISOGPIOCNTL_ADDR);
 }
 
-__INLINE void ip_isogpiocntl_set(uint32_t value)
+__RWIP_INLINE void ip_isogpiocntl_set(uint32_t value)
 {
     REG_IP_WR(IP_ISOGPIOCNTL_ADDR, value);
 }
@@ -417,14 +417,14 @@ __INLINE void ip_isogpiocntl_set(uint32_t value)
 #define IP_ISOGPIOBEH_RST    0x0
 #define IP_ISOGPIOMSK_RST    0x0
 
-__INLINE void ip_isogpiocntl_pack(uint8_t isogpiobeh, uint8_t isogpiomsk)
+__RWIP_INLINE void ip_isogpiocntl_pack(uint8_t isogpiobeh, uint8_t isogpiomsk)
 {
     ASSERT_ERR((((uint32_t)isogpiobeh << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)isogpiomsk << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_IP_WR(IP_ISOGPIOCNTL_ADDR,  ((uint32_t)isogpiobeh << 31) | ((uint32_t)isogpiomsk << 0));
 }
 
-__INLINE void ip_isogpiocntl_unpack(uint8_t* isogpiobeh, uint8_t* isogpiomsk)
+__RWIP_INLINE void ip_isogpiocntl_unpack(uint8_t* isogpiobeh, uint8_t* isogpiomsk)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOGPIOCNTL_ADDR);
 
@@ -432,25 +432,25 @@ __INLINE void ip_isogpiocntl_unpack(uint8_t* isogpiobeh, uint8_t* isogpiomsk)
     *isogpiomsk = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ip_isogpiocntl_isogpiobeh_getf(void)
+__RWIP_INLINE uint8_t ip_isogpiocntl_isogpiobeh_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOGPIOCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_isogpiocntl_isogpiobeh_setf(uint8_t isogpiobeh)
+__RWIP_INLINE void ip_isogpiocntl_isogpiobeh_setf(uint8_t isogpiobeh)
 {
     ASSERT_ERR((((uint32_t)isogpiobeh << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_ISOGPIOCNTL_ADDR, (REG_IP_RD(IP_ISOGPIOCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)isogpiobeh << 31));
 }
 
-__INLINE uint8_t ip_isogpiocntl_isogpiomsk_getf(void)
+__RWIP_INLINE uint8_t ip_isogpiocntl_isogpiomsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ISOGPIOCNTL_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
 }
 
-__INLINE void ip_isogpiocntl_isogpiomsk_setf(uint8_t isogpiomsk)
+__RWIP_INLINE void ip_isogpiocntl_isogpiomsk_setf(uint8_t isogpiomsk)
 {
     ASSERT_ERR((((uint32_t)isogpiomsk << 0) & ~((uint32_t)0x000000FF)) == 0);
     REG_IP_WR(IP_ISOGPIOCNTL_ADDR, (REG_IP_RD(IP_ISOGPIOCNTL_ADDR) & ~((uint32_t)0x000000FF)) | ((uint32_t)isogpiomsk << 0));
@@ -470,13 +470,13 @@ __INLINE void ip_isogpiocntl_isogpiomsk_setf(uint8_t isogpiomsk)
 #define IP_ISOTIMERTGT_RESET  0x00000000
 #define IP_ISOTIMERTGT_COUNT  8
 
-__INLINE uint32_t ip_isotimertgt_get(int reg_idx)
+__RWIP_INLINE uint32_t ip_isotimertgt_get(int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 7);
     return REG_IP_RD(IP_ISOTIMERTGT_ADDR + reg_idx * 4);
 }
 
-__INLINE void ip_isotimertgt_set(int reg_idx, uint32_t value)
+__RWIP_INLINE void ip_isotimertgt_set(int reg_idx, uint32_t value)
 {
     ASSERT_ERR(reg_idx <= 7);
     REG_IP_WR(IP_ISOTIMERTGT_ADDR + reg_idx * 4, value);
@@ -489,7 +489,7 @@ __INLINE void ip_isotimertgt_set(int reg_idx, uint32_t value)
 
 #define IP_ISOTIMERTGT_RST    0x0
 
-__INLINE uint32_t ip_isotimertgt_getf(int reg_idx)
+__RWIP_INLINE uint32_t ip_isotimertgt_getf(int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 7);
     uint32_t localVal = REG_IP_RD(IP_ISOTIMERTGT_ADDR + reg_idx * 4);
@@ -497,7 +497,7 @@ __INLINE uint32_t ip_isotimertgt_getf(int reg_idx)
     return (localVal >> 0);
 }
 
-__INLINE void ip_isotimertgt_setf(int reg_idx, uint32_t isotimertgt)
+__RWIP_INLINE void ip_isotimertgt_setf(int reg_idx, uint32_t isotimertgt)
 {
     ASSERT_ERR(reg_idx <= 7);
     ASSERT_ERR((((uint32_t)isotimertgt << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);

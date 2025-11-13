@@ -1,0 +1,22 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+source "Kconfig.zephyr"
+
+config ATM_BT_RSSI_THRESHOLD
+	int "RSSI threshold for device filtering"
+	help
+	  Set the minimum RSSI (in dBm) for devices to be considered during scan.
+
+config ATM_TPUT_TEST_CONN_INTERVAL_MIN
+	int "Minimum connection interval value for throughput test"
+	default 30
+
+config ATM_TPUT_TEST_CONN_INTERVAL_MAX
+	int "Maximum connection interval value for throughput test"
+	default 30
+
+config ATM_TPUT_TEST_PHY_MODE
+	int "To set PHY mode to 1M, 2M, CODED(S2, S8) set this config to 0, 1, 2, 3 respectively"
+	default 0

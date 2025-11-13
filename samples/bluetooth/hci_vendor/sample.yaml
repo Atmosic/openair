@@ -9,10 +9,14 @@ common:
       - "atm_hci_init done"
 tests:
   sample.bluetooth.hci_vendor:
-    tags: bluetooth
+    tags:
+      - bluetooth
+    extra_configs:
+      - CONFIG_ATMWSTK_PD50=y
   samples.bluetooth.hci_vendor.atm:
     sysbuild: true
-    tags: bluetooth atm33 atm34 no_mcuboot
+    tags:
+      - bluetooth
+      - no_mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_ATMWSTK_FULL=y
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

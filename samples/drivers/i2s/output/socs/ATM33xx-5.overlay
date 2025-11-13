@@ -1,0 +1,20 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * I2S pin assignments for ATM33xx-5 SOC boards
+ */
+
+&i2s {
+	sck-out-pin = <18>;
+	ws-out-pin = <19>;
+	sd-out-pin = <20>;
+	status = "okay";
+};
+
+/ {
+	aliases {
+		i2s-tx = &i2s;
+	};
+};

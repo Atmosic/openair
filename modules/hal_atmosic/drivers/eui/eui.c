@@ -20,6 +20,7 @@
 
 #include "arch.h"
 #include "eui.h"
+#include "reset.h"
 #ifdef CONFIG_ATM_SEC_JRNL_PRESENT
 #include "sec_jrnl.h"
 #endif
@@ -50,7 +51,7 @@ static void eui48_to_eui64(uint8_t *eui)
     // The initial bytes of EUI are the OUI and are unchanged.
 }
 
-#ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_SETTINGS
 static int eui_setting_read_cb(const char *key, size_t len,
     settings_read_cb read_cb, void *cb_arg, void *param)
 {
@@ -93,7 +94,7 @@ static void gen_rand_eui(uint8_t *eui, uint8_t len)
 	eui[len - 1] = (eui[len - 1] & ~0x01) | 0x02;
     }
 }
-#endif
+#endif // EUI_ALLOW_RANDOM
 
 static void get_eui48_once(void)
 {
@@ -101,18 +102,20 @@ static void get_eui48_once(void)
 	return;
     }
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_SETTINGS
     int ret =
 	settings_load_subtree_direct("eui/48", eui_setting_read_cb, eui48);
     if (!ret && eui48_inited) {
 	return;
     }
-#else
+#endif
+#else // CONFIG_SOC_FAMILY_ATM
     uint16_t length_nvds = EUI48_LEN_BYTES;
     if (nvds_get(ATM_TAG_EUI48, &length_nvds, eui48) == NVDS_OK) {
 	eui48_inited = true;
 	return;
     }
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_ATM_SEC_JRNL_PRESENT
     uint16_t length_jrnl = EUI48_LEN_BYTES;
     if (nsc_sec_jrnl_get(ATM_TAG_EUI48, &length_jrnl, eui48) == SEC_JRNL_OK) {
@@ -124,10 +127,16 @@ static void get_eui48_once(void)
     gen_rand_eui(eui48, EUI48_LEN_BYTES);
     eui48_inited = true;
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_SETTINGS
     settings_save_one("eui/48", eui48, EUI48_LEN_BYTES);
-#else
+#else // CONFIG_ATM_SETTINGS
+    // When using EUI_ALLOW_RANDOM without CONFIG_ATM_SETTINGS, resets will
+    // result in a new EUI, causing incorrect identification
+    ASSERT_ERR(is_boot_type(TYPE_POWER_ON));
+#endif // CONFIG_ATM_SETTINGS
+#else // CONFIG_SOC_FAMILY_ATM
     nvds_put(ATM_TAG_EUI48, EUI48_LEN_BYTES, eui48);
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 #elif !defined(EUI48_ALLOW_BUILTIN)
     ASSERT_ERR(0);
 #endif
@@ -150,18 +159,20 @@ static void get_eui64_once(void)
 	return;
     }
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_SETTINGS
     int ret =
 	settings_load_subtree_direct("eui/64", eui_setting_read_cb, eui64);
     if (!ret && eui64_inited) {
 	return;
     }
-#else
+#endif
+#else // CONFIG_SOC_FAMILY_ATM
     uint16_t length_nvds = EUI64_LEN_BYTES;
     if (nvds_get(ATM_TAG_EUI64, &length_nvds, eui64) == NVDS_OK) {
 	eui64_inited = true;
 	return;
     }
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_ATM_SEC_JRNL_PRESENT
     uint16_t length_jrnl = EUI64_LEN_BYTES;
     if (nsc_sec_jrnl_get(ATM_TAG_EUI64, &length_jrnl, eui64) == SEC_JRNL_OK) {
@@ -183,13 +194,19 @@ static void get_eui64_once(void)
     gen_rand_eui(eui64, EUI64_LEN_BYTES);
     eui64_inited = true;
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_SETTINGS
     settings_save_one("eui/64", eui64, EUI64_LEN_BYTES);
-#else
+#else // CONFIG_ATM_SETTINGS
+    // When using EUI_ALLOW_RANDOM without CONFIG_ATM_SETTINGS, resets will
+    // result in a new EUI, causing incorrect identification
+    ASSERT_ERR(is_boot_type(TYPE_POWER_ON));
+#endif // CONFIG_ATM_SETTINGS
+#else // CONFIG_SOC_FAMILY_ATM
     nvds_put(ATM_TAG_EUI64, EUI64_LEN_BYTES, eui64);
-#endif
-#else
+#endif // CONFIG_SOC_FAMILY_ATM
+#else // EUI_ALLOW_RANDOM
     ASSERT_ERR(0);
-#endif
+#endif // EUI_ALLOW_RANDOM
 }
 
 void read_eui64(uint8_t *address)
