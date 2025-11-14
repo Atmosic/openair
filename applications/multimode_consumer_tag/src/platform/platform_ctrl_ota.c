@@ -13,6 +13,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
+#include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/bluetooth/bluetooth.h>
@@ -103,8 +104,28 @@ static int ota_adv_start(void)
 	return 0;
 }
 
+static enum mgmt_cb_return mgmt_event_cmd_callback(uint32_t event, enum mgmt_cb_return prev_status,
+						   int32_t *rc, uint16_t *group, bool *abort_more,
+						   void *data, size_t data_size)
+{
+	if (!ota_mode_active) {
+		LOG_ERR("OTA mode not active, rejecting command");
+		*rc = MGMT_ERR_EBADSTATE;
+		return MGMT_CB_ERROR_RC;
+	}
+
+	return MGMT_CB_OK;
+}
+
+static struct mgmt_callback const mgmt_event_callback = {
+	.callback = mgmt_event_cmd_callback,
+	.event_id = MGMT_EVT_OP_CMD_RECV,
+};
+
 bool platform_ctrl_ota_init(void)
 {
+	mgmt_callback_register(&mgmt_event_callback);
+
 	/* Settings are already loaded by settings_load() in main() */
 	/* Just check if OTA mode is active and start advertising if needed */
 
