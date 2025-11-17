@@ -46,7 +46,38 @@ typedef void (*button_event_cb_t)(bool pressed, uint32_t duration_ms);
 typedef void (*device_state_cb_t)(device_state_t new_state);
 
 /**
+ * @brief Initialize button and LED GPIO hardware only
+ *
+ * This function configures the GPIO pins for button input and LED outputs.
+ * It does NOT set up callbacks or work items.
+ *
+ * This should be called early in initialization, before button polling.
+ *
+ * @return 0 on success, negative error code on failure
+ */
+int led_button_ctrl_gpio_init(void);
+
+#ifdef CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL
+/**
+ * @brief Check if device should power on based on button state
+ *
+ * This function handles button power control logic:
+ * - Calls led_button_ctrl_gpio_init() to set up GPIO hardware
+ * - On cold boot: polls button for 2 seconds, returns false if released early
+ * - On SOC_OFF wakeup: checks if wakeup was from button press
+ * - On software/watchdog/hardware reset: returns true immediately
+ *
+ * @return true if device should power on, false if device should stay off
+ */
+bool led_button_ctrl_check_power_on(void);
+#endif
+
+/**
  * @brief Initialize LED and button control
+ *
+ * This function sets up button callbacks, work items, and completes
+ * LED/button initialization. If led_button_ctrl_gpio_init() was not
+ * called previously, this function will call it.
  *
  * @return 0 on success, negative error code on failure
  */

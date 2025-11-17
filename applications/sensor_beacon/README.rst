@@ -325,7 +325,7 @@ Tag Designs (Button Power Control Enabled)
 When ``CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL`` is enabled (default for ATMBTCSTAG-3405):
 
 1. **Initial State**: Device starts in SoC_off mode when battery is inserted
-2. **Turn Device ON**: Press button
+2. **Turn Device ON**: Press button for 2 seconds to bring the device out of soc-off mode
 
    - Device exits SoC_off mode
    - LED blinks 3 times at 0.5s interval

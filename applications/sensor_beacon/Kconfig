@@ -44,6 +44,7 @@ config SENSOR_BEACON_HUMIDITY_SCALING_FACTOR
 
 config SENSOR_BEACON_BUTTON_POWER_CONTROL
 	bool "Button-controlled power management"
+	select HWINFO
 	help
 	  Enable button-controlled device power management functionality.
 	  When enabled, this mode provides:

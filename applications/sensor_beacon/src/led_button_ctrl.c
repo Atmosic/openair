@@ -9,6 +9,10 @@
 #include <zephyr/input/input.h>
 #include <zephyr/logging/log.h>
 
+#ifdef CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL
+#include <zephyr/drivers/hwinfo.h>
+#endif
+
 #include <inttypes.h>
 
 #include "led_button_ctrl.h"
@@ -50,6 +54,10 @@ static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
 #define LED_POWER_BLINK_PERIOD    500  /* 0.5s interval */
 #define LED_BEACON_BLINK_DURATION 100  /* 0.1s duration */
 #define BEACON_COUNT_FOR_LED      10   /* Show LED every 10 beacon updates */
+
+#ifdef CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL
+#define BUTTON_POLL_INTERVAL_MS 100 /* Button polling interval during power-on check */
+#endif
 
 /* LED types for direct control */
 typedef enum {
@@ -303,11 +311,16 @@ static void led_work_handler(struct k_work *work)
 	}
 }
 
-int led_button_ctrl_init(void)
+int led_button_ctrl_gpio_init(void)
 {
 	int ret;
 
-	LOG_INF("Initializing LED and button control");
+	static bool gpio_initialized;
+	if (gpio_initialized) {
+		return 0;
+	}
+
+	LOG_INF("Initializing button and LED GPIO");
 
 #if HAS_BUTTON
 	if (!gpio_is_ready_dt(&button)) {
@@ -327,13 +340,9 @@ int led_button_ctrl_init(void)
 		return ret;
 	}
 
-	gpio_init_callback(&button_cb_data, button_pressed_handler, BIT(button.pin));
-	gpio_add_callback(button.port, &button_cb_data);
-
-	k_work_init_delayable(&button_work, button_work_handler);
-	LOG_INF("Button initialized on pin %d", button.pin);
+	LOG_INF("Button GPIO initialized on pin %d", button.pin);
 #else
-	LOG_WRN("No button available on this board");
+	LOG_DBG("No button available on this board");
 #endif
 
 #if HAS_LED0
@@ -366,11 +375,74 @@ int led_button_ctrl_init(void)
 	LOG_INF("LED1 (secondary) initialized on pin %d", led1.pin);
 #endif
 
+	gpio_initialized = true;
+	return 0;
+}
+
+#ifdef CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL
+
+bool led_button_ctrl_check_power_on(void)
+{
+	int ret = led_button_ctrl_gpio_init();
+	if (ret) {
+		LOG_ERR("GPIO init failed: %d", ret);
+		return false; // Fail-safe: stay off on error
+	}
+
+	uint32_t reset_cause;
+	hwinfo_get_reset_cause(&reset_cause);
+
+	if (reset_cause & (RESET_SOFTWARE | RESET_WATCHDOG) || (reset_cause == RESET_HARDWARE)) {
+		LOG_INF("Direct power on (software/watchdog/hardware reset)");
+		return true;
+	}
+
+	int64_t timestamp = k_uptime_get();
+	while (gpio_pin_get_dt(&button)) {
+		k_sleep(K_MSEC(BUTTON_POLL_INTERVAL_MS));
+		if (k_uptime_get() - timestamp > BUTTON_LONG_PRESS_MS) {
+			// Long press detected - show power ON LED indication
+			show_led_pattern(LED_IND_POWER_ON);
+			break;
+		}
+	}
+
+	if (k_uptime_delta(&timestamp) < BUTTON_LONG_PRESS_MS) {
+		LOG_INF("Waiting for button press longer than %dms - staying off",
+			BUTTON_LONG_PRESS_MS);
+		return false; // Stay off
+	}
+
+	LOG_INF("Device powering on");
+	return true;
+}
+
+#endif /* CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL */
+
+int led_button_ctrl_init(void)
+{
+	int ret;
+
+	LOG_INF("Initializing LED and button control");
+
+	// Initialize GPIO if not already done
+	ret = led_button_ctrl_gpio_init();
+	if (ret) {
+		return ret;
+	}
+
+#if HAS_BUTTON
+	// Set up button callback and work items
+	gpio_init_callback(&button_cb_data, button_pressed_handler, BIT(button.pin));
+	gpio_add_callback(button.port, &button_cb_data);
+
+	k_work_init_delayable(&button_work, button_work_handler);
+	LOG_INF("Button callbacks and work items initialized");
+#endif
+
 #if HAS_LED
 	k_work_init_delayable(&led_work, led_work_handler);
-	LOG_INF("LED control initialized");
-#else
-	LOG_WRN("No LEDs available on this board");
+	LOG_INF("LED work items initialized");
 #endif
 
 	beacon_count = 0;
