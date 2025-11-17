@@ -204,15 +204,21 @@ jobs:
               test_name = build['test_name']
               board = build['board']
 
+              # Append @mcuboot to board name if test name contains 'mcuboot'
+              if 'mcuboot' in test_name:
+                  board_with_revision = f"{board}@mcuboot"
+              else:
+                  board_with_revision = board
+
               print(f"\n{'='*80}")
-              print(f"Building {test_name} on {board}")
+              print(f"Building {test_name} on {board_with_revision}")
               print(f"{'='*80}\n")
 
               try:
                   result = subprocess.run(
                       [
                           'west', 'build', '-p', 'always',
-                          '-b', board,
+                          '-b', board_with_revision,
                           f'openair/{app_dir}',
                           '--sysbuild',
                           '-T', test_name,
