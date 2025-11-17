@@ -173,7 +173,7 @@ jobs:
             rm -rf .west
           fi
           west init -l openair
-          west update
+          west update --group-filter=+TagSDK
           west zephyr-export
 
       - name: Install Python dependencies
