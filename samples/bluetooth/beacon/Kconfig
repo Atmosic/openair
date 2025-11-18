@@ -36,6 +36,7 @@ config REFBCN_SOCOFF_BEACON
 	bool "socoff beacon demo"
 	select ADV_OPTS_USE_IDENTITY
 	select ADV_OPTS_SCANNABLE
+	select SOFT_OFF
 	help
 	  Select this option to see the 30s beacon and 30s soc off.
 
@@ -66,7 +67,6 @@ config REFBCN_SIMPLE_BEACON_INTV
 config ADV_INTV
 	hex "Advertising interval in 0.625ms units"
 	range 0x20 0x640
-	default ATM_TEST_UTIL_HEX1 if ATM_TEST_UTIL_HAS_OVR  # for testing
 	default 0x640 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 1s
 	default 0x20
 	help
@@ -75,7 +75,6 @@ config ADV_INTV
 
 config ADV_MAX_EVT
 	int "Maximum number of advertising events"
-	default ATM_TEST_UTIL_INT1 if ATM_TEST_UTIL_HAS_OVR # for testing
 	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s_adv (30 * 1s)
 	default 0
 	help
@@ -84,7 +83,6 @@ config ADV_MAX_EVT
 
 config ADV_RSTRT_DUR_MS
 	int "Advertising restart duration (milliseconds)"
-	default ATM_TEST_UTIL_INT2 if ATM_TEST_UTIL_HAS_OVR  # for testing
 	default 30000 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s
 	default 0
 	help
@@ -96,8 +94,7 @@ config SOFT_OFF
 	bool "Enable soft-off low power mode"
 	depends on PM
 	select EXT_WAKEUP_ENABLE_INDEFINITE
-	default ATM_TEST_UTIL_BOOL1 if ATM_TEST_UTIL_HAS_OVR # for testing
-	default y if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON
+	default y if REFBCN_POWER_PROFILE
 	help
 	  Enables the soft-off low power mode for the beacon application.
 	  When enabled, the device will enter a low power state between advertising cycles.
@@ -106,8 +103,8 @@ config SOFT_OFF
 config SOFT_OFF_SUBID
 	int "Soft-off substate ID"
 	depends on SOFT_OFF
-	default ATM_TEST_UTIL_INT3 if ATM_TEST_UTIL_HAS_OVR  # for testing
 	default 0 if REFBCN_POWER_PROFILE
+	default 1
 	help
 	  Specifies the substate ID to use in low power state
 	  1:soc-off 0:hibernation
