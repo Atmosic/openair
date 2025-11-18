@@ -35,6 +35,8 @@ tests:
     tags:
       - multimode_consumer_tag
       - no_mcuboot
+    extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
     extra_configs:
       - CONFIG_STF_TAG=n
       - CONFIG_FMNA_TAG=n
@@ -48,7 +50,7 @@ tests:
       - multimode_consumer_tag
       - no_mcuboot
     extra_args:
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x2000"
     extra_configs:
       - CONFIG_STF_TAG=n
       - CONFIG_FHN_TAG=n
@@ -61,6 +63,7 @@ tests:
       - multimode_consumer_tag
       - no_mcuboot
     extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
       - EXTRA_CONF_FILE="stf_tag.conf"
     extra_configs:
       - CONFIG_FHN_TAG=n
@@ -143,6 +146,7 @@ tests:
       - multimode_consumer_tag
       - mcuboot
     extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
@@ -163,7 +167,7 @@ tests:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x2000"
     extra_configs:
       - CONFIG_STF_TAG=n
       - CONFIG_FHN_TAG=n
@@ -177,6 +181,7 @@ tests:
       - multimode_consumer_tag
       - mcuboot
     extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
@@ -286,6 +291,7 @@ tests:
       - multimode_consumer_tag
       - no_mcuboot
     extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
       - EXTRA_CONF_FILE="basic_cs_pd50.conf"
     extra_configs:
       - CONFIG_STF_TAG=n
@@ -318,6 +324,7 @@ tests:
       - multimode_consumer_tag
       - mcuboot
     extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
@@ -356,6 +363,7 @@ tests:
       - multimode_consumer_tag
       - no_mcuboot
     extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
       - EXTRA_CONF_FILE="basic_cs_pd50.conf"
     extra_configs:
       - CONFIG_STF_TAG=n
