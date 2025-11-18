@@ -66,7 +66,6 @@ BT_CONN_CB_DEFINE(ota_conn_callbacks) = {
 static int ota_settings_set(const char *name, size_t len, settings_read_cb read_cb, void *cb_arg)
 {
 	const char *next;
-	int rc;
 
 	if (settings_name_steq(name, "ota_mode", &next) && !next) {
 		if (len != sizeof(ota_mode_active)) {
@@ -74,7 +73,7 @@ static int ota_settings_set(const char *name, size_t len, settings_read_cb read_
 			return -EINVAL;
 		}
 
-		rc = read_cb(cb_arg, &ota_mode_active, sizeof(ota_mode_active));
+		int rc = read_cb(cb_arg, &ota_mode_active, sizeof(ota_mode_active));
 		if (rc < 0) {
 			LOG_ERR("Failed to read OTA mode flag: %d", rc);
 			return rc;
@@ -93,10 +92,8 @@ SETTINGS_STATIC_HANDLER_DEFINE(platform_ota, "platform", NULL, ota_settings_set,
 /* Start OTA advertising */
 static int ota_adv_start(void)
 {
-	int err;
-
 	/* Use legacy advertising with connectable and scannable */
-	err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ota_ad, ARRAY_SIZE(ota_ad), NULL, 0);
+	int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ota_ad, ARRAY_SIZE(ota_ad), NULL, 0);
 	if (err) {
 		LOG_ERR("OTA advertising failed to start (err %d)", err);
 		return err;
@@ -108,8 +105,6 @@ static int ota_adv_start(void)
 
 bool platform_ctrl_ota_init(void)
 {
-	int err;
-
 	/* Settings are already loaded by settings_load() in main() */
 	/* Just check if OTA mode is active and start advertising if needed */
 
@@ -120,7 +115,7 @@ bool platform_ctrl_ota_init(void)
 
 	/* Clear OTA mode flag for next boot */
 	bool ota_mode_setting = false;
-	err = settings_save_one(OTA_SETTINGS_KEY, &ota_mode_setting, sizeof(ota_mode_setting));
+	int err = settings_save_one(OTA_SETTINGS_KEY, &ota_mode_setting, sizeof(ota_mode_setting));
 	if (err) {
 		LOG_ERR("Failed to save OTA mode flag: %d", err);
 		/* Clear the flag on failure */
@@ -144,13 +139,11 @@ bool platform_ctrl_ota_init(void)
 
 void platform_ctrl_ota_enter(void)
 {
-	int err;
-
 	LOG_INF("Entering OTA mode");
 
 	/* Set OTA mode flag for next boot */
 	bool ota_mode_setting = true;
-	err = settings_save_one(OTA_SETTINGS_KEY, &ota_mode_setting, sizeof(ota_mode_setting));
+	int err = settings_save_one(OTA_SETTINGS_KEY, &ota_mode_setting, sizeof(ota_mode_setting));
 	if (err) {
 		LOG_ERR("Failed to save OTA mode flag: %d", err);
 		return;
