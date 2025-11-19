@@ -208,7 +208,6 @@ static void shutdown_timeout_cb(struct k_work *work)
 
 	// Wait for button release
 	while (gpio_pin_get_dt(&button)) {
-		k_sleep(K_MSEC(BUTTON_SHUTDOWN_POLL_MS));
 #ifdef CONFIG_TAG_BTN_FACTORY_RESET
 		if (!factory_reset &&
 		    (k_uptime_get() - button_press_time > BUTTON_FACTORY_RESET_MS)) {
@@ -217,6 +216,7 @@ static void shutdown_timeout_cb(struct k_work *work)
 			factory_reset_handler();
 		}
 #endif
+		k_sleep(K_MSEC(BUTTON_SHUTDOWN_POLL_MS));
 	}
 	// stop wdt feed timer to prevent unnecessary wakeup
 	platform_ctrl_wdt_feed_timer_stop();
@@ -236,8 +236,11 @@ static K_WORK_DELAYABLE_DEFINE(stf_long_press_work, stf_long_press_cb);
 
 static void button_cb(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
+	static bool button_was_pressed;
+
 	if (gpio_pin_get_dt(&button)) {
 		LOG_DBG("Button Pressed");
+		button_was_pressed = true;
 		button_press_time = k_uptime_get();
 		// Cancel CTS timeout when button is pressed (new tap event)
 		k_work_cancel_delayable(&cts_tap_timeout_work);
@@ -249,12 +252,13 @@ static void button_cb(const struct device *dev, struct gpio_callback *cb, uint32
 #endif
 	} else {
 		LOG_DBG("Button Released");
-		if (!button_press_time) {
+		if (!button_was_pressed) {
+			/* Button was not pressed, ignore redundant release */
 			return;
 		}
 
+		button_was_pressed = false;
 		int64_t press_duration = k_uptime_get() - button_press_time;
-		button_press_time = 0;
 
 		if (press_duration < BUTTON_SHORT_PRESS_MS) {
 			// Short press - handle button work
