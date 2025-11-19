@@ -7,7 +7,10 @@ name: Build OpenAir Applications
 # The workflow automatically discovers all applications and samples with a sample.yaml
 # or testcase.yaml file and builds all test configurations on all configured boards.
 # Builds are grouped by application directory for efficiency, and .atm files are
-# bundled into archives for release.
+# bundled into archives.
+#
+# For pull requests: Archives are uploaded as workflow artifacts (30-day retention)
+# For pushes/releases: Archives are uploaded to GitHub releases
 
 on:
   pull_request:
@@ -301,22 +304,23 @@ jobs:
             echo "archive_path=${{ github.workspace }}/${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Upload archive to release
-        if: success() && steps.create-archive.outputs.has_archive == 'true'
+      - name: Upload archive as artifact (PR builds)
+        if: success() && steps.create-archive.outputs.has_archive == 'true' && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.create-archive.outputs.archive_name }}
+          path: ${{ steps.create-archive.outputs.archive_path }}
+          retention-days: 30
+
+      - name: Upload archive to release (non-PR builds)
+        if: success() && steps.create-archive.outputs.has_archive == 'true' && github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get the release tag from the event or create one based on the run
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            TAG_NAME="pr-${{ github.event.pull_request.number }}-${{ github.run_number }}"
-            RELEASE_NAME="PR #${{ github.event.pull_request.number }} - Build ${{ github.run_number }}"
-            IS_PRERELEASE="--prerelease"
-          else
-            TAG_NAME="build-${{ github.run_number }}"
-            RELEASE_NAME="Build ${{ github.run_number }}"
-            IS_PRERELEASE=""
-          fi
+          TAG_NAME="build-${{ github.run_number }}"
+          RELEASE_NAME="Build ${{ github.run_number }}"
 
           # Check if release exists, create if not
           if ! gh release view "$TAG_NAME" --repo ${{ github.repository }} > /dev/null 2>&1; then
@@ -325,7 +329,6 @@ jobs:
               --repo ${{ github.repository }} \
               --title "$RELEASE_NAME" \
               --notes "Automated build from workflow run ${{ github.run_number }}<br>Commit: ${{ github.sha }}" \
-              $IS_PRERELEASE \
               --target ${{ github.sha }}
           fi
 
@@ -355,6 +358,14 @@ jobs:
             ARCHIVE_PATH="${{ steps.create-archive.outputs.archive_path }}"
             ARCHIVE_SIZE=$(du -h "$ARCHIVE_PATH" | cut -f1)
             echo "**Archive:** \`${{ steps.create-archive.outputs.archive_name }}\` ($ARCHIVE_SIZE)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Show different messages for PR vs non-PR builds
+            if [ "${{ github.event_name }}" == "pull_request" ]; then
+              echo "📦 **Archive uploaded as workflow artifact** (available for 30 days)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "🚀 **Archive uploaded to GitHub release**" >> $GITHUB_STEP_SUMMARY
+            fi
             echo "" >> $GITHUB_STEP_SUMMARY
 
             # List contents of the archive
