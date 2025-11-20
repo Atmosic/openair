@@ -11,6 +11,7 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/dfu/mcuboot.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
@@ -30,6 +31,9 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 /* OTA advertising device name */
 #define OTA_DEVICE_NAME     "Atmosic OTA"
 #define OTA_DEVICE_NAME_LEN (sizeof(OTA_DEVICE_NAME) - 1)
+
+/* Image confirmation delay in seconds */
+#define IMAGE_CONFIRM_DELAY_SEC 2
 
 /* OTA mode flag */
 static bool ota_mode_active = false;
@@ -122,8 +126,29 @@ static struct mgmt_callback mgmt_event_callback = {
 	.event_id = MGMT_EVT_OP_CMD_RECV,
 };
 
+#ifndef CONFIG_MCUBOOT_BOOTLOADER_MODE_OVERWRITE_ONLY
+static void confirm_img_delay_work_cb(struct k_work *work)
+{
+	/* System stable for IMAGE_CONFIRM_DELAY_SEC seconds, confirm image to prevent revert */
+	int err = boot_write_img_confirmed();
+	if (err) {
+		LOG_ERR("Failed to confirm image: %d", err);
+	} else {
+		LOG_INF("Image confirmed successfully");
+	}
+}
+
+static K_WORK_DELAYABLE_DEFINE(confirm_img_delay_work, confirm_img_delay_work_cb);
+#endif
+
 bool platform_ctrl_ota_init(void)
 {
+#ifndef CONFIG_MCUBOOT_BOOTLOADER_MODE_OVERWRITE_ONLY
+	if (!boot_is_img_confirmed()) {
+		/* Schedule confirmation after IMAGE_CONFIRM_DELAY_SEC seconds */
+		k_work_schedule(&confirm_img_delay_work, K_SECONDS(IMAGE_CONFIRM_DELAY_SEC));
+	}
+#endif
 	mgmt_callback_register(&mgmt_event_callback);
 
 	/* Settings are already loaded by settings_load() in main() */
