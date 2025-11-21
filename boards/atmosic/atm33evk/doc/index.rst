@@ -132,7 +132,7 @@ Some non-production ATM33 EVKs in the field may have no BD address programmed in
 
   ASSERT ERR(0) at <zephyrproject-root>/openair/modules/hal_atmosic/drivers/eui/eui.c:132
 
-To avoid this error, the BLE application must be built with an option to allocate a random BD address.  This can be done by adding ``-DCONFIG_ATM_EUI_ALLOW_RANDOM=y`` to the build options.
+To avoid this error, the BLE application must be built with an option to allocate a random BD address.  This can be done by adding ``-DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DCONFIG_ATM_SETTINGS=y`` to the build options.
 
 
 ---------------
@@ -154,7 +154,7 @@ Using CPD200 which is available as a Fixed Atmosic Wireless Stack Image only (Su
 1a. Build the Application:
 
 
-  west build -p -s <APP> -b <BOARD> -d build/<BOARD>/<APP> -- -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=CPD200;" -DCONFIG_ATM_EUI_ALLOW_RANDOM=y
+  west build -p -s <APP> -b <BOARD> -d build/<BOARD>/<APP> -- -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=CPD200;"
 
 2a. Flashing Application:
 
@@ -179,7 +179,7 @@ Using PD50 Atmosic Wireless Stack which is supported as a Statically Linked BLE 
 
 1b. Build the Application:
 
-  west build -p -s <APP> -b <BOARD> -d build/<BOARD>/<APP> -- -DCONFIG_ATM_EUI_ALLOW_RANDOM=y
+  west build -p -s <APP> -b <BOARD> -d build/<BOARD>/<APP>
 
 2b. Flashing the Application:
 
@@ -208,7 +208,7 @@ To build with MCUboot, for example, DFU is needed, first build MCUboot::
 
 Build the application with MCUboot as follows::
 
-  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=CPD200" -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
+  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=CPD200" -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
 
 When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command line, ``west`` automatically creates a signed image (``zephyr.signed.{bin,hex}``), which is ultimately used by ``west flash`` to program the device.
 
@@ -242,7 +242,7 @@ To build MCUboot::
 
 Build the application with MCUboot as follows::
 
-  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_ATM_EUI_ALLOW_RANDOM=y -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
+  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
 
 This is somewhat of a non-standard workflow.  When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command line, ``west`` automatically creates a signed, merged image (``zephyr.signed.{bin,hex}``), which is ultimately used by ``west flash`` to program the device.
 
