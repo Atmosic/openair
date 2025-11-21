@@ -169,12 +169,11 @@ jobs:
             ${{ runner.os }}-west-modules-
 
       - name: Initialize West workspace
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER="x-access-token"
         run: |
-          git config --global url."https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+          GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          GH_USER="x-access-token"
+
+          git config --global url."https://${GH_USER}:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
           cd ${{ github.workspace }}
           # If .west directory exists from cache, remove it to reinitialize
           if [ -d .west ]; then
