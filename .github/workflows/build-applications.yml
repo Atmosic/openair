@@ -147,9 +147,6 @@ jobs:
 
       - name: Install Zephyr SDK
         if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd ~
           # Using Zephyr SDK 0.16.8 which is compatible with Zephyr-based projects
@@ -172,6 +169,9 @@ jobs:
             ${{ runner.os }}-west-modules-
 
       - name: Initialize West workspace
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd ${{ github.workspace }}
           # If .west directory exists from cache, remove it to reinitialize
