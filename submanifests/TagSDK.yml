@@ -3,7 +3,7 @@ manifest:
   group-filter: [-TagSDK]
   projects:
     - name: TagSDK
-      url: https://github.com/Atmosic/TagSDK.git
+      url: https://github.com/Atmosic/TagSDK
       revision: 1f6d75d29bf434e7431b71282e7cf165c8ab2635
       path: vendor/TagSDK
       groups:
