@@ -117,7 +117,7 @@ static enum mgmt_cb_return mgmt_event_cmd_callback(uint32_t event, enum mgmt_cb_
 	return MGMT_CB_OK;
 }
 
-static struct mgmt_callback const mgmt_event_callback = {
+static struct mgmt_callback mgmt_event_callback = {
 	.callback = mgmt_event_cmd_callback,
 	.event_id = MGMT_EVT_OP_CMD_RECV,
 };
