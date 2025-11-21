@@ -1,0 +1,10 @@
+manifest:
+  version: "0.10"
+  group-filter: [-TagSDK]
+  projects:
+    - name: TagSDK
+      url: git@github.com:Atmosic/TagSDK.git
+      revision: 1f6d75d29bf434e7431b71282e7cf165c8ab2635
+      path: vendor/TagSDK
+      groups:
+         - TagSDK
