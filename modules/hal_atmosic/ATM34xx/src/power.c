@@ -207,8 +207,8 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 
 #ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
 #define PSEQ_USE_FSM
-#define BP_SLEEP_FREQ	1000000U
-#define BP_DOUBLER_FREQ	32000000U
+#define BP_SLEEP_FREQ   2000000U
+#define BP_DOUBLER_FREQ 32000000U
 
 static void pseq_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 {
