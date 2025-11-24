@@ -1,19 +1,15 @@
 manifest:
   group-filter:
-  - -babblesim
   - -optional
+  - -babblesim
   projects:
-  - name: hal_atmosic
-    url: https://github.com/Atmosic/hal_atmosic
-    revision: fbdfe0c17d70528ba239895110ffe7c6e63c04e7
-    path: modules/hal/atmosic
   - name: hal_atmosic_lib
     url: https://github.com/Atmosic/hal_atmosic_lib
-    revision: ee5e833fed713b19c82efdba19b60ecb112a24d9
+    revision: 75456fe2cf4dd1dde2702f4d21d47189b1d0a8c1
     path: modules/hal/atmosic_lib
   - name: mcuboot
     url: https://github.com/Atmosic/mcuboot
-    revision: e9f38a28a06fc12cf6afa8d79f48e11d7ffd2350
+    revision: 9339824fe6983668ef7e12d84299585fae7aea44
     path: bootloader/mcuboot
   - name: micro-ecc
     url: https://github.com/Atmosic/micro-ecc
@@ -21,30 +17,30 @@ manifest:
     path: modules/crypto/micro-ecc
   - name: zephyr
     url: https://github.com/Atmosic/zephyr
-    revision: 24cdd75089db5cb71cc807d377cd974a9f6bfb8f
+    revision: 328fc0c85e2f4c2dca21a404ab4f43fb47600a37
     west-commands: scripts/west-commands.yml
   - name: cmsis
     url: https://github.com/zephyrproject-rtos/cmsis
-    revision: d1b8b20b6278615b00e136374540eb1c00dcabe7
+    revision: 512cc7e895e8491696b61f7ba8066b4a182569b8
     path: modules/hal/cmsis
+    groups:
+    - hal
+  - name: cmsis_6
+    url: https://github.com/zephyrproject-rtos/CMSIS_6
+    revision: 06d952b6713a2ca41c9224a62075e4059402a151
+    path: modules/hal/cmsis_6
     groups:
     - hal
   - name: littlefs
     url: https://github.com/zephyrproject-rtos/littlefs
-    revision: ed0531d59ee37f5fb2762bcf2fc8ba4efaf82656
+    revision: 8f5ca347843363882619d8f96c00d8dbd88a8e79
     path: modules/fs/littlefs
     groups:
     - fs
   - name: mbedtls
     url: https://github.com/zephyrproject-rtos/mbedtls
-    revision: 4952e1328529ee549d412b498ea71c54f30aa3b1
+    revision: 85440ef5fffa95d0e9971e9163719189cf34d979
     path: modules/crypto/mbedtls
-    groups:
-    - crypto
-  - name: tinycrypt
-    url: https://github.com/zephyrproject-rtos/tinycrypt
-    revision: 1012a3ebee18c15ede5efc8332ee2fc37817670f
-    path: modules/crypto/tinycrypt
     groups:
     - crypto
   - name: zcbor

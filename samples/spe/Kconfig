@@ -7,41 +7,41 @@ source "Kconfig.zephyr"
 config ATM_SPE_DISABLE_SAU
 	bool "Disable SAU"
 
-config ATM_SPE_DISABLE_SHUB
-	bool "Disable Sensor Hub"
-
-config ATM_SPE_DISABLE_ROM_PATCH
-	bool "Disable ROM PATCH controller"
-
-config ATM_SPE_DISABLE_OTP
-	bool "Disable OTP controller"
-
 config ATM_ENABLE_NSC_EXAMPLE
 	bool "Enable NSC example function for extending SPE"
 
 config ATM_SPE_DEBUG_TZ
 	bool "Enable verbose TrustZone configuration debug"
 
-config ATM_SPE_RP_BOOT_ROM
-	bool "Read protect the boot ROM"
-
-config ATM_SPE_WP_ATMWSTK
-	bool "Write protect the ATMWSTK image, if used"
-
-config ATM_SPE_RP_MCUBOOT
-	bool "Read protect the MCUBOOT image, if used"
-
 config ATM_SPE_SECURE_MEM_AREAS
 	bool "Secure memory areas"
 	default y
-	select ATM_SPE_WP_ATMWSTK
-	select ATM_SPE_RP_MCUBOOT
-	select ATM_SPE_RP_BOOT_ROM
-	select ATM_SPE_DISABLE_OTP
-	select ATM_SPE_DISABLE_ROM_PATCH
-	select ATM_SPE_DISABLE_SHUB
+	select ATM_PROT
+	select ATM_PROT_WP_ATMWSTK
+	select ATM_PROT_RP_MCUBOOT
+	select ATM_PROT_RP_BOOT_ROM
+	select ATM_PROT_DISABLE_OTP
+	select ATM_PROT_DISABLE_ROM_PATCH
+	select ATM_PROT_DISABLE_SHUB
+	select ATM_NV_MEM_FLASH_PROT if DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
 
 config ATM_SPE_DISABLE_SYSTICK
 	bool "Disable secure SysTick"
 	depends on SYSTEM_TIMER_HAS_DISABLE_SUPPORT
 	default y
+
+config ATM_SPE_NSC_ENTRY_IN_RAM
+	bool "Place SPE NSC entry points in RAM"
+	default $(dt_nodelabel_bool_prop,sec_tz,allow_nsc_in_ram)
+	depends on ARM_FIRMWARE_HAS_SECURE_ENTRY_FUNCS
+	depends on XIP
+	select ARM_NSC_REGION_IN_RAM
+	select ATM_HAL_ENABLE_NSC_IN_RAM
+	help
+	  Configure non-secure entry points in the SPE to RAM.  This will select
+	  the TrustZone support option as well as enable any HAL specific support
+
+config ATM_SPE_WATCHDOG_TIMEOUT_SECONDS
+	int "Number of seconds for SPE watchdog"
+	default 3
+	range 1 30

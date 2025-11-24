@@ -6,9 +6,11 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm33 atm34 no_mcuboot
+    tags:
+      - introduction
+      - no_mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
   samples.bluetooth.hci_uart.atm.mcuboot:
     sysbuild: true
     harness: console
@@ -16,119 +18,41 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm33 atm34 mcuboot
+    tags:
+      - introduction
+      - mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DDFU_IN_FLASH"
-  samples.bluetooth.hci_uart.atm.mcuboot.rram_only:
-    sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - "Booting Zephyr OS"
-    tags: introduction atm33 mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM33"
-  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.full:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.pd50:
     sysbuild: true
     harness: console
     harness_config:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm33 mcuboot
+    tags:
+      - introduction
+      - mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
-      - SB_CONFIG_ATMWSTK_FULL=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM33"
-  samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.pd50.rram_only:
-    sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - "Booting Zephyr OS"
-    tags: introduction atm33 mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
-      - SB_CONFIG_ATMWSTK_PD50=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM33"
-  samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.pd50:
-    sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - "Booting Zephyr OS"
-    tags: introduction atm34 mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
       - SB_CONFIG_ATMWSTK_PD50=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
-  samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.cpd200:
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.pd50.overwrite:
     sysbuild: true
     harness: console
     harness_config:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags: introduction atm34 mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_CONFIG_ATMWSTK_CPD200=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
-  samples.bluetooth.hci_uart.atm.mcuboot.atmwstklib.full:
-    sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - "Booting Zephyr OS"
-    tags: introduction atm34 mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_CONFIG_ATMWSTK_FULL=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
-  samples.bluetooth.hci_uart.atm.mcuboot.atmx2:
-    sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - "Booting Zephyr OS"
-    tags: introduction atmx2
-    platform_allow:
-      - ATMEVK-M2251-02/ATMx2xx-x1x
+    tags:
+      - introduction
+      - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_CONFIG_ATMWSTK_PD50=y

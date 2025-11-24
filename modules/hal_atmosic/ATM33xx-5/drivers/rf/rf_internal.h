@@ -5,7 +5,7 @@
  *
  * @brief Radio internal APIs
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  ******************************************************************************
  */
@@ -36,7 +36,8 @@ enum {
     RF_POWER_LVL_NUM
 };
 
-void rf_core_set_txpwr_override(uint8_t gain_index);
+atm_txpwr_ovr_key rf_core_set_txpwr_override(uint8_t gain_index);
+void rf_core_restore_txpwr_override(atm_txpwr_ovr_key key);
 void rf_enable_whitening(uint8_t seed);
 void rf_core_reset_ch_offsets(void);
 bool rf_core_set_pin_xparx(uint8_t pin);

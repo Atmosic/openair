@@ -6,7 +6,7 @@
  * @brief This file contains definitions related to the HCI module.
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -254,6 +254,26 @@ void hci_bt_acl_conhdl_register(uint8_t link_id);
 void hci_bt_acl_bdaddr_unregister(uint8_t link_id);
 
 #endif //(BT_EMB_PRESENT)
+
+#if (BLE_CIS || BLE_BIS)
+/**
+ ****************************************************************************************
+ * @brief Indicate that the associated BIS/CIS is active.
+ *
+ * @param[in]  act_id Activity ID
+ *****************************************************************************************
+ */
+void hci_iso_activity_enable_set(uint8_t act_id);
+
+/**
+ ****************************************************************************************
+ * @brief Indicate that the associated BIS/CIS is inactive.
+ *
+ * @param[in]  act_id  Activity ID
+ *****************************************************************************************
+ */
+void hci_iso_activity_enable_reset(uint8_t act_id);
+#endif // (BLE_CIS || BLE_BIS)
 
 /**
  ****************************************************************************************

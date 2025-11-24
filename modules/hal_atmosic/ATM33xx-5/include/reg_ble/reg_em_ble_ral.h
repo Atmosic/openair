@@ -37,12 +37,12 @@
 #define EM_BLE_RAL_INFO_INDEX  0x00000000
 #define EM_BLE_RAL_INFO_RESET  0x00000000
 
-__INLINE uint16_t em_ble_ral_info_get(int elt_idx)
+__RWIP_INLINE uint16_t em_ble_ral_info_get(int elt_idx)
 {
     return EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
 }
 
-__INLINE void em_ble_ral_info_set(int elt_idx, uint16_t value)
+__RWIP_INLINE void em_ble_ral_info_set(int elt_idx, uint16_t value)
 {
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, value);
 }
@@ -86,7 +86,7 @@ __INLINE void em_ble_ral_info_set(int elt_idx, uint16_t value)
 #define EM_BLE_PEER_IRK_VALID_RST     0x0
 #define EM_BLE_PEER_ID_TYPE_RST       0x0
 
-__INLINE void em_ble_ral_info_pack(int elt_idx, uint8_t entryvalid, uint8_t connected, uint8_t inwhlist, uint8_t inperadvlist, uint8_t pef, uint8_t localrpavalid, uint8_t localrparenew, uint8_t localirkvalid, uint8_t peerrpavalid, uint8_t peerrparenew, uint8_t peerirkvalid, uint8_t peeridtype)
+__RWIP_INLINE void em_ble_ral_info_pack(int elt_idx, uint8_t entryvalid, uint8_t connected, uint8_t inwhlist, uint8_t inperadvlist, uint8_t pef, uint8_t localrpavalid, uint8_t localrparenew, uint8_t localirkvalid, uint8_t peerrpavalid, uint8_t peerrparenew, uint8_t peerirkvalid, uint8_t peeridtype)
 {
     ASSERT_ERR((((uint16_t)entryvalid << 15) & ~((uint16_t)0x00008000)) == 0);
     ASSERT_ERR((((uint16_t)connected << 14) & ~((uint16_t)0x00004000)) == 0);
@@ -103,7 +103,7 @@ __INLINE void em_ble_ral_info_pack(int elt_idx, uint8_t entryvalid, uint8_t conn
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE,  ((uint16_t)entryvalid << 15) | ((uint16_t)connected << 14) | ((uint16_t)inwhlist << 13) | ((uint16_t)inperadvlist << 12) | ((uint16_t)pef << 11) | ((uint16_t)localrpavalid << 7) | ((uint16_t)localrparenew << 6) | ((uint16_t)localirkvalid << 5) | ((uint16_t)peerrpavalid << 3) | ((uint16_t)peerrparenew << 2) | ((uint16_t)peerirkvalid << 1) | ((uint16_t)peeridtype << 0));
 }
 
-__INLINE void em_ble_ral_info_unpack(int elt_idx, uint8_t* entryvalid, uint8_t* connected, uint8_t* inwhlist, uint8_t* inperadvlist, uint8_t* pef, uint8_t* localrpavalid, uint8_t* localrparenew, uint8_t* localirkvalid, uint8_t* peerrpavalid, uint8_t* peerrparenew, uint8_t* peerirkvalid, uint8_t* peeridtype)
+__RWIP_INLINE void em_ble_ral_info_unpack(int elt_idx, uint8_t* entryvalid, uint8_t* connected, uint8_t* inwhlist, uint8_t* inperadvlist, uint8_t* pef, uint8_t* localrpavalid, uint8_t* localrparenew, uint8_t* localirkvalid, uint8_t* peerrpavalid, uint8_t* peerrparenew, uint8_t* peerirkvalid, uint8_t* peeridtype)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
 
@@ -121,145 +121,145 @@ __INLINE void em_ble_ral_info_unpack(int elt_idx, uint8_t* entryvalid, uint8_t* 
     *peeridtype = (localVal & ((uint16_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t em_ble_ral_info_entry_valid_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_entry_valid_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00008000)) >> 15);
 }
 
-__INLINE void em_ble_ral_info_entry_valid_setf(int elt_idx, uint8_t entryvalid)
+__RWIP_INLINE void em_ble_ral_info_entry_valid_setf(int elt_idx, uint8_t entryvalid)
 {
     ASSERT_ERR((((uint16_t)entryvalid << 15) & ~((uint16_t)0x00008000)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00008000)) | ((uint16_t)entryvalid << 15));
 }
 
-__INLINE uint8_t em_ble_ral_info_connected_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_connected_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00004000)) >> 14);
 }
 
-__INLINE void em_ble_ral_info_connected_setf(int elt_idx, uint8_t connected)
+__RWIP_INLINE void em_ble_ral_info_connected_setf(int elt_idx, uint8_t connected)
 {
     ASSERT_ERR((((uint16_t)connected << 14) & ~((uint16_t)0x00004000)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00004000)) | ((uint16_t)connected << 14));
 }
 
-__INLINE uint8_t em_ble_ral_info_in_whlist_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_in_whlist_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00002000)) >> 13);
 }
 
-__INLINE void em_ble_ral_info_in_whlist_setf(int elt_idx, uint8_t inwhlist)
+__RWIP_INLINE void em_ble_ral_info_in_whlist_setf(int elt_idx, uint8_t inwhlist)
 {
     ASSERT_ERR((((uint16_t)inwhlist << 13) & ~((uint16_t)0x00002000)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00002000)) | ((uint16_t)inwhlist << 13));
 }
 
-__INLINE uint8_t em_ble_ral_info_in_peradv_list_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_in_peradv_list_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00001000)) >> 12);
 }
 
-__INLINE void em_ble_ral_info_in_peradv_list_setf(int elt_idx, uint8_t inperadvlist)
+__RWIP_INLINE void em_ble_ral_info_in_peradv_list_setf(int elt_idx, uint8_t inperadvlist)
 {
     ASSERT_ERR((((uint16_t)inperadvlist << 12) & ~((uint16_t)0x00001000)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00001000)) | ((uint16_t)inperadvlist << 12));
 }
 
-__INLINE uint8_t em_ble_ral_info_pef_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_pef_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00000800)) >> 11);
 }
 
-__INLINE void em_ble_ral_info_pef_setf(int elt_idx, uint8_t pef)
+__RWIP_INLINE void em_ble_ral_info_pef_setf(int elt_idx, uint8_t pef)
 {
     ASSERT_ERR((((uint16_t)pef << 11) & ~((uint16_t)0x00000800)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00000800)) | ((uint16_t)pef << 11));
 }
 
-__INLINE uint8_t em_ble_ral_info_local_rpa_valid_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_local_rpa_valid_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00000080)) >> 7);
 }
 
-__INLINE void em_ble_ral_info_local_rpa_valid_setf(int elt_idx, uint8_t localrpavalid)
+__RWIP_INLINE void em_ble_ral_info_local_rpa_valid_setf(int elt_idx, uint8_t localrpavalid)
 {
     ASSERT_ERR((((uint16_t)localrpavalid << 7) & ~((uint16_t)0x00000080)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00000080)) | ((uint16_t)localrpavalid << 7));
 }
 
-__INLINE uint8_t em_ble_ral_info_local_rpa_renew_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_local_rpa_renew_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00000040)) >> 6);
 }
 
-__INLINE void em_ble_ral_info_local_rpa_renew_setf(int elt_idx, uint8_t localrparenew)
+__RWIP_INLINE void em_ble_ral_info_local_rpa_renew_setf(int elt_idx, uint8_t localrparenew)
 {
     ASSERT_ERR((((uint16_t)localrparenew << 6) & ~((uint16_t)0x00000040)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00000040)) | ((uint16_t)localrparenew << 6));
 }
 
-__INLINE uint8_t em_ble_ral_info_local_irk_valid_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_local_irk_valid_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00000020)) >> 5);
 }
 
-__INLINE void em_ble_ral_info_local_irk_valid_setf(int elt_idx, uint8_t localirkvalid)
+__RWIP_INLINE void em_ble_ral_info_local_irk_valid_setf(int elt_idx, uint8_t localirkvalid)
 {
     ASSERT_ERR((((uint16_t)localirkvalid << 5) & ~((uint16_t)0x00000020)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00000020)) | ((uint16_t)localirkvalid << 5));
 }
 
-__INLINE uint8_t em_ble_ral_info_peer_rpa_valid_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_peer_rpa_valid_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00000008)) >> 3);
 }
 
-__INLINE void em_ble_ral_info_peer_rpa_valid_setf(int elt_idx, uint8_t peerrpavalid)
+__RWIP_INLINE void em_ble_ral_info_peer_rpa_valid_setf(int elt_idx, uint8_t peerrpavalid)
 {
     ASSERT_ERR((((uint16_t)peerrpavalid << 3) & ~((uint16_t)0x00000008)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00000008)) | ((uint16_t)peerrpavalid << 3));
 }
 
-__INLINE uint8_t em_ble_ral_info_peer_rpa_renew_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_peer_rpa_renew_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00000004)) >> 2);
 }
 
-__INLINE void em_ble_ral_info_peer_rpa_renew_setf(int elt_idx, uint8_t peerrparenew)
+__RWIP_INLINE void em_ble_ral_info_peer_rpa_renew_setf(int elt_idx, uint8_t peerrparenew)
 {
     ASSERT_ERR((((uint16_t)peerrparenew << 2) & ~((uint16_t)0x00000004)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00000004)) | ((uint16_t)peerrparenew << 2));
 }
 
-__INLINE uint8_t em_ble_ral_info_peer_irk_valid_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_peer_irk_valid_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00000002)) >> 1);
 }
 
-__INLINE void em_ble_ral_info_peer_irk_valid_setf(int elt_idx, uint8_t peerirkvalid)
+__RWIP_INLINE void em_ble_ral_info_peer_irk_valid_setf(int elt_idx, uint8_t peerirkvalid)
 {
     ASSERT_ERR((((uint16_t)peerirkvalid << 1) & ~((uint16_t)0x00000002)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00000002)) | ((uint16_t)peerirkvalid << 1));
 }
 
-__INLINE uint8_t em_ble_ral_info_peer_id_type_getf(int elt_idx)
+__RWIP_INLINE uint8_t em_ble_ral_info_peer_id_type_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     return ((localVal & ((uint16_t)0x00000001)) >> 0);
 }
 
-__INLINE void em_ble_ral_info_peer_id_type_setf(int elt_idx, uint8_t peeridtype)
+__RWIP_INLINE void em_ble_ral_info_peer_id_type_setf(int elt_idx, uint8_t peeridtype)
 {
     ASSERT_ERR((((uint16_t)peeridtype << 0) & ~((uint16_t)0x00000001)) == 0);
     EM_BLE_WR(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (EM_BLE_RD(EM_BLE_RAL_INFO_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE) & ~((uint16_t)0x00000001)) | ((uint16_t)peeridtype << 0));
@@ -277,12 +277,12 @@ __INLINE void em_ble_ral_info_peer_id_type_setf(int elt_idx, uint8_t peeridtype)
 #define EM_BLE_RAL_PEER_SID_INDEX  0x00000001
 #define EM_BLE_RAL_PEER_SID_RESET  0x00000000
 
-__INLINE uint16_t em_ble_ral_peer_sid_get(int elt_idx)
+__RWIP_INLINE uint16_t em_ble_ral_peer_sid_get(int elt_idx)
 {
     return EM_BLE_RD(EM_BLE_RAL_PEER_SID_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
 }
 
-__INLINE void em_ble_ral_peer_sid_set(int elt_idx, uint16_t value)
+__RWIP_INLINE void em_ble_ral_peer_sid_set(int elt_idx, uint16_t value)
 {
     EM_BLE_WR(EM_BLE_RAL_PEER_SID_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, value);
 }
@@ -294,14 +294,14 @@ __INLINE void em_ble_ral_peer_sid_set(int elt_idx, uint16_t value)
 
 #define EM_BLE_RAL_PEER_SID_RST    0x0
 
-__INLINE uint16_t em_ble_ral_peer_sid_getf(int elt_idx)
+__RWIP_INLINE uint16_t em_ble_ral_peer_sid_getf(int elt_idx)
 {
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_PEER_SID_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE);
     ASSERT_ERR((localVal & ~((uint16_t)0x0000FFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void em_ble_ral_peer_sid_setf(int elt_idx, uint16_t ralpeersid)
+__RWIP_INLINE void em_ble_ral_peer_sid_setf(int elt_idx, uint16_t ralpeersid)
 {
     ASSERT_ERR((((uint16_t)ralpeersid << 0) & ~((uint16_t)0x0000FFFF)) == 0);
     EM_BLE_WR(EM_BLE_RAL_PEER_SID_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE, (uint16_t)ralpeersid << 0);
@@ -320,13 +320,13 @@ __INLINE void em_ble_ral_peer_sid_setf(int elt_idx, uint16_t ralpeersid)
 #define EM_BLE_RAL_PEER_IRK_RESET  0x00000000
 #define EM_BLE_RAL_PEER_IRK_COUNT  8
 
-__INLINE uint16_t em_ble_ral_peer_irk_get(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_peer_irk_get(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 7);
     return EM_BLE_RD(EM_BLE_RAL_PEER_IRK_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
 }
 
-__INLINE void em_ble_ral_peer_irk_set(int elt_idx, int reg_idx, uint16_t value)
+__RWIP_INLINE void em_ble_ral_peer_irk_set(int elt_idx, int reg_idx, uint16_t value)
 {
     ASSERT_ERR(reg_idx <= 7);
     EM_BLE_WR(EM_BLE_RAL_PEER_IRK_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2, value);
@@ -339,7 +339,7 @@ __INLINE void em_ble_ral_peer_irk_set(int elt_idx, int reg_idx, uint16_t value)
 
 #define EM_BLE_PEER_IRK_RST    0x0
 
-__INLINE uint16_t em_ble_ral_peer_irk_peer_irk_getf(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_peer_irk_peer_irk_getf(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 7);
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_PEER_IRK_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
@@ -347,7 +347,7 @@ __INLINE uint16_t em_ble_ral_peer_irk_peer_irk_getf(int elt_idx, int reg_idx)
     return (localVal >> 0);
 }
 
-__INLINE void em_ble_ral_peer_irk_peer_irk_setf(int elt_idx, int reg_idx, uint16_t peerirk)
+__RWIP_INLINE void em_ble_ral_peer_irk_peer_irk_setf(int elt_idx, int reg_idx, uint16_t peerirk)
 {
     ASSERT_ERR(reg_idx <= 7);
     ASSERT_ERR((((uint16_t)peerirk << 0) & ~((uint16_t)0x0000FFFF)) == 0);
@@ -367,13 +367,13 @@ __INLINE void em_ble_ral_peer_irk_peer_irk_setf(int elt_idx, int reg_idx, uint16
 #define EM_BLE_RAL_PEER_RPA_RESET  0x00000000
 #define EM_BLE_RAL_PEER_RPA_COUNT  3
 
-__INLINE uint16_t em_ble_ral_peer_rpa_get(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_peer_rpa_get(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 2);
     return EM_BLE_RD(EM_BLE_RAL_PEER_RPA_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
 }
 
-__INLINE void em_ble_ral_peer_rpa_set(int elt_idx, int reg_idx, uint16_t value)
+__RWIP_INLINE void em_ble_ral_peer_rpa_set(int elt_idx, int reg_idx, uint16_t value)
 {
     ASSERT_ERR(reg_idx <= 2);
     EM_BLE_WR(EM_BLE_RAL_PEER_RPA_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2, value);
@@ -386,7 +386,7 @@ __INLINE void em_ble_ral_peer_rpa_set(int elt_idx, int reg_idx, uint16_t value)
 
 #define EM_BLE_PEER_RPA_RST    0x0
 
-__INLINE uint16_t em_ble_ral_peer_rpa_peer_rpa_getf(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_peer_rpa_peer_rpa_getf(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 2);
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_PEER_RPA_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
@@ -394,7 +394,7 @@ __INLINE uint16_t em_ble_ral_peer_rpa_peer_rpa_getf(int elt_idx, int reg_idx)
     return (localVal >> 0);
 }
 
-__INLINE void em_ble_ral_peer_rpa_peer_rpa_setf(int elt_idx, int reg_idx, uint16_t peerrpa)
+__RWIP_INLINE void em_ble_ral_peer_rpa_peer_rpa_setf(int elt_idx, int reg_idx, uint16_t peerrpa)
 {
     ASSERT_ERR(reg_idx <= 2);
     ASSERT_ERR((((uint16_t)peerrpa << 0) & ~((uint16_t)0x0000FFFF)) == 0);
@@ -414,13 +414,13 @@ __INLINE void em_ble_ral_peer_rpa_peer_rpa_setf(int elt_idx, int reg_idx, uint16
 #define EM_BLE_RAL_PEER_ID_RESET  0x00000000
 #define EM_BLE_RAL_PEER_ID_COUNT  3
 
-__INLINE uint16_t em_ble_ral_peer_id_get(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_peer_id_get(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 2);
     return EM_BLE_RD(EM_BLE_RAL_PEER_ID_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
 }
 
-__INLINE void em_ble_ral_peer_id_set(int elt_idx, int reg_idx, uint16_t value)
+__RWIP_INLINE void em_ble_ral_peer_id_set(int elt_idx, int reg_idx, uint16_t value)
 {
     ASSERT_ERR(reg_idx <= 2);
     EM_BLE_WR(EM_BLE_RAL_PEER_ID_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2, value);
@@ -433,7 +433,7 @@ __INLINE void em_ble_ral_peer_id_set(int elt_idx, int reg_idx, uint16_t value)
 
 #define EM_BLE_PEER_ID_RST    0x0
 
-__INLINE uint16_t em_ble_ral_peer_id_peer_id_getf(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_peer_id_peer_id_getf(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 2);
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_PEER_ID_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
@@ -441,7 +441,7 @@ __INLINE uint16_t em_ble_ral_peer_id_peer_id_getf(int elt_idx, int reg_idx)
     return (localVal >> 0);
 }
 
-__INLINE void em_ble_ral_peer_id_peer_id_setf(int elt_idx, int reg_idx, uint16_t peerid)
+__RWIP_INLINE void em_ble_ral_peer_id_peer_id_setf(int elt_idx, int reg_idx, uint16_t peerid)
 {
     ASSERT_ERR(reg_idx <= 2);
     ASSERT_ERR((((uint16_t)peerid << 0) & ~((uint16_t)0x0000FFFF)) == 0);
@@ -461,13 +461,13 @@ __INLINE void em_ble_ral_peer_id_peer_id_setf(int elt_idx, int reg_idx, uint16_t
 #define EM_BLE_RAL_LOCAL_IRK_RESET  0x00000000
 #define EM_BLE_RAL_LOCAL_IRK_COUNT  8
 
-__INLINE uint16_t em_ble_ral_local_irk_get(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_local_irk_get(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 7);
     return EM_BLE_RD(EM_BLE_RAL_LOCAL_IRK_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
 }
 
-__INLINE void em_ble_ral_local_irk_set(int elt_idx, int reg_idx, uint16_t value)
+__RWIP_INLINE void em_ble_ral_local_irk_set(int elt_idx, int reg_idx, uint16_t value)
 {
     ASSERT_ERR(reg_idx <= 7);
     EM_BLE_WR(EM_BLE_RAL_LOCAL_IRK_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2, value);
@@ -480,7 +480,7 @@ __INLINE void em_ble_ral_local_irk_set(int elt_idx, int reg_idx, uint16_t value)
 
 #define EM_BLE_LOCAL_IRK_RST    0x0
 
-__INLINE uint16_t em_ble_ral_local_irk_local_irk_getf(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_local_irk_local_irk_getf(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 7);
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_LOCAL_IRK_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
@@ -488,7 +488,7 @@ __INLINE uint16_t em_ble_ral_local_irk_local_irk_getf(int elt_idx, int reg_idx)
     return (localVal >> 0);
 }
 
-__INLINE void em_ble_ral_local_irk_local_irk_setf(int elt_idx, int reg_idx, uint16_t localirk)
+__RWIP_INLINE void em_ble_ral_local_irk_local_irk_setf(int elt_idx, int reg_idx, uint16_t localirk)
 {
     ASSERT_ERR(reg_idx <= 7);
     ASSERT_ERR((((uint16_t)localirk << 0) & ~((uint16_t)0x0000FFFF)) == 0);
@@ -508,13 +508,13 @@ __INLINE void em_ble_ral_local_irk_local_irk_setf(int elt_idx, int reg_idx, uint
 #define EM_BLE_RAL_LOCAL_RPA_RESET  0x00000000
 #define EM_BLE_RAL_LOCAL_RPA_COUNT  3
 
-__INLINE uint16_t em_ble_ral_local_rpa_get(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_local_rpa_get(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 2);
     return EM_BLE_RD(EM_BLE_RAL_LOCAL_RPA_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
 }
 
-__INLINE void em_ble_ral_local_rpa_set(int elt_idx, int reg_idx, uint16_t value)
+__RWIP_INLINE void em_ble_ral_local_rpa_set(int elt_idx, int reg_idx, uint16_t value)
 {
     ASSERT_ERR(reg_idx <= 2);
     EM_BLE_WR(EM_BLE_RAL_LOCAL_RPA_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2, value);
@@ -527,7 +527,7 @@ __INLINE void em_ble_ral_local_rpa_set(int elt_idx, int reg_idx, uint16_t value)
 
 #define EM_BLE_LOCAL_RPA_RST    0x0
 
-__INLINE uint16_t em_ble_ral_local_rpa_local_rpa_getf(int elt_idx, int reg_idx)
+__RWIP_INLINE uint16_t em_ble_ral_local_rpa_local_rpa_getf(int elt_idx, int reg_idx)
 {
     ASSERT_ERR(reg_idx <= 2);
     uint16_t localVal = EM_BLE_RD(EM_BLE_RAL_LOCAL_RPA_ADDR + elt_idx * REG_EM_BLE_RAL_SIZE + reg_idx * 2);
@@ -535,7 +535,7 @@ __INLINE uint16_t em_ble_ral_local_rpa_local_rpa_getf(int elt_idx, int reg_idx)
     return (localVal >> 0);
 }
 
-__INLINE void em_ble_ral_local_rpa_local_rpa_setf(int elt_idx, int reg_idx, uint16_t localrpa)
+__RWIP_INLINE void em_ble_ral_local_rpa_local_rpa_setf(int elt_idx, int reg_idx, uint16_t localrpa)
 {
     ASSERT_ERR(reg_idx <= 2);
     ASSERT_ERR((((uint16_t)localrpa << 0) & ~((uint16_t)0x0000FFFF)) == 0);

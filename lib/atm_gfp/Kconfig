@@ -16,4 +16,9 @@ source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
 config ATM_GFP_MUTLIMODE_TAG
 	bool "Enable Atmosic Google Fast Pair as once of Multimode Tag"
 
+config FAST_PAIR_FORCE_UNPAIR_ALL_BT_ID
+	bool "Force unpair all BT_IDs when button reset"
+	help
+	  Force unpair all BT_IDs when button reset. Default only unpair Fast Pair related BT_IDs.
+
 endif # ATM_GFP

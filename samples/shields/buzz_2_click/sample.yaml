@@ -1,0 +1,15 @@
+sample:
+  name: Buzz 2 Click shield sample
+tests:
+  samples.shields.buzz_2_click.atm:
+    platform_allow: ATMBTCSTAG-3405/ATM34xx-5
+    tags:
+      - shield
+      - pwm
+      - buzzer
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Melody complete. Pausing before repeat..."

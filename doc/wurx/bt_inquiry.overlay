@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * WuRx overlay for Bluetooth Inquiry wake-up detection
+ *
+ * This configuration enables the WuRx driver to detect Bluetooth inquiry
+ * signals from mobile devices. Both WuRx0 and WuRx1 algorithms are enabled
+ * with register values optimized for BT inquiry pattern recognition.
+ */
+
+&wurx {
+	status = "okay";
+
+	/* Timing configuration optimized for BT inquiry patterns */
+	wake-timeout-ms = <500>;
+	consecutive-signals = <4>;
+	signal-spacing-ms = <250>;
+
+	/* PMU WURX register values from bt_inquiry_atm33.tds */
+	wurx-general-default = <0x00202600>;    /* wurx_general */
+	wurx-general2-default = <0x000320c8>;   /* wurx_general2 */
+
+	/* WuRx0 algorithm registers for BT inquiry detection */
+	wurx0-regs-default = <
+		0x0000aaaa    /* wurx0_0: UID pattern */
+		0x0000aaaa    /* wurx0_1: GID pattern */
+		0x0a0f78d0    /* wurx0_2: correlation and threshold config */
+		0x20100c04    /* wurx0_3: energy thresholds and clock freq */
+		0x08802013    /* wurx0_4: timer and algorithm control */
+	>;
+
+	/* WuRx1 algorithm registers for BT inquiry detection */
+	wurx1-regs-default = <
+		0xaaaaaaaa    /* wurx1_0: UID pattern */
+		0xffffffff    /* wurx1_1: GID pattern */
+		0x0c0a515f    /* wurx1_2: correlation and threshold config */
+		0x20100c04    /* wurx1_3: energy thresholds and clock freq */
+		0x0880200f    /* wurx1_4: timer and algorithm control */
+	>;
+};

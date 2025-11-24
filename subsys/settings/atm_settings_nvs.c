@@ -5,40 +5,13 @@
  *
  * @brief Atmosic settings NVS backend initialization for settings subsystem
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  *******************************************************************************
  */
 
-#include <zephyr/storage/flash_map.h>
 #include "settings/settings_nvs.h"
-#include "atm_settings_nvs.h"
-
-int atm_get_device_partition_info(uint8_t part_id,
-    struct part_info_s *part_info)
-{
-    struct flash_area const *fa;
-
-    int rc = flash_area_open(part_id, &fa);
-    if (rc) {
-	return rc;
-    }
-
-    struct flash_sector fs;
-    uint32_t sector_cnt = 1;
-
-    rc = flash_area_get_sectors(part_id, &sector_cnt, &fs);
-    if (rc && (rc != -ENOMEM)) {
-	return rc;
-    }
-
-    part_info->part_dev = fa->fa_dev;
-    part_info->part_sector_size = fs.fs_size;
-    part_info->part_offset = fa->fa_off;
-    part_info->part_size = fa->fa_size;
-
-    return 0;
-}
+#include "atm_settings_backend.h"
 
 int atm_settings_backend_init(
     struct settings_backend_config_s const *settings_config)

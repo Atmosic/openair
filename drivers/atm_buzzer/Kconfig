@@ -1,0 +1,20 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+config ATM_BUZZER
+	bool "ATM buzzer"
+	select PWM
+
+if ATM_BUZZER
+
+module = ATM_BUZZER
+module-str = atm_buzzer
+source "subsys/logging/Kconfig.template.log_config"
+
+config ATM_BUZZER_TIMEOUT
+	bool "Enable buzzer timeout"
+	default n
+	help
+	  Enable buzzer timeout feature. If enabled, the buzzer will stop after a specified duration.
+
+endif # ATM_BUZZER

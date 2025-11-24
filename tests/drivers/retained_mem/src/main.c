@@ -783,8 +783,8 @@ ZTEST(retained_mem, test_multiple_cycles)
 }
 
 /* Hibernation test - handles both cold boot and hibernation wakeup */
-/* Named with 'z_' prefix to run last alphabetically */
-ZTEST(retained_mem, z_test_hibernation_cycle)
+/* Named with 'test_z_' prefix to run last alphabetically while following naming convention */
+ZTEST(retained_mem, test_z_hibernation_cycle)
 {
     hib_test_cycle_t current_test;
     uint32_t test_results;

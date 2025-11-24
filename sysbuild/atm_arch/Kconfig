@@ -17,4 +17,8 @@ config ATM_ARCH_ERASE_FLASH_ALL
 config ATM_ARCH_ERASE_RRAM_ALL
 	bool "Add erase whole rram command to atm isp file"
 
+config ATM_ARCH_ERASE_STORAGE
+	default y if !ATM_ARCH_ERASE_ALL
+	bool "Add erase factory and settings storage command to atm isp file"
+
 endif # ATM_ARCH

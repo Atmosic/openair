@@ -1,0 +1,22 @@
+source "Kconfig.zephyr"
+
+menu "Atmosic BLE peripheral mode"
+
+config ATM_CONN_TX_POWER_DBM
+    int "BLE connection TX power in DBM"
+    default 6
+
+config ATM_ADV_TX_POWER_DBM
+    int "BLE advertise TX power in DBM"
+    default 6
+
+config ATM_DYN_TX_POWER_DBM
+    int "Dynamic TX power in DBM used during connection for power adjustment"
+    default 2
+
+config ATM_BT_APP_PERIPHERAL_LOG_LEVEL
+        int "Atmosic BLE application peripheral log level"
+        default 3  # LOG_LEVEL_INF
+        range 0 4
+
+endmenu

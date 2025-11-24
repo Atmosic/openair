@@ -9,7 +9,7 @@ set(OA_APP_DIR tests/subsys/logging/log_backend_fs)
 cmake_path(CONVERT "$ENV{ZEPHYR_BASE}" TO_CMAKE_PATH_LIST OA_ZEPHYR_BASE)
 set(APPLICATION_CONFIG_DIR ${OA_ZEPHYR_BASE}/${OA_APP_DIR})
 
-list(APPEND BOARD_EXTENSION_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards)
+set(DTC_OVERLAY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/common.overlay)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(log_backend_fs)

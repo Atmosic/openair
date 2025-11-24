@@ -23,6 +23,19 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Memory copy with automatic offset increment
+ * @param dst Destination pointer
+ * @param src Source data
+ * @param size Size to copy
+ * @param offset Offset variable (will be incremented by size)
+ */
+#define FP_UTIL_MEMCPY_SHIFT(dst, src, size, offset)                                               \
+	do {                                                                                       \
+		memcpy((dst) + (offset), src, size);                                               \
+		offset += size;                                                                    \
+	} while (0)
+
 /// FP adv BT ID index
 enum {
 	/// FP adv BT ID
@@ -33,6 +46,7 @@ enum {
 	/// FP DULT adv BT ID
 	FP_DULT_ADV_BT_ID,
 #endif
+	FP_ADV_BT_ID_MAX,
 };
 
 /// TX power of FP app
@@ -47,8 +61,6 @@ enum {
 #define FP_APP_MODEL_ID                                                                            \
 	((CONFIG_FAST_PAIR_MODEL_ID >> 16) & 0xFF), ((CONFIG_FAST_PAIR_MODEL_ID >> 8) & 0xFF),     \
 		(CONFIG_FAST_PAIR_MODEL_ID & 0xFF)
-/// Anti-spoofing key of FP app
-#define FP_APP_AS_KEY CONFIG_FAST_PAIR_AS_KEY
 
 /// Google Fast Pair Mode Indexes
 typedef enum {
@@ -103,6 +115,9 @@ typedef enum {
 #define FP_FMDN_DULT_ID_LEN      (FP_FMDN_EID_DATA_LEN + FP_FMDN_EID_DATA_SHA_LEN)
 #endif
 #endif // CONFIG_FAST_PAIR_FMDN
+
+// Fast Pair specification requires at least 64 bytes for personalized name storage
+#define FP_PERSONALIZED_NAME_MAX_LEN 64
 
 #ifdef __cplusplus
 }

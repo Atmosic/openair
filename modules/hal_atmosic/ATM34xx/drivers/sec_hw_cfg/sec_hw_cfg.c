@@ -28,6 +28,9 @@
 
 #define SEC_HW_CFG_INTERNAL_GUARD
 #include "sec_hw_cfg_internal.h"
+#ifdef SECURE_PROC_ENV
+#include "sec_service.h"
+#endif
 
 #if defined(CONFIG_SOC_FAMILY_ATM)
 #if DT_NODE_HAS_PROP(DT_NODELABEL(sysclk), clock_frequency)
@@ -135,8 +138,7 @@ rom_version_t sec_hw_cfg_rom_version(void)
 }
 
 #ifdef SECURE_PROC_ENV
-__attribute__((cmse_nonsecure_entry)) __attribute__((used)) rom_version_t
-nsc_sec_hw_cfg_rom_version(void)
+__SPE_NSC rom_version_t nsc_sec_hw_cfg_rom_version(void)
 {
     return sec_hw_cfg_rom_version();
 }

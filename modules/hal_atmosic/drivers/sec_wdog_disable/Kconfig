@@ -1,0 +1,29 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+
+config ATM_SEC_WDOG_DISABLE
+	bool "Disable Secure Watchdog"
+	depends on TRUSTED_EXECUTION_NONSECURE || \
+		(TRUSTED_EXECUTION_SECURE && !ATM_NO_SPE && !MCUBOOT) || \
+		(ATM_NO_SPE && BOOTLOADER_MCUBOOT && \
+		 !(WATCHDOG && DT_HAS_ARM_CMSDK_WATCHDOG_ENABLED))
+	default y
+	help
+	  Enable the secure watchdog disable functionality. This allows
+	  the non-secure side to request disabling of the secure watchdog
+	  through a non-secure callable (NSC) function.
+	  Runs in the following cases:
+	  
+	  MCUboot + SPE + NSPE:
+	    Has NSPE automatically disable the Secure Watchdog from the SPE
+	  SPE + NSPE:
+	    Has NSPE automatically disable the Secure Watchdog from the SPE
+	  
+	  NO-TZ:
+	    Does NOT Run
+	  MCUboot + NO-TZ + Watchdog in Application:
+	    Does NOT Run, Application responsible for resetting Secure Watchdog
+	  MCUboot + No-TZ + No Watchdog in Application:
+	    Has No-TZ app automatically disable the Secure Watchdog from MCUboot

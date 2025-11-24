@@ -1,0 +1,13 @@
+/* Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		sw0 = &button0;
+	};
+	buzzer: buzzer {
+		pwms = <&pwm1 1 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
+	};
+};

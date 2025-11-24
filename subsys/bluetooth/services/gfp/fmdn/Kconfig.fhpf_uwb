@@ -1,0 +1,57 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# FMDN Find Hub Precision Finding (FHPF) UWB Configuration
+# See: https://developers.google.com/nearby/fast-pair/specifications/extensions/precisionfinding
+
+if FMDN_RANGING_OOB_DE_TYPE_UWB_EN
+
+config FMDN_RANGING_UWB_CHANNEL_MASK
+	hex "UWB Supported Channel Mask"
+	default 0x220
+	help
+	  Bitmask of supported UWB channels.
+	  Spec: Channel 9 must be supported.
+	  Default: 0x220 (channels 5 and 9)
+
+config FMDN_RANGING_UWB_PREAMBLE_MASK
+	hex "UWB Supported Preamble Index Mask"
+	default 0xFE800000
+	help
+	  Bitmask of supported UWB preamble indices (1 to 32).
+	  Default: 0xFE800000
+
+config FMDN_RANGING_UWB_CONFIG_ID_MASK
+	hex "UWB Supported Config IDs Mask"
+	default 0x40
+	help
+	  Bitmask of supported UWB configuration IDs.
+	  Spec: Config ID 6 is mandatory, Config ID 3 is optional.
+	  Default: 0x40 (Config ID 6)
+
+config FMDN_RANGING_UWB_MIN_RANGING_INT
+	hex "UWB Minimum Ranging Interval"
+	default 0xF0
+	help
+	  Minimum supported ranging interval in milliseconds.
+	  Spec: 96ms preferred, 240ms minimum.
+	  Default: 0xF0 (240 ms)
+
+config FMDN_RANGING_UWB_MIN_SLOT_DUR
+	hex "UWB Minimum Slot Duration"
+	default 0x02
+	help
+	  Minimum supported slot duration in milliseconds.
+	  Spec: 1ms recommended, 2ms also supported.
+	  Default: 0x02
+
+config FMDN_RANGING_UWB_DEVICE_ROLE
+	hex "UWB Device Role Bitmap"
+	default 0x01
+	help
+	  Device role bitmap for UWB ranging.
+	  Spec: Responder device must indicate UWB initiator role.
+	  Default: 0x01 (Initiator/Reflector)
+
+endif # FMDN_RANGING_OOB_DE_TYPE_UWB_EN

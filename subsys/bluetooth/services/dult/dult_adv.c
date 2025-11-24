@@ -26,8 +26,8 @@ LOG_MODULE_DECLARE(dult, CONFIG_ATM_DULT_LOG_LEVEL);
 
 // Advertising interval in discoverable
 #define DULT_ADV_MS     2000
-#define DULT_ADV_MS_MIN ((uint32_t)(DULT_ADV_MS - 20) * 1000 / 625)
-#define DULT_ADV_MS_MAX ((uint32_t)DULT_ADV_MS * 1000 / 625)
+#define DULT_ADV_INT_MIN ((uint32_t)(DULT_ADV_MS - 20) * 1000 / 625)
+#define DULT_ADV_INT_MAX ((uint32_t)DULT_ADV_MS * 1000 / 625)
 
 static struct bt_le_ext_adv *dult_adv_set = NULL;
 static dult_mode_t dult_mode;
@@ -40,7 +40,7 @@ static struct bt_le_adv_param adv_param = {
 	.peer = NULL,
 };
 
-#define DULT_UUID_SERVICE 0xFEB2
+#define DULT_UUID_SERVICE 0xFCB2
 typedef struct dult_adv_s {
 	uint16_t uuid;
 	uint8_t networkid;
@@ -136,8 +136,8 @@ static void dult_adv_start(void)
 	int err;
 	if (!dult_adv_set) {
 		adv_param.id = dult_adv_bt_id;
-		adv_param.interval_min = DULT_ADV_MS_MIN;
-		adv_param.interval_max = DULT_ADV_MS_MAX;
+		adv_param.interval_min = DULT_ADV_INT_MIN;
+		adv_param.interval_max = DULT_ADV_INT_MAX;
 
 		err = bt_le_ext_adv_create(&adv_param, &dult_adv_cb, &dult_adv_set);
 		if (err) {

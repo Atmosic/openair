@@ -4,7 +4,5 @@
 
 if(CONFIG_ATM_PSEQ)
   zephyr_include_directories(.)
-  zephyr_link_libraries(
-    ${LINKERFLAGPREFIX},"${PRECOMPILED_DRIVER_DIR}/pseq/pseq_core.po"
-  )
+  atm_source_core_file(pseq_core pseq)
 endif()

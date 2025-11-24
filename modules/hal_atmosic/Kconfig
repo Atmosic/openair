@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,3 +8,6 @@ config ATM_PLF_DEBUG
 	bool "Debugging for low level platform drivers"
 	default y
 	depends on PRINTK
+
+config ATM_BUILD_CORE_C_FILES
+	bool "Build core.c files if present. Only meant for internal debugging"

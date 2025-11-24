@@ -38,24 +38,25 @@
 #endif /* CONFIG_BT_SMP */
 #define BT_DRIVER_RX_PRIO CONFIG_BT_DRIVER_RX_HIGH_PRIO
 
-struct hci_data {
-    bt_hci_recv_t recv;
-};
-#else
-// not running the BT host stack, use reasonable defaults
-#define BLE_THREAD_STACK_SIZE 2048
-#define BT_DRIVER_RX_PRIO 6
-#endif
-
-#include <zephyr/pm/pm.h>
-#include <zephyr/pm/policy.h>
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 #if (defined(CFG_ATMWSTKLIB) && \
     !(defined(CONFIG_MINIMAL_LIBC_RAND) && \
 	defined(CONFIG_MINIMAL_LIBC_NON_REENTRANT_FUNCTIONS)))
 #define ATM_PROVIDE_LIBC_RAND
 #endif
+
+struct hci_data {
+    bt_hci_recv_t recv;
+};
+#else // CONFIG_ATM_BLE
+// not running the BT host stack, use reasonable defaults
+#define BLE_THREAD_STACK_SIZE 2048
+#define BT_DRIVER_RX_PRIO 6
+#endif // CONFIG_ATM_BLE
+
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 #if (defined(CONFIG_ATM_BLE) || defined(ATM_PROVIDE_LIBC_RAND))
 #include <zephyr/random/random.h>
 #endif
@@ -162,9 +163,16 @@ ble_write(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t),
     }
 
     if (nbuf) {
+	size_t buf_tailroom = net_buf_tailroom(nbuf);
+	if (buf_tailroom < len) {
+	    LOG_ERR("Not enough space in buffer %u/%zu", len, buf_tailroom);
+	    net_buf_unref(nbuf);
+	    goto done;
+	}
+
 	net_buf_add_mem(nbuf, buf, len);
 
-	LOG_DBG("Packet in: type:%u len:%u", bt_buf_get_type(nbuf), nbuf->len);
+	LOG_DBG("Packet in: type:%u len:%u", nbuf->data[0], nbuf->len);
 
 	struct device const *dev = DEVICE_DT_GET(DT_DRV_INST(0));
 	struct hci_data *hci = dev->data;
@@ -351,9 +359,9 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 	return -EINVAL;
     }
 
-    uint8_t type = bt_buf_get_type(buf);
+    uint8_t type = net_buf_pull_u8(buf);  // Remove H4 type byte from buffer
     switch (type) {
-	case BT_BUF_CMD: {
+	case BT_HCI_H4_CMD: {
 	    struct bt_hci_cmd_hdr *hdr = (struct bt_hci_cmd_hdr *)buf->data;
 	    uint8_t len = hdr->param_len;
 	    if (len > buf->len - sizeof(*hdr)) {
@@ -373,7 +381,7 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 		return -ENOMEM;
 	    }
 	} break;
-	case BT_BUF_ACL_OUT: {
+	case BT_HCI_H4_ACL: {
 	    struct bt_hci_acl_hdr *hdr = (struct bt_hci_acl_hdr *)buf->data;
 	    uint16_t len = sys_le16_to_cpu(hdr->len);
 	    if (len > buf->len - sizeof(*hdr)) {
@@ -646,6 +654,7 @@ void srand(unsigned int seed)
 static int ble_driver_init(struct device const *dev)
 {
     // Force to sleep (RW BLE Core sleep | Radio sleep | Oscillator sleep)
+    ble_deepslwkup_set(0);
     ble_deepslcntl_set(ble_deepslcntl_get() | BLE_DEEP_SLEEP_ON_BIT |
 	BLE_RADIO_SLEEP_EN_BIT | BLE_OSC_SLEEP_EN_BIT);
     return 0;
@@ -654,6 +663,6 @@ static int ble_driver_init(struct device const *dev)
 #endif // CONFIG_ATM_RWLC
 
 DEVICE_DT_INST_DEFINE(0, ble_driver_init, NULL,
-		      COND_CODE_1(CONFIG_BT, (&hci_data), (NULL)), NULL,
+		      COND_CODE_1(CONFIG_ATM_BLE, (&hci_data), (NULL)), NULL,
 		      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-		      COND_CODE_1(CONFIG_BT, (&drv), (NULL)));
+		      COND_CODE_1(CONFIG_ATM_BLE, (&drv), (NULL)));

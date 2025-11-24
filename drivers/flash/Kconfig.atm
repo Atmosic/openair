@@ -5,8 +5,32 @@
 config FLASH_ATM_RUID
 	bool "Read Unique API"
 	depends on SOC_FLASH_ATM
+	depends on !MCUBOOT
 	select FLASH_HAS_EX_OP
 	select FLASH_EX_OP_ENABLED
+
+choice FLASH_ATM_ABNORMAL_TEST_MODE
+	prompt "Flash abnormal test mode"
+	depends on SOC_FLASH_ATM
+	depends on !MCUBOOT
+	optional
+	help
+	  Select when to trigger reboot during flash erase operation
+	  to test recovery from abnormal states.
+
+config FLASH_ATM_ABNORMAL_TEST_BEFORE_ERASE
+	bool "Reboot before erase loop"
+	help
+	  Trigger reboot before entering the erase loop to test recovery
+	  from abnormal state before flash operation starts.
+
+config FLASH_ATM_ABNORMAL_TEST_DURING_ERASE
+	bool "Reboot during erase loop"
+	help
+	  Trigger reboot during the erase loop to test recovery from
+	  abnormal state in the middle of flash erase operation.
+
+endchoice
 
 config SOC_FLASH_ATM
 	bool "Atmosic external flash driver"
@@ -15,26 +39,20 @@ config SOC_FLASH_ATM
 	select FLASH_HAS_PAGE_LAYOUT
 	select FLASH_HAS_EXPLICIT_ERASE
 	select MPU_ALLOW_FLASH_WRITE if ARM_MPU
-	default y if !(BOOTLOADER_MCUBOOT && TRUSTED_EXECUTION_SECURE)
+	default y if !(BOOTLOADER_MCUBOOT && TRUSTED_EXECUTION_SECURE) || ATM_NO_SPE
 	help
 	  Enable Atmosic external flash driver.
 
-config SOC_FLASH_ATM_FORCE_PUYA
-	bool "Force recovered manufactuer ID to PUYA"
-	depends on SOC_FLASH_ATM
-	depends on SOC_SERIES_ATMX2
-
 config SOC_FLASH_ATM_USE_BREAK_IN
-	bool "Allow the use of Atmosic flash break-in support if available"
+	bool "Allow the use of Atmosic flash break-in HW support if available"
 	default y
 	depends on SOC_FLASH_ATM
 	depends on MULTITHREADING
 	depends on !MCUBOOT
-
-config SOC_FLASH_ATM_BREAK_IN_SUSPEND_US
-	int "Atmosic break-in suspend time in microseconds"
-	default 50
-	depends on SOC_FLASH_ATM_USE_BREAK_IN
+	depends on !SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+	help
+	  Break-in reduces the impact of long running flash operations such as erase
+	  from impacting system responsiveness.
 
 config SOC_FLASH_ATM_RRAM
 	bool "Atmosic RRAM driver"
@@ -46,3 +64,117 @@ config SOC_FLASH_ATM_RRAM
 	default y
 	help
 	  Enable Atmosic RRAM driver.
+
+config SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+	bool "Manage external flash erase with software"
+	default y if ATM_APP_FLASH_XIP && ATM_SPLIT_IMG
+	depends on SOC_FLASH_ATM
+	depends on MULTITHREADING
+	help
+	  Use software managed flash erase instead of the QSPI accelerator. This feature can
+	  mitigate the impact of long erase times for platforms that do not support erase breakin
+	  by offering software managed erase suspend/resume duty cycles.
+
+if SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+
+config SOC_FLASH_ATM_SW_SECTOR_ERASE_DURATION_US
+	int "Software sector erase active period duration in microseconds"
+	range 50 10000
+	default 1000
+	help
+	  Duration of the erase period before suspending the erase to allow other processing.
+	  Shorter durations provide better responsiveness but may increase total erase time due
+	  to suspend/resume overhead. Interrupts are disabled during the erase duration. When
+	  the duration expires the driver will yield to the system but maintain the suspended
+	  erase state of the flash device. The system is not allowed to enter deep low power
+	  states while erase is suspended.
+
+config SOC_FLASH_ATM_SW_ERASE_POLL_DELAY_US
+	int "Software erase status polling delay in microseconds"
+	range 10 1000
+	default 100
+	help
+	  Delay between status register polls during the erase operation. Smaller values
+	  provide faster erase completion detection but increases SPI bus activity. Larger
+	  values reduce SPI bus activity but may delay erase completion detection.
+
+config SOC_FLASH_ATM_SW_SECTOR_ERASE_SUSPEND_SLEEP_US
+	int "Sleep time while sector erase is suspended in microseconds"
+	range 0 10000
+	default 0
+	help
+	  When a sector erase is suspended the driver will sleep (yield) to the system using this
+	  sleep duration. For flash devices this can reduce average current draw during this long
+	  operation. While erase is suspended, however, the system cannot go into deeper low power
+	  modes. A value of 0 will fall back to yielding rather than sleeping that can result in a
+	  faster sector erase time. Adjusting SOC_FLASH_ATM_SW_SECTOR_ERASE_DURATION_US with this
+	  configuration can set the effective duty cycle of the sector erase operation using erase
+	  suspend/resume.
+
+config SOC_FLASH_ATM_SW_SEC_ERASE_TIMEOUT_MS
+	int "Software sector erase timeout in milliseconds"
+	range 100 3000
+	default 200
+	help
+	  The maximum duration of a single sector erase operation before a timeout is detected.
+	  The timeout only applies to the periods in which erase is active and not suspended.
+	  This is only an overall timeout value and can be set conservatively to cover most SPI
+	  NOR flash devices.
+
+config SOC_FLASH_ATM_SW_ALLOW_32K_BLK_ERASE
+	bool "Software can use the 32K block erase commands"
+	default y
+	help
+	  If the requested erase size and offset is aligned to 32KB, the more optimal block erase
+	  will be used. Disable this feature if only 4KB sector erases should be used.
+
+if SOC_FLASH_ATM_SW_ALLOW_32K_BLK_ERASE
+
+config SOC_FLASH_ATM_SW_32K_ERASE_DURATION_US
+	int "Software 32K block erase active period duration in microseconds"
+	range 50 10000
+	default SOC_FLASH_ATM_SW_SECTOR_ERASE_DURATION_US
+	help
+	  This configuration is similar to SOC_FLASH_ATM_SW_SECTOR_ERASE_DURATION_US but is
+	  applied during a 32K block erase operation.
+
+config SOC_FLASH_ATM_SW_32K_ERASE_SUSPEND_SLEEP_US
+	int "Sleep time while 32KB erase operation is suspended in microseconds"
+	range 0 10000
+	default 1000
+	help
+	  This configuration behaves the same as SOC_FLASH_ATM_SW_SECTOR_ERASE_SUSPEND_SLEEP_US but
+	  the value is used during a 32KB block erase. This can reduce average sustained current
+	  draw during this very long erase operation. This value can be adjusted with
+	  SOC_FLASH_ATM_SW_32K_ERASE_DURATION_US to adjust the duty cycle of the erase. A sleep
+	  time of 1000us and an erase duration of 1000us results in ~50% duty cycle.
+
+config SOC_FLASH_ATM_SW_32K_BLK_ERASE_TIMEOUT_MULT
+	int "32KB block erase timeout multiplier"
+	range 1 8
+	default 6
+	help
+	  This multiplier is applied to SOC_FLASH_ATM_SW_SEC_ERASE_TIMEOUT_MS when 32KB block erase
+	  is used to compute the timeout. Blk erase is more efficient than sector erase and typically
+	  ranges from 1x to 6x the sector erase time. This is only an overall timeout value and can
+	  be set conservatively to support most SPI NOR flash devices.
+
+endif # SOC_FLASH_ATM_SW_ALLOW_32K_BLK_ERASE
+
+endif # SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+
+config SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_WRITE
+	bool "Reduce Radio Transmit Power during flash write"
+	default y if BT
+	help
+	  Reduces peak current consumption by lowering radio
+	  transmit power (set lowest gain index) during flash
+	  write operation
+
+config SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_ERASE
+	bool "Reduce Radio Transmit Power during flash erase"
+	default y if BT
+	help
+	  Reduces peak current consumption by lowering radio
+	  transmit power (set lowest gain index) during flash
+	  erase operation

@@ -7,7 +7,7 @@
  *        definitions for use by all modules in RW stack.
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -163,6 +163,7 @@ enum random_addr_type
 #define MIC_LEN             0x04
 #define IV_LEN              0x08
 #define SK_DIV_LEN          0x10
+
 
 // Session Key Diversifier offset for central or peripheral
 #define SKD_M_OFFSET        0x00
@@ -417,10 +418,14 @@ enum ble_feature
     //byte 6
     BLE_FEAT_CHAN_SND_PCT_QUAL_IND       = (48),
     //byte 7
-    BLE_FEAT_BLE_ENH_TEST_MODE           = (61), // TBD
+    BLE_FEAT_HDT                         = (59), // TBD
     BLE_FEAT_EXT_FEAT_SET                = (63),
     //byte 8
+    BLE_FEAT_MONADV                      = (64),
     BLE_FEAT_FRAME_SPACE_UPD             = (65),
+    BLE_FEAT_UTP_OTA_MODE                = (66),
+    BLE_FEAT_UTP_HCI_MODE                = (67),
+    BLE_FEAT_LL_OTA_UTP_IND_MAX_LEN      = (68), // Over 2 bits
 };
 
 /// Maximum index of extended features page request
@@ -562,6 +567,7 @@ enum ble_feature
 #define BLE_LE_RX_TEST_V1_CMD                           4
 #define BLE_LE_TX_TEST_V1_CMD                           5
 #define BLE_LE_STOP_TEST_CMD                            6
+#define BLE_LE_MAL_ENABLE_CMD                           7
 //byte29
 #define BLE_LE_CS_SET_CH_CLASS_CMD                      0
 #define BLE_LE_CS_SET_PROC_PARAMS_CMD                   1
@@ -693,11 +699,14 @@ enum ble_feature
 #define BLE_LL_SET_PER_ADV_PARAM_V2_CMD                 1
 #define BLE_LL_RD_ALL_LOC_SUPP_FEATS_CMD                2
 #define BLE_LL_RD_ALL_REM_FEATS_CMD                     3
+#define BLE_LE_MAL_ADD_DEVICE_CMD                       5
+#define BLE_LE_MAL_REMOVE_DEVICE_CMD                    6
+#define BLE_LE_MAL_CLEAR_CMD                            7
 // byte 48
+#define BLE_LE_MAL_READ_SIZE_CMD                        0
 #define BLE_LE_FRAME_SPACE_UPD_CMD                      1
-// byte 63
-#define BLE_LL_EN_OTA_UTP_MODE_CMD                      0
-#define BLE_LL_UTP_SEND_CMD                             1
+#define BLE_LE_EN_UTP_OTA_MODE_CMD                      3
+#define BLE_LE_UTP_SEND_CMD                             4
 
 /// @addtogroup CO_BT_DEFINES_DEF_API
 /// @{
@@ -741,11 +750,10 @@ enum ble_feature
 #define SLAVE_ROLE              1
 #define UNKNOWN_ROLE            0xFF   //Used in LC to init the links role
 
-/// Link policy HCI:4.6.9 and HCI:4.6.10
+/// Link policy HCI:7.2.9 to HCI:7.2.12
 #define POLICY_SWITCH           0x0001
 #define POLICY_HOLD             0x0002
 #define POLICY_SNIFF            0x0004
-#define POLICY_PARK             0x0008
 
 /// Allow Role Switch     HCI:4.5.5
 #define ROLE_SWITCH_NOT_ALLOWED 0
@@ -805,9 +813,8 @@ enum ble_feature
 #define PBF_MASK                    0x03
 
 /// Broadcast Flag   HCI:5.4.2
-#define BCF_P2P                     0x00
-#define BCF_ACTIVE_SLV_BCST         0x01
-#define BCF_PARK_SLV_BCST           0x02
+#define BCF_P2P                     0x00    // Point-to-point (ACL-U or LE-U)
+#define BCF_ACTIVE_SLV_BCST         0x01    // BR/EDR broadcast (APB-U)
 #define BCF_MASK                    0x03
 
 /// Synchronous Packet Status Flag   HCI:5.4.3
@@ -815,10 +822,6 @@ enum ble_feature
 #define POSSIBLY_INVALID_FLAG   0x01
 #define NO_RX_DATA_FLAG         0x02
 #define PARTIALLY_LOST_FLAG     0x03
-
-/// Park mode defines LMP:3.17
-#define MACCESS_MSK             0x0F
-#define ACCSCHEM_MSK            0xF0
 
 /// Support 3 feature pages
 #define FEATURE_PAGE_MAX   3
@@ -845,8 +848,6 @@ enum ble_feature
 #define B0_SNIFF_MODE_POS           7
 #define B0_SNIFF_MODE_MSK           0x80
 
-#define B1_PARK_POS                 0
-#define B1_PARK_MSK                 0x01
 #define B1_RSSI_POS                 1
 #define B1_RSSI_MSK                 0x02
 #define B1_CQDDR_POS                2
@@ -989,7 +990,6 @@ enum ble_feature
 #define FEAT_HOLD_BIT_POS             6
 #define FEAT_SNIFF_BIT_POS            7
 
-#define FEAT_PARK_BIT_POS             8
 #define FEAT_RSSI_BIT_POS             9
 #define FEAT_QUALITY_BIT_POS          10
 #define FEAT_SCO_BIT_POS              11
@@ -1229,7 +1229,7 @@ enum ble_feature
 /// Sniff request parameters LMP:5.2
 #define SNIFF_INTERVAL_MIN      0x0006
 #define SNIFF_INTERVAL_MAX      0xFFFE
-#define SNIFF_TIMEOUT_MAX       0x0028
+#define SNIFF_TIMEOUT_MAX       0x7FFF
 
 /// Packet Type Table defines    LMP:4.1.11
 #define PACKET_TABLE_1MBPS      0x00
@@ -1397,11 +1397,10 @@ enum ble_feature
 #define ERR_DATA_REP_DIS        0x00        // Default
 #define ERR_DATA_REP_EN         0x01
 
-/// LM modes HCI:5.2.20
+/// LM modes HCI:7.7.20
 #define LM_ACTIVE_MODE          0x00
 #define LM_HOLD_MODE            0x01
 #define LM_SNIFF_MODE           0x02
-#define LM_PARK_MODE            0x03
 
 /// Key Type HCI:5.2.24
 #define BT_COMB_KEY                0
@@ -1809,7 +1808,10 @@ enum ble_feature
 #define  BLE_MAFS_DUR          (300)
 
 /// MSS duration in us
-#define  BLE_MSS_DUR          (150)
+#define  BLE_MSS_DUR           (150)
+
+/// MCES duration in us
+#define  BLE_MCES_DUR          (150)
 
 /// Offset threshold in us, below which Offset Units is set to 0
 #define BLE_AUX_OFFSET_THRESHOLD    245700
@@ -2112,8 +2114,10 @@ enum test_mode_tx_pwr_lvl
 #define LE_MIN_TIME         (328)
 /// Preferred minimum number of microseconds LL:4.5.10
 #define LE_MIN_TIME_CODED   (2704)
+// Maximum octets on GFSK PHYs
+#define LE_GFSK_MAX_OCTETS  (251)
 /// Preferred maximum number of payload octets
-#define LE_MAX_OCTETS       (251)
+#define LE_MAX_OCTETS       (LE_GFSK_MAX_OCTETS)
 /// Preferred maximum number of microseconds
 #define LE_MAX_TIME_UNCODED (2120)
 /// Preferred maximum number of microseconds LL:4.5.10
@@ -2156,6 +2160,7 @@ enum test_mode_tx_pwr_lvl
 
 /// Duration of 125KBPS PDU of specified payload length in microseconds (chapter 6.B.2.2)
 #define PDU_125KBPS_LEN_US(n_bytes) (592 + (2 + (n_bytes))*64) // 80 + 256 + 16 + 24 + (2 + payload_len)*8*8 + 24*8 + 3*8
+
 
 /// Maximum length of BLE advertising channel PDU payloads ((chapter 6.B.2.3))
 #define PDU_ADV_PAYLOAD_LEN_MAX     255
@@ -2372,7 +2377,9 @@ enum data_path_id
     /// TWS Simulation - Microphone
     DATA_PATH_TWS_SIMU_MICROPHONE      = 0xF4,
     /// Companion app audio
-    DATA_PATH_COMP_APP                 = 0xF5
+    DATA_PATH_COMP_APP                 = 0xF5,
+    /// Bluegrip mailbox datapath
+    DATA_PATH_BLUEGRIP                 = 0xF6
 };
 
 /// Data path direction
@@ -2523,17 +2530,24 @@ enum le_phys_preference
     ALL_PHYS_RX_NO_PREF = (1 << 1),
 };
 
-/// Specify what PHY the Controller has changed for TX/RX. HCI:7.7.65.12
+/// Specify a PHY to the Controller. HCI:7.7.65.12 / HCI:7.7.65.13 / HCI:7.8.117 / HCI:7.8.118
 /*@TRACE*/
 enum le_phy_value
 {
+    /// PHY undefined
     PHY_UNDEF_VALUE    = 0,
+    /// 1M PHY
     PHY_1MBPS_VALUE    = 1,
+    /// 2M PHY
     PHY_2MBPS_VALUE    = 2,
+    /// Coded PHY, non-specific encoding.
     PHY_CODED_VALUE    = 3,
+    /// Coded PHY with S=8 data encoding.
+    PHY_CODED_S8_VALUE = 3,
+    /// Coded PHY with S=2 data encoding.
     PHY_CODED_S2_VALUE = 4,
-    // Number of types,
-    LE_PHY_VALUE_NB    = 5,
+    /// Number of values
+    LE_PHY_VALUE_NB,
 };
 
 /// Specify what PHY Host prefers to use for RX or TX HCI:7.8.48 / HCI:7.8.49 / LL:2.4.2.22 Table 2.23: PHY field bit meanings
@@ -2551,19 +2565,19 @@ enum le_phy_mask
     /// LE 2M 2BT PHY (for Channel Sounding only; otherwise RFU)
     PHY_2MBPS_2BT_BIT  = (1 << 3),
     PHY_2MBPS_2BT_POS  = (3),
-    /// The Host prefers to use the LE Coded transmitter/receiver PHY (possibly among others)
+    /// The Host prefers to use all PHY
     PHY_ALL        = (PHY_1MBPS_BIT | PHY_2MBPS_BIT | PHY_CODED_BIT),
 };
 
 /// Specify what rate Host prefers to use in transmission on coded PHY. HCI:7.8.49
-enum le_phy_opt
+enum le_phy_opt_lec
 {
-    /// The Host has no preferred coding when transmitting on the LE Coded PHY
-    PHY_OPT_NO_LE_CODED_TX_PREF,
-    /// The Host prefers that S=2 coding be used when transmitting on the LE Coded PHY
-    PHY_OPT_S2_LE_CODED_TX_PREF,
-    /// The Host prefers that S=8 coding be used when transmitting on the LE Coded PHY
-    PHY_OPT_S8_LE_CODED_TX_PREF,
+    /// The Host has no rate preferences
+    PHY_OPT_NO_PREF = 0,
+    /// Bit 0: The Host prefers that S=2 coding be used when transmitting on the LE Coded PHY
+    PHY_OPT_S2_LE_CODED_TX_PREF = 1,
+    /// Bit 1: The Host prefers that S=8 coding be used when transmitting on the LE Coded PHY
+    PHY_OPT_S8_LE_CODED_TX_PREF = 2,
 };
 
 enum le_phy_mode
@@ -2580,15 +2594,6 @@ enum tx_pw_lvl
     TX_PW_LVL_CURRENT             = 0x00,
     ///Maximum power level
     TX_PW_LVL_MAX,
-};
-
-/// Specify which PHY the Controller is specifying transmit power. HCI:7.8.117 / HCI:7.8.118
-enum le_phy_pwr_value
-{
-    PHY_PWR_1MBPS_VALUE = 1,
-    PHY_PWR_2MBPS_VALUE = 2,
-    PHY_PWR_S8_CODED_VALUE = 3,
-    PHY_PWR_S2_CODED_VALUE = 4,
 };
 
 /// Specify what PHY is selected for power control LL:2.4.2.33 LL:2.4.2.35
@@ -3154,7 +3159,7 @@ enum ble_adv_rpa_chg_reasons
 /// Data status of extended advertising event - Reserved for future use
 #define ADV_EVT_DATA_STATUS_RESERVED            3
 
-/// LE Periodic Advertising Report event Data Status - HCI:7.7.65.15 
+/// LE Periodic Advertising Report event Data Status - HCI:7.7.65.15
 /// Data status of periodic advertising event - Complete
 #define PER_ADV_EVT_DATA_STATUS_COMPLETE        0
 /// Data status of periodic advertising event - Incomplete, more data to come
@@ -3206,7 +3211,6 @@ enum enc_ebable_type
 #define BLE_PREAMBLE_ACCESS_ADDR_DUR_2MBPS      (6*4)
 #define BLE_PREAMBLE_ACCESS_ADDR_DUR_125KBPS    (80+256)
 #define BLE_PREAMBLE_ACCESS_ADDR_DUR_500KBPS    (80+256)
-
 
 
 /// size of the Maximum Adv Extended header length
@@ -4267,7 +4271,7 @@ struct big_info
 #define UTP_ACCEPT_LEN                       (1) // 1 x 8bit param
 #define UTP_REJECT_LEN                       (2) // 2 x 8bit params
 #define UTP_TEST_ENDED_LEN                   (4) // 1 x 32bit param
-#define UTP_RX_QUALITY_COUNTERS_REPORT_LEN   (18) // 1B + 1B + 4 x 32bit params
+#define UTP_RX_QUALITY_COUNTERS_REPORT_LEN   (17) // 1B + 4x4B
 #define UTP_IQ_SAMPLES_REPORT_LEN(n)         (7 + 2*(n)) // 5 x 8bit + 1 x 16bit + 2 x sample_cnt x 8bit
 
 /// UTP TLV Header Length (TypeID 1 byte + length 2 bytes)
@@ -4350,6 +4354,23 @@ struct big_info
 /// Test mode connection handle for non-ACL transport of UTP
 #define BLE_UTP_CONHDL_NONE                    (0xFFFF)
 
+/// Test mode feature field - LL_OTA_UTP_IND maximum length (enumeration)
+#define BLE_LL_OTA_UTP_IND_MAX_LEN_26B         (0)
+#define BLE_LL_OTA_UTP_IND_MAX_LEN_80B         (1)
+#define BLE_LL_OTA_UTP_IND_MAX_LEN_180B        (2)
+#define BLE_LL_OTA_UTP_IND_MAX_LEN_250B        (3)
+
+/// Monitored advertisers thresholds
+/// Timeout minimum in seconds
+#define BLE_MON_ADV_TO_MIN                        (0X01)
+/// RSSI_Threshold minimum in units of dBm
+#define BLE_MON_ADV_RSSI_LVL_MIN                  (-127)
+/// RSSI_Threshold maximum in units of dBm
+#define BLE_MON_ADV_RSSI_LVL_MAX                  (20)
+/// Monitored advertisers enable
+#define BLE_MON_ADV_DIS                           (0x00)
+#define BLE_MON_ADV_EN                            (0x01)
+
 /// The maximum number of subevents in a Channel Sounding procedure
 #define BLE_CHSD_N_MAX_SUBEVENTS_PER_PROC         (32)
 /// The minimun number of Channel Sounding steps in a subevent
@@ -4358,6 +4379,8 @@ struct big_info
 #define BLE_CHSD_N_MAX_STEPS_PER_SUBEVENT         (160)
 /// The maximum number of Channel Sounding steps in a Channel Sounding procedure
 #define BLE_CHSD_N_STEPS_MAX                      (256)
+/// The maximum procedure length (in units of 625us)
+#define BLE_CHSD_PROC_LEN_MAX                     (0xFFFF)
 
 /// The maximum number of main mode steps
 #define BLE_CHSD_MAIN_MODE_STEPS_MAX              (255)
@@ -4416,16 +4439,6 @@ struct big_info
 /// Channel Sounding RTT size maximum (in octets)
 #define BLE_CHSD_RTT_SEQ_SIZE_MAX                 (16)
 
-/// Channel Sounding antenna selection
-/// Ignored because phase measurement does not occur during the CS step
-#define BLE_CHSD_ANTENNA_ID_IGNORED               (0u)
-#define BLE_CHSD_ANTENNA_ID_MIN                   (1)
-#define BLE_CHSD_ANTENNA_ID_MAX                   (4)
-/// Antennas to be used, in repetitive order from 0x01 to 0x04, for CS_SYNC packets by the local Controller
-#define BLE_CHSD_ANTENNA_ID_REPETITIVE            (0xFEu)
-/// Host does not have a recommendation
-#define BLE_CHSD_ANTENNA_ID_NO_REQ                (0xFFu)
-
 /// Channel Sounding subevent length (in usecs)
 #define BLE_CHSD_SUBEVENT_LEN_MIN                 (1250)
 #define BLE_CHSD_SUBEVENT_LEN_MAX                 (4000000)
@@ -4476,6 +4489,9 @@ struct big_info
 #define BLE_CHSD_T_PM_MIN                         (0x0A)
 #define BLE_CHSD_T_PM_MAX                         (0x28)
 
+/// Channel Sounding stable phase test period (in usecs)
+#define BLE_CHSD_T_PM_MEAS_TEST                   (652)
+
 /// Channel Sounding SNR control
 #define BLE_CHSD_SNR_CTRL_ADJ_18_DB               (0)
 #define BLE_CHSD_SNR_CTRL_ADJ_21_DB               (1)
@@ -4483,6 +4499,10 @@ struct big_info
 #define BLE_CHSD_SNR_CTRL_ADJ_27_DB               (3)
 #define BLE_CHSD_SNR_CTRL_ADJ_30_DB               (4)
 #define BLE_CHSD_SNR_CTRL_ADJ_MAX                 (4)
+
+/// Channel Sounding procedure interval range in number of connection event
+#define BLE_CHSD_PROC_INTV_MIN                    (0x0001)
+#define BLE_CHSD_PROC_INTV_MAX                    (0xFFFF)
 
 /// Tone_Antenna_Permutation
 #define BLE_CHSD_TONE_ANT_PERMUT_MIN              (0)
@@ -4586,7 +4606,7 @@ struct big_info
 
 /// Channel Sounding Sequence marker signals (defined in transmission order LSB to MSB)
 #define BLE_CHSD_SS_1100_MARKER                   (0x3)
-#define BLE_CHSD_SS_0011_MARKER                   (0xA)
+#define BLE_CHSD_SS_0011_MARKER                   (0xC)
 
 /// Channel Sounding Ch3c Shape
 /// Use Hat shape for user-specified channel sequence
@@ -4651,7 +4671,7 @@ struct big_info
 #define BLE_CHSD_CH_SEL_JUMP_MIN                           (2)
 #define BLE_CHSD_CH_SEL_JUMP_MAX                           (8)
 // Main mode steps
-#define BLE_CHSD_OVR_MAIN_MODE_STEPS_MIN                   (2)
+#define BLE_CHSD_OVR_MAIN_MODE_STEPS_MIN                   (1)
 #define BLE_CHSD_OVR_MAIN_MODE_STEPS_MAX                   (0xFF)
 // T_PM_Tone_Ext
 #define BLE_CHSD_OVR_T_PM_TONE_EXT_MIN                     (0) // minimum value for T_PM_Tone_Ext
@@ -4692,6 +4712,8 @@ struct big_info
 
 /// Channel Sounding connection handle for test
 #define BLE_CHSD_TEST_CONNECTION_HANDLE                    (0x0FFFu)
+/// RSSI is not available
+#define BLE_CHSD_RSSI_NOT_AVAILABLE                        (0x7F)
 
 /// @addtogroup CO_BT_DEFINES_DEF_API
 /// @{
@@ -4793,6 +4815,36 @@ enum chsd_pkt_qual
     CHSD_PKT_QUAL_SEQ_ERR_LSB    = 4,
 };
 
+/// Channel Sounding tone quality indicator
+enum chsd_tone_qual
+{
+    /// Tone quality value
+    CHSD_TONE_QUAL_MASK           = 0x0F,
+    CHSD_TONE_QUAL_LSB            = 0,
+    /// Tone extension indicator
+    CHSD_TONE_EXT_IND_MASK        = 0xF0,
+    CHSD_TONE_EXT_IND_LSB         = 4,
+};
+
+/// Tone quality is high
+#define CHSD_TONE_QUAL_HIGH         0
+/// Tone quality is medium
+#define CHSD_TONE_QUAL_MED          1
+/// Tone quality is low
+#define CHSD_TONE_QUAL_LOW          2
+/// Tone quality is unavailable
+#define CHSD_TONE_QUAL_UNKNOWN      3
+
+/// Not a tone extension slot
+#define CHSD_NOT_TONE_EXT_SLOT      0
+/// Tone extension slot; tone not expected to be present
+#define CHSD_TONE_EXT_UNEXPECTED    1
+/// Tone extension slot; tone expected to be present
+#define CHSD_TONE_EXT_EXPECTED      2
+
+/// Phase correct term is unavailable
+#define CHSD_PCT_UNAVAILABLE        0xFFFFFFFF
+
 /// Channel Sounding supported role bit field meaning
 enum chsd_opt_role_bf
 {
@@ -4840,6 +4892,27 @@ enum chsd_opt_nadm_rand_cap_bf
     /// NADM support when random sequence received
     CHSD_NADM_RAND_SUP_POS = 0,
     CHSD_NADM_RAND_SUP_BIT = 0x01,
+};
+
+/// Packet NADM status
+enum chsd_nadm_status
+{
+    /// Attack is extremely unlikely.
+    CHSD_NADM_ATTACK_EXTREMELY_UNLIKELY = 0x00,
+    /// Attack is very unlikely.
+    CHSD_NADM_ATTACK_VERY_UNLIKELY = 0x01,
+    /// Attack is unlikely.
+    CHSD_NADM_ATTACK_UNLIKELY = 0x02,
+    /// Attack is possible
+    CHSD_NADM_ATTACK_POSSIBLE = 0x03,
+    /// Attack is likely
+    CHSD_NADM_ATTACK_LIKELY = 0x04,
+    /// Attack is very likely
+    CHSD_NADM_ATTACK_VERY_LIKELY = 0x05,
+    /// Attack is extremely likely
+    CHSD_NADM_ATTACK_EXTREMELY_LIKELY = 0x06,
+    /// Unknown NADM. Default value for RTT types that do not have a random or sounding sequence.
+    CHSD_NADM_UNKNOWN = 0xFF,
 };
 
 /// Channel Sounding optional PHY supported capability bit field meaning
@@ -5011,5 +5084,6 @@ enum fsu_spacing_types
 #define SPACING_TYPES_ALL                         (T_IFS_ACL_CP_BIT | T_IFS_ACL_PC_BIT | T_MCES_BIT | T_IFS_CIS_BIT | T_MSS_CIS_BIT)
 
 /// @} CO_BT_DEFINES_ENUM_API
+
 
 #endif // CO_BT_DEFINES_H_

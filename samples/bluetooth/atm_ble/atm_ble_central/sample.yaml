@@ -1,0 +1,15 @@
+sample:
+  name: ATM BLE central sample
+tests:
+  samples.bluetooth.atm_ble.atm_ble_central.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+      - "Scanning successfully started"
+    tags:
+      - bluetooth
+      - no_mcuboot
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

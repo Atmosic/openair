@@ -9,15 +9,6 @@
                 </FlashBankInfo>
         </Device>
         <Device>
-                <ChipInfo Vendor="Atmosic" Name="ATM3425-YQK" WorkRAMAddr="0x20000000" WorkRAMSize="0x00040000" Core="JLINK_CORE_CORTEX_M33"/>
-                <FlashBankInfo Name="Rram" BaseAddr="0x00010000" MaxSize="0x00080000" AlwaysPresent="1">
-                        <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM34-5_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
-                </FlashBankInfo>
-                <FlashBankInfo Name="Flash" BaseAddr="0x00200000" MaxSize="0x00200000" AlwaysPresent="1">
-                        <LoaderInfo Name="Flash" MaxSize="0x00200000" Loader="ATM3425_YQK_STACKFLASH.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
-                </FlashBankInfo>
-        </Device>
-        <Device>
                 <ChipInfo Vendor="Atmosic" Name="ATM3405-YBV" WorkRAMAddr="0x20000000" WorkRAMSize="0x00040000" Core="JLINK_CORE_CORTEX_M33"/>
                 <FlashBankInfo Name="Rram" BaseAddr="0x00010000" MaxSize="0x00080000" AlwaysPresent="1">
                         <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM34-5_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
@@ -28,6 +19,21 @@
         </Device>
         <Device>
                 <ChipInfo Vendor="Atmosic" Name="ATM3405-PQK" WorkRAMAddr="0x20000000" WorkRAMSize="0x00040000" Core="JLINK_CORE_CORTEX_M33"/>
+                <FlashBankInfo Name="Rram" BaseAddr="0x00010000" MaxSize="0x00080000" AlwaysPresent="1">
+                        <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM34-5_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+                </FlashBankInfo>
+        </Device>
+        <Device>
+                <ChipInfo Vendor="Atmosic" Name="ATM3405-WQK" WorkRAMAddr="0x20000000" WorkRAMSize="0x00040000" Core="JLINK_CORE_CORTEX_M33"/>
+                <FlashBankInfo Name="Rram" BaseAddr="0x00010000" MaxSize="0x00080000" AlwaysPresent="1">
+                        <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM34-5_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+                </FlashBankInfo>
+                <FlashBankInfo Name="Flash" BaseAddr="0x00200000" MaxSize="0x00200000" AlwaysPresent="1">
+                        <LoaderInfo Name="Flash" MaxSize="0x00100000" Loader="ATM3405_WQK_STACKFLASH.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+                </FlashBankInfo>
+        </Device>
+        <Device>
+                <ChipInfo Vendor="Atmosic" Name="ATM3405-PBV" WorkRAMAddr="0x20000000" WorkRAMSize="0x00040000" Core="JLINK_CORE_CORTEX_M33"/>
                 <FlashBankInfo Name="Rram" BaseAddr="0x00010000" MaxSize="0x00080000" AlwaysPresent="1">
                         <LoaderInfo Name="Rram" MaxSize="0x00080000" Loader="ATM34-5_RRAM.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
                 </FlashBankInfo>

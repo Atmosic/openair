@@ -94,7 +94,7 @@ __STATIC_INLINE uint32_t atm_rand_word(void)
  * @param[in] val The input value to count
  * @return Number of leading zeros
  */
-__INLINE uint32_t atm_clz(uint32_t val)
+__STATIC_FORCEINLINE uint32_t atm_clz(uint32_t val)
 {
 #if defined(__ICCARM__)
     return __CLZ(val);
@@ -123,7 +123,7 @@ __INLINE uint32_t atm_clz(uint32_t val)
  * @param[in] val The input value to count
  * @return Number of trailing zeros
  */
-__INLINE uint32_t atm_ctz(uint32_t val)
+__STATIC_FORCEINLINE uint32_t atm_ctz(uint32_t val)
 {
 #if defined(__arm__) && defined(CFG_ROM)
     return __builtin_ctz(val);
@@ -151,7 +151,7 @@ __INLINE uint32_t atm_ctz(uint32_t val)
  * @param[in] val The input value to count
  * @return The number of one’s(set bits)
  */
-__INLINE int atm_popcount(uint32_t val)
+__STATIC_FORCEINLINE int atm_popcount(uint32_t val)
 {
 #ifdef __GNUC__
     return __builtin_popcount(val);

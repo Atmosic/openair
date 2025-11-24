@@ -16,6 +16,7 @@
 #include <zephyr/pm/policy.h>
 #include <zephyr/sys_clock.h>
 #include <zephyr/linker/linker-defs.h>
+#include <zephyr/devicetree.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
@@ -29,6 +30,9 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #include "at_pinmux.h"
 #include "sec_cache.h"
 #include "sec_reset.h"
+#ifdef SECURE_PROC_ENV
+#include "sec_service.h"
+#endif
 #include "power.h"
 #include "calibration.h"
 #include "atm_otp.h"
@@ -40,14 +44,29 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #define PSEQ_INTERNAL_DIRECT_INCLUDE_GUARD
 #include "pseq_internal.h"
 
+/* WURX support */
+bool wurx0_enabled, wurx1_enabled;
+
 /* Debugs - to enable, change undef to define */
 #undef DEBUG_HIBERNATE
 #undef DEBUG_WAKE_MASK
 
+/* PMU node for SOC off wakeup configuration */
+#define PMU_NODE DT_NODELABEL(pmu)
+
+/* Runtime wakeup source enable/disable state */
+static bool gpio_wakeup_enabled = false;
+#if DT_NODE_HAS_PROP(PMU_NODE, soc_off_lpcomp_wakeup_pin)
+#define DT_LPCOMP_WAKEUP_PIN  DT_PROP(PMU_NODE, soc_off_lpcomp_wakeup_pin)
+#define DT_LPCOMP_REF_LEVEL   DT_PROP(PMU_NODE, soc_off_lpcomp_ref_level)
+#endif
+#ifndef CONFIG_ATM_NO_SPE
 unsigned int secure_irq_lock(void);
 void secure_irq_unlock(unsigned int key);
+#endif
 
 #ifdef CONFIG_PM
+#include "pmu.h"
 
 #ifdef CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE
 #define IDLE_FOREVER K_TICKS_FOREVER
@@ -55,6 +74,7 @@ void secure_irq_unlock(unsigned int key);
 #define IDLE_FOREVER INT_MAX
 #endif
 
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
 static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 {
 	uint32_t duration;
@@ -78,11 +98,18 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 	// Retain all RAM
 	uint32_t block_sysram = ~0;
 #endif
-	pseq_core_config_retain(duration, block_sysram, (uintptr_t)ssrs_block, false, false);
 
-	pseq_core_enter_retain(false, false);
+#define MAX_TIME_IN_RETAIN (UINT32_MAX / Z_HZ_cyc) * 32000
+	duration = MIN(duration, MAX_TIME_IN_RETAIN);
+
+	pseq_core_config_retain(duration, block_sysram, (uintptr_t)ssrs_block, wurx0_enabled,
+				wurx1_enabled);
+
+	pseq_core_enter_retain(wurx0_enabled, wurx1_enabled);
 }
+#endif // power_states/retain
 
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
 static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 {
 	uint32_t duration;
@@ -95,7 +122,8 @@ static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 		duration = 0;
 	}
 
-	__UNUSED uint32_t wake_mask = pseq_core_config_hibernate(duration, false, false);
+	__UNUSED uint32_t wake_mask =
+		pseq_core_config_hibernate(duration, wurx0_enabled, wurx1_enabled);
 
 #ifdef DEBUG_HIBERNATE
 	printk("Hibernate duration %" PRId32 ", ise 0x%08" PRIx32 "_%08" PRIx32 "_%08" PRIx32
@@ -109,8 +137,9 @@ static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 #endif // DEBUG_WAKE_MASK
 #endif // DEBUG_HIBERNATE
 
-	pseq_core_enter_hibernation(false, false);
+	pseq_core_enter_hibernation(wurx0_enabled, wurx1_enabled);
 }
+#endif // power_states/hibernate
 
 #if defined(CONFIG_NONRF_HARV) || defined(CONFIG_RF_HARV)
 static bool harv_enabled(void)
@@ -122,21 +151,29 @@ static bool harv_enabled(void)
 }
 #endif
 
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 {
 	uint64_t duration;
 
-#if CONFIG_ATM_SOCOFF_DURATION_SEC
-	duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_DURATION_SEC);
-#else
 	if (idle != IDLE_FOREVER) {
 		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
 		/* Convert ticks to lpcycles */
 		duration = atm_to_lpc(Z_HZ_ticks, idle);
-	} else {
-		duration = 0;
-	}
+#if CONFIG_ATM_SOCOFF_MAX_DURATION_SEC
+		/* Apply maximum duration cap if configured */
+		uint64_t max_duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_MAX_DURATION_SEC);
+		if (duration > max_duration) {
+			duration = max_duration;
+		}
 #endif
+	} else {
+#if CONFIG_ATM_SOCOFF_MAX_DURATION_SEC
+		duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_MAX_DURATION_SEC);
+#else
+		duration = 0;
+#endif
+	}
 
 	WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
 	{
@@ -151,12 +188,22 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 	}
 	WRPR_CTRL_POP();
 
+	/* Configure additional wakeup sources based on runtime enable state */
+	if (gpio_wakeup_enabled) {
+		pmu_socoff_wakeup_gpio(true);
+	}
+
+#if DT_NODE_HAS_PROP(PMU_NODE, soc_off_lpcomp_wakeup_pin)
+	pmu_socoff_wakeup_lpcomp(true, DT_LPCOMP_WAKEUP_PIN, DT_LPCOMP_REF_LEVEL);
+#endif
+
 #ifdef DEBUG_HIBERNATE
 	printk("soc_off duration %llu\n", duration);
 #endif /* DEBUG_HIBERNATE */
 
 	pseq_core_enter_soc_off();
 }
+#endif // power_states/soc_off
 
 /*
  * Locate in RAM - avoid waking RRAM from nap
@@ -200,7 +247,9 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	for (int i = 0; i < INT_REG_NUM; i++) {
 		NVIC->ICER[i] = int_set[i] = NVIC->ISER[i];
 	}
+#ifndef CONFIG_ATM_NO_SPE
 	unsigned int sec_key = secure_irq_lock();
+#endif
 
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
@@ -244,7 +293,9 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	WRPR_CTRL_POP();
 
 	// Restore interrupt set enables
+#ifndef CONFIG_ATM_NO_SPE
 	secure_irq_unlock(sec_key);
+#endif
 	for (int i = 0; i < INT_REG_NUM; i++) {
 		NVIC->ISER[i] = int_set[i];
 	}
@@ -287,6 +338,7 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 		atm_power_rram_sd_wfi();
 		SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
 		break;
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
 	case PM_STATE_SUSPEND_TO_RAM: {
 		__disable_irq();
 		extern void sys_clock_correct(uint32_t cycles);
@@ -310,15 +362,23 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 		WRPR_CTRL_POP();
 		break;
 	}
+#endif // power_states/retain
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate)) ||                                   \
+	DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 	case PM_STATE_SOFT_OFF:
 		__disable_irq();
 		if (!substate_id) {
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
 			atm_power_pseq_control(atm_power_mode_hibernate);
+#endif
 		} else {
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 			atm_power_pseq_control(atm_power_mode_soc_off);
+#endif
 		}
 		LOG_ERR("SOFT_OFF failed!");
 		break;
+#endif // power_states/hibernate || power_states/soc_off
 	default:
 		LOG_DBG("Unsupported power state %u", state);
 		break;
@@ -331,8 +391,13 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 	switch (state) {
 	case PM_STATE_RUNTIME_IDLE:
 	case PM_STATE_SUSPEND_TO_IDLE:
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
 	case PM_STATE_SUSPEND_TO_RAM:
+#endif
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate)) ||                                   \
+	DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 	case PM_STATE_SOFT_OFF:
+#endif
 		__enable_irq();
 		break;
 	default:
@@ -342,12 +407,15 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 	}
 }
 
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
 void atm_pseq_soc_off(uint32_t ticks)
 {
 	__disable_irq();
 	atm_power_pseq_setup(atm_power_mode_soc_off, ticks);
 }
+#endif // power_states/soc_off
 
+#if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
 void atm_pseq_hibernate(uint32_t ticks)
 {
 	__disable_irq();
@@ -360,11 +428,10 @@ void atm_pseq_hibernate(uint32_t ticks)
 
 	atm_power_pseq_setup(atm_power_mode_hibernate, ticks);
 }
-
+#endif // power_states/hibernate
 #endif /* CONFIG_PM */
 
 #ifdef SECURE_PROC_ENV
-#define __SPE_NSC __attribute__((cmse_nonsecure_entry)) __attribute__((used))
 __SPE_NSC
 unsigned int secure_irq_lock(void)
 {
@@ -377,6 +444,11 @@ void secure_irq_unlock(unsigned int key)
 	irq_unlock(key);
 }
 #endif
+
+void atm_socoff_wakeup_gpio_set(bool enable)
+{
+	gpio_wakeup_enabled = enable;
+}
 
 static int atm_power_init(void)
 {

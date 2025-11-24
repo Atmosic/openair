@@ -1365,22 +1365,88 @@ namespace eval CMSDK_RADIO_TOP {
                 return 0x00000000
             }
         }
-        namespace eval DIG_TEST_IN {
+        namespace eval DIG_TEST_IN_XTAL_STABLE {
             namespace export SHIFT
             proc SHIFT {} {
                 return 6
             }
             namespace export WIDTH
             proc WIDTH {} {
-                return 7
+                return 1
             }
             namespace export MASK
             proc MASK {} {
-                return 0x00001fc0
+                return 0x00000040
             }
             namespace export READ
             proc READ {reg_val} {
-                return [expr {($reg_val & 0x00001fc0) >> 6}]
+                return [expr {($reg_val & 0x00000040) >> 6}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval DIG_TEST_IN_TIA_PEAKDET {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 7
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000080
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000080) >> 7}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval DIG_TEST_IN_LNA_PEAKDET {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 8
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000100
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000100) >> 8}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval DIG_TEST_IN_TBD {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 9
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 4
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00001e00
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00001e00) >> 9}]
             }
             namespace export RESET_VALUE
             proc RESET_VALUE {} {

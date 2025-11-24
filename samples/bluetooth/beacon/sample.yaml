@@ -3,7 +3,8 @@ sample:
   name: Atmosic beacon sample
 tests:
   sample.bluetooth.beacon:
-    tags: introduction
+    tags:
+      - introduction
   samples.bluetooth.beacon.atm:
     sysbuild: true
     harness: console
@@ -11,6 +12,6 @@ tests:
       type: one_line
       regex:
         - Booting Zephyr OS
-    tags: bluetooth atm33 atm34 no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
+    tags:
+      - bluetooth
+      - no_mcuboot

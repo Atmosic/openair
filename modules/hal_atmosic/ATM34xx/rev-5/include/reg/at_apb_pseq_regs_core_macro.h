@@ -348,68 +348,60 @@
 #define PSEQ_CTRL0__UART_LATCH_OPEN__RESET_VALUE                    0x00000000U
 /** @} */
 
-/* macros for field xtal_waits_for_retv */
+/* macros for field spare16 */
 /**
- * @defgroup at_apb_pseq_perth_regs_core_xtal_waits_for_retv_field xtal_waits_for_retv_field
- * @brief macros for field xtal_waits_for_retv
+ * @defgroup at_apb_pseq_perth_regs_core_spare16_field spare16_field
+ * @brief macros for field spare16
  * @details If set, xtal will not be enabled until the retention voltage has been boosted back up to nominal value.
  * @{
  */
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__SHIFT                               16
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__WIDTH                                1
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__MASK                       0x00010000U
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__READ(src) \
-                    (((uint32_t)(src)\
-                    & 0x00010000U) >> 16)
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__WRITE(src) \
-                    (((uint32_t)(src)\
-                    << 16) & 0x00010000U)
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__MODIFY(dst, src) \
+#define PSEQ_CTRL0__SPARE16__SHIFT                                           16
+#define PSEQ_CTRL0__SPARE16__WIDTH                                            1
+#define PSEQ_CTRL0__SPARE16__MASK                                   0x00010000U
+#define PSEQ_CTRL0__SPARE16__READ(src)  (((uint32_t)(src) & 0x00010000U) >> 16)
+#define PSEQ_CTRL0__SPARE16__WRITE(src) (((uint32_t)(src) << 16) & 0x00010000U)
+#define PSEQ_CTRL0__SPARE16__MODIFY(dst, src) \
                     (dst) = ((dst) &\
                     ~0x00010000U) | (((uint32_t)(src) <<\
                     16) & 0x00010000U)
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__VERIFY(src) \
+#define PSEQ_CTRL0__SPARE16__VERIFY(src) \
                     (!((((uint32_t)(src)\
                     << 16) & ~0x00010000U)))
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__SET(dst) \
+#define PSEQ_CTRL0__SPARE16__SET(dst) \
                     (dst) = ((dst) &\
                     ~0x00010000U) | ((uint32_t)(1) << 16)
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__CLR(dst) \
+#define PSEQ_CTRL0__SPARE16__CLR(dst) \
                     (dst) = ((dst) &\
                     ~0x00010000U) | ((uint32_t)(0) << 16)
-#define PSEQ_CTRL0__XTAL_WAITS_FOR_RETV__RESET_VALUE                0x00000000U
+#define PSEQ_CTRL0__SPARE16__RESET_VALUE                            0x00000000U
 /** @} */
 
-/* macros for field ble_boosts_retv */
+/* macros for field spare17 */
 /**
- * @defgroup at_apb_pseq_perth_regs_core_ble_boosts_retv_field ble_boosts_retv_field
- * @brief macros for field ble_boosts_retv
+ * @defgroup at_apb_pseq_perth_regs_core_spare17_field spare17_field
+ * @brief macros for field spare17
  * @details If set, any time ble requests the clk_mpc oscillator, the retention voltage is boosted back up to nominal value.
  * @{
  */
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__SHIFT                                   17
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__WIDTH                                    1
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__MASK                           0x00020000U
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__READ(src) \
-                    (((uint32_t)(src)\
-                    & 0x00020000U) >> 17)
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__WRITE(src) \
-                    (((uint32_t)(src)\
-                    << 17) & 0x00020000U)
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__MODIFY(dst, src) \
+#define PSEQ_CTRL0__SPARE17__SHIFT                                           17
+#define PSEQ_CTRL0__SPARE17__WIDTH                                            1
+#define PSEQ_CTRL0__SPARE17__MASK                                   0x00020000U
+#define PSEQ_CTRL0__SPARE17__READ(src)  (((uint32_t)(src) & 0x00020000U) >> 17)
+#define PSEQ_CTRL0__SPARE17__WRITE(src) (((uint32_t)(src) << 17) & 0x00020000U)
+#define PSEQ_CTRL0__SPARE17__MODIFY(dst, src) \
                     (dst) = ((dst) &\
                     ~0x00020000U) | (((uint32_t)(src) <<\
                     17) & 0x00020000U)
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__VERIFY(src) \
+#define PSEQ_CTRL0__SPARE17__VERIFY(src) \
                     (!((((uint32_t)(src)\
                     << 17) & ~0x00020000U)))
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__SET(dst) \
+#define PSEQ_CTRL0__SPARE17__SET(dst) \
                     (dst) = ((dst) &\
                     ~0x00020000U) | ((uint32_t)(1) << 17)
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__CLR(dst) \
+#define PSEQ_CTRL0__SPARE17__CLR(dst) \
                     (dst) = ((dst) &\
                     ~0x00020000U) | ((uint32_t)(0) << 17)
-#define PSEQ_CTRL0__BLE_BOOSTS_RETV__RESET_VALUE                    0x00000001U
+#define PSEQ_CTRL0__SPARE17__RESET_VALUE                            0x00000001U
 /** @} */
 
 /* macros for field block_dbg_wake */
@@ -6994,68 +6986,68 @@
 #define PSEQ_OVERRIDES5__OVERRIDE_RADIO_EN_O__RESET_VALUE           0x00000000U
 /** @} */
 
-/* macros for field override_retv_val */
+/* macros for field spare28 */
 /**
- * @defgroup at_apb_pseq_perth_regs_core_override_retv_val_field override_retv_val_field
- * @brief macros for field override_retv_val
+ * @defgroup at_apb_pseq_perth_regs_core_spare28_field spare28_field
+ * @brief macros for field spare28
  * @details If override is set, what value is the memory retention voltage?  0=nominal  1=ultra low
  * @{
  */
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__SHIFT                            28
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__WIDTH                             1
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__MASK                    0x10000000U
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__READ(src) \
+#define PSEQ_OVERRIDES5__SPARE28__SHIFT                                      28
+#define PSEQ_OVERRIDES5__SPARE28__WIDTH                                       1
+#define PSEQ_OVERRIDES5__SPARE28__MASK                              0x10000000U
+#define PSEQ_OVERRIDES5__SPARE28__READ(src) \
                     (((uint32_t)(src)\
                     & 0x10000000U) >> 28)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__WRITE(src) \
+#define PSEQ_OVERRIDES5__SPARE28__WRITE(src) \
                     (((uint32_t)(src)\
                     << 28) & 0x10000000U)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__MODIFY(dst, src) \
+#define PSEQ_OVERRIDES5__SPARE28__MODIFY(dst, src) \
                     (dst) = ((dst) &\
                     ~0x10000000U) | (((uint32_t)(src) <<\
                     28) & 0x10000000U)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__VERIFY(src) \
+#define PSEQ_OVERRIDES5__SPARE28__VERIFY(src) \
                     (!((((uint32_t)(src)\
                     << 28) & ~0x10000000U)))
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__SET(dst) \
+#define PSEQ_OVERRIDES5__SPARE28__SET(dst) \
                     (dst) = ((dst) &\
                     ~0x10000000U) | ((uint32_t)(1) << 28)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__CLR(dst) \
+#define PSEQ_OVERRIDES5__SPARE28__CLR(dst) \
                     (dst) = ((dst) &\
                     ~0x10000000U) | ((uint32_t)(0) << 28)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV_VAL__RESET_VALUE             0x00000000U
+#define PSEQ_OVERRIDES5__SPARE28__RESET_VALUE                       0x00000000U
 /** @} */
 
-/* macros for field override_retv */
+/* macros for field spare29 */
 /**
- * @defgroup at_apb_pseq_perth_regs_core_override_retv_field override_retv_field
- * @brief macros for field override_retv
+ * @defgroup at_apb_pseq_perth_regs_core_spare29_field spare29_field
+ * @brief macros for field spare29
  * @details If set, software now has direct control of the memory retention voltage.
  * @{
  */
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__SHIFT                                29
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__WIDTH                                 1
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__MASK                        0x20000000U
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__READ(src) \
+#define PSEQ_OVERRIDES5__SPARE29__SHIFT                                      29
+#define PSEQ_OVERRIDES5__SPARE29__WIDTH                                       1
+#define PSEQ_OVERRIDES5__SPARE29__MASK                              0x20000000U
+#define PSEQ_OVERRIDES5__SPARE29__READ(src) \
                     (((uint32_t)(src)\
                     & 0x20000000U) >> 29)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__WRITE(src) \
+#define PSEQ_OVERRIDES5__SPARE29__WRITE(src) \
                     (((uint32_t)(src)\
                     << 29) & 0x20000000U)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__MODIFY(dst, src) \
+#define PSEQ_OVERRIDES5__SPARE29__MODIFY(dst, src) \
                     (dst) = ((dst) &\
                     ~0x20000000U) | (((uint32_t)(src) <<\
                     29) & 0x20000000U)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__VERIFY(src) \
+#define PSEQ_OVERRIDES5__SPARE29__VERIFY(src) \
                     (!((((uint32_t)(src)\
                     << 29) & ~0x20000000U)))
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__SET(dst) \
+#define PSEQ_OVERRIDES5__SPARE29__SET(dst) \
                     (dst) = ((dst) &\
                     ~0x20000000U) | ((uint32_t)(1) << 29)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__CLR(dst) \
+#define PSEQ_OVERRIDES5__SPARE29__CLR(dst) \
                     (dst) = ((dst) &\
                     ~0x20000000U) | ((uint32_t)(0) << 29)
-#define PSEQ_OVERRIDES5__OVERRIDE_RETV__RESET_VALUE                 0x00000000U
+#define PSEQ_OVERRIDES5__SPARE29__RESET_VALUE                       0x00000000U
 /** @} */
 
 /* macros for field override_xtal_val */

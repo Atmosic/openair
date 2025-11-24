@@ -5,7 +5,7 @@
  *
  * @brief Power Management Unit internal APIs
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  ******************************************************************************
  */
@@ -35,6 +35,7 @@ typedef struct {
     uint8_t vddpa_src;
     uint8_t dig_test_sel;
     bool pmu_wdog_timeout;
+    bool hsc_mode;
 } pmu_core_param;
 
 bool pmu_core_init(pmu_core_param const *param);
@@ -43,6 +44,7 @@ void pmu_cfg_dbg_sig(void);
 bool pmu_harv_meter_core_init(uint32_t *pmu_rb_mppt);
 void pmu_update_hm_stats(hm_stats_t *stats, hm_status_t *stats_valid);
 void pmu_reset_harv_meter(void);
+void pmu_32k_xtal_cap_init(uint8_t capin, uint8_t capout);
 
 #ifdef __cplusplus
 }

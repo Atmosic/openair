@@ -21,16 +21,15 @@
 
 #include "at_wrpr.h"
 #include "at_pinmux.h"
-#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
-#include "rram_rom_prot.h"
-#endif
-#include "sec_dev_lockout.h"
 #include "sec_assert.h"
-
-#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
-#include "calibration.h"
-#include "sec_jrnl.h"
+#ifdef CONFIG_ATM_PROT
+#include "sec_service.h"
 #endif
+#if DT_NODE_EXISTS(DT_NODELABEL(spe_fault_storage))
+#include <zephyr/sys/reboot.h>
+#include <atm_spe_sec_fault_storage.h>
+#endif
+#include "atm_sec_wdog_disable.h"
 
 #ifdef CONFIG_ATM_SPE_DEBUG_TZ
 #define TRACE_TZ_CFG printk
@@ -63,8 +62,6 @@ extern irq_target_state_t irq_target_state_set(unsigned int irq,
     DT_NODE_EXISTS(DT_NODELABEL(slot3_partition))
 // This is an implicit MCUBOOT configuration
 // the NSPE is now in slot2 with the OTA area in slot3
-// for a signed image the start is after the image header
-#define NSPE_APP_START_OFFSET CONFIG_ROM_START_OFFSET
 #define PART_SPE_ADDR() PART_IN_SLOT_ADDR(slot0_partition, spe_partition)
 #define PART_NSPE_ADDR() PART_IN_SLOT_ADDR(slot2_partition, nspe_partition)
 // fast code is in slot 0
@@ -81,7 +78,15 @@ extern irq_target_state_t irq_target_state_set(unsigned int irq,
 
 #define PART_SPE_SIZE() DT_REG_SIZE(DT_NODELABEL(spe_partition))
 #define PART_NSPE_SIZE() DT_REG_SIZE(DT_NODELABEL(nspe_partition))
+
+#if DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
 #define PART_FAST_CODE_SIZE() DT_REG_SIZE(DT_NODELABEL(fast_code_partition))
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+#define FAST_CODE_APP_START_OFFSET CONFIG_ROM_START_OFFSET
+#else
+#define FAST_CODE_APP_START_OFFSET 0
+#endif
+#endif // DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
 
 #define PROG_MPC_PARTITION(part, base_partition) \
     do { \
@@ -169,10 +174,17 @@ static void mpc_cfg(void)
     // Configuring MPC of RAM
     ret = at_tz_mpc_enable_int(AT_TZ_MPC_DEV_RAM);
     SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
+#if DT_NODE_EXISTS(DT_NODELABEL(spe_fault_storage))
+    ret = at_tz_mpc_config_region(DT_REG_ADDR(DT_NODELABEL(sram0)) +
+	DT_REG_SIZE(DT_NODELABEL(sram0)) + DT_REG_SIZE(
+	DT_NODELABEL(spe_fault_storage)), DT_REG_ADDR(DT_NODELABEL(sram0)) +
+	RAM_SIZE - 1, AT_TZ_MPC_ATTR_NONSECURE);
+#else
     ret = at_tz_mpc_config_region(DT_REG_ADDR(DT_NODELABEL(sram0)) +
 	    DT_REG_SIZE(DT_NODELABEL(sram0)),
 	DT_REG_ADDR(DT_NODELABEL(sram0)) + RAM_SIZE - 1,
 	AT_TZ_MPC_ATTR_NONSECURE);
+#endif
     SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
     ret = at_tz_mpc_enable_bus_fault(AT_TZ_MPC_DEV_FLASH);
     SEC_ASSERT(ret == AT_TZ_MPC_RET_OK);
@@ -292,99 +304,14 @@ static void sau_cfg(void)
     // No need to invalidate the caches.
 }
 
-#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
-#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller)) && \
-    !DT_SAME_NODE(DT_GPARENT(DT_NODELABEL(factory_partition)), \
-	DT_NODELABEL(rram0))
-#error "Factory partition is not in RRAM"
-#endif
-
-static bool check_factory_part_lock(void)
-{
-    uint8_t lock;
-    sec_jrnl_tag_len_t lock_len = sizeof(lock);
-
-    if ((sec_jrnl_get(ATM_TAG_LOCK_FACTORY_DATA, &lock_len, &lock) ==
-	SEC_JRNL_OK) && lock) {
-	return true;
-    }
-
-    return false;
-}
-#endif // factory_partition
-
 // security lockdowns before the SAU is enabled
 // At this stage all peripherals can be accessed by
 // both their SECURE and NON-SECURE aliases
 static void pre_sau_security_lockdown(void)
 {
-    bool sec_s;
-
-#ifdef CONFIG_ATM_SPE_DISABLE_ROM_PATCH
-    // lock out the ROM patch controller
-    sec_s = sec_device_set_lockout(SEC_DEV_LOCKOUT_ROM_P_CFG);
-    SEC_ASSERT(sec_s);
+#ifdef CONFIG_ATM_PROT
+	sec_lockdown();
 #endif
-#ifdef CONFIG_ATM_SPE_DISABLE_OTP
-    // lock out the OTP controller's write capability
-    sec_s = sec_device_set_lockout(SEC_DEV_LOCKOUT_OTP_WR);
-    SEC_ASSERT(sec_s);
-#endif
-
-#if SHUB_LOCKOUT_SUPPORT && defined(CONFIG_ATM_SPE_DISABLE_SHUB)
-    // lock out shub
-    sec_s = sec_device_set_lockout(SEC_DEV_LOCKOUT_SHUB_DISABLE);
-    SEC_ASSERT(sec_s);
-    printk("SHUB disabled\n");
-#endif
-
-#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
-    if (check_factory_part_lock()) {
-	// write protect factory data partition
-	uint32_t factory_offset = PART_OFFSET(factory_partition);
-	uint32_t factory_size = DT_REG_SIZE(DT_NODELABEL(factory_partition));
-	printk("factory data WP: 0x%x, 0x%x \n", factory_offset, factory_size);
-#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
-	sec_s = rram_prot_sticky_write_disable(factory_offset, factory_size);
-	SEC_ASSERT(sec_s);
-#else
-	// FIXME : flash write locks
-#endif
-    }
-#endif // factory_partition
-
-#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
-#ifdef CONFIG_ATM_SPE_RP_BOOT_ROM
-    // lock out the boot ROM
-    uint32_t rom_offset = ROM_ADDR_TO_OFFSET(CMSDK_FLASH_BASE);
-    printk("ROM RP: 0x%x, 0x%lx \n", rom_offset, ROM_SIZE);
-    sec_s = rom_prot_sticky_read_disable(rom_offset, ROM_SIZE);
-    SEC_ASSERT(sec_s);
-#endif
-#if DT_NODE_EXISTS(DT_NODELABEL(boot_partition)) && \
-    defined(CONFIG_ATM_SPE_RP_MCUBOOT)
-    // read/write protect MCUBOOT partition
-    uint32_t mcuboot_offset = PART_OFFSET(boot_partition);
-    uint32_t mcuboot_size = DT_REG_SIZE(DT_NODELABEL(boot_partition));
-    printk("MCUBoot RWP: 0x%x, 0x%x \n", mcuboot_offset, mcuboot_size);
-    sec_s = rram_prot_sticky_write_disable(mcuboot_offset, mcuboot_size);
-    SEC_ASSERT(sec_s);
-    sec_s = rram_prot_sticky_read_disable(mcuboot_offset, mcuboot_size);
-    SEC_ASSERT(sec_s);
-#endif
-
-#if DT_NODE_EXISTS(DT_NODELABEL(slot2_partition)) && \
-    !DT_NODE_EXISTS(DT_NODELABEL(slot3_partition)) && \
-    defined(CONFIG_ATM_SPE_WP_ATMWSTK)
-    // sticky lock atmwstk
-    uint32_t atmwstk_offset = PART_OFFSET(slot2_partition);
-    uint32_t atmwstk_size = DT_REG_SIZE(DT_NODELABEL(slot2_partition));
-    printk("ATMWSTK WP: 0x%x, 0x%x \n", atmwstk_offset, atmwstk_size);
-    sec_s = rram_prot_sticky_write_disable(atmwstk_offset, atmwstk_size);
-    SEC_ASSERT(sec_s);
-#endif
-#endif // rram_controller
-
     // NOTE: primary slot locking happens in MCUBOOT
 }
 
@@ -393,6 +320,26 @@ static void pre_sau_security_lockdown(void)
 static void post_sau_security_lockdown(void)
 {
 }
+
+static int secure_watchdog_init(void)
+{
+	// Enable Secure Watchdog for 1 long period, lasts whole boot process
+	SECURE_WATCHDOG->LOCK = ATM_WATCHDOG_LOCK_MAGIC;
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+	SECURE_WATCHDOG->CTRL = 0; // Ensure MCUboot watchdog disabled so we can re-setup
+#endif
+	uint32_t clock_freq_hz = DT_PROP(DT_NODELABEL(sysclk), clock_frequency);
+	uint32_t wdog_seconds = CONFIG_ATM_SPE_WATCHDOG_TIMEOUT_SECONDS * clock_freq_hz;
+
+	SECURE_WATCHDOG->LOAD = wdog_seconds;
+	SECURE_WATCHDOG->CTRL = CMSDK_Watchdog_CTRL_RESEN_Msk | CMSDK_Watchdog_CTRL_INTEN_Msk;
+	SECURE_WATCHDOG->LOCK = 0;
+
+	return 0;
+}
+
+// Run as early as possible to cover as much as possible
+SYS_INIT(secure_watchdog_init, EARLY, 0);
 
 FUNC_NORETURN void spe_main(void)
 {
@@ -407,9 +354,17 @@ FUNC_NORETURN void spe_main(void)
 #endif
     printk("* NSPE range: [0x%08x - 0x%08x]\n", (unsigned int)PART_NSPE_ADDR(),
 	(unsigned int)PART_NSPE_ADDR() + (unsigned int)PART_NSPE_SIZE() - 1);
-    uint32_t *application_addr = (uint32_t *)((
-	(PART_NSPE_ADDR() + NSPE_APP_START_OFFSET) & ~0x10000000));
+    uint32_t *application_addr =
+#if DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
+	(uint32_t *)((PART_FAST_CODE_ADDR() + FAST_CODE_APP_START_OFFSET) &
+	    ~0x10000000);
+    // vector table is in the fast code partition
+    printk("* Fast Code start addr %p \n", application_addr);
+#else
+	(uint32_t *)((
+	    (PART_NSPE_ADDR() + NSPE_APP_START_OFFSET) & ~0x10000000));
     printk("* NSPE non-sec start addr: %p \n", application_addr);
+#endif
     printk("***\n");
 
     // Enables BusFault, MemFault, UsageFault and SecureFault
@@ -418,8 +373,6 @@ FUNC_NORETURN void spe_main(void)
 
     // Allow fpu access in nonsecure mode.
     SCB->NSACR |= (1UL << SCB_NSACR_CP10_Pos) | (1UL << SCB_NSACR_CP11_Pos);
-
-    // TODO: Handle Watchdog.
 
     // Permit NS Watchdog to reset system
     SYS_CTRL_REG->RESET_MASK |= SYS_CTRL_REG_SSE200_RESET_MASK_NSWD_EN_Msk;
@@ -513,8 +466,13 @@ void k_sys_fatal_error_handler(unsigned int reason, const struct arch_esf *pEsf)
     printk("  BFSR_NS : 0x%x\n", CFSR_BFSR_READ(_cfsr_ns));
     printk("  HFSR_NS : 0x%" PRIx32 "\n", SCB_NS->HFSR);
 
+#if DT_NODE_EXISTS(DT_NODELABEL(spe_fault_storage))
+    atm_spe_secure_fault_record(reason, pEsf);
+    sys_reboot(SYS_REBOOT_WARM);
+#else
     printk("**Halting\n");
     k_fatal_halt(reason);
+#endif
 }
 
 int main(void)

@@ -21,19 +21,35 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/sys/math_extras.h>
 #include <stddef.h>
 #include <string.h>
 #include <errno.h>
 #include <zephyr/drivers/flash/atm_flash_api_extensions.h>
 #include <soc.h>
+#include <zephyr/sys/reboot.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
+#if defined(CONFIG_ATM_RADIO_HAL_MGR) && !defined(__QSPI_BURST_PP_CTRL_MACRO__)
+#define INTEGRATE_FLASH_WITH_MGR
+#endif
 
 #include "arch.h"
 #include "at_wrpr.h"
 #include "at_apb_qspi_regs_core_macro.h"
+#ifdef INTEGRATE_FLASH_WITH_MGR
+#include "ble_driver.h"
+#include "radio_hal_frc.h"
+#include "radio_hal_mgr.h"
+#endif
+
+#if defined(CONFIG_SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_WRITE) ||                                  \
+	defined(CONFIG_SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_ERASE)
+#include "rf_api.h"
+#define RF_POWER_MINIMUM -20
+#endif
 
 #define CTR_FROM_FIXED_PARTITION(node_id) \
 	COND_CODE_1(DT_NODE_EXISTS(DT_MEM_FROM_FIXED_PARTITION(DT_GPARENT(node_id))), \
@@ -52,8 +68,6 @@ LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
 // supported chips.
 #if !EXECUTING_IN_PLACE || defined(__QSPI_BURST_PP_CTRL_MACRO__)
 #define FLASH_BREAK_IN
-#include <zephyr/pm/pm.h>
-#include <zephyr/pm/policy.h>
 #include "atm_bp_clock.h"
 #endif
 #endif // QSPI_REMOTE_AHB_SETUP_9__ESL__WRITE &&
@@ -66,7 +80,7 @@ LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
 #define __PP_FAST __STATIC_INLINE
 #else
 // Need to make sure page programming (PP) routines are in RAM
-#define __PP_FAST __ramfunc __STATIC
+#define __PP_FAST __ramfunc static
 #endif
 
 #ifdef CMSDK_QSPI_NONSECURE
@@ -244,11 +258,29 @@ do {\
 
 #ifdef CONFIG_PM
 #include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
 #include "at_apb_pseq_regs_core_macro.h"
 #ifdef __PSEQ_FLASH_CONTROL2_MACRO__
 #include "pseq_states.h"
 #define FLASH_PD
 #endif
+#define LOCK_FLASH_PM()                                                                            \
+	do {                                                                                       \
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);               \
+		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);                     \
+	} while (0)
+#define UNLOCK_FLASH_PM()                                                                          \
+	do {                                                                                       \
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);               \
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);                     \
+	} while (0)
+#else
+#define LOCK_FLASH_PM()                                                                            \
+	do {                                                                                       \
+	} while (0)
+#define UNLOCK_FLASH_PM()                                                                          \
+	do {                                                                                       \
+	} while (0)
 #endif // CONFIG_PM
 
 #ifdef QSPI_FLASH_DBG
@@ -298,6 +330,7 @@ typedef enum {
 	SPI_FLASH_ERSCUR = 0x44, // Erase Security Registers
 	SPI_FLASH_PRSCUR = 0x42, // Program Security Registers
 	SPI_FLASH_RDSCUR = 0x48, // Read Security Registers
+	SPI_FLASH_RDSCUR_MCX = 0x2b, // read security status register (Macronix)
 
 	SPI_FLASH_RDSR = 0x05, // Read Status Register
 	SPI_FLASH_RDSR2 = 0x35, // Read Status Register
@@ -326,6 +359,13 @@ typedef enum {
 // Performance enhance indicator compatible with Macronix, GIGA, Puya
 #define COMPAT_PERF_MODE_IND 0xa5
 
+// work in progress bit mask in status1
+#define WIP_MASK            0x01
+// erase suspend bit mask in status2
+#define ER_SUSPEND_MASK     0x80
+// macronix erase suspend bit is in the security status register
+#define MCX_ER_SUSPEND_MASK 0x08
+
 // Defines in RUID command
 // NOTE: The RUID command for PUYA and GIGA is compatible.
 #define UID_PUYA_GIGA_LEN  16
@@ -353,6 +393,16 @@ static bool write_erase_in_progress;
  * Semaphore for operations that impact system latency, such as erases
  */
 static K_SEM_DEFINE(flash_atm_latency_sem, 1, 1);
+#endif
+
+#ifdef INTEGRATE_FLASH_WITH_MGR
+static K_SEM_DEFINE(flash_start_sem, 0, 1);
+
+static bool flash_driver_give(void)
+{
+	k_sem_give(&flash_start_sem);
+	return true;
+}
 #endif
 
 #ifdef FLASH_BREAK_IN
@@ -405,6 +455,11 @@ void flash_atm_breakin_isr_handler(void const *arg)
 	k_sem_give(&flash_atm_break_sem);
 }
 
+#ifdef CONFIG_PM
+// BP frequency to maintain during flash breakin operations
+static uint32_t flash_min_freq;
+#endif
+
 static void external_flash_enable_breakin(void)
 {
 	if (atm_soc_in_exception()) {
@@ -414,8 +469,9 @@ static void external_flash_enable_breakin(void)
 #ifdef CONFIG_PM
 	// breakin is interrupt driven and erase can take 100s of ms to finish
 	// hold off low power states to prevent disruption
-	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	LOCK_FLASH_PM();
+	// Capture current BP frequency to maintain during breakin
+	flash_min_freq = atm_bp_clock_get();
 #endif
 	// NOTE: any previous mem-mapped write will set the interrupt bit
 	// clear this to prevent handling a stale interrupt when unmasking
@@ -440,10 +496,23 @@ static void external_flash_disable_breakin(void)
 	QSPI_REMOTE_AHB_SETUP_9__ESL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9, 0);
 	QSPI_REMOTE_AHB_SETUP_9__PSL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9, 0);
 #ifdef CONFIG_PM
-	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	UNLOCK_FLASH_PM();
+	// Clear BP frequency requirement
+	flash_min_freq = 0;
 #endif
 }
+
+#ifdef CONFIG_PM
+static rep_vec_err_t flash_prevent_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
+{
+	// If flash breakin is active, maintain the BP frequency from when breakin started
+	if (flash_min_freq && *min_freq < flash_min_freq) {
+		*min_freq = flash_min_freq;
+	}
+
+	return (RV_NEXT);
+}
+#endif
 
 static void init_flash_breakin(void)
 {
@@ -460,6 +529,12 @@ static void init_flash_breakin(void)
 		ASSERT_ERR(0);
 		return;
 	}
+
+#ifdef CONFIG_PM
+	// Register flash power management throttle function
+	RV_PLF_BP_THROTTLE_ADD(flash_prevent_bp_throttle);
+#endif
+
 	LOG_INF("Flash breakin enabled");
 }
 
@@ -498,6 +573,7 @@ static void ext_flash_enable_AHB_writes(void)
 		QSPI_REMOTE_AHB_SETUP_2__OPCODE_WE__WRITE(SPI_FLASH_WREN);
 }
 
+#ifndef CONFIG_SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
 static void ext_flash_enable_AHB_erases(void)
 {
 	// Enable erase via AHB
@@ -507,6 +583,7 @@ static void ext_flash_enable_AHB_erases(void)
 		QSPI_REMOTE_AHB_SETUP_2__OPCODE_PP__WRITE(0x00) | // NOP
 		QSPI_REMOTE_AHB_SETUP_2__OPCODE_WE__WRITE(SPI_FLASH_WREN);
 }
+#endif
 
 static void ext_flash_disable_AHB_writes(void)
 {
@@ -575,52 +652,43 @@ static int flash_atm_read_sync(struct device const *dev, off_t addr,
 	return err;
 }
 
-#ifndef __QSPI_BURST_PP_CTRL_MACRO__
-typedef struct {
-	uint16_t d;
-} __PACKED misaligned_uint16_t;
+// synchronize the performance mode state of the QSPI controller
+// used if software is driving erase and page programming.
+#if defined(CONFIG_SOC_FLASH_ATM_USE_SW_MANAGED_ERASE) || !defined(__QSPI_BURST_PP_CTRL_MACRO__)
+static inline void sync_read_perf_mode(uint32_t offset)
+{
+	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(
+		    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {
+		ext_flash_inval_cache();
+		// Issue a dummy byte read to get back into performance mode,
+		// in case we performed an erase, mem-mapped write or went into power down mode
+		// prior to switching to manual mode. The bridge disables performance mode for these
+		// prior operations and does not re-instate perf mode until the CPU issues a read
+		// again.
+		uint32_t volatile *dummy =
+			(uint32_t volatile *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + offset);
+		*dummy;
+	}
+}
 
-typedef struct {
-	uint32_t d;
-} __PACKED misaligned_uint32_t;
+// sync performance mode by reading the end of flash, suitable for page programming
+#define SYNC_READ_PERF_MODE()                                                                      \
+	do {                                                                                       \
+		sync_read_perf_mode(flash_size - sizeof(uint32_t));                                \
+	} while (0)
+
+#endif
+
+#ifndef __QSPI_BURST_PP_CTRL_MACRO__
+#define FLASH_ATM_INTERNAL_GUARD
+#include "flash_atm_memops.h"
 
 static void flash_write_mapped(struct device const *dev, off_t addr, size_t len, void const *data)
 {
 	// convert to memory mapped address
 	addr += DT_REG_ADDR(SOC_NV_FLASH_NODE);
-	// Flash writes are WAY more expensive than misaligned RAM reads,
-	// so optimize the write transactions more than memcpy() would
-	uint32_t end = addr + len;
-	uint8_t const *buffer = data;
-	if (addr & 0x1) {
-		*(volatile uint8_t *)addr++ = *buffer++;
-	}
 
-	uint32_t final_16 = end - sizeof(uint16_t);
-	if (addr <= final_16) {
-		if (addr & 0x2) {
-			*(volatile uint16_t *)addr = ((misaligned_uint16_t const *)buffer)->d;
-			addr += sizeof(uint16_t);
-			buffer += sizeof(uint16_t);
-		}
-
-		uint32_t final_32 = end - sizeof(uint32_t);
-		while (addr <= final_32) {
-			*(volatile uint32_t *)addr = ((misaligned_uint32_t const *)buffer)->d;
-			addr += sizeof(uint32_t);
-			buffer += sizeof(uint32_t);
-		}
-
-		if (addr <= final_16) {
-			*(volatile uint16_t *)addr = ((misaligned_uint16_t const *)buffer)->d;
-			addr += sizeof(uint16_t);
-			buffer += sizeof(uint16_t);
-		}
-	}
-
-	while (addr < end) {
-		*(volatile uint8_t *)addr++ = *buffer++;
-	}
+	flash_atm_memcpy_slow_dest((void *)addr, data, len);
 }
 #endif
 
@@ -702,7 +770,7 @@ static int flash_write_page(struct device const *dev, off_t addr,
 		qspi_drive_serial_cmd(SPI_FLASH_RDSR);
 		status = qspi_read_serial_byte();
 		qspi_drive_stop();
-	} while (status & 0x1);
+	} while (status & WIP_MASK);
 
 	RESTORE_PERF_MODE();
 
@@ -720,19 +788,9 @@ static int flash_write_page(struct device const *dev, off_t addr,
 static int flash_write_pages(struct device const *dev, off_t addr, size_t length,
 			     uint8_t const *buffer)
 {
-
-	if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(
-		    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {
-		ext_flash_inval_cache();
-		// Issue a dummy read (end of flash) to get back into performance mode,
-		// in case we performed an erase, mem-mapped write or went into power down mode
-		// prior to page programming. The bridge disables performance mode for these pior
-		// operations and does not re-instate perf mode until the CPU issues a read again.
-		uint32_t volatile *dummy = (uint32_t volatile *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) +
-								 flash_size - sizeof(uint32_t));
-		*dummy;
-	}
-
+#ifndef __QSPI_BURST_PP_CTRL_MACRO__
+	SYNC_READ_PERF_MODE();
+#endif
 	// When copying from flash to itself, precopy is required
 	bool precopy = ((addr >> QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__WIDTH) ==
 			((uintptr_t)buffer >> QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__WIDTH));
@@ -740,6 +798,9 @@ static int flash_write_pages(struct device const *dev, off_t addr, size_t length
 	int err = 0;
 #ifdef __QSPI_BURST_PP_CTRL_MACRO__
 	ENABLE_FLASH_BREAKIN();
+#endif
+#ifdef INTEGRATE_FLASH_WITH_MGR
+	atm_mac_lock_sync();
 #endif
 	while (length) {
 		uint32_t next_len = PAGE_SIZE - (addr & PAGE_MASK);
@@ -753,6 +814,23 @@ static int flash_write_pages(struct device const *dev, off_t addr, size_t length
 		} else {
 			page_buf = buffer;
 		}
+#ifdef INTEGRATE_FLASH_WITH_MGR
+		uint32_t now_us = atm_mac_frc_get_current_time();
+		atm_mac_mgr_priority_t priority = 0;
+		PRIORITY_CRITICAL_SET(priority);
+		PRIORITY_PROTOCOL_MODIFY(priority, ATM_MAC_MGR_PROT_FLASH);
+		atm_mac_mgr_op_data_t erase = {
+			.start_time = now_us,
+			// Allow maximum delay before starting (35 mins)
+			.latest_start_time = now_us + 0x7FFFFFFF,
+			.expected_duration = 5000, // Experimentally determined
+			.priority = priority,
+			.protocol = ATM_MAC_MGR_PROT_FLASH,
+		};
+		k_sem_reset(&flash_start_sem);
+		atm_mac_mgr_schedule_op(atm_mac_mgr_get_iface(), &erase);
+		k_sem_take(&flash_start_sem, K_FOREVER);
+#endif
 		err = flash_write_page(dev, addr, next_len, page_buf);
 		if (err) {
 			break;
@@ -761,6 +839,10 @@ static int flash_write_pages(struct device const *dev, off_t addr, size_t length
 		buffer += next_len;
 		length -= next_len;
 	}
+#ifdef INTEGRATE_FLASH_WITH_MGR
+	atm_mac_mgr_complete_op(atm_mac_mgr_get_iface(), ATM_MAC_MGR_PROT_FLASH);
+	atm_mac_unlock();
+#endif
 #ifdef __QSPI_BURST_PP_CTRL_MACRO__
 	DISABLE_FLASH_BREAKIN();
 #endif
@@ -778,6 +860,14 @@ static int flash_atm_write(struct device const *dev, off_t addr, void const *dat
 	if (!len) {
 		return 0;
 	}
+
+#ifdef CONFIG_SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_WRITE
+	atm_txpwr_ovr_key key = rf_set_txpwr_override(RF_POWER_MINIMUM);
+#endif
+
+#ifdef CONFIG_FLASH_EX_OP_ENABLED
+	k_sem_take(&flash_atm_latency_sem, K_FOREVER);
+#endif
 
 	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
 	ext_flash_enable_AHB_writes();
@@ -812,6 +902,14 @@ static int flash_atm_write(struct device const *dev, off_t addr, void const *dat
 	ext_flash_inval_cache();
 	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
 
+#ifdef CONFIG_SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_WRITE
+	rf_restore_txpwr_override(key);
+#endif
+
+#ifdef CONFIG_FLASH_EX_OP_ENABLED
+	k_sem_give(&flash_atm_latency_sem);
+#endif
+
 	return err;
 }
 
@@ -845,6 +943,386 @@ static int flash_atm_write_sync(struct device const *dev, off_t addr,
 	return err;
 }
 
+#ifdef CONFIG_SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+
+typedef enum {
+	SW_ERASE_SUCCESS = 0,
+	SW_ERASE_RESUME_TIMEOUT,
+	SW_ERASE_SUSPEND_TIMEOUT,
+	SW_ERASE_BAD_STATE,
+} sw_erase_status_t;
+
+typedef enum {
+	SW_ERASE_STATE_START = 0,
+	SW_ERASE_STATE_RESUME,
+	SW_ERASE_STATE_ERROR,
+	SW_ERASE_STATE_DONE,
+} sw_erase_state_t;
+
+typedef enum {
+	// 4KB sector erase
+	SW_ERASE_MODE_SECTOR = 0,
+	// 32KB block erase
+	SW_ERASE_MODE_BE32,
+} sw_erase_mode_t;
+
+typedef struct {
+	off_t addr;
+	uint32_t min_time_before_next_suspend_cycles;
+	uint32_t max_time_to_suspend_cycles;
+	uint32_t erase_duration_cycles;
+	sw_erase_mode_t mode;
+	sw_erase_state_t state;
+} sw_erase_ctxt_t;
+
+// Set the unit timing constraints for the erase procedure
+// min_time_before_next_suspend_cycles : minimum time (cycles) that an erase is in progress or
+// resumed before it can be suspended.  Derived from tERS specified in microseconds and converted
+// to cycles.
+// max_time_to_suspend_cyles : maximum time it takes before suspend takes effect and read data
+// commands are allowed again.  Also known as erase suspend latency (tESL) specified in
+// microseconds converted to cycles. Double the tESL value to provide some timing margin for
+// polling.
+#define SET_SW_ERASE_CONSTRAINTS(ctxt, tERS, tESL)                                                 \
+	do {                                                                                       \
+		(ctxt).min_time_before_next_suspend_cycles = k_us_to_cyc_ceil32(tERS);             \
+		(ctxt).max_time_to_suspend_cycles = k_us_to_cyc_ceil32((tESL) * 2);                \
+	} while (0)
+
+#define MAX_SUSPEND_RETRIES 2
+#define BE32_SIZE           (32 * 1024)
+
+#define TOTAL_SW_SECTOR_ERASE_UNITS                                                                \
+	(((CONFIG_SOC_FLASH_ATM_SW_SEC_ERASE_TIMEOUT_MS * 1000) +                                  \
+	  (CONFIG_SOC_FLASH_ATM_SW_SECTOR_ERASE_DURATION_US - 1)) /                                \
+	 CONFIG_SOC_FLASH_ATM_SW_SECTOR_ERASE_DURATION_US)
+BUILD_ASSERT(TOTAL_SW_SECTOR_ERASE_UNITS > 0, "SW Sector Erase units must be > 0");
+
+#ifdef CONFIG_SOC_FLASH_ATM_SW_ALLOW_32K_BLK_ERASE
+#define TOTAL_SW_32KB_ERASE_UNITS                                                                  \
+	(((CONFIG_SOC_FLASH_ATM_SW_SEC_ERASE_TIMEOUT_MS * 1000 *                                   \
+	   CONFIG_SOC_FLASH_ATM_SW_32K_BLK_ERASE_TIMEOUT_MULT) +                                   \
+	  (CONFIG_SOC_FLASH_ATM_SW_32K_ERASE_DURATION_US - 1)) /                                   \
+	 CONFIG_SOC_FLASH_ATM_SW_32K_ERASE_DURATION_US)
+BUILD_ASSERT(TOTAL_SW_32KB_ERASE_UNITS > 0, "SW 32K Erase units must be > 0");
+#endif
+
+#define RESTORE_PERF_MODE_AT_ADDR(addr)                                                            \
+	do {                                                                                       \
+		if (QSPI_REMOTE_AHB_SETUP_3__ENABLE_PERFORMANCE_MODE__READ(                        \
+			    CMSDK_QSPI->REMOTE_AHB_SETUP_3)) {                                     \
+			qspi_drive_start();                                                        \
+			qspi_drive_serial_cmd(SPI_FLASH_4READ);                                    \
+			qspi_drive_byte(((addr) >> 16) & 0xff);                                    \
+			qspi_drive_byte(((addr) >> 8) & 0xff);                                     \
+			qspi_drive_byte((addr) & 0xff);                                            \
+			uint8_t ind = QSPI_REMOTE_AHB_SETUP_3__OPCODE_PERFORMANCE_MODE__READ(      \
+				CMSDK_QSPI->REMOTE_AHB_SETUP_3);                                   \
+			qspi_drive_byte(ind);                                                      \
+			qspi_dummy(4);                                                             \
+			qspi_capture_byte();                                                       \
+			qspi_drive_stop();                                                         \
+		}                                                                                  \
+	} while (0)
+
+// simple QSPI command (no readback)
+#define QSPI_SIMPLE_CMD(cmd)                                                                       \
+	do {                                                                                       \
+		qspi_drive_start();                                                                \
+		qspi_drive_serial_cmd(cmd);                                                        \
+		qspi_drive_stop();                                                                 \
+	} while (0)
+
+// simple status register read
+#define QSPI_CMD_STATUS_READ(read_val, cmd)                                                        \
+	do {                                                                                       \
+		qspi_drive_start();                                                                \
+		qspi_drive_serial_cmd(cmd);                                                        \
+		(read_val) = qspi_read_serial_byte();                                              \
+		qspi_drive_stop();                                                                 \
+	} while (0)
+
+// To avoid reading an offset too close to the sector being erased, read further back
+#define NON_OVERLAP_OFFSET 32
+
+// get a safe address to dummy read when an erase is pending
+// this returns an address that will not overlap with the pending erase
+static off_t get_safe_read_addr(sw_erase_mode_t mode, off_t addr)
+{
+	uint32_t erase_size = (mode == SW_ERASE_MODE_SECTOR) ? FLASH_ERASE_BLK_SZ : BE32_SIZE;
+
+	if (addr + erase_size == flash_size) {
+		// we are erasing the last sector or 32KB block at the end of flash
+		// dummy read can be done just ahead of the area being erased
+		return addr - NON_OVERLAP_OFFSET;
+	}
+	// the last sector or block is not being erased, we can just read off the end
+	// of flash
+	return flash_size - NON_OVERLAP_OFFSET;
+}
+
+static bool check_erase_suspended(void)
+{
+	uint8_t status;
+	if (man_id == FLASH_MAN_ID_MACRONIX) {
+		QSPI_CMD_STATUS_READ(status, SPI_FLASH_RDSCUR_MCX);
+		if (status & MCX_ER_SUSPEND_MASK) {
+			return true;
+		}
+		return false;
+	}
+	QSPI_CMD_STATUS_READ(status, SPI_FLASH_RDSR2);
+	if (status & ER_SUSPEND_MASK) {
+		return true;
+	}
+	return false;
+}
+
+// SW erase state machine.  Performs one unit of erase work and returns.
+// During the erase unit of work interrupts are disabled and the QSPI bridge is taken
+// offline to manually issue erase commands.
+static sw_erase_status_t sw_erase_unit(sw_erase_ctxt_t *ctxt)
+{
+	sw_erase_status_t err = SW_ERASE_SUCCESS;
+
+	GLOBAL_INT_DISABLE();
+
+	// take control of the bridge
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
+
+	// Exit performance mode if enabled
+	EXIT_PERF_MODE();
+
+	if (ctxt->state == SW_ERASE_STATE_START) {
+		// Start the erase sequence
+		// Enable the write latch
+		QSPI_SIMPLE_CMD(SPI_FLASH_WREN);
+		// Issue erase command
+		qspi_drive_start();
+		qspi_drive_serial_cmd(ctxt->mode == SW_ERASE_MODE_SECTOR ? SPI_FLASH_SE
+									 : SPI_FLASH_BE32);
+		qspi_drive_serial_cmd((ctxt->addr >> 16) & 0xff);
+		qspi_drive_serial_cmd((ctxt->addr >> 8) & 0xff);
+		qspi_drive_serial_cmd(ctxt->addr & 0xff);
+		qspi_drive_stop();
+	} else if (ctxt->state == SW_ERASE_STATE_RESUME) {
+		// resume the erase
+		QSPI_SIMPLE_CMD(SPI_FLASH_PER);
+		// Poll that erase is no longer suspended.
+		bool resumed = false;
+		uint32_t resume_start = k_cycle_get_32();
+		do {
+			if (!check_erase_suspended()) {
+				resumed = true;
+				break;
+			}
+		} while ((k_cycle_get_32() - resume_start) < ctxt->max_time_to_suspend_cycles);
+
+		if (!resumed) {
+			err = SW_ERASE_RESUME_TIMEOUT;
+			goto sw_erase_exit;
+		}
+		// erase is now resumed...
+	} else {
+		__ASSERT(0, "invalid sw erase state");
+		err = SW_ERASE_BAD_STATE;
+		goto sw_erase_exit;
+	}
+
+	uint8_t suspend_retry = MAX_SUSPEND_RETRIES;
+	bool suspended = false;
+
+	do {
+		// WIP Poll for completion while erase is in progress
+		uint32_t wip_poll_cycles = 0;
+		uint32_t wip_poll_start_cycles = k_cycle_get_32();
+		do {
+			// Read status register to check WIP
+			uint8_t status;
+			QSPI_CMD_STATUS_READ(status, SPI_FLASH_RDSR);
+			// Check if erase completed (WIP bit clear)
+			if (!(status & WIP_MASK)) {
+				// WIP and SUSPEND are in two different status registers
+				// Read status again and check if we suspended, which also
+				// clears WIP.
+				if (check_erase_suspended()) {
+					// WIP cleared due to device has suspended erase
+					suspended = true;
+					break;
+				}
+				// Erase completed - disable write latch
+				QSPI_SIMPLE_CMD(SPI_FLASH_WRDI);
+				ctxt->state = SW_ERASE_STATE_DONE;
+				break;
+			}
+			// delay before poll to reduce SPI I/O
+			k_busy_wait(CONFIG_SOC_FLASH_ATM_SW_ERASE_POLL_DELAY_US);
+			wip_poll_cycles = k_cycle_get_32() - wip_poll_start_cycles;
+		} while (wip_poll_cycles < ctxt->erase_duration_cycles);
+
+		if (suspended || (ctxt->state == SW_ERASE_STATE_DONE)) {
+			// no need to suspend
+			break;
+		}
+
+		// Prepare to suspend the erase
+		if (wip_poll_cycles < ctxt->min_time_before_next_suspend_cycles) {
+			// Wait the minimum time before we suspend
+			k_busy_wait(k_cyc_to_us_ceil32(ctxt->min_time_before_next_suspend_cycles -
+						       wip_poll_cycles));
+		}
+
+		// Suspend erase
+		QSPI_SIMPLE_CMD(SPI_FLASH_PES);
+		// Poll for suspend. This wait loop can exit early but has a maximum constraint
+		// set by the manufacturer.  The suspend status may NOT set if the erase completes
+		// while the suspend command was in-flight.  We will loop and re-check WIP again
+		// if we time out.
+		uint32_t suspend_start = k_cycle_get_32();
+		do {
+			if (check_erase_suspended()) {
+				suspended = true;
+				break;
+			}
+		} while ((k_cycle_get_32() - suspend_start) < ctxt->max_time_to_suspend_cycles);
+
+		// if we did not suspend, loop back to WIP poll again, the erase may be done
+	} while (!suspended && --suspend_retry);
+
+	if (suspended) {
+		ctxt->state = SW_ERASE_STATE_RESUME;
+	} else if (!suspend_retry) {
+		err = SW_ERASE_SUSPEND_TIMEOUT;
+	}
+
+sw_erase_exit:
+
+	RESTORE_PERF_MODE_AT_ADDR(get_safe_read_addr(ctxt->mode, ctxt->addr));
+
+	// restore bridge
+	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
+					QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
+	GLOBAL_INT_RESTORE();
+	if (err) {
+		ctxt->state = SW_ERASE_STATE_ERROR;
+	}
+	return err;
+}
+
+// Software-based erase with suspend/resume.
+// Caller must enable QSPI clocks.
+static int flash_atm_sw_erase(off_t addr, sw_erase_mode_t mode)
+{
+	sw_erase_ctxt_t ctxt;
+
+	if (man_id == FLASH_MAN_ID_PUYA) {
+		// tERS = 0.3us tESL = 30us
+		SET_SW_ERASE_CONSTRAINTS(ctxt, 1, 30);
+	} else if (man_id == FLASH_MAN_ID_GIGA) {
+		// tRS/tERS = 100us tSUS/tESL = 40us
+		SET_SW_ERASE_CONSTRAINTS(ctxt, 100, 40);
+	} else if (man_id == FLASH_MAN_ID_MACRONIX) {
+		// tERS = 0.3us tESL = 60us
+		SET_SW_ERASE_CONSTRAINTS(ctxt, 1, 60);
+	} else {
+		__ASSERT(0, "Unsupported");
+		return -ENODEV;
+	}
+
+	LOG_DBG("SW erase mode: %s", mode == SW_ERASE_MODE_BE32 ? "32K" : "4K");
+	ctxt.state = SW_ERASE_STATE_START;
+	ctxt.addr = addr;
+	ctxt.mode = mode;
+
+	uint32_t total_erase_units;
+	uint32_t erase_duration_us;
+#ifdef CONFIG_SOC_FLASH_ATM_SW_ALLOW_32K_BLK_ERASE
+	if (mode == SW_ERASE_MODE_BE32) {
+		total_erase_units = TOTAL_SW_32KB_ERASE_UNITS;
+		erase_duration_us = CONFIG_SOC_FLASH_ATM_SW_32K_ERASE_DURATION_US;
+	} else
+#endif
+	{
+		total_erase_units = TOTAL_SW_SECTOR_ERASE_UNITS;
+		erase_duration_us = CONFIG_SOC_FLASH_ATM_SW_SECTOR_ERASE_DURATION_US;
+	}
+	ctxt.erase_duration_cycles = k_us_to_cyc_ceil32(erase_duration_us);
+
+	LOG_DBG(" - Erase duration: %" PRIu32 " us, units: %" PRIu32 " tESL: %" PRIu32
+		" cycles, tERS: %" PRIu32 " cycles",
+		erase_duration_us, total_erase_units, ctxt.max_time_to_suspend_cycles,
+		ctxt.min_time_before_next_suspend_cycles);
+
+	int err = 0;
+	uint32_t erase_suspend_us;
+#if defined(CONFIG_SOC_FLASH_ATM_SW_ALLOW_32K_BLK_ERASE)
+	if (mode == SW_ERASE_MODE_BE32) {
+		erase_suspend_us = CONFIG_SOC_FLASH_ATM_SW_32K_ERASE_SUSPEND_SLEEP_US;
+	} else
+#endif
+	{
+		erase_suspend_us = CONFIG_SOC_FLASH_ATM_SW_SECTOR_ERASE_SUSPEND_SLEEP_US;
+	}
+
+#ifdef INTEGRATE_FLASH_WITH_MGR
+	atm_mac_lock_sync();
+#endif
+	do {
+#ifdef INTEGRATE_FLASH_WITH_MGR
+		uint32_t now_us = atm_mac_frc_get_current_time();
+		atm_mac_mgr_priority_t priority = 0;
+		PRIORITY_CRITICAL_SET(priority);
+		PRIORITY_PROTOCOL_MODIFY(priority, ATM_MAC_MGR_PROT_FLASH);
+		atm_mac_mgr_op_data_t erase = {
+			.start_time = now_us,
+			// Allow maximum delay before starting (35 mins)
+			.latest_start_time = now_us + 0x7FFFFFFF,
+			.expected_duration = erase_duration_us + erase_suspend_us,
+			.priority = priority,
+			.protocol = ATM_MAC_MGR_PROT_FLASH,
+		};
+		k_sem_reset(&flash_start_sem);
+		atm_mac_mgr_schedule_op(atm_mac_mgr_get_iface(), &erase);
+		k_sem_take(&flash_start_sem, K_FOREVER);
+#endif
+		// make sure we are in read-perf mode, manual erasing disables and restores
+		// read perf mode to stay in sync with the QSPI controller.
+		sync_read_perf_mode(get_safe_read_addr(mode, addr));
+		// Perform one unit of erase. Interrupts are disabled during this call.
+		// On return flash is restored and interrupts enabled.
+		sw_erase_status_t erase_err = sw_erase_unit(&ctxt);
+		if (erase_err) {
+			LOG_ERR("SW erase unit error: %d", erase_err);
+			err = -EIO;
+			break;
+		} else if (ctxt.state == SW_ERASE_STATE_DONE) {
+			LOG_DBG("SW erase done");
+			break;
+		}
+
+		if (erase_suspend_us) {
+			LOCK_FLASH_PM();
+			k_usleep(erase_suspend_us);
+			UNLOCK_FLASH_PM();
+		} else {
+			k_yield();
+		}
+
+		// returned from yield or sleep. Continue erasing..
+	} while (--total_erase_units);
+
+#ifdef INTEGRATE_FLASH_WITH_MGR
+	atm_mac_mgr_complete_op(atm_mac_mgr_get_iface(), ATM_MAC_MGR_PROT_FLASH);
+	atm_mac_unlock();
+#endif
+	if (!err && !total_erase_units) {
+		LOG_ERR("SW erase operation timed out!");
+		return -ETIMEDOUT;
+	}
+	return err;
+}
+#endif // CONFIG_SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+
 static int flash_atm_erase(struct device const *dev, off_t addr, size_t size)
 {
 	LOG_DBG("flash_atm_erase(0x%08lx, %zu)", (unsigned long)addr, size);
@@ -865,13 +1343,49 @@ static int flash_atm_erase(struct device const *dev, off_t addr, size_t size)
 #ifdef CONFIG_FLASH_EX_OP_ENABLED
 	k_sem_take(&flash_atm_latency_sem, K_FOREVER);
 #endif
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
-	ext_flash_enable_AHB_erases();
+#ifdef CONFIG_SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_ERASE
+	atm_txpwr_ovr_key key = rf_set_txpwr_override(RF_POWER_MINIMUM);
+#endif
 	int err = 0;
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
+
+#ifdef CONFIG_SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+	size_t remaining = size;
+	while (remaining) {
+#ifdef CONFIG_SOC_FLASH_ATM_SW_ALLOW_32K_BLK_ERASE
+		if ((remaining >= BE32_SIZE) && !(addr & (BE32_SIZE - 1))) {
+			// use block erase if it aligns
+			err = flash_atm_sw_erase(addr, SW_ERASE_MODE_BE32);
+			if (err) {
+				break;
+			}
+			addr += BE32_SIZE;
+			remaining -= BE32_SIZE;
+		} else
+#endif
+		{
+			err = flash_atm_sw_erase(addr, SW_ERASE_MODE_SECTOR);
+			if (err) {
+				break;
+			}
+			addr += FLASH_ERASE_BLK_SZ;
+			remaining -= FLASH_ERASE_BLK_SZ;
+		}
+	}
+#else
+	ext_flash_enable_AHB_erases();
 	ENABLE_FLASH_BREAKIN();
+
+#if CONFIG_FLASH_ATM_ABNORMAL_TEST_BEFORE_ERASE
+	sys_reboot(SYS_REBOOT_WARM);
+#endif
+
 	for (off_t end = addr + size; addr < end; addr += FLASH_ERASE_BLK_SZ) {
 		*(volatile uint32_t *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + MAGIC_SECTOR_ERASE_ADDR) =
 			addr;
+#if CONFIG_FLASH_ATM_ABNORMAL_TEST_DURING_ERASE
+		sys_reboot(SYS_REBOOT_WARM);
+#endif
 		err = SYNC_FLASH_BREAKIN("Erase 1 sector", addr);
 		if (err) {
 			break;
@@ -880,9 +1394,15 @@ static int flash_atm_erase(struct device const *dev, off_t addr, size_t size)
 
 	ext_flash_disable_AHB_writes();
 	DISABLE_FLASH_BREAKIN();
+#endif // CONFIG_SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+
 	// flash state is now changed, invalidate cache
 	ext_flash_inval_cache();
 	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+
+#ifdef CONFIG_SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_ERASE
+	rf_restore_txpwr_override(key);
+#endif
 #ifdef CONFIG_FLASH_EX_OP_ENABLED
 	k_sem_give(&flash_atm_latency_sem);
 #endif
@@ -956,16 +1476,17 @@ static int flash_atm_ex_op_latency_lock(const struct device *dev, const uintptr_
 	struct flash_atm_ex_op_latency_lock_in const *req =
 		(struct flash_atm_ex_op_latency_lock_in const *)in;
 
-	static uint32_t latency_lock;
+	static atomic_t latency_lock;
 	if (req->get) {
-		if (!latency_lock++) {
+		if (!atomic_inc(&latency_lock)) {
 			k_sem_take(&flash_atm_latency_sem, K_FOREVER);
 		}
 		return 0;
 	}
 
-	__ASSERT(latency_lock, "latency_lock underflow");
-	if (!--latency_lock) {
+	atomic_val_t old_val = atomic_dec(&latency_lock);
+	__ASSERT(old_val > 0, "latency_lock underflow");
+	if (old_val == 1) {
 		k_sem_give(&flash_atm_latency_sem);
 	}
 	return 0;
@@ -974,6 +1495,10 @@ static int flash_atm_ex_op_latency_lock(const struct device *dev, const uintptr_
 static int flash_atm_ex_op(const struct device *dev, uint16_t code, const uintptr_t in, void *out)
 {
 	int rv = -EINVAL;
+
+	if (code == FLASH_ATM_EX_OP_LATENCY_LOCK) {
+		return flash_atm_ex_op_latency_lock(dev, in);
+	}
 
 #if defined(CONFIG_MULTITHREADING)
 	k_sem_take(&flash_atm_sync_sem, K_FOREVER);
@@ -985,9 +1510,6 @@ static int flash_atm_ex_op(const struct device *dev, uint16_t code, const uintpt
 		rv = flash_atm_ex_op_ruid(dev, out);
 		break;
 #endif
-	case FLASH_ATM_EX_OP_LATENCY_LOCK:
-		rv = flash_atm_ex_op_latency_lock(dev, in);
-		break;
 	default:
 		break;
 	}
@@ -1158,7 +1680,7 @@ static uint8_t spi_flash_wait_for_no_wip(const spi_dev_t *spi)
 	// FIXME: timeout
 	for (;;) {
 		ret = spi_read(spi, SPI_FLASH_RDSR);
-		if (!(ret & 0x1)) {
+		if (!(ret & WIP_MASK)) {
 			break;
 		}
 		YIELD();
@@ -1232,6 +1754,12 @@ static void spi_macronix_deep_power_down(const spi_dev_t *spi)
 	do_spi_transaction(spi, 0, SPI_FLASH_DP, 0, 0x0, 0x0);
 }
 #endif
+
+static void spi_flash_sw_reset(const spi_dev_t *spi)
+{
+	do_spi_transaction(spi, 0, SPI_FLASH_RSTEN, 0, 0x0, 0x0);
+	do_spi_transaction(spi, 0, SPI_FLASH_RST, 0, 0x0, 0x0);
+}
 
 static void spi_macronix_exit_deep_power_down(const spi_dev_t *spi)
 {
@@ -1986,14 +2514,8 @@ static void recover_man_id(void)
 				} else
 #endif
 				{
-#ifdef CONFIG_SOC_FLASH_ATM_FORCE_PUYA
-					// legacy flash init cannot differentiate
-					// GIGA from PUYA or FUDAN
-					man_id = FLASH_MAN_ID_PUYA;
-#else
 					// Can't tell GIGA apart from FUDAN
 					man_id = FLASH_MAN_ID_GIGA;
-#endif
 				}
 #ifdef FLASH_PD
 				giga_flash_enable_pm();
@@ -2028,6 +2550,10 @@ static void recover_man_id(void)
 static int flash_atm_init(struct device const *dev)
 {
 	LOG_DBG("flash_atm base:0x%08lx", (unsigned long)DT_REG_ADDR(SOC_NV_FLASH_NODE));
+#ifdef INTEGRATE_FLASH_WITH_MGR
+	atm_mac_mgr_register_deferred_api(atm_mac_mgr_get_iface(), ATM_MAC_MGR_PROT_FLASH,
+					  flash_driver_give);
+#endif
 
 #if !EXECUTING_IN_PLACE
 	if (WRPR_CTRL_GET(CMSDK_QSPI) == WRPR_CTRL__CLK_DISABLE) {
@@ -2036,6 +2562,19 @@ static int flash_atm_init(struct device const *dev)
 		recover_man_id();
 		INIT_FLASH_BREAKIN();
 		return 0;
+	}
+
+	if (WRPR_CTRL_GET(CMSDK_QSPI) == WRPR_CTRL__CLK_ENABLE) {
+		//  there was an erase or page program in progress when we reset (this is abnormal).
+		WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+		WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__CLK_ENABLE);
+		{
+			spi_flash_sw_reset(&spi2_8MHz_0);
+		}
+		WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__SRESET);
+		// The state of flash controller is not changed
+		LOG_INF("Cold reboot");
+		sys_reboot(SYS_REBOOT_COLD);
 	}
 
 	external_flash_wakeup();
@@ -2048,6 +2587,10 @@ static int flash_atm_init(struct device const *dev)
 	LOG_INF("man_id:%#x", man_id);
 #else
 	recover_man_id();
+#endif
+
+#ifdef CONFIG_SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
+	LOG_INF("SW erase mode");
 #endif
 	INIT_FLASH_BREAKIN();
 	return 0;

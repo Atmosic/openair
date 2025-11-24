@@ -1,7 +1,0 @@
-identifier: ATMEVK-3325-LQK-6/ATM33xx-5/ns
-name: ATMEVK-3325-LQK-6_ns
-type: mcu
-arch: arm
-toolchain:
-  - zephyr
-vendor: atmosic

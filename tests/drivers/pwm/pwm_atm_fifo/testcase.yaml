@@ -1,0 +1,12 @@
+tests:
+  tests.drivers.pwm.pwm_atm_fifo.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - PROJECT EXECUTION SUCCESSFUL
+    tags:
+      - no_mcuboot
+    extra_args:
+      - SB_CONFIG_ATMWSTK_PD50=y

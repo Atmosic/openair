@@ -4,15 +4,15 @@
 
 config ATM_DMA
 	bool "Atmosic DMA module"
-	depends on !SOC_SERIES_ATMX2
-	default y if TRUSTED_EXECUTION_NONSECURE || MCUBOOT
+	depends on SOC_FAMILY_ATM
+	default y if TRUSTED_EXECUTION_NONSECURE || MCUBOOT || ATM_NO_SPE
 
 if ATM_DMA
 
 config ATM_DMA_MINIMAL
 	bool "Minimal DMA driver"
 	default y if MCUBOOT
-	default y if !BT && !ATM_ATLC && !ENTROPY_ATM_TRNG && !I2S_ATM
+	default y if !BT && !ATM_ATLC && !ENTROPY_ATM_TRNG && !I2S_ATM && !PWM_ATM_FIFO
 
 config ATM_DMA_FIFO_RX
 	bool "Enable RX DMA"

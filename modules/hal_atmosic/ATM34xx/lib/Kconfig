@@ -8,6 +8,8 @@ config DTOP_BYPASS
 
 choice ATM_WIRELESS_STACK_CHOICE
 	prompt "BLE link layer wireless stack flavor"
+	default ATMWSTK_FULL if BT_HCI_RAW
+	default ATMWSTK_CPD200 if BT_OBSERVER || BT_CENTRAL || BT_PER_ADV
 	default ATMWSTK_PD50
 	depends on BT
 

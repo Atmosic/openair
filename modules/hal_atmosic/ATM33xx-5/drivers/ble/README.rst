@@ -36,27 +36,15 @@ Configures the default BLE link controller sleep adjustment. The default value s
 BLE Link Controller Options
 ---------------------------
 
-Fixed BLE Link Controller image (when using ``CONFIG_ATMWSTK_FULL=y``)
-``````````````````````````````````````````````````````````````````````
+There are two BLE Link Controller options: CPD200 Fixed Image and PD50 Statically-linked library. It is required to know which BLE Link Controller option the application is using before building. Refer to application's ``CONFIG_BT_*`` settings in ``prj.conf`` and ``openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/Kconfig`` to check which BLE Link Controller option the application is requiring.
 
-This controller option utilizes a separately flashed BLE controller image.  This controller image is non-upgradeable and occupies a fixed region of code memory. Fixed controller image is automatically used when the FULL wireless stack is used (``CONFIG_ATMWSTK_FULL=y``). FULL wireless stack is the only flavor supported for fixed controller image.
+CPD200 Fixed BLE Link Controller Image
+``````````````````````````````````````
+
+This controller option utilizes a separately flashed BLE controller image.  This controller image is non-upgradeable and occupies a fixed region of code memory. CPD200 wireless stack is the only flavor supported for fixed controller image.
 See the section below on Link Controller Flavors and section on DTS flags to partition memory to host the fixed BLE controller image.
 
-
-Statically linked BLE Link Controller library (when using ``CONFIG_ATMWSTK_PD50=y``)
-````````````````````````````````````````````````````````````````````````````````````
-
-This option statically links a BLE controller library with the application image. This offers the ability to fully upgrade the link controller with the application.  Statically linked library is automatically used when the PD50 wireless stack is used (``CONFIG_ATMWSTK_PD50=y``). The use of static linkage and reduced feature sets can help reduce the total code memory footprint of the application.
-PD50 is the only flavor supported in the statically linked BLE Link Controller library configuration.
-
-BLE Link Controller Flavors
----------------------------
-
-CONFIG_ATMWSTK_FULL
-```````````````````
-
-
-Full controller features less LE Audio. This flavor is selected by the configuration ``CONFIG_ATMWSTK_FULL=y``.
+CPD200 controller features less LE Audio. This flavor is selected by the configuration ``-DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=CPD200``.
 
 Features:
 
@@ -70,12 +58,12 @@ Features:
 * Up to 6 Advertisement sets
 * Up to 6 Connections
 
+PD50 Statically-linked BLE Link Controller Library
+``````````````````````````````````````````````````
 
-CONFIG_ATMWSTK_PD50
-```````````````````
+This option statically links a BLE controller library with the application image. This offers the ability to fully upgrade the link controller with the application. The use of static linkage and reduced feature sets can help reduce the total code memory footprint of the application. PD50 is the only flavor supported in the statically linked BLE Link Controller library configuration.
 
-
-Compact feature set, peripheral only. This flavor is selected by the configuration ``CONFIG_ATMWSTK_PD50=y``.
+PD50 is a compact feature set, peripheral only. No extra CONFIG is needed when building with PD50.
 
 Features:
 
@@ -94,10 +82,20 @@ DTS Flags
 ---------
 
 
-When using the statically linked BLE controller with PD50 wireless stack (``CONFIG_ATMWSTK_PD50=y``) there are no additional DTS settings.  Since the BLE stack is statically linked to the application it will reside in the same memory partition.
+When using the statically linked BLE controller with PD50 wireless stack, there are no additional DTS settings.  Since the BLE stack is statically linked to the application it will reside in the same memory partition.
 
-When using the fixed BLE controller image for FULL wireless stack (``CONFIG_ATMWSTK_FULL=y``), the DTSI configuration needs to create a partition to host the ATMWSTK image. This can be reserved using the following DTS flag:
+When using the fixed BLE controller image for CPD200 wireless stack, the DTSI configuration needs to create a partition to host the ATMWSTK image. This can be reserved using the following DTS flag:
 
-    DTS_EXTRA_CPPFLAGS += -DFIXED_ATMWSTK=FULL
+  .. code-block::
+
+    DTS_EXTRA_CPPFLAGS += -DFIXED_ATMWSTK=CPD200
 
 The partition is sized appropriately for the stack flavor.
+
+Using CPD200 fixed BLE controller image without setting the DTSI configuration will result in the following build error:
+
+  .. code-block::
+
+    fixed_atmwstk.c:32:2: error: #error "-DFIXED_ATMWSTK=<FLAVOR> has to be provided to the device tree generation step rather than the normal build step."
+    32 | #error "-DFIXED_ATMWSTK=<FLAVOR> has to be provided to the device tree generation step rather than the normal build step."
+       |  ^~~~~

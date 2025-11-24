@@ -16,6 +16,13 @@ config SOC_RESET_HOOK
 	default n if BOOTLOADER_MCUBOOT && ATM_NO_TZ
 	default y
 
+config ATM_HAL_ENABLE_NSC_IN_RAM
+	bool
+	depends on $(dt_nodelabel_bool_prop,sec_tz,allow_nsc_in_ram)
+	help
+	  Support non-secure callable API relocation to RAM.  This includes
+	  moving performance critical HAL functions to RAM.
+
 endif # TRUSTED_EXECUTION_SECURE
 
 endif # SOC_ATM33XX_5

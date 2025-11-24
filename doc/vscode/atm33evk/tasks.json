@@ -45,7 +45,7 @@
                 "-d",
                 "build/${input:boardName}/bootloader/mcuboot/boot/zephyr",
                 "--",
-                "-DDTS_EXTRA_CPPFLAGS=\"-DFIXED_ATMWSTK=FULL;\""
+                "-DDTS_EXTRA_CPPFLAGS=\"-DFIXED_ATMWSTK=CPD200;\""
             ],
             "detail": "Build MCUboot",
             "group": {
@@ -69,7 +69,7 @@
                 "--",
                 "-DCONFIG_BOOTLOADER_MCUBOOT=y",
                 "-DCONFIG_MCUBOOT_GENERATE_UNSIGNED_IMAGE=n",
-                "-DDTS_EXTRA_CPPFLAGS=-DFIXED_ATMWSTK=FULL;"
+                "-DDTS_EXTRA_CPPFLAGS=-DFIXED_ATMWSTK=CPD200;"
             ],
             "detail": "Build spe"
         },
@@ -372,7 +372,7 @@
         {
             "id": "ATMWSTK",
             "type": "promptString",
-            "description": "Flash bluetooth stack (FULL)"
+            "description": "Flash bluetooth stack (CPD200)"
         },
         {
             "id": "boardName",

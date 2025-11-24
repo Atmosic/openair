@@ -5,7 +5,7 @@
  *
  * @brief True Random Number Generator driver internal components
  *
- * Copyright (C) Atmosic 2018-2024
+ * Copyright (C) Atmosic 2018-2025
  *
  *******************************************************************************
  */
@@ -29,7 +29,7 @@
 #include "at_wrpr.h"
 #include "rif_regs_core_macro.h"
 #include "at_apb_trng_regs_core_macro.h"
-#include "mdm_macro.h"
+#include "mdm_regs_core_macro.h"
 #include "at_clkrstgen.h"
 #include "spi.h"
 #include "radio_spi.h"
@@ -49,7 +49,7 @@ static bool is_fpga;
 /**
  * @brief initializes the trng module.
  */
-__INLINE void trng_internal_constructor(void)
+__STATIC_FORCEINLINE void trng_internal_constructor(void)
 {
 #ifdef __CLKRSTGEN_CONFIGURATION_MACRO__
     is_fpga = CLKRSTGEN_CONFIGURATION__INDEX__READ(
@@ -66,7 +66,7 @@ __INLINE void trng_internal_constructor(void)
  * @return true if DC cal can be skipped
  */
 #ifdef __MDM_DCCAL_CTRL_MACRO__
-__INLINE bool trng_internal_dccal_init(void)
+__STATIC_FORCEINLINE bool trng_internal_dccal_init(void)
 {
     if (is_fpga) {
 	// Skip DC offset calibration on FPGA
@@ -120,7 +120,7 @@ __INLINE bool trng_internal_dccal_init(void)
 /**
  * @brief complete dc calibration
  */
-__INLINE void trng_internal_dccal_complete(void)
+__STATIC_FORCEINLINE void trng_internal_dccal_complete(void)
 {
     MDM_DCCAL_CTRL__START__CLR(CMSDK_MDM->DCCAL_CTRL);
 #ifdef __RIF_TRNG_CONF_MACRO__
@@ -162,7 +162,7 @@ __INLINE void trng_internal_dccal_complete(void)
 /**
  * @brief Check whether TRNG needs to be triggered
  */
-__INLINE bool trng_internal_go_pulse_needed(void)
+__STATIC_FORCEINLINE bool trng_internal_go_pulse_needed(void)
 {
     return (TRNG_CONTROL__LAUNCH_ON_RADIO_UP__READ(CMSDK_TRNG->CONTROL) &&
 	!CMSDK_TRNG->STATUS &&
@@ -173,7 +173,7 @@ __INLINE bool trng_internal_go_pulse_needed(void)
 /**
  * @brief Set radio warmup cnt based on whether radio is already on
  */
-__INLINE void trng_internal_set_radio_warmup_cnt(bool radio_already_on)
+__STATIC_FORCEINLINE void trng_internal_set_radio_warmup_cnt(bool radio_already_on)
 {
     if (radio_already_on) {
 #define TRNG_RADIO_SETTLING_TIME 800
@@ -195,7 +195,7 @@ __INLINE void trng_internal_set_radio_warmup_cnt(bool radio_already_on)
 /**
  * @brief (re)configure trng module
  */
-__INLINE void trng_internal_config(void)
+__STATIC_FORCEINLINE void trng_internal_config(void)
 {
     WRPR_CTRL_SET(CMSDK_TRNG, WRPR_CTRL__CLK_SEL | WRPR_CTRL__CLK_ENABLE);
 
@@ -209,7 +209,7 @@ __INLINE void trng_internal_config(void)
 /**
  * @brief Collect a new random word immediately
  */
-__INLINE void trng_internal_force_go_pulse(void)
+__STATIC_FORCEINLINE void trng_internal_force_go_pulse(void)
 {
     TRNG_CONTROL__GO__CLR(CMSDK_TRNG->CONTROL);
     TRNG_CONTROL__GO__SET(CMSDK_TRNG->CONTROL);

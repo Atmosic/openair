@@ -16,10 +16,6 @@
 #include "power.h"
 #endif
 
-#if CONFIG_ATM_TEST_UTIL
-#include "atm_test_common.h"
-#endif
-
 #define SIMPLE_BCN_COMPLETE_NAME "Atmosic Beacon"
 #define SIMPLE_BCN_SHORT_NAME    "A0000c9"
 #define BCN_201_COMPLETE_NAME    "ATMxxxx Lowest - Power"
@@ -299,10 +295,6 @@ static void bt_ready(int err)
 
 	bt_id_get(&addr, &count);
 	bt_addr_le_to_str(&addr, addr_s, sizeof(addr_s));
-
-#if CONFIG_ATM_TEST_UTIL
-	atm_test_pass_if_socoff();
-#endif
 }
 
 static void print_profile(void)
@@ -322,10 +314,17 @@ static void print_profile(void)
 
 #if defined(CONFIG_REFBCN_SIMPLE_BEACON) && defined(LED_1_EXIST) && defined(CONFIG_PM)
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_NODELABEL(led0), gpios);
+/*
+ * For better visuals, we do not want too frequent LED toggles
+ */
+static int led_toggle_count;
+#define LED_TOGGLE_SKIP_COUNT 30
 static void notify_pm_state_exit(enum pm_state state)
 {
-	if (state == PM_STATE_SUSPEND_TO_RAM) {
+	if (state == PM_STATE_SUSPEND_TO_RAM &&
+			++led_toggle_count >= LED_TOGGLE_SKIP_COUNT) {
 		gpio_pin_toggle_dt(&led);
+		led_toggle_count = 0;
 	}
 }
 #endif

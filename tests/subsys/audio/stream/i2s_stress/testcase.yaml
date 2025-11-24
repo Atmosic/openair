@@ -1,15 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 tests:
-  drivers.i2s.i2s_stress.direct:
-    depends_on: i2s
-    timeout: 60
+  tests.subsys.audio.stream.i2s_stress.atm:
+    sysbuild: true
+    timeout: 100
     tags:
-      - drivers
-      - i2s
-  drivers.i2s.i2s_stress.chunked:
-    depends_on: i2s
-    timeout: 60
-    tags:
-      - drivers
-      - i2s
+      - audio

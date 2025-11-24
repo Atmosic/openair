@@ -55,8 +55,11 @@ located in the flash partitions defined in the devicetree.
 
     The files related to ATM_SETTINGS are located in the openair\\subsys\\settings directory.
 
-The CONFIG_ATM_SETTINGS configuration defined in Kconfig to enable the
-ATM_SETTINGS feature, which depends on the CONFIG_SETTINGS configuration.
+The CONFIG_ATM_SETTINGS configuration is defined in Kconfig to enable the
+ATM_SETTINGS feature. When enabled, it automatically selects required
+configurations such as CONFIG_FLASH, CONFIG_FLASH_MAP, CONFIG_NVS, and
+CONFIG_SETTINGS.
+
 
 **File:** `openair\\subsys\\settings\\Kconfig`
 
@@ -64,20 +67,26 @@ ATM_SETTINGS feature, which depends on the CONFIG_SETTINGS configuration.
 
     config ATM_SETTINGS
     	bool "Proprietary settings subsystem library"
-    	depends on SETTINGS
+    	select FLASH
+    	select FLASH_MAP
+    	select NVS
+    	select SETTINGS
 
 The CONFIG_ATM_SETTINGS configuration option adds the atm_settings include
 directory and atm_settings source code to Zephyr's build system.
 
-Configuring the CONFIG_SETTINGS and CONFIG_ATM_SETTINGS options in the project
-configuration file will activate the Zephyr settings subsystem and the related
-ATM_SETTINGS functions.
+Configuring the CONFIG_ATM_SETTINGS option in the project configuration file
+will activate the Zephyr settings subsystem and the related ATM_SETTINGS
+functions.
+
+ATM_SETTINGS only supports the SETTINGS_NVS backend. ATM_SETTINGS will only
+access data when used in conjunction with the SETTINGS_NVS backend, and will
+treat all other backends as equivalent to SETTINGS_NONE.
 
 **File:** `prj.conf`
 
 .. code-block:: bash
 
-    CONFIG_SETTINGS=y
     CONFIG_ATM_SETTINGS=y
 
 ATM_SETTINGS Initialization

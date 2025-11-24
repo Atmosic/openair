@@ -213,8 +213,11 @@ typedef struct
   uint16_t  csMaxProcIntervalSup;   /*!< Maximum number of connection events between consecutive CS procedures supported. */
   uint32_t  csMinSubEvtLenSup;      /*!< Minimum suggested CS subevent duration in microseconds supported. */
   uint32_t  csMaxSubEvtLenSup;      /*!< Maximum suggested CS subevent duration in microseconds supported. */
+  uint16_t  csDrbgBufSize;         /*!< Buffer size for CS DRBG data.*/
   uint16_t  csBufSize;             /*!< Buffer size for CS result.*/
+  uint8_t   csNumStepsReport;       /*!< Number of steps data in one HCI report. Use maximum value if set to 0. */
   uint8_t   csLe2mPhySup;           /*!< CS LE 2M PHY supported. */
+  int8_t    csMaxTxPwrBoundary;      /*!< Maximum CS TX power level boundary supported. */
   /* eISOAL. */
   uint8_t   unsegmentedFramedModeSup;  /*!< Unsegmented framed mode supported. */
   /* FSU */
@@ -389,6 +392,7 @@ typedef enum
 #define LL_OP_MODE_FLAG_BIG_RM_SCH                  (UINT64_C(1) << 29)  /*!< Use reservation manager BOD scheduling for BIG. */
 #define LL_OP_MODE_FLAG_BYPASS_INSTANT_DISCON       (UINT64_C(1) << 30)  /*!< Bypass disconnect when instant is past. */
 /* diagnostics only */
+#define LL_OP_MODE_FLAG_ENA_CS_DBG_VECTOR           (UINT64_C(1) << 56)  /*!< Enable CS debug vector. */
 #define LL_OP_MODE_FLAG_ENA_ADV_DLY                 (UINT64_C(1) << 57)  /*!< Enable advertising delay. */
 #define LL_OP_MODE_FLAG_ENA_SCAN_BACKOFF            (UINT64_C(1) << 58)  /*!< Enable scan backoff. */
 #define LL_OP_MODE_FLAG_ENA_WW                      (UINT64_C(1) << 59)  /*!< Enable window widening. */
@@ -1375,7 +1379,8 @@ enum
   LL_CS_TEST_END_IND,           /*!< CS test end complete. */
   LL_READ_ALL_REMOTE_FEAT_CNF,  /*!< Read all remote features complete. */
   LL_MON_ADV_REPORT_IND,        /*!< Monitored advertisers report event. */
-  LL_FSU_IND                    /*!< Frame space update complete. */
+  LL_FSU_IND,                   /*!< Frame space update complete. */
+  LL_EVT_TOTAL                  /*!< Total number of LL events. */
 };
 
 /*! \brief      Advertising report indication */
@@ -2112,75 +2117,12 @@ typedef struct
   uint16_t      maxProcLen;         /*!< Procedure length. */
 } LlCsProcEnInd_t;
 
-/*! \brief      LE CS mode role specific info object for subevent result event. */
-typedef struct
-{
-  wsfMsgHdr_t   hdr;                /*!< Event header. */
-  uint8_t       packetQual;         /*!< Packet quality. */
-  uint8_t       packetNadm;         /*!< Packet NADM. */
-  uint8_t       packetRssi;         /*!< Packet RSSI. */
-  uint8_t       packetAnt;          /*!< Packet antenna. */
-  uint32_t      packetPct1;         /*!< Packet PCT 1. */
-  uint32_t      packetPct2;         /*!< Packet PCT 2. */
-  uint16_t      measFreqOff;        /*!< Measured frequency offset. */
-  uint16_t      toAToDInitiator;    /*!< To A to D initiator. */
-  uint16_t      toDToAReflector;    /*!< To D to A reflector. */
-  uint8_t       antPermIdx;         /*!< Antenna permutation index. */
-  struct
-  {
-    uint32_t    pct;                /*!< Tone PCT. */
-    uint8_t     qualInd;            /*!< Tone quality indicator. */
-  } tone[LL_CS_MAX_NUM_ANT_PATHS + 1];           /*!< Tone data. */
-
-} LlCsModeRoleSpecInfo_t;
-
 /*! \brief      LE CS subevent result event. */
 typedef struct
 {
   wsfMsgHdr_t   hdr;                /*!< Event header. */
-  uint16_t      connHandle;         /*!< Connection handle. */
-  uint8_t       configId;           /*!< Configuration identifier. */
-  uint16_t      startAclConnEvt;    /*!< Start ACL connection event. */
-  uint16_t      procCnt;            /*!< Procedure counter. */
-  uint16_t      freqComp;           /*!< Frequency compensation. */
-  uint8_t       refPowLvl;          /*!< Reference power level. */
-  uint8_t       procDoneStatus;     /*!< Procedure done status. */
-  uint8_t       subEvtDoneStatus;   /*!< Subevent done status. */
-  uint8_t       abortReason;        /*!< Abort reason. */
-  uint8_t       numAntPaths;        /*!< Number of antenna paths. */
-  uint8_t       numStepsRpt;        /*!< Number of steps reported. */
-  uint8_t       role;               /*!< CS role. */
-  uint8_t       rttType;            /*!< RTT type. */
-  struct
-  {
-    uint8_t     mode;               /*!< Step mode. */
-    uint8_t     chan;               /*!< Step channel. */
-    uint8_t     dataLen;            /*!< Step data length. */
-    LlCsModeRoleSpecInfo_t  data;   /*!< Step data. */
-  } step[LL_CS_MAX_NUM_STEPS_REPORT]; /*!< Step specific report data. */
+  uint8_t *pCsEvt;                  /*!< Pointer to pre-allocated CS HCI event. */
 } LlCsSubEvtResInd_t;
-
-/*! \brief      LE CS subevent result continue event. */
-typedef struct
-{
-  wsfMsgHdr_t   hdr;                /*!< Event header. */
-  uint16_t      connHandle;         /*!< Connection handle. */
-  uint8_t       configId;           /*!< Configuration identifier. */
-  uint8_t       procDoneStatus;     /*!< Procedure done status. */
-  uint8_t       subEvtDoneStatus;   /*!< Subevent done status. */
-  uint8_t       abortReason;        /*!< Abort reason. */
-  uint8_t       numAntPaths;        /*!< Number of antenna paths. */
-  uint8_t       numStepsRpt;        /*!< Number of steps reported. */
-  uint8_t       role;               /*!< CS role. */
-  uint8_t       rttType;            /*!< RTT type. */
-  struct
-  {
-    uint8_t     mode;               /*!< Step mode. */
-    uint8_t     chan;               /*!< Step channel. */
-    uint8_t     dataLen;            /*!< Step data length. */
-    LlCsModeRoleSpecInfo_t  data;   /*!< Step data. */
-  } step[LL_CS_MAX_NUM_STEPS_REPORT]; /*!< Step specific report data. */
-} LlCsSubEvtResConInd_t;
 
 /*! \brief      LE CS subevent result parameter list. */
 typedef struct
@@ -2325,7 +2267,6 @@ typedef union
   LlCsConfigInd_t           csConfigInd;            /*!< LE CS config complete event. */
   LlCsProcEnInd_t           csProcEnInd;            /*!< LE CS procedure enable complete event. */
   LlCsSubEvtResInd_t        csSubEvtResInd;         /*!< LE CS subevent result event. */
-  LlCsSubEvtResConInd_t     csSubEvtResConInd;      /*!< LE CS subevent result continue event. */
   LlCsTestEndInd_t          csTestEndInd;           /*!< LE CS test end complete event. */
   LlMonAdvRptInd_t          monAdvRptInd;           /*!< Monitored advertising report event. */
   LlFsuInd_t                fsuInd;                 /*!< Frame space update complete event. */

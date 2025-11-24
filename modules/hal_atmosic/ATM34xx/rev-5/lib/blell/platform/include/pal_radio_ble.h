@@ -97,7 +97,7 @@ typedef void (*PalRadioRxComp_t)(PalRadioStatus_t status, uint32_t startOffs, Pa
 typedef void (*PalRadioEdsComp_t)(int8_t rssi);
 
 /*! \brief  Channel Sounding Step completion call signature. */
-typedef void (*PalRadioCsStepComp_t)(PalRadioStatus_t status, uint32_t startTs);
+typedef bool (*PalRadioCsStepComp_t)(PalRadioStatus_t status, uint32_t startTs);
 
 /*! \brief  Channel Sounding result header. */
 typedef struct

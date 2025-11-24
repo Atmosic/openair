@@ -101,6 +101,17 @@ uint8_t atm_vendor_set_adv_tx_power(int8_t tx_pwr);
 uint8_t atm_vendor_set_con_tx_power(uint16_t conhdl, int8_t tx_pwr);
 #endif
 
+#ifdef CFG_VND_API_SET_SCAN_CHMAP
+/**
+ * @brief Set scan channel map
+ *
+ * @param chmap Channel Map
+ *
+ * @return 0 on success, non-zero on failure.
+ */
+uint8_t atm_vendor_set_scan_chmap(uint8_t chmap);
+#endif
+
 /**
  * @}
  */

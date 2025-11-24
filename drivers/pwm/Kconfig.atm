@@ -1,12 +1,24 @@
 # PWM configuration options
 
-# Copyright (c) 2021-2024 Atmosic
+# Copyright (c) 2021-2025 Atmosic
 # SPDX-License-Identifier: Apache-2.0
 
 config PWM_ATM
 	bool "Atmosic PWM driver"
 	default y
-	depends on DT_HAS_ATMOSIC_ATM3X_PWM_ENABLED || DT_HAS_ATMOSIC_ATMX2_PWM_ENABLED
+	depends on DT_HAS_ATMOSIC_ATM3X_PWM_ENABLED
 	help
 	  This option enables the PWM driver for Atmosic family of
 	  processors.
+
+config PWM_ATM_FIFO
+	bool "Atmosic PWM FIFO mode support"
+	default y
+	depends on PWM_ATM
+	select CONFIG_ATM_DMA
+	help
+	  This option enables FIFO mode support for Atmosic PWM driver.
+	  FIFO mode allows complex waveform generation with two carrier
+	  frequencies and automatic pattern sequencing, useful for
+	  applications like ringtones and IR signal generation.
+	  Applicable on all Atmosic chipsets except ATMx2 series.

@@ -38,7 +38,13 @@
 #define RSSI_LOW_THRHLD      -70
 #define RSSI_INTERF_THRHLD   -70
 
-#ifndef CONFIG_SOC_FAMILY_ATM
+#define UNSET_FORCE_TX_PWR_VALUE 255
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+STATIC_ASSERT(CONFIG_FORCE_TX_PWR == UNSET_FORCE_TX_PWR_VALUE ||
+    (CONFIG_FORCE_TX_PWR >= -20 && CONFIG_FORCE_TX_PWR <= 10),
+    "CONFIG_FORCE_TX_PWR must be UNSET_FORCE_TX_PWR_VALUE (disabled) or -20..10");
+#else
 STATIC_ASSERT(CONFIG_MAX_TX_PWR <= CFG_MAX_TX_PWR_UB,
     "MAX_TX_PWR value exceeds the upper bound");
 STATIC_ASSERT(CONFIG_MAX_TX_PWR >= CFG_ADV_TX_PWR, "ADV TX power exceeds");
@@ -469,7 +475,8 @@ void rf_init(struct rwip_rf_api *api)
 			 /*uint8_t rxswstinst12us*/   0x18,
 			 /*uint8_t txswstinst12us*/   0x19);
 
-#if defined(CONFIG_RF_TEST) || defined(CONFIG_FORCE_TX_PWR)
+#if defined(CONFIG_FORCE_TX_PWR) && \
+    (CONFIG_FORCE_TX_PWR != UNSET_FORCE_TX_PWR_VALUE)
     rf_set_txpwr_override(CONFIG_FORCE_TX_PWR);
 #endif
 }
@@ -506,12 +513,17 @@ int rf_get_txpwr_advertising_val(void)
 }
 #endif
 
-void rf_set_txpwr_override(int8_t txpwr_dbm)
+atm_txpwr_ovr_key rf_set_txpwr_override(int8_t txpwr_dbm)
 {
     uint8_t gain_index = rf_txpwr_cs_get_in_range(txpwr_dbm, TXPWR_CS_LOWER, 0,
 	RF_POWER_LVL_NUM - 1);
 
-    rf_core_set_txpwr_override(gain_index);
+    return (rf_core_set_txpwr_override(gain_index));
+}
+
+void rf_restore_txpwr_override(atm_txpwr_ovr_key key)
+{
+    rf_core_restore_txpwr_override(key);
 }
 
 int8_t rf_set_cs_txpwr_val(uint16_t conhdl, int8_t txpwr_dbm)

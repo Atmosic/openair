@@ -33,6 +33,8 @@
 #include <zephyr/bluetooth/hci_raw.h>
 #include <zephyr/sys/reboot.h>
 #ifdef CONFIG_BT_HCI_RAW_CMD_EXT
+#include <zephyr/drivers/bluetooth.h>
+#include "host/hci_raw_internal.h"
 #include "atm_vendor_internal.h"
 #endif
 #include "atm_hci_uart.h"
@@ -84,6 +86,36 @@ static K_FIFO_DEFINE(uart_tx_queue);
 #define H4_DISCARD_LEN 33
 
 #ifdef CONFIG_BT_HCI_RAW_CMD_EXT
+#define BT_HCI_ERR_EXT_HANDLED 0xff
+
+#define BT_HCI_RAW_CMD_EXT(_op, _min_len, _func) \
+	{ \
+		.op = _op, \
+		.min_len = _min_len, \
+		.func = _func, \
+	}
+
+struct bt_hci_raw_cmd_ext {
+	/** Opcode of the command */
+	uint16_t op;
+
+	/** Minimal length of the command */
+	size_t min_len;
+
+	/** Handler function.
+	 *
+	 *  Handler function to be called when a command is intercepted.
+	 *
+	 *  @param buf Buffer containing the command.
+	 *
+	 *  @return HCI Status code or BT_HCI_ERR_EXT_HANDLED if command has
+	 *  been handled already and a response has been sent as oppose to
+	 *  BT_HCI_ERR_SUCCESS which just indicates that the command can be
+	 *  sent to the controller to be processed.
+	 */
+	uint8_t (*func)(struct net_buf *buf);
+};
+
 struct vendor_handler const *vendor_hdlr;
 static size_t vendor_hdlr_size;
 
@@ -168,6 +200,18 @@ ATM_VS_HDLR(WFI_CMD)
 #ifdef CONFIG_VND_NO_CLOCK
 ATM_VS_HDLR(NO_CLOCK_CMD)
 #endif
+#ifdef CONFIG_VND_WHILE_ONE
+ATM_VS_HDLR(WHILE_ONE_CMD)
+#endif
+#ifdef CONFIG_VND_PMU_RADIO_REGR
+ATM_VS_HDLR(PMU_RADIO_REG_RD_CMD)
+#endif
+#ifdef CONFIG_VND_PMU_RADIO_REGW
+ATM_VS_HDLR(PMU_RADIO_REG_WR_CMD)
+#endif
+#ifdef CONFIG_VND_XTAL_32K_PIN_OUT
+ATM_VS_HDLR(XTAL_32K_PIN_OUT_CMD)
+#endif
 ATM_VS_HDLR(EN_TXCW_CMD)
 ATM_VS_HDLR(FREQCAL_CMD)
 ATM_VS_HDLR(MM_R_CMD)
@@ -194,6 +238,18 @@ static struct bt_hci_raw_cmd_ext cmd_ext[] = {
 #endif
 #ifdef CONFIG_VND_NO_CLOCK
     ATM_VS_SET(NO_CLOCK_CMD),
+#endif
+#ifdef CONFIG_VND_WHILE_ONE
+    ATM_VS_SET(WHILE_ONE_CMD),
+#endif
+#ifdef CONFIG_VND_PMU_RADIO_REGR
+    ATM_VS_SET(PMU_RADIO_REG_RD_CMD),
+#endif
+#ifdef CONFIG_VND_PMU_RADIO_REGW
+    ATM_VS_SET(PMU_RADIO_REG_WR_CMD),
+#endif
+#ifdef CONFIG_VND_XTAL_32K_PIN_OUT
+    ATM_VS_SET(XTAL_32K_PIN_OUT_CMD),
 #endif
     ATM_VS_SET(EN_TXCW_CMD),
     ATM_VS_SET(FREQCAL_CMD),
@@ -297,8 +353,8 @@ static void rx_isr(void)
 		     * interrupt. On failed allocation state machine
 		     * is reset.
 		     */
-		    buf = bt_buf_get_tx(BT_BUF_H4, K_NO_WAIT, &type,
-			sizeof(type));
+		    buf = bt_buf_get_tx(bt_buf_type_from_h4(type, BT_BUF_OUT),
+			K_NO_WAIT, NULL, 0);
 		    if (!buf) {
 			LOG_ERR("No available command buffers!");
 			state = ST_IDLE;
@@ -377,13 +433,98 @@ static void bt_uart_isr(struct device const *unused, void *user_data)
     }
 }
 
+static void bt_cmd_complete_ext(uint16_t op, uint8_t status)
+{
+	struct net_buf *buf;
+	struct bt_hci_evt_cc_status *cc;
+
+	if (status == BT_HCI_ERR_EXT_HANDLED) {
+		return;
+	}
+
+	buf = bt_hci_cmd_complete_create(op, sizeof(*cc));
+	cc = net_buf_add(buf, sizeof(*cc));
+	cc->status = status;
+
+	bt_hci_recv(bt_dev.hci, buf);
+}
+
+static uint8_t bt_send_ext(struct net_buf *buf)
+{
+	struct bt_hci_cmd_hdr *hdr;
+	struct net_buf_simple_state state;
+	int i;
+	uint16_t op;
+	uint8_t status = BT_HCI_ERR_SUCCESS;
+
+	net_buf_simple_save(&buf->b, &state);
+
+	// Remove H4 type byte (Zephyr v4.2.0+ compatibility)
+	net_buf_pull_u8(buf);
+
+	if (buf->len < sizeof(*hdr)) {
+		LOG_ERR("No HCI Command header");
+		return BT_HCI_ERR_INVALID_PARAM;
+	}
+
+	hdr = net_buf_pull_mem(buf, sizeof(*hdr));
+	if (buf->len < hdr->param_len) {
+		LOG_ERR("Invalid HCI CMD packet length");
+		return BT_HCI_ERR_INVALID_PARAM;
+	}
+
+	op = sys_le16_to_cpu(hdr->opcode);
+
+	for (i = 0; i < ARRAY_SIZE(cmd_ext); i++) {
+		struct bt_hci_raw_cmd_ext *cmd = &cmd_ext[i];
+
+		if (cmd->op == op) {
+			if (buf->len < cmd->min_len) {
+				status = BT_HCI_ERR_INVALID_PARAM;
+			} else {
+				status = cmd->func(buf);
+			}
+
+			break;
+		}
+	}
+
+	if (status) {
+		bt_cmd_complete_ext(op, status);
+		return status;
+	}
+
+	net_buf_simple_restore(&buf->b, &state);
+
+	return status;
+}
+
+static int bt_send_wrapper(struct net_buf *buf)
+{
+	if (buf->len == 0) {
+		return BT_HCI_ERR_INVALID_PARAM;
+	}
+
+	if (IS_ENABLED(CONFIG_BT_HCI_RAW_CMD_EXT) &&
+	    buf->data[0] == BT_HCI_H4_CMD) {
+		uint8_t status;
+
+		status = bt_send_ext(buf);
+		if (status) {
+			return status;
+		}
+	}
+
+	return bt_send(buf);
+}
+
 static void tx_thread(void *p1, void *p2, void *p3)
 {
     for (;;) {
 	/* Wait until a buffer is available */
 	struct net_buf *buf = k_fifo_get(&tx_queue, K_FOREVER);
 	/* Pass buffer to the stack */
-	int err = bt_send(buf);
+	int err = bt_send_wrapper(buf);
 	if (err) {
 	    net_buf_unref(buf);
 	}
@@ -401,11 +542,6 @@ static void rx_thread(void *p1, void *p2, void *p3)
 
     /* Enable the raw interface, this will in turn open the HCI driver */
     bt_enable_raw(&rx_queue);
-
-#ifdef CONFIG_BT_HCI_RAW_CMD_EXT
-    bt_hci_raw_cmd_ext_register(cmd_ext, ARRAY_SIZE(cmd_ext));
-    LOG_DBG("HCI raw cmd extention register done");
-#endif
 
     for (;;) {
 	struct net_buf *buf = k_fifo_get(&rx_queue, K_FOREVER);

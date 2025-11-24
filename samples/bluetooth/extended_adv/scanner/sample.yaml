@@ -8,7 +8,8 @@ tests:
       type: one_line
       regex:
         - Starting Extended Advertising Demo
-    tags: bluetooth atm33 atm34 no_mcuboot
+    tags:
+      - bluetooth
+      - no_mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_ATMWSTK_FULL=y
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

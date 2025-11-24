@@ -96,6 +96,11 @@ static bool brwnout_detect;
 static sw_event_id_t brwnout_check_id;
 #endif
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+STATIC_ASSERT(DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off)),
+    "Brownout requires soc_off PM state enabled");
+#endif
+
 static void brwnout_plf_off(void)
 {
     // Set wake_only_if_enough_energy

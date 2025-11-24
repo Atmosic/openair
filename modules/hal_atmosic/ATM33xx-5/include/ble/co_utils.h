@@ -6,7 +6,7 @@
  * @brief Common utilities definitions
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -38,7 +38,6 @@
 #include "rwip_config.h"  // SW configuration
 #include "rwip.h"         // SW configuration
 #include "compiler.h"     // for inline functions
-
 
 /*
  * MACRO DEFINITIONS
@@ -95,36 +94,30 @@
 /// Get the number of columns within a 2-D array
 #define ARRAY_NB_COLUMNS(array)  (sizeof((array[0]))/sizeof((array)[0][0]))
 
-
 /// Macro for LMP message handler function declaration or definition
-#define LMP_MSG_HANDLER(msg_name)   __STATIC int lmp_##msg_name##_handler(struct lmp_##msg_name const *param,  \
-                                                                                ke_task_id_t const dest_id)
+#define LMP_MSG_HANDLER(msg_name)   __RWIP_STATIC int lmp_##msg_name##_handler(struct lmp_##msg_name const *param,  \
+                                                                               ke_task_id_t const dest_id)
 /// Macro for LMP message handler function declaration or definition
-#define LLCP_MSG_HANDLER(msg_name)   __STATIC int llcp_##msg_name##_handler(struct llcp_##msg_name const *param,  \
-                                                                                ke_task_id_t const dest_id)
+#define LLCP_MSG_HANDLER(msg_name)   __RWIP_STATIC int llcp_##msg_name##_handler(struct llcp_##msg_name const *param,  \
+                                                                                 ke_task_id_t const dest_id)
 
 /// Macro for HCI message handler function declaration or definition (for multi-instantiated tasks)
-#define HCI_CMD_HANDLER_C(cmd_name, param_struct)   __STATIC int hci_##cmd_name##_cmd_lc_handler(param_struct const *param,  \
-                                                                                ke_task_id_t const dest_id,  \
-                                                                                uint16_t opcode)
+#define HCI_CMD_HANDLER_C(cmd_name, param_struct)   __RWIP_STATIC int hci_##cmd_name##_cmd_lc_handler(param_struct const *param,  \
+                                                                                                      ke_task_id_t const dest_id,  \
+                                                                                                      uint16_t opcode)
 
 /// Macro for HCI message handler function declaration or definition (with parameters)
-#define HCI_CMD_HANDLER(cmd_name, param_struct)   __STATIC int hci_##cmd_name##_cmd_handler(param_struct const *param,  \
-                                                                                uint16_t opcode)
+#define HCI_CMD_HANDLER(cmd_name, param_struct)   __RWIP_STATIC int hci_##cmd_name##_cmd_handler(param_struct const *param,  \
+                                                                                                 uint16_t opcode)
 
 /// Macro for HCI message handler function declaration or definition (with parameters)
-#define HCI_CMD_HANDLER_TAB(task)   __STATIC const struct task##_hci_cmd_handler task##_hci_command_handler_tab[] =
-
+#define HCI_CMD_HANDLER_TAB(task)   __RWIP_STATIC_VAR const struct task##_hci_cmd_handler task##_hci_command_handler_tab[] =
 
 /// MACRO to build a subversion field from the Minor and Release fields
 #define CO_SUBVERSION_BUILD(minor, release)     (((uint16_t)(minor) << 8) | (release))
 
-
-#ifndef CONTAINER_OF
 /// Macro to get a structure from one of its structure field
-#define CONTAINER_OF(ptr, type, member)    ((type *)( (char *)ptr - offsetof(type,member) ))
-#endif
-
+#define CO_CONTAINER_OF(ptr, type, member)    ((type *)( (char *)ptr - offsetof(type,member) ))
 
 /// count number of bit into a long field
 #define CO_BIT_CNT(val) (co_bit_cnt((uint8_t*) &(val), sizeof(val)))
@@ -136,7 +129,6 @@
     {                               \
         (_val) = 0;                 \
     }
-
 
 /// Add value and make sure it's never greater or equals max (else wrap)
 /// _add must be less that _max
@@ -157,44 +149,49 @@
     (_val) = (_val) - (_sub)
 
 /// Convert slot to half slots
-#define S_TO_HS(slots)          ((slots) << 1)
+#define S_TO_HS(slots)              ((slots) << 1)
 /// Convert slot to microseconds
-#define S_TO_US(slots)         ((slots) * SLOT_SIZE)
+#define S_TO_US(slots)              ((slots) * SLOT_SIZE)
 /// Convert slot to half microseconds
-#define S_TO_HUS(slots)         (((slots) * SLOT_SIZE) << 1)
-/// Convert half slot to slots
-#define HS_TO_S(half_slots)     ((half_slots) >> 1)
+#define S_TO_HUS(slots)             (((slots) * SLOT_SIZE) << 1)
 /// Convert microseconds to half microseconds
-#define US_TO_HUS(us)           ((us) << 1)
+#define US_TO_HUS(us)               ((us) << 1)
 /// Convert microseconds to half slots - floor value
-#define US_TO_HS_FLOOR(us)      (((us) << 1) / HALF_SLOT_SIZE)
+#define US_TO_HS_FLOOR(us)          (((us) << 1) / HALF_SLOT_SIZE)
 /// Convert microseconds to half slots - ceil value
-#define US_TO_HS_CEIL(us)       ((((us) << 1) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
+#define US_TO_HS_CEIL(us)           ((((us) << 1) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
 /// Convert microseconds to slots - ceil value
-#define US_TO_S_CEIL(us)       (((us) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
+#define US_TO_S_CEIL(us)            (((us) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
 /// Convert half microseconds to microseconds
-#define HUS_TO_US(hus)          ((hus) >> 1)
+#define HUS_TO_US(hus)              ((hus) >> 1)
+/// Convert half slot to slots
+#define HS_TO_S(half_slots)         ((half_slots) >> 1)
+/// Convert half slot to milliseconds
+#define HS_TO_MS_FLOOR(half_slots)  (HS_TO_US(half_slots)/1000)
 /// Convert half slots to frames
-#define HS_TO_FRAME(half_slots)    ((half_slots) >> 2)
+#define HS_TO_FRAME(half_slots)     ((half_slots) >> 2)
 /// Convert half slots to microseconds
-#define HS_TO_US(half_slots)    ((half_slots) * HALF_SLOT_SIZE / 2)
+#define HS_TO_US(half_slots)        ((half_slots) * HALF_SLOT_SIZE / 2)
 /// Convert half slots to half microseconds
-#define HS_TO_HUS(half_slots)   ((half_slots) * HALF_SLOT_SIZE)
+#define HS_TO_HUS(half_slots)       ((half_slots) * HALF_SLOT_SIZE)
 /// Convert half microseconds to half slots - floor value
-#define HUS_TO_HS_FLOOR(hus)    ((hus) / HALF_SLOT_SIZE)
+#define HUS_TO_HS_FLOOR(hus)        ((hus) / HALF_SLOT_SIZE)
 /// Convert half microseconds to half slots - ceil value
-#define HUS_TO_HS_CEIL(hus)     (((hus) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
+#define HUS_TO_HS_CEIL(hus)         (((hus) + HALF_SLOT_SIZE - 1) / HALF_SLOT_SIZE)
 /// Convert frame to slots
-#define FRAME_TO_S(frame)      ((uint32_t)(frame) << 1)
+#define FRAME_TO_S(frame)           ((uint32_t)(frame) << 1)
 /// Convert frame to half slots
-#define FRAME_TO_HS(frame)      ((uint32_t)(frame) << 2)
+#define FRAME_TO_HS(frame)          ((uint32_t)(frame) << 2)
 /// Convert frame to microseconds
-#define FRAME_TO_US(frame)      (((uint32_t)(frame) * SLOT_SIZE) << 1)
+#define FRAME_TO_US(frame)          (((uint32_t)(frame) * SLOT_SIZE) << 1)
 /// Convert microseconds to frame
-#define US_TO_FRAME(us)         ((us) / (SLOT_SIZE*2))
+#define US_TO_FRAME(us)             ((us) / (SLOT_SIZE*2))
 /// Convert frame to milliseconds
-#define FRAME_TO_MS_CEIL(frame) (FRAME_TO_US(frame)/1000)
-
+#define FRAME_TO_MS_CEIL(frame)     (FRAME_TO_US(frame)/1000)
+/// Convert seconds to milliseconds
+#define S_TO_MS(seconds)            ((uint32_t)(seconds) * 1000)
+/// Convert milliseconds to microseconds
+#define MS_TO_US(ms)                ((uint32_t)(ms) * 1000)
 
 /// Force a value to be within valid range
 #define CO_VAL_FORCE_RANGE(val, range_min, range_max) \
@@ -222,7 +219,6 @@ enum CO_UTIL_PACK_STATUS
     CO_UTIL_PACK_ERROR,
 };
 
-
 /// Rate information
 /*@TRACE*/
 enum phy_rate
@@ -235,22 +231,11 @@ enum phy_rate
     CO_RATE_125KBPS = 2,
     /// 500 Kbits/s Rate
     CO_RATE_500KBPS = 3,
-    /// Undefined rate (used for reporting when no packet is received)
-    CO_RATE_UNDEF   = 4,
-
-    CO_RATE_NB      = 4,
+    CO_RATE_NB,
 };
 
-/*
- * FUNCTION DECLARATIONS
- ****************************************************************************************
- */
-
-/*
- * TYPE DEFINITIONS
- ****************************************************************************************
- */
-
+/// Undefined rate (used for reporting when no rate is configured)
+#define CO_RATE_UNDEF CO_RATE_NB
 
 /*
  * CONSTANT DECLARATIONS
@@ -288,31 +273,21 @@ extern const uint8_t co_phy_value_to_mask[];
 /// Convert Rate value to the corresponding PHY mask bit
 extern const uint8_t co_rate_to_phy_mask[];
 
-/// Convert PHY mask bit to the corresponding Rate value
-extern const uint8_t co_phy_mask_to_rate[];
+/// Get rate in Kbps
+extern const uint16_t co_rate_to_kbps[];
 
 #if (BLE_PWR_CTRL || (0))
 
-/// Convert PHY rate value of power control to the corresponding PHY mask bit
-extern const uint8_t co_phypwr_value_to_mask[];
-
-/// Convert PHY mask bit of power control to the corresponding PHY rate value
-extern const uint8_t co_phypwr_mask_to_value[];
-
-/// Convert Rate value to PHY mask value of power control
-extern const uint8_t co_rate_to_phypwr_mask[];
+/// Convert power control PHY to the corresponding PHY mask bit
+extern const uint8_t co_phypwr_phy_to_mask[];
+/// Convert PHY mask bit of the corresponding power control PHY
+extern const uint8_t co_phypwr_mask_to_phy[];
 
 #endif // (BLE_PWR_CTRL || (0))
-
-/// Convert Rate value to byte duration in us
-extern const uint8_t co_rate_to_byte_dur_us[];
 
 #if (BLE_PWR_CTRL || (0))
 /// Convert rate to v2 PHY (distinction between S8/S2 coded PHY)
 extern const uint8_t co_rate_to_phy_2[];
-
-/// Convert v2 PHY (distinction between S8/S2 coded PHY) to rate
-extern const uint8_t co_phy_to_rate_2[];
 #endif // (BLE_PWR_CTRL || (0))
 
 
@@ -580,7 +555,7 @@ extern const uint8_t co_phy_to_rate_2[];
  * @return The 16 bits value.
  ****************************************************************************************
  */
-__INLINE uint16_t co_read16(void const *ptr16)
+__RWIP_INLINE uint16_t co_read16(void const *ptr16)
 {
     uint16_t value = (uint16_t)((uint8_t const volatile *)ptr16)[0] | (uint16_t)((uint8_t const volatile *)ptr16)[1] << 8;
     return value;
@@ -593,7 +568,7 @@ __INLINE uint16_t co_read16(void const *ptr16)
  * @return The 24 bits value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_read24(void const *ptr24)
+__RWIP_INLINE uint32_t co_read24(void const *ptr24)
 {
     uint16_t addr_l, addr_h;
     addr_l = co_read16(ptr24);
@@ -608,7 +583,7 @@ __INLINE uint32_t co_read24(void const *ptr24)
  * @param[in] value The value to write.
  ****************************************************************************************
  */
-__INLINE void co_write24(void *ptr24, uint32_t value)
+__RWIP_INLINE void co_write24(void *ptr24, uint32_t value)
 {
     uint8_t volatile *ptr=(uint8_t*)ptr24;
 
@@ -624,13 +599,14 @@ __INLINE void co_write24(void *ptr24, uint32_t value)
  * @return The 32 bits value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_read32(void const *ptr32)
+__RWIP_INLINE uint32_t co_read32(void const *ptr32)
 {
     uint16_t addr_l, addr_h;
     addr_l = co_read16(ptr32);
     addr_h = co_read16((uint8_t const *)ptr32 + 2);
     return ((uint32_t)addr_l | (uint32_t)addr_h << 16);
 }
+
 /**
  ****************************************************************************************
  * @brief Write a packed 32 bits word.
@@ -638,7 +614,7 @@ __INLINE uint32_t co_read32(void const *ptr32)
  * @param[in] value The value to write.
  ****************************************************************************************
  */
-__INLINE void co_write32(void *ptr32, uint32_t value)
+__RWIP_INLINE void co_write32(void *ptr32, uint32_t value)
 {
     uint8_t volatile *ptr=(uint8_t*)ptr32;
 
@@ -655,7 +631,7 @@ __INLINE void co_write32(void *ptr32, uint32_t value)
  * @param[in] value The value to write.
  ****************************************************************************************
  */
-__INLINE void co_write16(void *ptr16, uint16_t value)
+__RWIP_INLINE void co_write16(void *ptr16, uint16_t value)
 {
     uint8_t volatile *ptr=(uint8_t*)ptr16;
 
@@ -672,7 +648,7 @@ __INLINE void co_write16(void *ptr16, uint16_t value)
  * @return Number of bit counted
  ****************************************************************************************
  */
-__INLINE uint8_t co_bit_cnt(const uint8_t* p_val, uint8_t size)
+__RWIP_INLINE uint8_t co_bit_cnt(const uint8_t* p_val, uint8_t size)
 {
     uint8_t nb_bit = 0;
     while(size-- > 0)
@@ -693,7 +669,7 @@ __INLINE uint8_t co_bit_cnt(const uint8_t* p_val, uint8_t size)
  * @return index of value if found, or -1 if not found
  ****************************************************************************************
  */
-__INLINE int8_t co_find_val(const uint8_t val, const uint8_t* p_vals, int8_t len)
+__RWIP_INLINE int8_t co_find_val(const uint8_t val, const uint8_t* p_vals, int8_t len)
 {
     for (len--; (len >= 0) && (val != p_vals[len]); len--)
     {
@@ -710,7 +686,7 @@ __INLINE int8_t co_find_val(const uint8_t val, const uint8_t* p_vals, int8_t len
  * @param[in]     shift      Distance of the shift (in half-us)
  ****************************************************************************************
  */
-__INLINE void co_util_clk_shift(rwip_time_t* clock, int32_t shift)
+__RWIP_INLINE void co_util_clk_shift(rwip_time_t* clock, int32_t shift)
 {
     shift += clock->hus;
 
@@ -736,7 +712,7 @@ __INLINE void co_util_clk_shift(rwip_time_t* clock, int32_t shift)
  * @param[in]     shift      Distance of the shift (in half-us)
  ****************************************************************************************
  */
-__INLINE void co_util_clk_shift_forward(rwip_time_t* clock, uint32_t shift)
+__RWIP_INLINE void co_util_clk_shift_forward(rwip_time_t* clock, uint32_t shift)
 {
     uint16_t num_hs;
     shift += clock->hus;
@@ -745,8 +721,7 @@ __INLINE void co_util_clk_shift_forward(rwip_time_t* clock, uint32_t shift)
     clock->hs = CLK_ADD(clock->hs, num_hs);
 }
 
-#if (RW_DEBUG || DISPLAY_SUPPORT)
-
+#if (RW_DEBUG)
 /**
  ****************************************************************************************
  * @brief Convert bytes to hexadecimal string
@@ -757,7 +732,7 @@ __INLINE void co_util_clk_shift_forward(rwip_time_t* clock, uint32_t shift)
  ****************************************************************************************
  */
 void co_bytes_to_string(char* dest, uint8_t* src, uint8_t nb_bytes);
-#endif //(RW_DEBUG || DISPLAY_SUPPORT)
+#endif //(RW_DEBUG)
 
 /**
  ****************************************************************************************
@@ -783,7 +758,6 @@ bool co_bdaddr_compare(struct bd_addr const *bd_address1, struct bd_addr const *
 uint32_t co_slot_to_duration(uint32_t slot_cnt);
 
 #if (BT_EMB_PRESENT)
-
 /**
  ******************************************************************************
  * @brief Count the number of good channels in a map
@@ -914,7 +888,7 @@ int16_t co_base64_decode(uint16_t encoded_length, const char* p_encoded_data, ui
  * @return Length of the  UTF-8 string.
  *****************************************************************************************
  */
-__INLINE uint16_t co_strlen(const char* p_str)
+__RWIP_INLINE uint16_t co_strlen(const char* p_str)
 {
     const char* p_str_end = p_str;
     while(*p_str_end != '\0')

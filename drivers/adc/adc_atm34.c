@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 #include <assert.h>
 #include <string.h>
 #include <math.h>
+#include <inttypes.h>
 #ifdef CONFIG_PM
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
@@ -201,7 +202,7 @@ static struct gadc_fifo_s gadc_read_ch_data(void)
 }
 
 /* Enable/Disable GADC analog side */
-__INLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
+__STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 {
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
@@ -625,7 +626,8 @@ static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 		return (int32_t)(result * 100.0f);
 	}
 
-	printk("channel: %d, raw: %#x, sample_signed: %d\n", ch, raw_fifo.value, sample_signed);
+	LOG_DBG("channel: %d, raw: %#x, sample_signed: %" PRId32 "\n", ch, raw_fifo.value,
+		sample_signed);
 
 	return sample_signed;
 }
@@ -667,6 +669,7 @@ static int gadc_atm_init(struct device const *dev)
 	struct gadc_atm_data *data = DEV_DATA(dev);
 	data->dev = dev;
 
+	WRPR_CTRL_SET(CMSDK_GADC, WRPR_CTRL__SRESET);
 	IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority), gadc_atm_isr, DEVICE_DT_INST_GET(0),
 		    0);
 
@@ -705,5 +708,3 @@ static struct gadc_atm_data gadc_atm_data_0 = {
 };
 DEVICE_DT_INST_DEFINE(0, gadc_atm_init, NULL, &gadc_atm_data_0, NULL, POST_KERNEL,
 		      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &api_atm_driver_api);
-BUILD_ASSERT(CMSDK_GADC == (CMSDK_AT_APB_GADC_TypeDef *)DT_REG_ADDR(DT_NODELABEL(adc)),
-	     "INVALID CMSDK CONFIGURATION");

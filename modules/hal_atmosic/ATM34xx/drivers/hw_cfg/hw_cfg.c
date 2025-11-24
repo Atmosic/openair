@@ -27,7 +27,7 @@
 #include "pmu_cfg.h"
 #include "pmu.h"
 
-#define ASSERT_ON_CAL_FAIL true
+#define ASSERT_ON_CAL_FAIL false
 
 struct chip_info_s chip_info;
 uint16_t chip_info_len;

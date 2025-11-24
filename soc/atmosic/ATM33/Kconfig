@@ -12,5 +12,6 @@ config SOC_SERIES_ATM33
 	select ARMV8_M_DSP
 	select CPU_HAS_TEE
 	select HAS_PM
+	select HAS_POWEROFF if PM && $(dt_path_enabled,/power-states/soc_off)
 	help
 	  Enable support for ATM33 series

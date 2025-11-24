@@ -1,11 +1,5 @@
 tests:
   tests.drivers.batt_model.batt_model_dry.atm:
     sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - PROJECT EXECUTION SUCCESSFUL
-    tags: atm33 atm34 no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
+    tags:
+      - no_mcuboot

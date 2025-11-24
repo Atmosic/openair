@@ -1,7 +1,0 @@
-# Copyright (c) 2024 Atmosic
-#
-# SPDX-License-Identifier: Apache-2.0
-
-config ATM_TZ_SAU
-	bool "Atmosic TrustZone Security Attribution Unit  module"
-	default y if TRUSTED_EXECUTION_SECURE && !MCUBOOT

@@ -2,6 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# Helper macro to get the atm_arch script filename based on host system
+macro(atm_arch_get_script_filename output_dir output_var)
+  if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+    set(${output_var} "${output_dir}/atm_arch_gen.bat")
+  else()
+    set(${output_var} "${output_dir}/atm_arch_gen.sh")
+  endif()
+endmacro()
+
 function(atm_arch_get_sb_config filename config_key output_var)
   if(NOT EXISTS "${filename}")
     message(WARNING "File '${filename}' does not exist.")
@@ -30,43 +39,35 @@ function(atm_arch_sh_update)
 endfunction(atm_arch_sh_update)
 
 function(atm_arch_sh_done)
-  if(NOT "${CONFIG_SOC_SERIES}" STREQUAL "ATMx2")
-    atm_arch_get_sb_config("${sysbuild_output_dir}/zephyr/.config" "SB_CONFIG_ATM_ARCH_ERASE_ALL" SB_CONFIG_ATM_ARCH_ERASE_ALL)
-    if(SB_CONFIG_ATM_ARCH_ERASE_ALL)
-      atm_arch_sh_update("--erase_all")
-    endif()
-    atm_arch_get_sb_config("${sysbuild_output_dir}/zephyr/.config" "SB_CONFIG_ATM_ARCH_ERASE_FLASH_ALL" SB_CONFIG_ATM_ARCH_ERASE_FLASH_ALL)
-    if(SB_CONFIG_ATM_ARCH_ERASE_FLASH_ALL)
-      atm_arch_sh_update("--erase_flash_all")
-    endif()
-    atm_arch_get_sb_config("${sysbuild_output_dir}/zephyr/.config" "SB_CONFIG_ATM_ARCH_ERASE_RRAM_ALL" SB_CONFIG_ATM_ARCH_ERASE_RRAM_ALL)
-    if(SB_CONFIG_ATM_ARCH_ERASE_RRAM_ALL)
-      atm_arch_sh_update("--erase_rram_all")
-    endif()
+  # Read erase configuration options from sysbuild config
+  set(config_file "${sysbuild_output_dir}/zephyr/.config")
+  atm_arch_get_sb_config("${config_file}" "SB_CONFIG_ATM_ARCH_ERASE_ALL" SB_CONFIG_ATM_ARCH_ERASE_ALL)
+  atm_arch_get_sb_config("${config_file}" "SB_CONFIG_ATM_ARCH_ERASE_FLASH_ALL" SB_CONFIG_ATM_ARCH_ERASE_FLASH_ALL)
+  atm_arch_get_sb_config("${config_file}" "SB_CONFIG_ATM_ARCH_ERASE_RRAM_ALL" SB_CONFIG_ATM_ARCH_ERASE_RRAM_ALL)
+  atm_arch_get_sb_config("${config_file}" "SB_CONFIG_ATM_ARCH_ERASE_STORAGE" SB_CONFIG_ATM_ARCH_ERASE_STORAGE)
+
+  # Add erase options if enabled
+  if(SB_CONFIG_ATM_ARCH_ERASE_ALL)
+    atm_arch_sh_update("--erase_all")
   endif()
+  if(SB_CONFIG_ATM_ARCH_ERASE_FLASH_ALL)
+    atm_arch_sh_update("--erase_flash_all")
+  endif()
+  if(SB_CONFIG_ATM_ARCH_ERASE_RRAM_ALL)
+    atm_arch_sh_update("--erase_rram_all")
+  endif()
+  if(SB_CONFIG_ATM_ARCH_ERASE_STORAGE AND NOT SB_CONFIG_ATM_ARCH_ERASE_ALL)
+    atm_arch_sh_update("--erase_storage")
+  endif()
+
+  # Add output file path
   set(ATM_ARCH_NAME_NAME ${sysbuild_output_dir}/${BOARD}_${sysbuild_name}.atm)
   atm_arch_sh_update("-o")
   atm_arch_sh_update("${ATM_ARCH_NAME_NAME}\n")
-  set(ATM_ARCH_TARGET zephyr_final)
-  if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-    add_custom_command(
-      OUTPUT ${ATM_ARCH_NAME_NAME}
-      COMMAND ${atm_arch_sh_file}
-      COMMAND west atm_arch -i ${ATM_ARCH_NAME_NAME} --show
-      COMMENT "Sysbuild generated atm file to ${ATM_ARCH_NAME_NAME}"
-      DEPENDS ${ATM_ARCH_TARGET} ${atm_arch_sh_file}
-    )
-  else()
-    add_custom_command(
-      OUTPUT ${ATM_ARCH_NAME_NAME}
-      COMMAND chmod +x ${atm_arch_sh_file}
-      COMMAND bash ${atm_arch_sh_file}
-      COMMAND west atm_arch -i ${ATM_ARCH_NAME_NAME} --show
-      COMMENT "Sysbuild generated atm file to ${ATM_ARCH_NAME_NAME}"
-      DEPENDS ${ATM_ARCH_TARGET} ${atm_arch_sh_file}
-    )
-  endif()
-  add_custom_target(atm_arch ALL DEPENDS ${ATM_ARCH_NAME_NAME})
+
+  # Note: The atm_arch target is created at the sysbuild level in
+  # openair/sysbuild/atm_arch/CMakeLists.txt, not here in the image's build context.
+  # This function just finalizes the script file generation.
 endfunction(atm_arch_sh_done)
 
 function(atm_arch_sh_gen)
@@ -76,17 +77,12 @@ function(atm_arch_sh_gen)
     return()
   endif()
   get_property(sysbuild_name TARGET sysbuild_cache PROPERTY SYSBUILD_NAME)
-  get_property(sysbuild_main_app TARGET sysbuild_cache PROPERTY SYSBUILD_MAIN_APP)
-  if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
-    set(atm_arch_sh_file ${sysbuild_output_dir}/atm_arch_gen.bat CACHE INTERNAL "atm_arch script file")
-  else()
-    set(atm_arch_sh_file ${sysbuild_output_dir}/atm_arch_gen.sh CACHE INTERNAL "atm_arch script file")
-  endif()
+  atm_arch_get_script_filename("${sysbuild_output_dir}" atm_arch_sh_file)
+  set(atm_arch_sh_file ${atm_arch_sh_file} CACHE INTERNAL "atm_arch script file")
   if("${sysbuild_name}" STREQUAL "mcuboot")
     atm_arch_sh_update("--mcuboot_file=${ZEPHYR_BINARY_DIR}/zephyr.bin")
   elseif("${sysbuild_name}" STREQUAL "spe")
     if(NOT CONFIG_BOOTLOADER_MCUBOOT)
-      set(GLOBAL_ATM_ARCH_ARGS CACHE INTERNAL "Global atm file list args")
       atm_arch_sh_update("--spe_file=${ZEPHYR_BINARY_DIR}/zephyr.bin")
     endif()
   else()
@@ -104,8 +100,8 @@ function(atm_arch_sh_gen)
       else()
         atm_arch_sh_update("--app_file=${ZEPHYR_BINARY_DIR}/zephyr.bin")
       endif()
-      if(CONFIG_USE_FIXED_ATMWSTK AND CONFIG_ATMWSTK_FULL)
-        atm_arch_sh_update("--atmwstk_file=${ZEPHYR_BINARY_DIR}/atmwstk_FULL.bin")
+      if(CONFIG_USE_FIXED_ATMWSTK AND CONFIG_ATMWSTK_CPD200)
+        atm_arch_sh_update("--atmwstk_file=${ZEPHYR_BINARY_DIR}/atmwstk_CPD200.bin")
       endif()
     endif()
     if(CONFIG_ATM_MCUBOOT_SECURE_DEBUG)
@@ -115,7 +111,7 @@ function(atm_arch_sh_gen)
         atm_arch_sh_update("--sec_dbg_key=${debug_key_file}")
       endif()
     endif()
-    if(EXISTS "${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT}")
+    if(CONFIG_ATM_SETTINGS AND CONFIG_GEN_TAG_DATA_BIN_FILE)
       if(EXISTS "${CMAKE_SOURCE_DIR}/tag_data/settings.yml")
         atm_arch_sh_update("--storage_data_file=${ZEPHYR_BINARY_DIR}/zephyr_settings.bin")
       endif()

@@ -22,10 +22,6 @@
 #include <stddef.h>
 #include "arch.h"
 #include "atm_vendor_drv.h"
-#ifdef CFG_VND_OTP_PUSH
-#include "at_apb_nvm_regs_core_macro.h"
-#include "nvm.h"
-#endif
 #ifdef CMSDK_CLKRSTGEN_NONSECURE
 #include "at_apb_clkrstgen_regs_core_macro.h"
 #endif
@@ -167,10 +163,7 @@ static union {
     // vendor_stage: VENDOR_SET_BDADDR
     set_bd_addr_cmd_t bd_addr_cmd;
 #endif
-#ifdef CFG_VND_OTP_PUSH
-    otp_push_cmd_t otppush_cmd;
-#endif
-#if (defined(CFG_VND_MALLOC) || defined(CFG_VND_OTP_PUSH))
+#ifdef CFG_VND_MALLOC
     // vendor_stage: VENDOR_MALLOC
     // SW-6246 bug fix: malloc_cmd and malloc_ctx are used
     // in the same code block. The previous approach can lead to data
@@ -234,7 +227,7 @@ static union {
     defined(CFG_VND_PMU_RADIO_REGR) || defined(CFG_VND_PMU_RADIO_REGW) || \
     defined(CFG_VND_DBG_MMR) || defined(CFG_VND_DBG_MMW) || \
     defined(CFG_VND_XTAL_32K_PIN_OUT)
-__INLINE bool check_evt_unsupport(uint8_t **bufptr)
+__STATIC_FORCEINLINE bool check_evt_unsupport(uint8_t **bufptr)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
     return true;
@@ -571,7 +564,7 @@ static void vendor_enpvtest_cmp_handler(uint8_t **bufptr, uint32_t *size)
 }
 #endif
 
-#if defined(CFG_VND_GADC_V1) || defined(CFG_VND_GADC_V2)
+#ifdef CFG_VND_GADC_V2
 #ifndef GADC_CAL_DATA_OUTSIDE_MISC
 // Calibration setting, this should keep outside the dat union
 static float volt4cli;
@@ -592,11 +585,7 @@ static bool gadc_setting_valid(void)
 }
 #endif
 
-#ifdef CFG_VND_GADC_V1
-static void gadc_result(float result, int16_t raw,
-#elif
 static void gadc_result(float result, struct gadc_fifo_s raw_fifo,
-#endif
     struct gadc_cal_s cal, gadc_cb_ctx_t const *ctx)
 {
 #ifdef CFG_VND_GADC_V2
@@ -871,71 +860,6 @@ static void vendor_gpio_self_test_cmp_handler(uint8_t **bufptr, uint32_t *size)
 }
 #endif
 
-#ifdef CFG_VND_OTP_PUSH
-static void vendor_otppush_handler(uint8_t const *buf)
-{
-    dat.otppush_cmd.otppush_address = atm_get_le32(buf);
-    dat.otppush_cmd.otppush_checksum = buf[4];
-}
-
-static uint8_t otppush_control(void)
-{
-    if (dat.otppush_cmd.otppush_address !=
-	(uint32_t)(dat.malloc_ctx.malloc_mem)) {
-	return OTP_PUSH_ERR_NO_MEMORY;
-    }
-    uint8_t *ptr = dat.malloc_ctx.malloc_mem;
-    uint8_t chksum = 0;
-    uint8_t *otp = (uint8_t *)CMSDK_AHB_NVM_BASE;
-    for (int i = 0; i < NVM_SIZE; i++) {
-	uint8_t old = otp[i];
-	uint8_t neww = ptr[i];
-	if ((old & neww) != old) {
-	    DEBUG_TRACE("ERROR: bit cleared %d: %02x->%02x", i, old, neww);
-	    return OTP_PUSH_ERR_INVALID_FILE;
-	}
-	ptr[i] = old ^ neww;
-	chksum ^= ptr[i];
-    }
-    DEBUG_TRACE("address %#" PRIx32 " checksum %#x chksum %#x",
-	dat.otppush_cmd.otppush_address, dat.otppush_cmd.otppush_checksum,
-	chksum);
-
-    if (chksum != dat.otppush_cmd.otppush_checksum) {
-	return OTP_PUSH_ERR_CHECKSUM_FAIL;
-    }
-
-    for (uint32_t i = 0; i < NVM_SIZE; i++) {
-	if (!ptr[i]) {
-	    continue;
-	}
-	for (uint8_t bit = 0; bit < 8; bit++) {
-	    if ((ptr[i] & (1 << bit)) == 0) {
-		continue;
-	    }
-	    uint32_t bitaddr = ((i & ~0x3ff) << 3) | ((bit & 0x7) << 10) |
-		(i & 0x3ff);
-	    CMSDK_NVM->ADDRESS = bitaddr;
-	    CMSDK_NVM->OPMODE = NVM_OPMODE__PROGRAM__MASK |
-		NVM_OPMODE__GO__MASK;
-	    while(NVM_STATUS__RUNNING__READ(CMSDK_NVM->STATUS));
-	}
-
-	if ((otp[i] & ptr[i]) != ptr[i]) {
-	    DEBUG_TRACE("ERROR: Write error on addr %#" PRIx32 " %x %x", i,
-		otp[i], ptr[i]);
-	    return OTP_PUSH_ERR_WRITE_FAIL;
-	}
-    }
-    return OTP_PUSH_ERR_OK;
-}
-
-static void vendor_otppush_cmp_handler(uint8_t **bufptr, uint32_t *size)
-{
-    SET_HCI_EVT_STATUS(otppush_control());
-}
-#endif
-
 #ifdef CFG_VND_MALLOC
 static void vendor_malloc_handler(uint8_t const *buf)
 {
@@ -1187,7 +1111,6 @@ static void vendor_psm_cmp_handler(uint8_t **bufptr, uint32_t *size)
 
 	case PSM_DEEP:
 	case PSM_RETAIN:
-	case PSM_RETAIN_DROP:
 	case PSM_HIBERNATE:
 	case PSM_SOC_OFF: {
 	    cmd_psm = dat.psm_cmd.psm_mode;
@@ -1393,10 +1316,6 @@ static struct vendor_handler const vendor_handler_tab[] = {
     {SET_ADV_CH_CMD_OCF, SET_ADV_CH_CMD_OGF, SET_ADV_CH_CMD_LEN, true,
 	vendor_set_adv_ch_handler, vendor_set_adv_ch_cmp_handler},
 #endif
-#ifdef CFG_VND_OTP_PUSH
-    {OTP_PUSH_CMD_OCF, OTP_PUSH_CMD_OGF, OTP_PUSH_CMD_LEN, true,
-	vendor_otppush_handler, vendor_otppush_cmp_handler},
-#endif
 #ifdef CFG_VND_MALLOC
     {MALLOC_CMD_OCF, MALLOC_CMD_OGF, MALLOC_CMD_LEN, true,
 	vendor_malloc_handler, vendor_malloc_cmp_handler},
@@ -1405,7 +1324,7 @@ static struct vendor_handler const vendor_handler_tab[] = {
     {IO_CMD_OCF, IO_CMD_OGF, IO_CMD_LEN, true, vendor_io_handler,
 	vendor_io_cmp_handler},
 #endif
-#if defined(CFG_VND_GADC_V1) || defined(CFG_VND_GADC_V2)
+#ifdef CFG_VND_GADC_V2
     {GADC_CMD_OCF, GADC_CMD_OGF, GADC_CMD_LEN, false, vendor_gadc_handler,
 	vendor_gadc_cmp_handler},
 #endif

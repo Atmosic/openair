@@ -32,7 +32,8 @@ LOG_MODULE_REGISTER(gfps, CONFIG_ATM_GFPS_LOG_LEVEL);
 
 void gfps_handlers_register(gfps_hdlrs_t const *hdlrs)
 {
-#if (defined(CONFIG_FAST_PAIR_FMDN) && defined(CONFIG_FAST_PAIR_FMDN_DULT))
+#ifdef CONFIG_FAST_PAIR_FMDN
+#ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	if (hdlrs->utp_mode_cb) {
 		fp_fmdn_gatt_utp_mode_reg(hdlrs->utp_mode_cb);
 	}
@@ -48,7 +49,13 @@ void gfps_handlers_register(gfps_hdlrs_t const *hdlrs)
 	if (hdlrs->battery_status_cb) {
 		fp_fmdn_key_battery_reg(hdlrs->battery_status_cb);
 	}
-#endif // CONFIG_FAST_PAIR_FMDN && CONFIG_FAST_PAIR_FMDN_DULT
+#endif // CONFIG_FAST_PAIR_FMDN_DULT
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	if (hdlrs->ranging_handlers) {
+		fp_fmdn_ranging_handler_register(hdlrs->ranging_handlers);
+	}
+#endif // CONFIG_FMDN_PRECISION_FINDING
+#endif // CONFIG_FAST_PAIR_FMDN
 }
 
 void gfps_button_notify(void)
@@ -68,8 +75,10 @@ static void gfps_init_service(void)
 	fp_conn_init();
 	fp_mode_init();
 	fp_gatt_init();
+#ifndef CONFIG_FAST_PAIR_RECREATE_ADV_ON_MODE_SWITCH
 	fp_adv_recreate();
 	fp_fmdn_adv_recreate(true, false);
+#endif
 }
 
 int gfps_init(void)
@@ -103,9 +112,7 @@ void gfps_fp_pairing_adv(void)
 	}
 }
 
-#ifdef CONFIG_ATM_GFP_MUTLIMODE_TAG
 bool gfps_fp_is_provisioned(void)
 {
 	return fp_storage_eid_key_valid();
 }
-#endif

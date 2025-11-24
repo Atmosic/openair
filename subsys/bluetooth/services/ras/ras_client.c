@@ -22,22 +22,22 @@ enum ras_char {
 	RAS_CHARC_REALTIME_RANGING_DATA,
 	RAS_CHARC_ONDEMAND_RANGING_DATA,
 	RAS_CHARC_CP,
-	RAS_CHARC_RAGING_DATA_READY,
-	RAS_CHARC_RAGING_DATA_OVERWRITTEN,
+	RAS_CHARC_RANGING_DATA_READY,
+	RAS_CHARC_RANGING_DATA_OVERWRITTEN,
 
 	RAS_CHARC_MAX_NUM
 };
 
 #define RAS_CHARC_MANDATORY_MASK                                                                   \
 	(BIT(RAS_CHARC_RAS_FEATURES) | BIT(RAS_CHARC_ONDEMAND_RANGING_DATA) | BIT(RAS_CHARC_CP) |  \
-	 BIT(RAS_CHARC_RAGING_DATA_READY) | BIT(RAS_CHARC_RAGING_DATA_OVERWRITTEN))
+	 BIT(RAS_CHARC_RANGING_DATA_READY) | BIT(RAS_CHARC_RANGING_DATA_OVERWRITTEN))
 #define RAS_CHARC_CCC_MANDATORY_MASK                                                               \
 	((BIT(RAS_CHARC_ONDEMAND_RANGING_DATA) | BIT(RAS_CHARC_CP) |                               \
-	  BIT(RAS_CHARC_RAGING_DATA_READY) | BIT(RAS_CHARC_RAGING_DATA_OVERWRITTEN)))
+	  BIT(RAS_CHARC_RANGING_DATA_READY) | BIT(RAS_CHARC_RANGING_DATA_OVERWRITTEN)))
 #define RAS_CHARC_CCC_MASK                                                                         \
 	(BIT(RAS_CHARC_REALTIME_RANGING_DATA) | BIT(RAS_CHARC_ONDEMAND_RANGING_DATA) |             \
-	 BIT(RAS_CHARC_CP) | BIT(RAS_CHARC_RAGING_DATA_READY) |                                    \
-	 BIT(RAS_CHARC_RAGING_DATA_OVERWRITTEN))
+	 BIT(RAS_CHARC_CP) | BIT(RAS_CHARC_RANGING_DATA_READY) |                                   \
+	 BIT(RAS_CHARC_RANGING_DATA_OVERWRITTEN))
 
 // segment number: 0-63
 #define SEGMENT_COUNT_BITS      6
@@ -81,6 +81,8 @@ struct bt_ras_client {
 	uint8_t next_seg_cnt;
 	enum ras_c_state state;
 	bool last_seg;
+	uint8_t char_prop[RAS_CHARC_MAX_NUM];
+	bool cs_enabled;
 };
 
 static const struct bt_ras_client_cb *ras_c_cb;
@@ -90,6 +92,27 @@ static const struct bt_uuid *ras_uuid = BT_UUID_RAS;
 static const struct bt_uuid *ras_charc_uuids[RAS_CHARC_MAX_NUM] = {
 	BT_UUID_RAS_FEATURES, BT_UUID_RAS_REALTIME_RD, BT_UUID_RAS_ONDEMAND_RD,
 	BT_UUID_RAS_CP,       BT_UUID_RAS_RD_READY,    BT_UUID_RAS_RD_OVERWRITTEN};
+
+#ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
+static void ras_c_realtime_rd_cmpl(struct bt_ras_client *ras_c, int err)
+{
+	ras_c->err_status = 0;
+	ras_c->last_seg = 0;
+	ras_c->next_seg_cnt = 0;
+	if (err) {
+		if (ras_c->realtime_buf_out->len >= sizeof(ras_rd_header_t)) {
+			ras_rd_header_t *rd_hdr = (void *)ras_c->realtime_buf_out->data;
+			LOG_INF("realtime rc:%u len:%u", rd_hdr->ranging_counter,
+				ras_c->realtime_buf_out->len);
+		} else {
+			LOG_WRN("realtime invalid len:%u", ras_c->realtime_buf_out->len);
+		}
+	}
+	if (ras_c->get_realtime_rd_cmpl_cb) {
+		ras_c->get_realtime_rd_cmpl_cb(ras_c->conn, err);
+	}
+}
+#endif
 
 static void timeout_work_handler(struct k_work *work)
 {
@@ -106,7 +129,7 @@ static void timeout_work_handler(struct k_work *work)
 		ras_c->state = RAS_C_STATE_ON_DEMAND_MODE;
 		if (ras_c->ras_features & RAS_FEAT_ABORT_OP) {
 			NET_BUF_SIMPLE_DEFINE(abort_buf, RAS_CP_OPCODE_LEN);
-			net_buf_simple_add_u8(&abort_buf, RAS_FEAT_ABORT_OP);
+			net_buf_simple_add_u8(&abort_buf, RAS_CP_CMD_OPCODE_ABORT_OP);
 			err = bt_gatt_write_without_response(
 				ras_c->conn, ras_c->subscribe_params[RAS_CHARC_CP].value_handle,
 				abort_buf.data, abort_buf.len, false);
@@ -126,9 +149,7 @@ static void timeout_work_handler(struct k_work *work)
 		} else {
 			ras_c->state = RAS_C_STATE_READ_FEATURES_DONE;
 		}
-		if (ras_c->get_realtime_rd_cmpl_cb) {
-			ras_c->get_realtime_rd_cmpl_cb(ras_c->conn, -ETIMEDOUT);
-		}
+		ras_c_realtime_rd_cmpl(ras_c, -ETIMEDOUT);
 #endif
 	}
 }
@@ -195,16 +216,33 @@ static void ras_c_disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
 	else if (ras_c->state == RAS_C_STATE_REALTIME_MODE) {
-		if (ras_c->get_realtime_rd_cmpl_cb) {
-			ras_c->get_realtime_rd_cmpl_cb(conn, -ENOTCONN);
-		}
+		ras_c_realtime_rd_cmpl(ras_c, -ENOTCONN);
 	}
 #endif
 	ras_c_cleanup(ras_c);
 }
 
+static void ras_c_cs_procedure_enabled(struct bt_conn *conn, uint8_t status,
+				       struct bt_conn_le_cs_procedure_enable_complete *params)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+	if (!ras_c) {
+		return;
+	}
+	if (params->state) {
+		ras_c->cs_enabled = true;
+	} else {
+		ras_c->cs_enabled = false;
+	}
+
+	atm_work_reschedule_for_app_work_q(
+		&ras_c->timeout_work,
+		K_SECONDS(CONFIG_RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC));
+}
+
 BT_CONN_CB_DEFINE(conn_cb) = {
 	.disconnected = ras_c_disconnected,
+	.le_cs_procedure_enable_complete = ras_c_cs_procedure_enabled,
 };
 
 static void ras_c_subscribe(struct bt_conn *conn, uint8_t err,
@@ -233,7 +271,7 @@ static uint8_t ras_c_rd_ready_ow_notify(struct bt_conn *conn,
 	uint16_t ranging_counter = *(uint16_t *)data;
 	LOG_DBG("rd_notfy rc:%u", ranging_counter);
 	if (params->value_handle ==
-	    ras_c->subscribe_params[RAS_CHARC_RAGING_DATA_READY].value_handle) {
+	    ras_c->subscribe_params[RAS_CHARC_RANGING_DATA_READY].value_handle) {
 		if (ras_c->rd_ready_cb) {
 			ras_c->rd_ready_cb(conn, ranging_counter, 0);
 		}
@@ -268,8 +306,18 @@ static uint8_t ras_c_rd_notify(struct bt_ras_client *ras_c, const void *data, ui
 			ras_c->err_status = -EINVAL;
 		}
 	}
+#ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
+	if (ras_c->err_status && (ras_c->state == RAS_C_STATE_REALTIME_MODE)) {
+		// check first segment after err status happened
+		if ((seg_hdr & BIT(FIRST_SEGMENT)) && !seg_cnt) {
+			// callback the last time status, reset err_status to recollect the data
+			ras_c_realtime_rd_cmpl(ras_c, ras_c->err_status);
+		}
+	}
+#endif
 	if (!ras_c->err_status) {
 		if (net_buf_simple_tailroom(rd_buf_out) < seg_len) {
+			LOG_ERR("Buf:%u seg:%u", net_buf_simple_tailroom(rd_buf_out), seg_len);
 			ras_c->err_status = -ENOMEM;
 		} else {
 			uint8_t *rd_seg = net_buf_simple_pull_mem(&segment, seg_len);
@@ -282,13 +330,7 @@ static uint8_t ras_c_rd_notify(struct bt_ras_client *ras_c, const void *data, ui
 		ras_c->last_seg = true;
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
 		if (ras_c->state == RAS_C_STATE_REALTIME_MODE) {
-			int err = ras_c->err_status;
-			ras_c->err_status = 0;
-			ras_c->last_seg = 0;
-			ras_c->next_seg_cnt = 0;
-			if (ras_c->get_realtime_rd_cmpl_cb) {
-				ras_c->get_realtime_rd_cmpl_cb(ras_c->conn, err);
-			}
+			ras_c_realtime_rd_cmpl(ras_c, ras_c->err_status);
 			return BT_GATT_ITER_CONTINUE;
 		}
 #endif
@@ -392,18 +434,23 @@ static uint8_t ras_c_cp_notify(struct bt_conn *conn, struct bt_gatt_subscribe_pa
 			return BT_GATT_ITER_CONTINUE;
 		}
 		// only consider get rd rsp
-		ras_c->state = RAS_C_STATE_ON_DEMAND_MODE;
-		if (!ras_c->get_rd_cmpl_cb) {
-			return BT_GATT_ITER_CONTINUE;
-		}
 		uint8_t rsp_code = net_buf_simple_pull_u8(&buf);
 		int err = 0;
 		if (rsp_code == RAS_CP_RSP_PROCEDURE_NOT_COMPLETED) {
 			err = -ENODATA;
+		} else if (rsp_code == RAS_CP_RSP_RESERVED) {
+			LOG_WRN("rsp code reserved");
 		} else if (rsp_code != RAS_CP_RSP_SUCCESS) {
 			err = -ENOENT;
 		}
-		ras_c->get_rd_cmpl_cb(conn, ras_c->ranging_counter, err);
+		if (!err) {
+			// wait for RAS_CP_RSP_OPCODE_COMPLETE_RD_RSP
+			return BT_GATT_ITER_CONTINUE;
+		}
+		ras_c->state = RAS_C_STATE_ON_DEMAND_MODE;
+		if (ras_c->get_rd_cmpl_cb) {
+			ras_c->get_rd_cmpl_cb(conn, ras_c->ranging_counter, err);
+		}
 	} break;
 	default: {
 		LOG_WRN("unexpected opcode:%u", opcode);
@@ -443,8 +490,8 @@ static void ras_c_discovery_cmpl(struct bt_conn *conn, int err)
 		// prepare subscribe values
 		for (uint8_t char_idx = RAS_CHARC_REALTIME_RANGING_DATA;
 		     char_idx < RAS_CHARC_MAX_NUM; char_idx++) {
-			if ((char_idx == RAS_CHARC_RAGING_DATA_READY) ||
-			    (char_idx == RAS_CHARC_RAGING_DATA_OVERWRITTEN)) {
+			if ((char_idx == RAS_CHARC_RANGING_DATA_READY) ||
+			    (char_idx == RAS_CHARC_RANGING_DATA_OVERWRITTEN)) {
 				ras_c->subscribe_params[char_idx].notify = ras_c_rd_ready_ow_notify;
 			} else if (char_idx == RAS_CHARC_ONDEMAND_RANGING_DATA) {
 				ras_c->subscribe_params[char_idx].notify = ras_c_ondemand_rd_notify;
@@ -483,22 +530,87 @@ static void ras_c_discovery_cmpl(struct bt_conn *conn, int err)
 	ras_c_cb->discovery_done(conn, err);
 }
 
-static void ras_c_discover_char(struct bt_conn *conn, struct bt_gatt_discover_params *discover,
-				uint16_t start_handle, uint16_t end_handle)
+static void ras_c_validate_discovery(struct bt_conn *conn)
 {
-	if (start_handle) {
-		discover->start_handle = start_handle;
+	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_DISCOVERY);
+	if (!ras_c) {
+		return;
 	}
+	uint8_t v_hdl_mask = 0;
+	uint8_t ccc_hdl_mask = 0;
+	for (uint8_t i = 0; i < RAS_CHARC_MAX_NUM; i++) {
+		if (ras_c->subscribe_params[i].value_handle) {
+			v_hdl_mask |= BIT(i);
+		}
+		if (ras_c->subscribe_params[i].ccc_handle) {
+			ccc_hdl_mask |= BIT(i);
+		}
+		LOG_DBG("i:%u v_hdl:%#x ccc_hdl:%#x", i, ras_c->subscribe_params[i].value_handle,
+			ras_c->subscribe_params[i].ccc_handle);
+	}
+	int err = 0;
+	if ((v_hdl_mask & RAS_CHARC_MANDATORY_MASK) != RAS_CHARC_MANDATORY_MASK) {
+		err = -ENOTSUP;
+	}
+	if ((v_hdl_mask & RAS_CHARC_CCC_MANDATORY_MASK) != RAS_CHARC_CCC_MANDATORY_MASK) {
+		err = -ENOTSUP;
+	}
+	LOG_DBG("mask:%#x %#lx %#x %#lx", v_hdl_mask, RAS_CHARC_MANDATORY_MASK, ccc_hdl_mask,
+		RAS_CHARC_CCC_MANDATORY_MASK);
+	ras_c_discovery_cmpl(conn, err);
+}
+
+static int ras_c_discover_gatt(struct bt_conn *conn, struct bt_gatt_discover_params *discover,
+			       uint16_t current_handle, uint16_t end_handle, uint8_t discovery_type,
+			       const struct bt_uuid *uuid)
+{
+	// Update end handle if provided
 	if (end_handle) {
 		discover->end_handle = end_handle;
 	}
-	LOG_DBG("s:%u e:%u", start_handle, end_handle);
-	discover->uuid = NULL;
-	discover->type = BT_GATT_DISCOVER_CHARACTERISTIC;
+
+	// Calculate start handle with automatic offset based on discovery type
+	if (current_handle) {
+		discover->start_handle = current_handle;
+		// Define handle offsets for different discovery types
+#define RAS_GATT_CCCD_OFFSET  2 // Traditional CCCD offset from characteristic handle
+#define RAS_GATT_CHARC_OFFSET 1 // Offset for next characteristic discovery
+
+		if (discovery_type == BT_GATT_DISCOVER_DESCRIPTOR) {
+			discover->start_handle += RAS_GATT_CCCD_OFFSET;
+		} else if (discovery_type == BT_GATT_DISCOVER_CHARACTERISTIC) {
+			discover->start_handle += RAS_GATT_CHARC_OFFSET;
+		} else {
+			LOG_WRN("bad disc type:%u", discovery_type);
+			// End discovery and validate discovery result
+			ras_c_validate_discovery(conn);
+			return -ENOTSUP;
+		}
+		LOG_DBG("hdl:%u->%u", current_handle, discover->start_handle);
+	}
+
+	// Validate handle boundaries
+	if (discover->start_handle > discover->end_handle) {
+		LOG_DBG("bad range:%u>%u", discover->start_handle, discover->end_handle);
+		// End discovery and validate discovery result
+		ras_c_validate_discovery(conn);
+		return -EINVAL;
+	}
+
+	// Set discovery parameters
+	discover->type = discovery_type;
+	discover->uuid = uuid;
+
+	LOG_DBG("disc t:%u %u->%u e:%u", discovery_type, current_handle, discover->start_handle,
+		discover->end_handle);
+
 	int err = bt_gatt_discover(conn, discover);
 	if (err) {
+		LOG_ERR("gatt disc fail:%d", err);
 		ras_c_discovery_cmpl(conn, err);
+		return err;
 	}
+	return 0;
 }
 
 static uint8_t ras_c_disc_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
@@ -509,36 +621,10 @@ static uint8_t ras_c_disc_cb(struct bt_conn *conn, const struct bt_gatt_attr *at
 	if (!ras_c) {
 		return BT_GATT_ITER_STOP;
 	}
+	LOG_DBG("cb %u %u", ras_c->discover.start_handle, ras_c->discover.end_handle);
 	if (!attr) {
-		LOG_DBG("null attr");
-		if (params->type == BT_GATT_DISCOVER_DESCRIPTOR) {
-			ras_c_discover_char(conn, &ras_c->discover, 0, 0);
-		} else {
-			uint8_t v_hdl_mask = 0;
-			uint8_t ccc_hdl_mask = 0;
-			for (uint8_t i = 0; i < RAS_CHARC_MAX_NUM; i++) {
-				if (ras_c->subscribe_params[i].value_handle) {
-					v_hdl_mask |= BIT(i);
-				}
-				if (ras_c->subscribe_params[i].ccc_handle) {
-					ccc_hdl_mask |= BIT(i);
-				}
-				LOG_DBG("i:%u v_hdl:%#x ccc_hdl:%#x", i,
-					ras_c->subscribe_params[i].value_handle,
-					ras_c->subscribe_params[i].ccc_handle);
-			}
-			int err = 0;
-			if ((v_hdl_mask & RAS_CHARC_MANDATORY_MASK) != RAS_CHARC_MANDATORY_MASK) {
-				err = -ENOTSUP;
-			}
-			if ((v_hdl_mask & RAS_CHARC_CCC_MANDATORY_MASK) !=
-			    RAS_CHARC_CCC_MANDATORY_MASK) {
-				err = -ENOTSUP;
-			}
-			LOG_DBG("mask:%#x %#lx %#x %#lx", v_hdl_mask, RAS_CHARC_MANDATORY_MASK,
-				ccc_hdl_mask, RAS_CHARC_CCC_MANDATORY_MASK);
-			ras_c_discovery_cmpl(conn, err);
-		}
+		LOG_DBG("disc done t:%u", params->type);
+		ras_c_validate_discovery(conn);
 		return BT_GATT_ITER_STOP;
 	}
 
@@ -546,32 +632,48 @@ static uint8_t ras_c_disc_cb(struct bt_conn *conn, const struct bt_gatt_attr *at
 	switch (params->type) {
 	case BT_GATT_DISCOVER_PRIMARY: {
 		const struct bt_gatt_service_val *svr_val = attr->user_data;
-		ras_c_discover_char(conn, &ras_c->discover, attr->handle + 1, svr_val->end_handle);
+		int err = ras_c_discover_gatt(conn, &ras_c->discover, attr->handle,
+					      svr_val->end_handle, BT_GATT_DISCOVER_CHARACTERISTIC,
+					      NULL);
+		if (err) {
+			LOG_ERR("charc disc fail:%d", err);
+		}
+		return BT_GATT_ITER_STOP;
 	} break;
 	case BT_GATT_DISCOVER_CHARACTERISTIC: {
 		const struct bt_gatt_chrc *chrc = attr->user_data;
 		if ((charc_idx = ras_c_get_handle_idx(chrc->uuid)) < RAS_CHARC_MAX_NUM) {
 			ras_c->subscribe_params[charc_idx].value_handle = chrc->value_handle;
-			// no CCC for the charc
+			ras_c->char_prop[charc_idx] = chrc->properties;
+
+			// Check if this characteristic needs CCC
 			if (!(RAS_CHARC_CCC_MASK & BIT(charc_idx))) {
 				return BT_GATT_ITER_CONTINUE;
 			}
+
 			static const struct bt_uuid_16 ccc_uuid =
 				BT_UUID_INIT_16(BT_UUID_GATT_CCC_VAL);
-			ras_c->discover.uuid = &ccc_uuid.uuid;
-			ras_c->discover.start_handle = attr->handle + 2;
-			ras_c->discover.type = BT_GATT_DISCOVER_DESCRIPTOR;
-			int err = bt_gatt_discover(conn, &ras_c->discover);
+			int err = ras_c_discover_gatt(conn, &ras_c->discover, attr->handle, 0,
+						      BT_GATT_DISCOVER_DESCRIPTOR, &ccc_uuid.uuid);
 			if (err) {
-				ras_c_discovery_cmpl(conn, err);
+				LOG_ERR("cccd disc fail:%d", err);
 			}
+			return BT_GATT_ITER_STOP;
 		} else {
 			return BT_GATT_ITER_CONTINUE;
 		}
 	} break;
 	case BT_GATT_DISCOVER_DESCRIPTOR: {
 		ras_c->subscribe_params[charc_idx].ccc_handle = attr->handle;
-		ras_c_discover_char(conn, &ras_c->discover, attr->handle + 1, 0);
+		LOG_DBG("cccd hdl:%u ch:%u", attr->handle, charc_idx);
+
+		// Continue characteristic discovery from current handle
+		int err = ras_c_discover_gatt(conn, &ras_c->discover, attr->handle, 0,
+					      BT_GATT_DISCOVER_CHARACTERISTIC, NULL);
+		if (err) {
+			LOG_ERR("cont charc disc fail:%d", err);
+		}
+		return BT_GATT_ITER_STOP;
 	} break;
 	default: {
 		return BT_GATT_ITER_CONTINUE;
@@ -580,6 +682,14 @@ static uint8_t ras_c_disc_cb(struct bt_conn *conn, const struct bt_gatt_attr *at
 	return BT_GATT_ITER_STOP;
 }
 
+/**
+ * RAS GATT Discovery State Machine:
+ *
+ * PRIMARY -> CHARACTERISTIC -> DESCRIPTOR -> CHARACTERISTIC -> ...
+ *     |            |              |              |
+ *     v            v              v              v
+ * Find service -> Find char -> Find CCCD -> Continue char discovery
+ */
 int bt_ras_client_discover(struct bt_conn *conn)
 {
 	if (!ras_c_cb || !ras_c_cb->discovery_done) {
@@ -588,6 +698,9 @@ int bt_ras_client_discover(struct bt_conn *conn)
 
 	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
 	if (!ras_c) {
+		return -EINVAL;
+	}
+	if (ras_c->state >= RAS_C_STATE_DISCOVERY) {
 		return -EINVAL;
 	}
 	ras_c_cleanup(ras_c);
@@ -620,34 +733,107 @@ int bt_ras_client_cb_register(const struct bt_ras_client_cb *cb)
 	return 0;
 }
 
+static int ras_c_check_indicate(struct bt_ras_client *ras_c, uint8_t char_idx,
+				enum bt_ras_client_subscribe_type sub_type)
+{
+	uint16_t available_methods = 0;
+	uint16_t selected_method = 0;
+
+	/* Determine what subscription methods the characteristic supports */
+	if (ras_c->char_prop[char_idx] & BT_GATT_CHRC_INDICATE) {
+		available_methods |= BT_GATT_CCC_INDICATE;
+	}
+	if (ras_c->char_prop[char_idx] & BT_GATT_CHRC_NOTIFY) {
+		available_methods |= BT_GATT_CCC_NOTIFY;
+	}
+
+	if (!available_methods) {
+		LOG_ERR("Characteristic %u does not support notifications or indications",
+			char_idx);
+		return -EOPNOTSUPP;
+	}
+
+	/* Select subscription method based on requested type */
+	switch (sub_type) {
+	case BT_RAS_CLIENT_SUB_AUTO:
+		/* Auto-detect: enable notification and indication both if all supported */
+		selected_method = available_methods;
+		break;
+
+	case BT_RAS_CLIENT_SUB_NOTIFY_ONLY:
+		if (!(available_methods & BT_GATT_CCC_NOTIFY)) {
+			LOG_ERR("Characteristic %u does not support notifications", char_idx);
+			return -EOPNOTSUPP;
+		}
+		selected_method = BT_GATT_CCC_NOTIFY;
+		break;
+
+	case BT_RAS_CLIENT_SUB_INDICATE_ONLY:
+		if (!(available_methods & BT_GATT_CCC_INDICATE)) {
+			LOG_ERR("Characteristic %u does not support indications", char_idx);
+			return -EOPNOTSUPP;
+		}
+		selected_method = BT_GATT_CCC_INDICATE;
+		break;
+
+	default:
+		LOG_ERR("Invalid subscription type: %d", sub_type);
+		return -EINVAL;
+	}
+
+	ras_c->subscribe_params[char_idx].value = selected_method;
+	LOG_DBG("Selected %s for characteristic %u",
+		(selected_method == BT_GATT_CCC_INDICATE) ? "indications" : "notifications",
+		char_idx);
+
+	return 0;
+}
+
 int bt_ras_client_ranging_data_ready_subscribe(struct bt_conn *conn,
-					       const bt_ras_client_ranging_data_ready_cb cb)
+					       const bt_ras_client_ranging_data_ready_cb cb,
+					       enum bt_ras_client_subscribe_type value)
 {
 	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
 	if (!ras_c) {
 		return -EINVAL;
 	}
-	int err = bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_RAGING_DATA_READY]);
+
+	int err = ras_c_check_indicate(ras_c, RAS_CHARC_RANGING_DATA_READY, value);
+	if (err) {
+		return err;
+	}
+
+	err = bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_RANGING_DATA_READY]);
 	if (err && (err != -EALREADY)) {
 		LOG_ERR("Ranging data ready subscribe err:%d", err);
 		return err;
 	}
 	ras_c->rd_ready_cb = cb;
-	atm_work_reschedule_for_app_work_q(
-		&ras_c->timeout_work,
-		K_SECONDS(CONFIG_RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC));
+
+	if (ras_c->cs_enabled) {
+		atm_work_reschedule_for_app_work_q(
+			&ras_c->timeout_work,
+			K_SECONDS(CONFIG_RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC));
+	}
+
 	return err;
 }
 
 int bt_ras_client_ranging_data_overwritten_subscribe(
-	struct bt_conn *conn, const bt_ras_client_ranging_data_overwritten_cb cb)
+	struct bt_conn *conn, const bt_ras_client_ranging_data_overwritten_cb cb,
+	enum bt_ras_client_subscribe_type value)
 {
 	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
 	if (!ras_c) {
 		return -EINVAL;
 	}
-	int err = bt_gatt_subscribe(conn,
-				    &ras_c->subscribe_params[RAS_CHARC_RAGING_DATA_OVERWRITTEN]);
+
+	int err = ras_c_check_indicate(ras_c, RAS_CHARC_RANGING_DATA_OVERWRITTEN, value);
+	if (err) {
+		return err;
+	}
+
+	err = bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_RANGING_DATA_OVERWRITTEN]);
 	if (err) {
 		LOG_ERR("Ranging data ow subscribe err:%d", err);
 		return err;
@@ -656,7 +842,44 @@ int bt_ras_client_ranging_data_overwritten_subscribe(
 	return err;
 }
 
-int bt_ras_client_on_demand_ranging_data_subscribe(struct bt_conn *conn)
+int bt_ras_client_ranging_data_ready_unsubscribe(struct bt_conn *conn)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
+	if (!ras_c) {
+		return -EINVAL;
+	}
+
+	int err = bt_gatt_unsubscribe(conn, &ras_c->subscribe_params[RAS_CHARC_RANGING_DATA_READY]);
+	if (err) {
+		LOG_ERR("Ranging data ready unsubscribe err:%d", err);
+		return err;
+	}
+
+	ras_c->rd_ready_cb = NULL;
+	k_work_cancel_delayable(&ras_c->timeout_work);
+	return err;
+}
+
+int bt_ras_client_ranging_data_overwritten_unsubscribe(struct bt_conn *conn)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
+	if (!ras_c) {
+		return -EINVAL;
+	}
+
+	int err = bt_gatt_unsubscribe(conn,
+				      &ras_c->subscribe_params[RAS_CHARC_RANGING_DATA_OVERWRITTEN]);
+	if (err) {
+		LOG_ERR("Ranging data overwritten unsubscribe err:%d", err);
+		return err;
+	}
+
+	ras_c->rd_overwritten_cb = NULL;
+	return err;
+}
+
+int bt_ras_client_on_demand_ranging_data_subscribe(struct bt_conn *conn,
+						   enum bt_ras_client_subscribe_type value)
 {
 	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
 	if (!ras_c) {
@@ -667,8 +890,13 @@ int bt_ras_client_on_demand_ranging_data_subscribe(struct bt_conn *conn)
 		return -EINVAL;
 	}
 #endif
-	int err =
-		bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_ONDEMAND_RANGING_DATA]);
+
+	int err = ras_c_check_indicate(ras_c, RAS_CHARC_ONDEMAND_RANGING_DATA, value);
+	if (err) {
+		return err;
+	}
+
+	err = bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_ONDEMAND_RANGING_DATA]);
 	if (err) {
 		LOG_ERR("Ranging data od subscribe err:%d", err);
 	}
@@ -697,13 +925,19 @@ int bt_ras_client_on_demand_ranging_data_unsubscribe(struct bt_conn *conn)
 	return err;
 }
 
-int bt_ras_client_cp_subscribe(struct bt_conn *conn)
+int bt_ras_client_cp_subscribe(struct bt_conn *conn, enum bt_ras_client_subscribe_type value)
 {
 	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
 	if (!ras_c) {
 		return -EINVAL;
 	}
-	int err = bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_CP]);
+
+	int err = ras_c_check_indicate(ras_c, RAS_CHARC_CP, value);
+	if (err) {
+		return err;
+	}
+
+	err = bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_CP]);
 	if (err) {
 		LOG_ERR("Ranging data cp subscribe err:%d", err);
 	}
@@ -738,13 +972,18 @@ int bt_ras_client_cp_get_ranging_data(struct bt_conn *conn, uint16_t ranging_cou
 	ras_c->err_status = 0;
 	ras_c->next_seg_cnt = 0;
 	ras_c->last_seg = false;
+
+	atm_work_reschedule_for_app_work_q(
+		&ras_c->timeout_work,
+		K_SECONDS(CONFIG_RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC));
 	return err;
 }
 
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
 int bt_ras_client_realtime_ranging_data_subscribe(
 	struct bt_conn *conn, struct net_buf_simple *ranging_data_out,
-	const bt_ras_client_get_realtime_ranging_data_cmpl_cb cb)
+	const bt_ras_client_get_realtime_ranging_data_cmpl_cb cb,
+	enum bt_ras_client_subscribe_type value)
 {
 	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
 	if (!ras_c || (ras_c->state != RAS_C_STATE_READ_FEATURES_DONE)) {
@@ -753,8 +992,13 @@ int bt_ras_client_realtime_ranging_data_subscribe(
 	if (!(ras_c->ras_features & RAS_FEAT_REALTIME_RD)) {
 		return -EOPNOTSUPP;
 	}
-	int err =
-		bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_REALTIME_RANGING_DATA]);
+
+	int err = ras_c_check_indicate(ras_c, RAS_CHARC_REALTIME_RANGING_DATA, value);
+	if (err) {
+		return err;
+	}
+
+	err = bt_gatt_subscribe(conn, &ras_c->subscribe_params[RAS_CHARC_REALTIME_RANGING_DATA]);
 	if (err && (err != -EALREADY)) {
 		LOG_ERR("Ranging data rt subscribe err:%d", err);
 		return err;
@@ -762,9 +1006,11 @@ int bt_ras_client_realtime_ranging_data_subscribe(
 	ras_c->state = RAS_C_STATE_REALTIME_MODE;
 	ras_c->realtime_buf_out = ranging_data_out;
 	ras_c->get_realtime_rd_cmpl_cb = cb;
-	atm_work_reschedule_for_app_work_q(
-		&ras_c->timeout_work,
-		K_SECONDS(CONFIG_RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC));
+	if (ras_c->cs_enabled) {
+		atm_work_reschedule_for_app_work_q(
+			&ras_c->timeout_work,
+			K_SECONDS(CONFIG_RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC));
+	}
 	return err;
 }
 

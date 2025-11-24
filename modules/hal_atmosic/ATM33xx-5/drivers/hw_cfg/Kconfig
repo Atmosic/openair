@@ -8,3 +8,4 @@ config ATM_HW_CFG
 	default y if BT
 	default y if ENTROPY_ATM_TRNG
 	default y if PM
+	select ATM_RESET

@@ -1,0 +1,13 @@
+sample:
+  description: minimal sample, the smallest possible Zephyr application
+  name: minimal
+tests:
+  samples.basic.minimal.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "LED 0: Using pulse width \\d+%"
+    tags:
+      - no_mcuboot

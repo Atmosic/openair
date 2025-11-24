@@ -24,7 +24,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/bluetooth/peripheral_accept_list --sysbuild -T samples.bluetooth.peripheral_accept_list.atm
+   west build -p always -b <BOARD> openair/samples/bluetooth/peripheral_accept_list --sysbuild -T samples.bluetooth.peripheral_accept_list.atm
 
 Flash command:
 

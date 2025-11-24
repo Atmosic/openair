@@ -24,7 +24,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/sensor/lis2dh --sysbuild -T samples.sensor.lis2dh.atm
+   west build -p always -b <BOARD> openair/samples/sensor/lis2dh --sysbuild -T samples.sensor.lis2dh.atm
 
 Flash command:
 

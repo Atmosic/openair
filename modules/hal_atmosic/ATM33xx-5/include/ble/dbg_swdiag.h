@@ -6,7 +6,7 @@
 * @brief SW profiling module
 *
 * Copyright (C) RivieraWaves 2009-2025
-* Release Identifier: eedc1896
+* Release Identifier: 4e03287e
 *
 *
 ****************************************************************************************
@@ -1531,8 +1531,9 @@ enum dbg_swdiag
 
 
 
+
     /// Number of SW profiles - to increase when new bank are added
-    DBG_SWDIAG_NB_PROFILES                           = 67,
+    DBG_SWDIAG_NB_PROFILES                           = 68,
 
 };
 

@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+include(${ZEPHYR_OPENAIR_MODULE_DIR}/cmake/common.cmake)
+
 add_subdirectory(lib)
 add_subdirectory(drivers)
 add_subdirectory(modules/hal_atmosic)

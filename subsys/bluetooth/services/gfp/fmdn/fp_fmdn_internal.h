@@ -73,6 +73,16 @@ typedef enum {
 	BCNA_OP_ACTIVATE_UTP,
 	/// utp mode deactivate
 	BCNA_OP_DEACTIVATE_UTP,
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	/// ranging capability request
+	BCNA_OP_RANGING_CAPABILITY = 0x0a,
+	/// ranging capability configuration request
+	BCNA_OP_RANGING_CAPABILITY_CONFIG,
+	/// ranging capability start request
+	BCNA_OP_RANGING_CAPABILITY_START,
+	/// ranging capability stop request
+	BCNA_OP_RANGING_CAPABILITY_STOP,
+#endif
 } bcna_operation_id_t;
 
 /// Gatt Beacon Action error id
@@ -128,6 +138,12 @@ typedef enum {
 	/// ring stopped by gatt request
 	FP_FMDN_RING_STATE_STOPED_GATT_REQUEST,
 } fp_fmdn_ring_state_t;
+
+#define FMDN_RING_OP_RING_RIGHT 0x01
+#define FMDN_RING_OP_RING_LEFT  0x02
+#define FMDN_RING_OP_RING_CASE  0x04
+#define FMDN_RING_OP_RING_ALL   0xFF
+#define FMDN_RING_OP_RING_STOP  0x00
 
 /// FP FMND ring valume level
 typedef enum {

@@ -4,7 +4,7 @@
 
 choice ATM_WIRELESS_STACK_CHOICE
 	prompt "BLE link layer wireless stack flavor of sysbuild"
-	default ATMWSTK_PD50
+	optional
 
 config ATMWSTK_PD50
 	bool "PD50 link controller"
@@ -17,6 +17,5 @@ config ATMWSTK_CPD200
 
 endchoice
 
-config ATMWSTK_FLAVOR
-	string "value of fixed BLE link layer wireless stack flavor of sysbuild"
-	default "FULL" if ATMWSTK_FULL
+config DTS_EXTRA_SELECT_CPD200_HINT
+	bool "In sysbuild, select CPD200 fixed image for platforms that need it"

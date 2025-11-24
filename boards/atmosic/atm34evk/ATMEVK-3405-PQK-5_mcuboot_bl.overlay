@@ -1,21 +1,7 @@
 /*
- * Copyright (c) 2022-2025 Atmosic
+ * Copyright (c) 2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <arm/atmosic/ATM34xx_mcuboot_partitions.dtsi>
-
-/ {
-	sram0: memory@30000000 {
-		device_type = "memory";
-		compatible = "mmio-sram";
-		reg = <0x30030000 0x10000>;
-	};
-};
-
-#ifdef USE_ATM_SECURE_DEBUG
-&uart0 {
-       status = "okay";
-};
-#endif
+#include <arm/atmosic/ATM34xx_mcuboot_bl.overlay>

@@ -6,7 +6,7 @@
  * @brief This file contains the definition related to message scheduling.
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -109,7 +109,7 @@ enum ke_msg_status_tag
  * @return The pointer to the ke_msg
  ****************************************************************************************
  */
-__INLINE struct ke_msg * ke_param2msg(void const *param_ptr)
+__RWIP_INLINE struct ke_msg * ke_param2msg(void const *param_ptr)
 {
     return (struct ke_msg*) (((uintptr_t)param_ptr) - offsetof(struct ke_msg, param));
 }
@@ -123,7 +123,7 @@ __INLINE struct ke_msg * ke_param2msg(void const *param_ptr)
  * @return The pointer to the param member
  ****************************************************************************************
  */
-__INLINE void * ke_msg2param(struct ke_msg const *msg)
+__RWIP_INLINE void * ke_msg2param(struct ke_msg const *msg)
 {
     return (void*) (((uintptr_t)msg) + offsetof(struct ke_msg, param));
 }

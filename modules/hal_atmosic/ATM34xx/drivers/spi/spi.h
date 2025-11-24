@@ -68,7 +68,7 @@ spi_dev_t spi_radio;
 #ifdef CFG_ROM
 static inline
 #else
-__INLINE
+__STATIC_FORCEINLINE
 #endif
 void
 do_spi_transaction(const spi_dev_t *spi, bool csn_stays_low,

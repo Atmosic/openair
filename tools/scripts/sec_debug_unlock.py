@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-'''
+"""
 @file sec_debug_unlock.py
 
 @brief Secure Debug Authentication tool
 
 Copyright (C) Atmosic 2023-2025
-'''
+"""
 
 import serial
 import argparse
@@ -57,9 +57,10 @@ def send(ser, command):
 def load_key(keyfile, passwd):
     raw_key = keyfile.read()
     key = serialization.load_pem_private_key(
-        raw_key, password=passwd, backend=default_backend())
+        raw_key, password=passwd, backend=default_backend()
+    )
     if isinstance(key, ec.EllipticCurvePrivateKey):
-        if key.curve.name != 'secp256r1':
+        if key.curve.name != "secp256r1":
             raise Exception("Unsupported EC curve: " + key.curve.name)
         if key.key_size != 256:
             raise Exception("Unsupported EC size: " + key.key_size)
@@ -69,8 +70,9 @@ def load_key(keyfile, passwd):
 def sign(key, challenge):
     sig = key.sign(data=challenge, signature_algorithm=ec.ECDSA(SHA256()))
     r, s = decode_dss_signature(sig)
-    signature = r.to_bytes(int(key.key_size / 8), 'big') + \
-        s.to_bytes(int(key.key_size / 8), 'big')
+    signature = r.to_bytes(int(key.key_size / 8), "big") + s.to_bytes(
+        int(key.key_size / 8), "big"
+    )
     return signature
 
 
@@ -82,8 +84,7 @@ def unlock(ser, key, response, static=False):
         cmd_rsp = DEVICE_COMMAND_STATIC_RESPONSE
     else:
         cmd_rsp = DEVICE_COMMAND_RESPONSE
-    status = send(ser, cmd_rsp + b" " +
-                  base64.b64encode(signature) + b"\n")
+    status = send(ser, cmd_rsp + b" " + base64.b64encode(signature) + b"\n")
     return status.strip() == DEVICE_STRING_UNLOCKED
 
 
@@ -92,11 +93,13 @@ def command_unlock(args):
         key = load_key(args.key, args.passwd)
         # request a challenge
         response = send(ser, DEVICE_COMMAND_REQUEST)
-        if response[0:len(DEVICE_STRING_CHALLENGE)] == DEVICE_STRING_CHALLENGE:
+        if response[0 : len(DEVICE_STRING_CHALLENGE)] == DEVICE_STRING_CHALLENGE:
             print("Unlock Challenge")
             return unlock(ser, key, response)
-        elif response[0:len(DEVICE_STRING_STATIC_CHALLENGE)
-                      ] == DEVICE_STRING_STATIC_CHALLENGE:
+        elif (
+            response[0 : len(DEVICE_STRING_STATIC_CHALLENGE)]
+            == DEVICE_STRING_STATIC_CHALLENGE
+        ):
             print("Unlock Static Challenge")
             return unlock(ser, key, response, True)
         else:
@@ -105,18 +108,33 @@ def command_unlock(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Unlock device debug port')
-    parser.add_argument('-k', '--key', dest='key',
-                        help='debug private key pem file', required=True,
-                        type=argparse.FileType('rb'))
-    parser.add_argument('--password', dest='passwd',
-                        help='private key password')
-    parser.add_argument('-p', '--port', dest='port', help='serial port',
-                        required=True)
-    parser.add_argument('-b', '--baud', dest='baud', help='baud rate',
-                        required=False, default=115200, type=int)
-    parser.add_argument('-v', '--verbose', dest='verbose',
-                        help='show device traffic', action='store_true')
+    parser = argparse.ArgumentParser(description="Unlock device debug port")
+    parser.add_argument(
+        "-k",
+        "--key",
+        dest="key",
+        help="debug private key pem file",
+        required=True,
+        type=argparse.FileType("rb"),
+    )
+    parser.add_argument("--password", dest="passwd", help="private key password")
+    parser.add_argument("-p", "--port", dest="port", help="serial port", required=True)
+    parser.add_argument(
+        "-b",
+        "--baud",
+        dest="baud",
+        help="baud rate",
+        required=False,
+        default=115200,
+        type=int,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        help="show device traffic",
+        action="store_true",
+    )
     args = parser.parse_args()
     if hasattr(args, "verbose") and args.verbose:
         verbose = True

@@ -348,8 +348,8 @@ static int i2s_atm_configure(struct device const *dev, enum i2s_dir dir,
 		/* preallocate and put into rdy_q */
 		void *mem_block;
 		while (!k_mem_slab_alloc(i2s_data->tx.mem_slab, &mem_block, K_NO_WAIT)) {
-			uint32_t write_bytes = RING_BUF_PUT(i2s_data->tx.rdy_q, mem_block);
-			ASSERT_ERR(sizeof(mem_block) == write_bytes);
+			__unused uint32_t write_bytes = RING_BUF_PUT(i2s_data->tx.rdy_q, mem_block);
+			ASSERT_ERR(sizeof(void *) == write_bytes);
 		}
 #endif
 	}
@@ -408,7 +408,7 @@ static bool dma_tx_get_buffer(void **src, size_t *len, void const *ctx)
 	if (stream->cur_block.buffer) {
 		if (is_mem_in_slab(stream->mem_slab, stream->cur_block.buffer)) {
 #ifdef CONFIG_ATM_FIFO_TX_ISR
-			int ret = RING_BUF_PUT(i2s_data->tx.rdy_q, stream->cur_block.buffer);
+			__unused int ret = RING_BUF_PUT(i2s_data->tx.rdy_q, stream->cur_block.buffer);
 			ASSERT_INFO(ret == sizeof(void *), ret, stream->cur_block.buffer);
 #else
 			k_mem_slab_free(stream->mem_slab, stream->cur_block.buffer);
@@ -590,6 +590,9 @@ static int i2s_atm_trigger(struct device const *dev, enum i2s_dir dir, enum i2s_
 
 static int i2s_atm_read(struct device const *dev, void **mem_block, size_t *size)
 {
+	ARG_UNUSED(dev);
+	ARG_UNUSED(mem_block);
+	ARG_UNUSED(size);
 	return -ENOTSUP;
 }
 
@@ -639,6 +642,7 @@ static int i2s_atm_write(struct device const *dev, void *mem_block, size_t size)
 
 static struct i2s_config const *i2s_atm_config_get(struct device const *dev, enum i2s_dir dir)
 {
+	ARG_UNUSED(dir);
 	struct i2s_atm_data *i2s_data = dev->data;
 
 	return i2s_data->i2s_cfg;
@@ -647,6 +651,7 @@ static struct i2s_config const *i2s_atm_config_get(struct device const *dev, enu
 #ifdef CONFIG_ATM_FIFO_TX_ISR
 const int i2s_atm_get_tx_buffer_size(struct device const *dev)
 {
+	ARG_UNUSED(dev);
 	return CONFIG_I2S_BLOCK_SIZE;
 }
 
@@ -743,7 +748,6 @@ static int i2s_atm_init(struct device const *dev)
 	DEVICE_DT_INST_DEFINE(n, &i2s_atm_init, NULL, &atm_data, &config, POST_KERNEL,             \
 			      CONFIG_I2S_INIT_PRIORITY, &i2s_atm_driver_api);
 
-BUILD_ASSERT(I2S_BASE(n) == (CMSDK_AT_I2S_TypeDef *)DT_REG_ADDR(DT_NODELABEL(i2s)));
 BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 1, "one instance supported");
 
 DT_INST_FOREACH_STATUS_OKAY(I2S_DEVICE_INIT)

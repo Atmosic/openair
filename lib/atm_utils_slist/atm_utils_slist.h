@@ -21,10 +21,10 @@
  *
  */
 
+#include "arch.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "compiler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -116,7 +116,7 @@ void atm_slist_list_append(atm_slist_t *dst, atm_slist_t *src);
  * @return The pointer to the next node
  */
 __NONNULL_ALL
-__INLINE atm_slist_node_t *atm_slist_next(atm_slist_node_t const *ref_node)
+__STATIC_FORCEINLINE atm_slist_node_t *atm_slist_next(atm_slist_node_t const *ref_node)
 {
     return ref_node->next;
 }
@@ -128,7 +128,7 @@ __INLINE atm_slist_node_t *atm_slist_next(atm_slist_node_t const *ref_node)
  * @return The pointer to the head
  */
 __NONNULL_ALL
-__INLINE atm_slist_node_t *atm_slist_head(atm_slist_t const *list)
+__STATIC_FORCEINLINE atm_slist_node_t *atm_slist_head(atm_slist_t const *list)
 {
     return list->head;
 }
@@ -140,7 +140,7 @@ __INLINE atm_slist_node_t *atm_slist_head(atm_slist_t const *list)
  * @return True if the list is empty
  */
 __NONNULL_ALL
-__INLINE bool atm_slist_is_empty(atm_slist_t const *list)
+__STATIC_FORCEINLINE bool atm_slist_is_empty(atm_slist_t const *list)
 {
     return (list->head == NULL);
 }
@@ -152,7 +152,7 @@ __INLINE bool atm_slist_is_empty(atm_slist_t const *list)
  * @return The pointer to the head
  */
 __NONNULL_ALL
-__INLINE atm_slist_node_t *atm_slist_pop_head(atm_slist_t *list)
+__STATIC_FORCEINLINE atm_slist_node_t *atm_slist_pop_head(atm_slist_t *list)
 {
     atm_slist_node_t *head = atm_slist_head(list);
     atm_slist_remove(list, head);

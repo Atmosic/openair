@@ -120,7 +120,7 @@ spi_pmuradio_write_word(const spi_dev_t *spi, uint8_t block, uint8_t addr,
 #ifdef SPI_TRANS_WFI
 #include "vectors.h"
 
-__INLINE void spi_interrupt_handler(CMSDK_AT_APB_SPI_TypeDef *base)
+__STATIC_FORCEINLINE void spi_interrupt_handler(CMSDK_AT_APB_SPI_TypeDef *base)
 {
     // Nothing to do here but clear the interrupt source.
     uint32_t status = base->INTERRUPT_STATUS;

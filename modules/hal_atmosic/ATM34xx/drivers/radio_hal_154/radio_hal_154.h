@@ -1394,13 +1394,13 @@ int16_t atm_mac_154_get_retry_backoff_period_count(void);
  * @return filter result @ref atm_mac_154_filter_result_t
  */
 atm_mac_154_filter_result_t atm_mac_154_process_header(uint8_t const *packet,
-    uint8_t len_remaining, atm_mac_154_header_t *header);
+    uint8_t len_remaining, atm_mac_154_header_t volatile *header);
 
 /**
  * @brief Get last received packet header.
- * @return pointer to @ref atm_mac_154_header_t
+ * @param[in/out] header Pointer to header data
  */
-atm_mac_154_header_t *atm_mac_154_get_rx_header(void);
+void atm_mac_154_get_rx_header(atm_mac_154_header_t *header);
 /**@}*/
 #endif
 

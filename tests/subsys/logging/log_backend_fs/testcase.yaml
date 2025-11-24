@@ -1,0 +1,5 @@
+tests:
+  tests.subsys.logging.log_backend_fs.atm:
+    sysbuild: true
+    tags:
+      - no_mcuboot

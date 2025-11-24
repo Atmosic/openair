@@ -7,7 +7,7 @@
  *        definitions for use by all modules in RW stack.
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */
@@ -430,8 +430,6 @@ enum hci_opcode
     HCI_HOLD_MODE_CMD_OPCODE                  = 0x0801,
     HCI_SNIFF_MODE_CMD_OPCODE                 = 0x0803,
     HCI_EXIT_SNIFF_MODE_CMD_OPCODE            = 0x0804,
-    HCI_PARK_STATE_CMD_OPCODE                 = 0x0805,
-    HCI_EXIT_PARK_STATE_CMD_OPCODE            = 0x0806,
     HCI_QOS_SETUP_CMD_OPCODE                  = 0x0807,
     HCI_ROLE_DISCOVERY_CMD_OPCODE             = 0x0809,
     HCI_SWITCH_ROLE_CMD_OPCODE                = 0x080B,
@@ -737,6 +735,7 @@ enum hci_opcode
 
 
 
+
     ///Debug commands - OGF = 0x3F (spec)
     HCI_DBG_RD_MEM_CMD_OPCODE                      = 0xFC01,
     HCI_DBG_WR_MEM_CMD_OPCODE                      = 0xFC02,
@@ -995,6 +994,7 @@ enum hci_le_evt_subcode
     #if (BLE_CIS)
     HCI_LE_CIS_ESTABLISHED_V2_EVT_SUBCODE      = 0x2A,
     #endif // (BLE_CIS)
+
 };
 
 /*@TRACE*/
@@ -1072,8 +1072,8 @@ typedef struct hci_sync_data
     uint16_t conhdl_psf;
     /// length of the data
     uint8_t length;
-    /// EM buffer pointer
-    uint16_t buf_ptr;
+    /// Memory Pointer address
+    uint32_t buf_ptr;
 } hci_sync_data_t;
 
 #if BLE_ISO_PRESENT
@@ -4726,7 +4726,6 @@ typedef struct hci_le_rd_rslv_list_size_cmd_cmp_evt
     uint8_t size;
 } hci_le_rd_rslv_list_size_cmd_cmp_evt_t;
 
-
 /// HCI write authenticated payload timeout command
 /*@TRACE*/
 typedef struct hci_wr_auth_payl_to_cmd
@@ -5374,7 +5373,7 @@ typedef struct hci_le_enh_rd_tx_pwr_lvl_cmd
 {
     /// Connection handle
     uint16_t conhdl;
-    /// PHY (@see enum le_phy_pwr_value)
+    /// PHY (@see enum le_phy_value)
     uint8_t phy;
 } hci_le_enh_rd_tx_pwr_lvl_cmd_t;
 
@@ -5386,7 +5385,7 @@ typedef struct hci_le_enh_rd_tx_pwr_lvl_cmd_cmp_evt
     uint8_t status;
     /// Connection handle
     uint16_t conhdl;
-    /// PHY (@see enum le_phy_pwr_value)
+    /// PHY (@see enum le_phy_value)
     uint8_t phy;
     /// Current transmit power level (dBm)
     int8_t curr_tx_pwr_lvl;
@@ -5400,7 +5399,7 @@ typedef struct hci_le_rd_remote_tx_pwr_lvl_cmd
 {
     /// Connection handle
     uint16_t conhdl;
-    /// PHY (@see le_phy_pwr_value)
+    /// PHY (@see le_phy_value)
     uint8_t phy;
 } hci_le_rd_remote_tx_pwr_lvl_cmd_t;
 
@@ -5500,7 +5499,7 @@ typedef struct hci_le_tx_power_rep_evt
     uint16_t conhdl;
     /// Reason (@see enum pwr_report_reason)
     uint8_t reason;
-    /// PHY (@see enum le_phy_pwr_value)
+    /// PHY (@see enum le_phy_value)
     uint8_t phy;
     /// Transmit Power level (dBm)
     int8_t tx_pwr;
@@ -6851,7 +6850,7 @@ typedef struct hci_le_set_cig_params_cmd
     /// Total number of CISs in the CIG being added or modified. (Range 0x01-0x10)
     uint8_t cis_count;
     /// CIS Parameters
-    struct hci_le_cis_param params[0x10];
+    struct hci_le_cis_param params[BLE_CIS_MAX_CNT];
 } hci_le_set_cig_params_cmd_t;
 
 /// Command Complete event of HCI_LE_SET_CIG_PARAMS_CMD
@@ -6866,7 +6865,7 @@ typedef struct hci_le_set_cig_params_cmd_cmp_evt
     uint8_t cis_count;
     /// List of connection handles of CISs in the CIG. The connection handle list order is the same as the list order
     /// of the CISs in the command  (Range 0x0000-0x0EFF)
-    uint16_t conhdl[0x10];
+    uint16_t conhdl[BLE_CIS_MAX_CNT];
 } hci_le_set_cig_params_cmd_cmp_evt_t;
 
 /// Description of CIS parameters
@@ -6925,7 +6924,7 @@ typedef struct hci_le_set_cig_params_test_cmd
     /// Total number of CISs in the CIG being added or modified. (Range 0x00-0x10)
     uint8_t cis_count;
     /// CIS Parameters
-    struct hci_le_cis_test_param params[0x10];
+    struct hci_le_cis_test_param params[BLE_CIS_MAX_CNT];
 } hci_le_set_cig_params_test_cmd_t;
 
 /// Command Complete event of HCI_LE_SET_CIG_PARAMS_TEST_CMD
@@ -6940,7 +6939,7 @@ typedef struct hci_le_set_cig_params_test_cmd_cmp_evt
     uint8_t cis_count;
     /// List of connection handles of CISs in the CIG. The connection handle list order is the same as the list order
     /// of the CISs in the command  (Range 0x0000-0x0EFF)
-    uint16_t conhdl[0x10];
+    uint16_t conhdl[BLE_CIS_MAX_CNT];
 } hci_le_set_cig_params_test_cmd_cmp_evt_t;
 
 /// Create CIS parameter
@@ -7002,6 +7001,7 @@ typedef struct hci_le_reject_cis_req_cmd
     /// The reason for rejecting the Connected Isochronous Stream
     uint8_t reason;
 } hci_le_reject_cis_req_cmd_t;
+
 #endif // (BLE_CIS)
 
 #if (BLE_BIS)
@@ -7391,7 +7391,7 @@ typedef struct hci_le_cis_request_evt
 
 /// Event indicates that the Connected Isochronous Stream with the Connection_Handle has been established.
 /*@TRACE*/
-typedef struct hci_le_cis_established_v2_evt
+typedef struct hci_le_cis_established_evt
 {
     ///LE Subevent code
     uint8_t subcode;
@@ -7429,6 +7429,8 @@ typedef struct hci_le_cis_established_v2_evt
     uint16_t  max_pdu_s2m;
     /// ISO interval (1.25ms unit, range: 5ms to 4s)
     uint16_t iso_interval;
+
+    /* Start of v2 event parameters. */
     /// Time, in microseconds, between the start of consecutive subevents in a CIS event (Range: 0x000190 to ISO_Interval×1250 – 1 )
     uint32_t sub_interval;
     /// Maximum size, in octets, of the payload from the Central's Host (Range: 0x0000-0x0FFF)
@@ -7441,7 +7443,8 @@ typedef struct hci_le_cis_established_v2_evt
     uint32_t sdu_Interval_s2m;
     /// ISOAL Framing mode, 0: Unframed, 1: Framed
     uint8_t framing;
-} hci_le_cis_established_v2_evt_t;
+
+} hci_le_cis_established_evt_t;
 #endif // (BLE_CIS)
 
 #if (BLE_BIS)
@@ -7695,6 +7698,7 @@ typedef struct hci_vs_bt_remove_audio_data_path_cmd
     uint8_t  data_path_direction;
 } hci_vs_bt_remove_audio_data_path_cmd_t;
 #endif // (MAX_NB_SYNC || (0))
+
 
 
 

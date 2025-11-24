@@ -10,6 +10,7 @@
 #endif
 #include <arm/atmosic/ATM34xx.dtsi>
 #include <dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <atm34_pinmux.h>
 #define STACKED_FLASH_WQK
 #include "stacked_flash.dtsi"
@@ -20,20 +21,23 @@
 
 	chosen {
 		zephyr,console = &uart1;
-		zephyr,shell-uart = &uart1;
 		zephyr,uart-mcumgr = &uart0;
-		zephyr,bt-mon-uart = &uart1;
 		zephyr,sram = &sram0;
 		zephyr,flash-controller = &rram_controller;
 		zephyr,flash = &rram0;
-		zephyr,code-partition = &spe_partition;
 		zephyr,entropy = &trng;
+#ifdef ATM_DTS_USER_APP
+		zephyr,shell-uart = &uart1;
+		zephyr,bt-mon-uart = &uart1;
+		zephyr,bt-c2h-uart = &uart0;
+#endif
 	};
 
+#ifdef ATM_DTS_USER_APP
 	leds {
 		compatible = "gpio-leds";
 		led0: led1_g {
-			gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
 			label = "Green LED1";
 		};
 		led1: led1_r {
@@ -44,24 +48,20 @@
 			gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
 			label = "Green LED2";
 		};
-		led3: led2_r {
-			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
-			label = "Red LED2";
-		};
 	};
 
 	pwmleds {
 		compatible = "pwm-leds";
 		pwm_led0: pwm_led_0 {
-			pwms = <&pwm3 3 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
-			label = "Red LED1";
+			pwms = <&pwm1 1 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+			label = "Green LED";
 		};
 	};
 
 	buzzers {
 		pwm_buzzer0: pwm_buzzer_0 {
-			compatible = "pwm-buzzer";
-			pwms = <&pwm3 3 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
+			compatible = "atmosic,atm3x-pwm-buzzer";
+			pwms = <&pwm1 1 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
 			pulse = <PWM_USEC(500)>;
 		};
 	};
@@ -71,6 +71,7 @@
 		button0: button_0 {
 			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
 			label = "Button1";
+			zephyr,code = <INPUT_KEY_0>;
 		};
 	};
 
@@ -83,8 +84,50 @@
 		pwm-led0 = &pwm_led0;
 		sw0 = &button0;
 	};
+
+	/* mikroBUS connector support */
+	mikrobus_header: mikrobus-connector {
+		compatible = "mikro-bus";
+		#gpio-cells = <2>;
+		gpio-map-mask = <0xffffffff 0xffffffc0>;
+		gpio-map-pass-thru = <0 0x3f>;
+		gpio-map =	<0 0 &gpio0 4 0>,	/* AN   -> P4  */
+				<1 0 &gpio0 21 0>,	/* RST  -> P21 */
+				<2 0 &gpio0 20 0>,	/* CS   -> P20 */
+				<3 0 &gpio0 17 0>,	/* SCK  -> P17 */
+				<4 0 &gpio0 19 0>,	/* MISO -> P19 */
+				<5 0 &gpio0 18 0>,	/* MOSI -> P18 */
+							/* +3.3V */
+							/* GND */
+				<6 0 &gpio0 22 0>,	/* PWM  -> P22 */
+				<7 0 &gpio0 14 0>,	/* INT  -> P14 */
+				<8 0 &gpio0 30 0>,	/* RX   -> P30 */
+				<9 0 &gpio0 15 0>,	/* TX   -> P15 */
+				<10 0 &gpio0 12 0>,	/* SCL  -> P12 */
+				<11 0 &gpio0 13 0>;	/* SDA  -> P13 */
+							/* +5V */
+							/* GND */
+	};
+#endif
 };
 
+&uart1 {
+	tx-pin = <27>;
+};
+
+&uart0 {
+	rx-pin = <30>;
+	tx-pin = <15>;
+	rts-pin = <13>;
+	cts-pin = <12>;
+};
+
+&pmu {
+	vddio-type = <1>;
+	vddpa-src = <0>;
+};
+
+#ifdef ATM_DTS_USER_APP
 &pinctrl {
 	i2c0_sda_default: i2c0_sda_default {
 		pinmux = <13 PINMUX_I2C0_SDA>;
@@ -101,38 +144,61 @@
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 };
 
-&pwm3 {
-	pin = <29>;
+&pwm1 {
+	pin = <25>;
 	status = "okay";
 };
 
 &adc {
 	ch-cell = <1>;
+	ch-store = <2>;
 	ch-batt = <11>;
+	ch-p4single = <7>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1_8";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+
+	channel@b {
+		reg = <11>;
+		zephyr,gain = "ADC_GAIN_1_2";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+
+	channel@7 {
+		reg = <7>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
 };
 
-&uart0 {
-	rx-pin = <30>;
-	tx-pin = <15>;
-	rts-pin = <13>;
-	cts-pin = <12>;
-};
-
-&uart1 {
-	tx-pin = <27>;
-};
-
-&pmu {
-	vddio-type = <1>;
-	vddpa-src = <0>;
+&spi0 {
+	clk-pin = <17>;
+	cs-pin = <20>;
+	mosi-pin = <18>;
+	miso-pin = <19>;
 };
 
 &atm_antenna {
 	ant-out3-pin = <3>;
+	power-source-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
 	mdm-ant-rx-3to0 = <0x00000800>;
 	mdm-ant-tx-3to0 = <0x00000800>;
 	mdm-ant-idle = <0x0>;
+	rf-delay-one-eighth-ns = <10>;
 	status = "okay";
 };
 
 arduino_i2c: &i2c0 {};
+mikrobus_i2c: &i2c0 {};
+mikrobus_spi: &spi0 {};
+mikrobus_pwm: &pwm6 {};
+#endif

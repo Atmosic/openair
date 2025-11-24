@@ -6,7 +6,7 @@
 * @brief RW IP SW main module
 *
 * Copyright (C) RivieraWaves 2009-2025
-* Release Identifier: eedc1896
+* Release Identifier: 4e03287e
 *
 *
 ****************************************************************************************
@@ -34,7 +34,7 @@
 
 #include <stdint.h>               // standard integer definitions
 #include <stdbool.h>              // standard boolean definitions
-#include "compiler.h"             // for __INLINE
+#include "compiler.h"             // for __RWIP_INLINE
 
 #if (EMB_PRESENT)
 #include "co_bt_defines.h"        // Bluetooth defines
@@ -942,6 +942,19 @@ uint16_t rwip_active_drift_get(void);
 uint8_t rwip_sca_get(void);
 
 /**
+ ****************************************************************************************
+ * @brief Compute maximum drift expected between two device synchronization points.
+ *
+ * @param[in] peer_sca     Peer device sleep clock accuracy in ppm
+ * @param[in] interval_hs  Interval in half slots between two device synchronization
+ * @param[in] active_clock True if value computed when using active clock, using low power clock otherwise
+ *
+ * @return Maximum drift between two devices in half microseconds.
+ ****************************************************************************************
+ */
+uint32_t rwip_max_drift_compute(uint16_t peer_sca, uint32_t interval_hs, bool active_clock);
+
+/**
  * @brief Configure minimum wake-up time
  *
  * @param[in] twmin  Value in us
@@ -1016,44 +1029,43 @@ uint32_t rwip_bt_time_to_us(rwip_time_t bt_time);
 #if (BLE_CIS)
 /**
  ****************************************************************************************
- * @brief Override CIS parameter selection for specified CIS index and direction of CIG parameters.
- * Responsibility of customer to select compatible parameter combinations.
+ * @brief CIS parameter selection for specified CIS index and direction of CIG parameters.
+ * A default parameter selection is provided, this can be modified for specific use case.
  *
  * @param[in] p_cmd         CIG Parameters.
  * @param[in] cis_idx       CIS index.
  * @param[in] dir           Direction (0:Tx, 1:Rx).
- * @param[out] framing      Framing (see #iso_frame enumeration).
+ * @param[in] sdu_interval  SDU interval in microsecond
+ * @param[in] max_sdu       Max SDU size in bytes.
+ * @param[in,out] framing   Framing (see #iso_frame enumeration).
  * @param[out] iso_intv     ISO interval (in units of 1.25ms).
  * @param[out] bn           Burst number.
  * @param[out] ft           Flush timeout (in multiples of the ISO_Interval).
  * @param[out] max_pdu      Maximum PDU size (in bytes).
  * @param[out] nse          Number of sub-events.
  *
- * @return True to override, False otherwise.
+ * @return Execution status (see #co_error enumeration).
  ****************************************************************************************
  */
-bool rwip_cis_param_get(const hci_le_set_cig_params_cmd_t *p_cmd, uint8_t cis_idx, uint8_t dir, uint8_t* framing, uint16_t* iso_intv, uint8_t* bn, int8_t* ft, uint8_t* max_pdu, uint8_t* nse);
+uint8_t rwip_cis_param_get(const hci_le_set_cig_params_cmd_t *p_cmd, uint8_t cis_idx, uint8_t dir, uint32_t sdu_interval, uint16_t max_sdu,
+                           uint8_t* framing, uint16_t* iso_intv, uint8_t* bn, int8_t* ft, uint8_t* max_pdu, uint8_t* nse);
 #endif //(BLE_CIS)
 
 #if (BLE_BIS)
 /**
  ****************************************************************************************
- * @brief Override BIS parameter selection.
- * Responsibility of customer to select compatible parameter combinations.
+ * @brief BIS parameter selection.
+ * A default parameter selection is provided, this can be modified for specific use case.
  *
- * @param[in] p_param       BIG Parameters.
- * @param[out] framing      Framing (see #iso_frame enumeration).
- * @param[out] iso_intv     ISO interval (in units of 1.25ms).
- * @param[out] max_pdu      Maximum PDU size (in bytes).
- * @param[out] bn           Burst number.
- * @param[out] nse          Number of sub-events.
- * @param[out] irc          Immediate repetition Count.
- * @param[out] pto          PreTransmission offset.
+ * @param[in] p_param       BIG Parameters Input.
+ * @param[out] p_comp       BIG Parameters to select (based on BIG test structure)
+ * @param[in] subevt_margin Sub-event margin between ISO sub-events, in units of us.
  *
- * @return True to override, False otherwise.
+ * @return Execution status (see #co_error enumeration).
  ****************************************************************************************
  */
-bool rwip_bis_param_get(struct hci_le_create_big_cmd const *p_param, uint8_t* framing, uint16_t* iso_intv, uint8_t* max_pdu, uint8_t* bn, uint8_t* nse, uint8_t* irc, uint8_t* pto);
+uint8_t rwip_bis_param_get(hci_le_create_big_cmd_t const *p_param, hci_le_create_big_test_cmd_t *p_comp,
+                        uint32_t subevt_margin);
 #endif //(BLE_BIS)
 
 

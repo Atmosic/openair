@@ -19,6 +19,8 @@
 #include <string.h>
 #include <errno.h>
 #include <zephyr/drivers/flash.h>
+#define FLASH_ATM_INTERNAL_GUARD
+#include "flash_atm_memops.h"
 #include <soc.h>
 
 #if DT_NODE_EXISTS(DT_NODELABEL(flash_controller))
@@ -71,7 +73,7 @@ static int flash_atm_rram_write(struct device const *dev, off_t addr, void const
 		return -EIO;
 	}
 
-	memcpy((void *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), data, len);
+	flash_atm_memcpy_slow_dest((void *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), data, len);
 
 	rram_prot_write_disable(addr, len);
 	ICACHE_FLUSH();
@@ -90,7 +92,7 @@ static int flash_atm_rram_erase(struct device const *dev, off_t addr, size_t siz
 		return -EIO;
 	}
 
-	memset((void *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), 0xff, size);
+	flash_atm_memset_slow_dest((void *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), 0xff, size);
 
 	rram_prot_write_disable(addr, size);
 	ICACHE_FLUSH();

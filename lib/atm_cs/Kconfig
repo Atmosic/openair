@@ -1,0 +1,51 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_CS
+	bool "Atmosic Reflector with Ranging Responder Library"
+	select BT_CHANNEL_SOUNDING
+	select BT_RAS
+	select ATM_LDO_MODE
+	select APP_WORK_Q
+	select ATM_SETTINGS if !ATM_CS_ADV_BT_ID_DEFAULT
+	depends on SOC_SERIES_ATM34
+	help
+	  Enable Atmosic Channel Sounding (CS) reflector functionality.
+	  This provides ranging capabilities using Bluetooth Channel Sounding
+	  for precise distance measurement applications.
+
+if ATM_CS
+
+module = ATM_CS
+module-str = atm_cs
+source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
+config ATM_CS_ADV_BT_ID_DEFAULT
+	bool "CS Advertising on default BT ID"
+	default y
+	help
+	  Use default BT ID for CS advertising. If not, CS will create it's own BT ID.
+
+config ATM_CS_CUSTOM_BT_ADDR
+	bool "Enable custom Bluetooth device address for testing or development purposes"
+	depends on !ATM_CS_ADV_BT_ID_DEFAULT
+	help
+	  Enable custom Bluetooth device address for testing or development purposes.
+
+config ATM_CS_CUSTOM_BT_ADDR_VALUE
+	string "Custom Bluetooth address (MAC format: XX:XX:XX:XX:XX:XX)"
+	depends on ATM_CS_CUSTOM_BT_ADDR
+	default "ED:11:11:11:6E:EF"
+	help
+	  Custom Bluetooth address (MAC format: XX:XX:XX:XX:XX:XX)
+
+config ATM_CS_ADV_TIMEOUT_CS
+	int "CS Advertising timeout time(cs)"
+	range 0 360000
+	default 0
+	help
+	  Advertising timeout in centiseconds (0 = no timeout).
+	  When non-zero, advertising will stop after this duration.
+
+endif # ATM_CS

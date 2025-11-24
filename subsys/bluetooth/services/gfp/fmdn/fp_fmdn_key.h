@@ -29,12 +29,6 @@
 extern "C" {
 #endif
 
-#define FMDN_MEMCPY_SHIFT(dst, src, size, offset)                                                  \
-	do {                                                                                       \
-		memcpy((dst) + (offset), src, size);                                               \
-		offset += size;                                                                    \
-	} while (0)
-
 /// FMDN Battery Level
 typedef enum {
 	/// Index of battery level not support
@@ -42,9 +36,9 @@ typedef enum {
 	/// Index of battery level normal
 	FP_FMDN_BATTERY_LEVEL_NORMAL = 0x01,
 	/// Index of battery level low
-	FP_FMDN_BATTERY_LEVEL_LOW = 0x10,
+	FP_FMDN_BATTERY_LEVEL_LOW = 0x02,
 	/// Index of battery level critical
-	FP_FMDN_BATTERY_LEVEL_CRITICAL = 0x11,
+	FP_FMDN_BATTERY_LEVEL_CRITICAL = 0x03,
 	/// Index of battery level none
 	FP_FMDN_BATTERY_LEVEL_NONE = 0xFF,
 } fp_fmdn_battery_level_t;

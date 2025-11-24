@@ -1,0 +1,7 @@
+shields:
+  - name: mikroe_buzz_2_click
+    full_name: Buzz 2 Click
+    vendor: mikroe
+    supported_features:
+      - pwm
+      - buzzer

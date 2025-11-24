@@ -27,7 +27,7 @@ Build command:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/samples/bluetooth/extended_adv/advertiser --sysbuild -T samples.bluetooth.extended_adv.advertiser.atm
+   west build -p always -b <BOARD> openair/samples/bluetooth/extended_adv/advertiser --sysbuild -T samples.bluetooth.extended_adv.advertiser.atm
 
 Flash command:
 

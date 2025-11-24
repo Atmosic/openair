@@ -39,7 +39,6 @@ typedef enum
   BB_PROT_BLE,                          /*!< Bluetooth Low Energy normal mode. */
   BB_PROT_BLE_DTM,                      /*!< Bluetooth Low Energy direct test mode. */
   BB_PROT_PRBS15,                       /*!< Enable the continuous PRBS15 transmit sequence. */
-  BB_PROT_15P4,                         /*!< 802.15.4. */
   BB_PROT_NUM                           /*!< Number of protocols. */
 } PalBbProt_t;
 

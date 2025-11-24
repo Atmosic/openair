@@ -1428,39 +1428,210 @@ namespace eval CMSDK_SWD_SECURE {
         proc REG_ADDR { {base [::CMSDK_SWD_SECURE::BASE]} } {
             return [expr { [expr $base] + 0x4c }]
         }
-        namespace eval GPO {
+        namespace eval BB1_DCOC_MSB {
             namespace export SHIFT
             proc SHIFT {} {
                 return 0
             }
             namespace export WIDTH
             proc WIDTH {} {
-                return 16
+                return 1
             }
             namespace export MASK
             proc MASK {} {
-                return 0x0000ffff
+                return 0x00000001
             }
             namespace export READ
             proc READ {reg_val} {
-                return [expr {($reg_val & 0x0000ffff) >> 0}]
+                return [expr {($reg_val & 0x00000001) >> 0}]
             }
             namespace export WRITE
             proc WRITE {field_val} {
-                return [expr {($field_val << 0) & 0x0000ffff}]
+                return [expr {($field_val << 0) & 0x00000001}]
             }
             namespace export MODIFY
             proc MODIFY {var_name field_val} {
                 upvar $var_name var
-                set var [expr {($var & ~0x0000ffff) | (($field_val << 0) & 0x0000ffff)}]
+                set var [expr {($var & ~0x00000001) | (($field_val << 0) & 0x00000001)}]
             }
             namespace export MODIFY_TGT
             proc MODIFY_TGT {addr field_val} {
-                mww $addr [expr {([mrw $addr] & ~0x0000ffff) | (($field_val << 0) & 0x0000ffff)}]
+                mww $addr [expr {([mrw $addr] & ~0x00000001) | (($field_val << 0) & 0x00000001)}]
             }
             namespace export VERIFY
             proc VERIFY {field_val} {
-                return [expr {!(($field_val << 0) & ~0x0000ffff)}]
+                return [expr {!(($field_val << 0) & ~0x00000001)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000001) | (1 << 0)}]
+            }
+            namespace export SET_TGT
+            proc SET_TGT {addr} {
+                mww $addr [expr {([mrw $addr] & ~0x00000001) | (1 << 0)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000001}]
+            }
+            namespace export CLR_TGT
+            proc CLR_TGT {addr} {
+                mww $addr [expr {[mrw $addr] & ~0x00000001}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CALDC_REMAP {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 1
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000002
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000002) >> 1}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 1) & 0x00000002}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000002) | (($field_val << 1) & 0x00000002)}]
+            }
+            namespace export MODIFY_TGT
+            proc MODIFY_TGT {addr field_val} {
+                mww $addr [expr {([mrw $addr] & ~0x00000002) | (($field_val << 1) & 0x00000002)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 1) & ~0x00000002)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000002) | (1 << 1)}]
+            }
+            namespace export SET_TGT
+            proc SET_TGT {addr} {
+                mww $addr [expr {([mrw $addr] & ~0x00000002) | (1 << 1)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000002}]
+            }
+            namespace export CLR_TGT
+            proc CLR_TGT {addr} {
+                mww $addr [expr {[mrw $addr] & ~0x00000002}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval IGNORE_BB1_DCOC {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 2
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000004
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000004) >> 2}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 2) & 0x00000004}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000004) | (($field_val << 2) & 0x00000004)}]
+            }
+            namespace export MODIFY_TGT
+            proc MODIFY_TGT {addr field_val} {
+                mww $addr [expr {([mrw $addr] & ~0x00000004) | (($field_val << 2) & 0x00000004)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 2) & ~0x00000004)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000004) | (1 << 2)}]
+            }
+            namespace export SET_TGT
+            proc SET_TGT {addr} {
+                mww $addr [expr {([mrw $addr] & ~0x00000004) | (1 << 2)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000004}]
+            }
+            namespace export CLR_TGT
+            proc CLR_TGT {addr} {
+                mww $addr [expr {[mrw $addr] & ~0x00000004}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval SPARE {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 3
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 13
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x0000fff8
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x0000fff8) >> 3}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 3) & 0x0000fff8}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x0000fff8) | (($field_val << 3) & 0x0000fff8)}]
+            }
+            namespace export MODIFY_TGT
+            proc MODIFY_TGT {addr field_val} {
+                mww $addr [expr {([mrw $addr] & ~0x0000fff8) | (($field_val << 3) & 0x0000fff8)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 3) & ~0x0000fff8)}]
             }
             namespace export RESET_VALUE
             proc RESET_VALUE {} {

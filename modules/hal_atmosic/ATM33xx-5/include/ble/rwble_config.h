@@ -6,7 +6,7 @@
  * @brief Configuration of the BLE lower layer stack
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */
@@ -106,13 +106,17 @@
                              | ((0) << (BLE_FEAT_CHAN_SND - 40) ))
 
 /// Features byte 6
-#define BLE_FEATURES_BYTE6  (0)
+#define BLE_FEATURES_BYTE6  ( ((0) << (BLE_FEAT_CHAN_SND_PCT_QUAL_IND - 48) ))
 
 /// Features byte 7
-#define BLE_FEATURES_BYTE7  (  ((0) << (BLE_FEAT_BLE_ENH_TEST_MODE - 56) ) \
+#define BLE_FEATURES_BYTE7  (  ((0) << (BLE_FEAT_HDT - 56) ) \
                              | ((0) << (BLE_FEAT_EXT_FEAT_SET - 56) ))
 /// Features byte 8
-#define BLE_FEATURES_BYTE8  ((0) << (BLE_FEAT_FRAME_SPACE_UPD - 64) )
+#define BLE_FEATURES_BYTE8  (  ((0)   << (BLE_FEAT_MONADV          - 64) ) \
+                             | ((0)           << (BLE_FEAT_FRAME_SPACE_UPD - 64) ) \
+                             | ((0) << (BLE_FEAT_UTP_OTA_MODE    - 64) ) \
+                             | ((0) << (BLE_FEAT_UTP_HCI_MODE    - 64) ) \
+                             | (((0)*BLE_LL_OTA_UTP_IND_MAX_LEN_250B) << (BLE_FEAT_LL_OTA_UTP_IND_MAX_LEN - 64) ))
 
 /// States byte 0
 #define BLE_STATES_BYTE0    ( BLE_NON_CON_ADV_STATE | BLE_DISC_ADV_STATE\
@@ -226,7 +230,7 @@
  *
  * Heap size = 330 + 270 + (N-2 x 230) + 2 x 230 = 600 + N x 230
  */
-#define BLE_HEAP_ENV_SIZE               (330*BLE_CENTRAL + 270*BLE_OBSERVER + BLE_ACTIVITY_MAX * 230)
+#define BLE_HEAP_ENV_SIZE                (330*BLE_CENTRAL + 270*BLE_OBSERVER + BLE_ACTIVITY_MAX * 230)
 
 /**
  * Additional reception window for receiving on Coded PHY (in half-us)
@@ -234,72 +238,89 @@
  * On Coded PHY, the symbol for the Access Address is 8 times longer than the symbol for 1Mbps.
  * Note: Coded PHY additional window size depends on modem implementation sync detection and should be affine according to it.
  */
-#define BLE_CODED_PHY_ADD_WIN_SIZE       (2 * BLE_RX_MARGIN * 7)
+#define BLE_CODED_PHY_ADD_WIN_SIZE      (2 * BLE_RX_MARGIN * 7)
 
 /// RX margin (in us)
-#define BLE_RX_MARGIN              (14)
+#define BLE_RX_MARGIN                   (14)
+
+/// Maximum jitter between a local and peer device (in us)
+#define BLE_CON_MAX_JITTER              (BLE_MAX_JITTER + RWIP_LPCLK_JITTER)
 
 /// Number of devices in the white list
-#define BLE_WHITELIST_MAX           ((uint8_t)(BLE_ACTIVITY_MAX + 2u))
+#define BLE_WHITELIST_MAX               ((uint8_t)(BLE_ACTIVITY_MAX + 2u))
 
 /// Number of devices in the Resolution Address List
 /// This have to be tuned according to the core frequency. Worst case is having in scan mode
 /// all IRK and valid in resolving list and device receive a Direct Adv Report that contains
 /// RPAs for InitA and AdvA
-#define BLE_RESOL_ADDR_LIST_MAX     (BLE_RAL_MAX)
+#define BLE_RESOL_ADDR_LIST_MAX         (BLE_RAL_MAX)
 
-/// Workaround HW issue: RX Data pointer on RX Descriptor update (HW fix in 6.0 IP)
-#define BLE_HW_WA_RX_BUF_FREE      1
-
-/// Number of RX data buffers (common for all activities)
-#if !(BLE_HW_WA_RX_BUF_FREE)
-#define BLE_DATA_BUF_NB_RX           ((uint8_t)(BLE_RX_DESC_NB + 2u))
-#else // (BLE_HW_WA_RX_BUF_FREE)
-/// Extra buffers to descriptors required for slow Host processing
-#define BLE_DATA_BUF_NB_RX           ((uint8_t)(BLE_RX_DESC_NB + 4u))
-#endif // (BLE_HW_WA_RX_BUF_FREE)
-
-/// Size of RX data buffers (common for all activities) (the first 5 bytes are reserved for HCI header)
-#define BLE_DATA_BUF_SIZE_RX         (260u)
-/// Guard space reserved for HCI ACL header in BLE RX buffers
-#define BLE_ACL_RX_BUF_HEADER_SPACE  (HCI_ACL_HDR_LEN + 1)
-
-/// Number of TX ACL data buffers
-#define BLE_ACL_BUF_NB_TX            ((uint8_t)(BLE_ACTIVITY_MAX + 2u))
-
-/// Number of advertising data buffers
-#define __BLE_ADV_BUF_NB_TX          ((uint8_t)((BLE_ACTIVITY_MAX+1u) / 2u))
-#define BLE_ADV_BUF_NB_TX            ((__BLE_ADV_BUF_NB_TX < 4u) ? (4u) : __BLE_ADV_BUF_NB_TX)
-/// Number of advertising or scan response data fragments in extended advertising PDU chain
-#define BLE_ADV_FRAG_NB_TX           (5u)
-/// Size of advertising or scan response data fragments in extended advertising PDU chain
-#define BLE_ADV_FRAG_SIZE_TX         (254u)
-/// Maximum advertising data length
-#define BLE_CFG_MAX_ADV_DATA_LEN         (BLE_ADV_FRAG_NB_TX * BLE_ADV_FRAG_SIZE_TX)
-
-/// Maximum number of Rx Descriptors that can be used during the reception of Auxiliary chained
-/// advertising packet on Secondary advertising channels (0: no limit)
-#define BLE_ADV_FRAG_NB_RX_MAX (7)
-
-/// Define the AUX Frame Space duration
-#if defined(CFG_AFS_EXT)
-// Aux Frame Space extended for scanner Aux offload testing
-#define BLE_AFS_DUR                  (3000) // 3.0ms
-#else // !(CFG_DBG_AUX_OFFLOAD)
-// Packed advertising - Minimum AUX Frame Space
-#define BLE_AFS_DUR                  (BLE_MAFS_DUR)
-#endif // (CFG_DBG_AUX_OFFLOAD)
+/******************************************************************************************/
+/* --------------         SUPPORTED DATA LENGTH & BUFFERS SIZES         ------------------*/
+/******************************************************************************************/
 
 /// Data packet transmission size and duration
 /// These values represent what the device supports
-#define BLE_MIN_OCTETS  (27) // number of octets
+#define BLE_MIN_OCTETS  (27) // in octets
 #define BLE_MIN_TIME    (328) // in us
-#define BLE_MAX_OCTETS  (251) // number of octets
+
+/// Maximum data length the device supports
+#define BLE_MAX_OCTETS       (LE_MAX_OCTETS) // 251 octets
+
 #if !(BLE_PHY_CODED_SUPPORT)
 #define BLE_MAX_TIME    (LE_MAX_TIME_UNCODED) // in us
 #else // (BLE_PHY_CODED_SUPPORT)
 #define BLE_MAX_TIME    (LE_MAX_TIME_CODED) // in us
 #endif // (BLE_PHY_CODED_SUPPORT)
+
+/// Workaround HW issue: RX Data pointer on RX Descriptor update (HW fix in 6.0 IP)
+#define BLE_HW_WA_RX_BUF_FREE           1
+
+/// Number of RX data buffers (common for all activities)
+#if !(BLE_HW_WA_RX_BUF_FREE)
+#define BLE_DATA_BUF_NB_RX              ((uint8_t)(BLE_RX_DESC_NB + 2u))
+#else // (BLE_HW_WA_RX_BUF_FREE)
+/// Extra buffers to descriptors required for slow Host processing
+#define BLE_DATA_BUF_NB_RX              ((uint8_t)(BLE_RX_DESC_NB + 4u))
+#endif // (BLE_HW_WA_RX_BUF_FREE)
+
+/// Maximum data size that can received
+#define BLE_MAX_SIZE_RX                 (BLE_MAX_OCTETS)
+/// Guard space reserved for HCI ACL header in BLE RX buffers
+#define BLE_ACL_RX_BUF_HEADER_SPACE     (HCI_ACL_HDR_LEN + 1)
+/// Size of RX data buffers (common for all activities) (the first 5 bytes are reserved for HCI header)
+#define BLE_DATA_BUF_SIZE_RX            (CO_ALIGN4_HI((BLE_ACL_RX_BUF_HEADER_SPACE) + (BLE_MAX_SIZE_RX) + (MIC_LEN)))
+
+/// Maximum data size that can be filled by host for transmission
+#define BLE_ACL_MAX_SIZE_TX             (BLE_MAX_OCTETS)
+
+/// Size of TX ACL data buffers (common for all connection activities)
+#define BLE_ACL_BUF_SIZE_TX             (CO_ALIGN4_HI((BLE_ACL_MAX_SIZE_TX) + (MIC_LEN)))
+/// Number of TX ACL data buffers
+#define BLE_ACL_BUF_NB_TX               ((uint8_t)(BLE_ACTIVITY_MAX + 2u))
+
+/// Number of advertising data buffers
+#define __BLE_ADV_BUF_NB_TX             ((uint8_t)((BLE_ACTIVITY_MAX+1u) / 2u))
+#define BLE_ADV_BUF_NB_TX               ((__BLE_ADV_BUF_NB_TX < 4u) ? (4u) : __BLE_ADV_BUF_NB_TX)
+/// Number of advertising or scan response data fragments in extended advertising PDU chain
+#define BLE_ADV_FRAG_NB_TX              (5u)
+/// Size of advertising or scan response data fragments in extended advertising PDU chain
+#define BLE_ADV_FRAG_SIZE_TX            (254u)
+/// Maximum advertising data length
+#define BLE_CFG_MAX_ADV_DATA_LEN        (BLE_ADV_FRAG_NB_TX * BLE_ADV_FRAG_SIZE_TX)
+
+/// Maximum number of Rx Descriptors that can be used during the reception of Auxiliary chained
+/// advertising packet on Secondary advertising channels (0: no limit)
+#define BLE_ADV_FRAG_NB_RX_MAX          (7)
+
+/// Define the AUX Frame Space duration
+#if defined(CFG_AFS_EXT)
+// Aux Frame Space extended for scanner Aux offload testing
+#define BLE_AFS_DUR                     (3000) // 3.0ms
+#else // !(CFG_DBG_AUX_OFFLOAD)
+// Packed advertising - Minimum AUX Frame Space
+#define BLE_AFS_DUR                     (BLE_MAFS_DUR)
+#endif // (CFG_DBG_AUX_OFFLOAD)
 
 /// Number of devices capacity for the scan duplicate filtering
 #if (BLE_OBSERVER)
@@ -325,7 +346,11 @@
 #define BLE_TX_DESC_NB               ((uint8_t)(BLE_NB_TX_DESC_PER_ACT * BLE_ACTIVITY_MAX))
 
 /// Legacy advertising HCI interface
-#define BLE_ADV_LEGACY_ITF           (HCI_TL_SUPPORT)
+#if defined(CFG_BLE_ADV_LEGACY_ITF)
+#define BLE_ADV_LEGACY_ITF           (1)
+#else
+#define BLE_ADV_LEGACY_ITF           (0)
+#endif
 
 /******************************************************************************************/
 /* --------------------        CHANNEL ASSESSMENT SETUP         --------------------------*/
@@ -462,7 +487,8 @@
                              | (1                           << BLE_LE_RD_SUPP_STATES_CMD                        ) \
                              | (1                           << BLE_LE_RX_TEST_V1_CMD                            ) \
                              | (1                           << BLE_LE_TX_TEST_V1_CMD                            ) \
-                             | (1                           << BLE_LE_STOP_TEST_CMD                             ) )
+                             | (1                           << BLE_LE_STOP_TEST_CMD                             ) \
+                             | (((0))           << BLE_LE_MAL_ENABLE_CMD                            ) )
 //byte29
 #define BLE_CMDS_BYTE29     (  (((0))                  << BLE_LE_CS_SET_CH_CLASS_CMD                       ) \
                              | (((0))                  << BLE_LE_CS_SET_PROC_PARAMS_CMD                    ) \
@@ -599,13 +625,15 @@
 #define BLE_CMDS_BYTE47     (  (((0) & BLE_CENTRAL)      << BLE_LL_EXT_CREATE_CON_V2_CMD                     ) \
                              | (((0) & BLE_BROADCASTER)  << BLE_LL_SET_PER_ADV_PARAM_V2_CMD                  ) \
                              | (((0))                       << BLE_LL_RD_ALL_LOC_SUPP_FEATS_CMD                 ) \
-                             | (((0))                       << BLE_LL_RD_ALL_REM_FEATS_CMD                      )  )
+                             | (((0))                       << BLE_LL_RD_ALL_REM_FEATS_CMD                      ) \
+                             | (((0))             << BLE_LE_MAL_ADD_DEVICE_CMD                        ) \
+                             | (((0))             << BLE_LE_MAL_REMOVE_DEVICE_CMD                     ) \
+                             | (((0))             << BLE_LE_MAL_CLEAR_CMD                             )  )
 //byte 48
-#define BLE_CMDS_BYTE48     (  (((0))                     << BLE_LE_FRAME_SPACE_UPD_CMD                       )  )
-
-//byte 63
-#define BLE_CMDS_BYTE63     (  (((0))           << BLE_LL_EN_OTA_UTP_MODE_CMD                       ) \
-                             | (((0))           << BLE_LL_UTP_SEND_CMD                              )  )
+#define BLE_CMDS_BYTE48     (  (((0))             << BLE_LE_MAL_READ_SIZE_CMD                         ) \
+                             | (((0))                     << BLE_LE_FRAME_SPACE_UPD_CMD                       ) \
+                             | (((0))           << BLE_LE_EN_UTP_OTA_MODE_CMD                       ) \
+                             | (((0))           << BLE_LE_UTP_SEND_CMD                              )  )
 
 
 /******************************************************************************************/

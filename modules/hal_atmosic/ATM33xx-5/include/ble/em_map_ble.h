@@ -6,7 +6,7 @@
  * @brief Mapping of BLE section in exchange memory
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */
@@ -140,6 +140,7 @@ enum ENC_MIC
     /// AES-CCM MIC-less
     ENC_MIC_LESS    = 1,
 };
+
 
 /// Encryption Mode
 enum ENC_MODE
@@ -278,7 +279,7 @@ enum ENC_MODE
 /// ACL TX buffers area definition
 #define EM_BLE_ACLTXBUF_OFFSET    CO_ALIGN4_HI(EM_BLE_DATARXBUF_END)
 #define EM_BLE_ACLTXBUF_NB        (BLE_ACL_BUF_NB_TX)
-#define EM_BLE_ACLTXBUF_SIZE      (256u)
+#define EM_BLE_ACLTXBUF_SIZE      (BLE_ACL_BUF_SIZE_TX)
 #define EM_BLE_ACLTXBUF_END       (EM_BLE_ACLTXBUF_OFFSET + ((uint32_t)EM_BLE_ACLTXBUF_NB * EM_BLE_ACLTXBUF_SIZE))
 
 

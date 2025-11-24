@@ -6,6 +6,9 @@
 
 #include <zephyr/sys/printk.h>
 #include <zephyr/init.h>
+#ifdef CONFIG_ATM_BP_CLOCK
+#include "atm_bp_clock.h"
+#endif
 
 #if defined(CONFIG_MCUBOOT_IMG_MANAGER)
 #include <zephyr/dfu/mcuboot.h>
@@ -18,9 +21,30 @@
 #define ATMOSIC_SDK_VERSION "Unknown OpenAir Version"
 #endif
 
+#ifdef CONFIG_ATMWSTK_VERSION
+#define ATMWSTK_VERSION "(" CONFIG_ATMWSTK_VERSION ")"
+#else
+#define ATMWSTK_VERSION ""
+#endif
+
+#ifdef CONFIG_TRUSTED_EXECUTION_NONSECURE
+#define NS_IMG_STR "NS "
+#else
+#define NS_IMG_STR ""
+#endif
+
 int atm_print_version(void)
 {
+#if defined(CONFIG_TRUSTED_EXECUTION_SECURE) && !defined(CONFIG_ATM_NO_SPE)
 	printk("*** " ATMOSIC_SDK_VERSION " ***\n");
+#else
+#ifndef CONFIG_ATM_BP_CLOCK
+	printk("*** " NS_IMG_STR ATMOSIC_SDK_VERSION " " ATMWSTK_VERSION " ***\n");
+#else
+	printk("*** " NS_IMG_STR ATMOSIC_SDK_VERSION " " ATMWSTK_VERSION ", bp_freq is %d ***\n",
+	       atm_bp_clock_get());
+#endif
+#endif // CONFIG_TRUSTED_EXECUTION_SECURE && !CONFIG_ATM_NO_SPE
 #if defined(CONFIG_MCUBOOT_IMG_MANAGER)
 	struct mcuboot_img_header hdr;
 	int err = boot_read_bank_header(FIXED_PARTITION_ID(slot0_partition), &hdr, sizeof(hdr));

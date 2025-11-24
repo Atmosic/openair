@@ -5,10 +5,12 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/shell/shell.h>
 #include <zephyr/shell/shell_dummy.h>
 #include <zephyr/ztest.h>
 #include <stdio.h>
+#include <string.h>
 
 ZTEST(atm_shell, test_atm_shell_crc)
 {
@@ -24,7 +26,16 @@ ZTEST(atm_shell, test_atm_shell_crc)
 
 	shell_start(sh);  // Start after delay
 
-	const char *cmd = "atm_flash check_crc flash-controller@200000 0x1f8000 20";
+	/* Get flash controller name from device tree (without leading separator) */
+	const char *flash_ctrl_name = DT_NODE_FULL_NAME(DT_NODELABEL(flash_controller));
+
+	/* Build the command string dynamically */
+	char cmd[128];
+	int retv =
+		snprintf(cmd, sizeof(cmd), "atm_flash check_crc %s 0x1f8000 20", flash_ctrl_name);
+	zassert_true(retv > 0, "cmd is assembled");
+
+	printk("flash controller: %s, cmd to execute: %s\n", flash_ctrl_name, cmd);
 	int ret = shell_execute_cmd(sh, cmd);
 	printk("Command executed with return: %d\n", ret);
 

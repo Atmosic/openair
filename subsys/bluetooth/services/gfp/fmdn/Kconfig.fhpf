@@ -1,0 +1,66 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# FMDN Find Hub Precision Finding (FHPF) Configuration
+
+config FMDN_PRECISION_FINDING
+    bool "Enabling Find Hub Precision Finding (FHPF)"
+    select RANGING_OOB_DE
+    help
+        Enabling Precision Finding feature using Google's Find My Device app.
+        This enables ranging capabilities for precise device location.
+
+if FMDN_PRECISION_FINDING
+
+config FMDN_RANGING_OOB_DE_TYPE_UWB_EN
+    bool "Enable Ranging OOB DE type UWB Support"
+    help
+        Enable Ultra-Wideband (UWB) ranging support for precision finding.
+        UWB provides high-accuracy ranging capabilities for indoor positioning.
+
+        Requires appropriate UWB hardware and driver support in the platform.
+
+# Include UWB-specific configuration
+rsource "Kconfig.fhpf_uwb"
+
+config FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
+    bool "Enable Ranging OOB DE type BLE CS Support"
+    depends on BT_CHANNEL_SOUNDING
+    depends on BT_BONDABLE
+    help
+        Enable Bluetooth Low Energy Channel Sounding (BLE CS) ranging support
+        for precision finding. BLE CS provides ranging capabilities using
+        Bluetooth 5.4+ Channel Sounding features.
+
+        Requires CONFIG_BT_CHANNEL_SOUNDING=y to be enabled in the kernel configuration.
+	Requires CONFIG_BT_BONDABLE=y to be enabled to require bonding connection.
+
+if FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
+
+config FMDN_RANGING_CS_SECURITY_LEVEL
+    int "Minimum security level required for CS ranging operations"
+    range 1 4
+    default 2
+    help
+        Minimum Bluetooth security level required for CS ranging operations:
+        1 = No security (not recommended for ranging)
+        2 = Unauthenticated pairing with encryption (default)
+        3 = Authenticated pairing with encryption (MITM protection)
+        4 = Authenticated LE Secure Connections pairing
+
+config FMDN_RANGING_OOB_DE_TYPE_BLE_CS_CAP_FORCE_EN
+    bool "Force reply BLE CS ranging capability"
+    help
+        Force the device to always reply with BLE CS ranging capability,
+        even if the underlying CS support is not fully available or configured.
+
+        This can be useful for testing or when CS capability detection is
+        not working correctly, but should be used with caution in production.
+
+        Note: This may cause compatibility issues if the actual CS hardware
+        or driver support is missing.
+
+endif # FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
+
+endif # FMDN_PRECISION_FINDING

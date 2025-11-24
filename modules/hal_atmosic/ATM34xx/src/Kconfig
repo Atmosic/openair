@@ -7,10 +7,33 @@ config POWER_OFF_SBRK
 	default y if NEWLIB_LIBC
 	depends on PM
 
-config ATM_SOCOFF_DURATION_SEC
-	int "SOC off duration in seconds"
+config ATM_SOCOFF_MAX_DURATION_SEC
+	int "Maximum SOC off duration in seconds"
 	depends on PM
 	default 0
 	help
-	Override SOC off duration. Can be used to poke PMU watchdog for non-timer based
-	soc off wakeup configuration (LPCOMP, GPIO).
+	  Maximum duration to remain in SOC off state, in seconds. When set to a non-zero
+	  value, this acts as a cap on the SOC off duration regardless of the requested
+	  idle time. This is useful for periodically waking up to service the PMU watchdog
+	  when using non-timer based wakeup sources (LPCOMP, GPIO). When set to 0 (default),
+	  no maximum duration limit is applied.
+
+config DETECT_PULSE_IN_RETENTION
+	bool "Enable GPIO pulse detection in retention mode"
+	depends on PM
+	depends on GPIO
+	help
+	Enable GPIO pulse detection feature that addresses the problem of missing
+	short GPIO pulses during power mode transitions. The system captures GPIO
+	state before entering retention mode and restores GPIO interrupt status
+	after waking up, ensuring that brief pulses are not lost.
+
+	The feature works by:
+	- Capturing GPIO data values before retention entry
+	- Comparing wake events with GPIO state changes after retention exit
+	- Restoring interrupt status for pins that caused wake events but show
+	  no state change (indicating a pulse occurred during transition)
+	- Using polarity manipulation to artificially regenerate missed interrupts
+
+	This is particularly useful for edge-triggered GPIO interrupts that might
+	be missed during the retention entry/exit process.

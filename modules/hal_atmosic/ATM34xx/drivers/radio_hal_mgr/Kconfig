@@ -1,8 +1,0 @@
-# Copyright (c) 2024 Atmosic
-#
-# SPDX-License-Identifier: Apache-2.0
-
-config ATM_RADIO_HAL_MGR
-	bool "Atmosic combo BLE/15.4 radio manager"
-	default y if ATM_BLE && IEEE802154_ATM34
-	depends on ATM_ATLC

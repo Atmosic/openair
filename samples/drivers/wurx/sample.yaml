@@ -1,0 +1,20 @@
+sample:
+  name: WURX Sample
+  description: Sample application demonstrating WURX driver usage
+
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "WuRx Sample Application Starting"
+      - "WuRx driver initialized and ready for wake-up detection"
+  tags:
+    - drivers
+    - wurx
+    - samples
+    - no_mcuboot
+
+tests:
+  samples.drivers.wurx: {}

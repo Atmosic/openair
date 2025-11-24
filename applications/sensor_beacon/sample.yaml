@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Atmosic
+
+sample:
+  description: Sensor Beacon Application - Demonstrates sensor data collection and BLE advertising
+  name: Sensor Beacon Application
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Sensor beacon initialized successfully"
+tests:
+  # Main application runtime test
+  applications.sensor_beacon.atm:
+    tags:
+      - sensor_beacon
+      - no_mcuboot
+    extra_configs:
+      - CONFIG_LOG_DEFAULT_LEVEL=3
+      - CONFIG_SENSOR_BEACON_LOG_LEVEL_INF=y

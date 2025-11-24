@@ -4,7 +4,7 @@
  * @file co_buf.h
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */
@@ -234,7 +234,7 @@ uint8_t co_buf_release(co_buf_t *p_buf);
  * @return Pointer to first byte of data field ; NULL if an error occurs
  ****************************************************************************************
  */
-__INLINE uint8_t *co_buf_data(co_buf_t *p_buf)
+__RWIP_INLINE uint8_t* co_buf_data(co_buf_t *p_buf)
 {
     uint8_t *p_ret = NULL;
 
@@ -256,7 +256,7 @@ __INLINE uint8_t *co_buf_data(co_buf_t *p_buf)
  * @return Pointer to first byte of data field ; NULL if an error occurs
  ****************************************************************************************
  */
-__INLINE uint8_t const *co_buf_cdata(co_buf_t const *p_buf)
+__RWIP_INLINE uint8_t const *co_buf_cdata(co_buf_t const *p_buf)
 {
     return (p_buf ? &(p_buf->buf[p_buf->head_len]) : NULL);
 }
@@ -270,7 +270,7 @@ __INLINE uint8_t const *co_buf_cdata(co_buf_t const *p_buf)
  * @return Buffer data field size. 0 if an error occurs.
  ****************************************************************************************
  */
-__INLINE uint16_t co_buf_data_len(const co_buf_t *p_buf)
+__RWIP_INLINE uint16_t co_buf_data_len(const co_buf_t *p_buf)
 {
     uint16_t ret = 0;
 
@@ -291,7 +291,7 @@ __INLINE uint16_t co_buf_data_len(const co_buf_t *p_buf)
  * @return Buffer data prefix size available. 0 if an error occurs.
  ****************************************************************************************
  */
-__INLINE uint16_t co_buf_head_len(const co_buf_t *p_buf)
+__RWIP_INLINE uint16_t co_buf_head_len(const co_buf_t *p_buf)
 {
     uint16_t ret = 0;
 
@@ -323,7 +323,7 @@ uint16_t co_buf_size(const co_buf_t *p_buf);
  * @return Pointer to first byte of tail field ; NULL if an error occurs
  ****************************************************************************************
  */
-__INLINE uint8_t* co_buf_head(co_buf_t *p_buf)
+__RWIP_INLINE uint8_t* co_buf_head(co_buf_t *p_buf)
 {
     uint8_t* p_ret = NULL;
 
@@ -375,7 +375,7 @@ uint8_t co_buf_head_release(co_buf_t *p_buf, uint16_t length);
  * @return Pointer to first byte of tail field ; NULL if an error occurs
  ****************************************************************************************
  */
-__INLINE uint8_t* co_buf_tail(co_buf_t *p_buf)
+__RWIP_INLINE uint8_t* co_buf_tail(co_buf_t *p_buf)
 {
     uint8_t* p_ret = NULL;
 
@@ -396,7 +396,7 @@ __INLINE uint8_t* co_buf_tail(co_buf_t *p_buf)
  * @return Buffer data suffix size available. 0 if an error occurs.
  ****************************************************************************************
  */
-__INLINE uint16_t co_buf_tail_len(const co_buf_t *p_buf)
+__RWIP_INLINE uint16_t co_buf_tail_len(const co_buf_t *p_buf)
 {
     uint16_t ret = 0;
 
@@ -448,7 +448,7 @@ uint8_t co_buf_tail_release(co_buf_t *p_buf, uint16_t length);
  * @return Pointer to the available meta-data pointer ;NULL if an error occurs
  ****************************************************************************************
  */
-__INLINE uint8_t* co_buf_metadata(co_buf_t *p_buf)
+__RWIP_INLINE uint8_t* co_buf_metadata(co_buf_t *p_buf)
 {
     uint8_t* p_ret = NULL;
 
@@ -507,7 +507,7 @@ uint8_t co_buf_metadata_unfreeze(co_buf_t *p_buf, uint8_t length);
  * @return Number of byte in buffer meta-data remains 0 if an error occurs
  ****************************************************************************************
  */
-__INLINE uint8_t co_buf_metadata_len(const co_buf_t *p_buf)
+__RWIP_INLINE uint8_t co_buf_metadata_len(const co_buf_t *p_buf)
 {
     uint8_t ret = 0;
 

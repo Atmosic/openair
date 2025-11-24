@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-'''
+"""
 @file test_mem_block.py
 
 @brief Unit tests for mem_block
 
 Copyright (C) Atmosic 2023
-'''
+"""
 import pytest
 import mem_block
 

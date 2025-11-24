@@ -56,6 +56,11 @@ void fp_mode_update(fp_mode_t mode)
 		if (mode_switch_cb) {
 			mode_switch_cb(mode);
 		}
+#ifdef CONFIG_FAST_PAIR_RECREATE_ADV_ON_MODE_SWITCH
+		LOG_DBG("Update mode switch to %u to recreate adv immediately", cur_mode);
+		fp_adv_recreate();
+		fp_fmdn_adv_recreate(false, false);
+#endif
 	}
 }
 

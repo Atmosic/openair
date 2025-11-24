@@ -3,7 +3,8 @@ sample:
     application
   name: hello world
 common:
-  tags: introduction
+  tags:
+    - introduction
   integration_platforms:
     - native_sim
   harness: console
@@ -14,13 +15,6 @@ common:
 tests:
   samples.hello_world.atm:
     sysbuild: true
-    tags: introduction atm33 atm34 no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
-  samples.hello_world.atm.mcuboot.atmx2:
-    sysbuild: true
-    tags: introduction atmx2
-    extra_args:
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+    tags:
+      - introduction
+      - no_mcuboot
