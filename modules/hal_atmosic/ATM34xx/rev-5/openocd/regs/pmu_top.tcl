@@ -100,39 +100,139 @@ namespace eval CMSDK_PMU_TOP {
                 return 0x00000000
             }
         }
-        namespace eval HOW2WKUP {
+        namespace eval HOW2WKUP_PIN {
             namespace export SHIFT
             proc SHIFT {} {
                 return 8
             }
             namespace export WIDTH
             proc WIDTH {} {
-                return 3
+                return 1
             }
             namespace export MASK
             proc MASK {} {
-                return 0x00000700
+                return 0x00000100
             }
             namespace export READ
             proc READ {reg_val} {
-                return [expr {($reg_val & 0x00000700) >> 8}]
+                return [expr {($reg_val & 0x00000100) >> 8}]
             }
             namespace export WRITE
             proc WRITE {field_val} {
-                return [expr {($field_val << 8) & 0x00000700}]
+                return [expr {($field_val << 8) & 0x00000100}]
             }
             namespace export MODIFY
             proc MODIFY {var_name field_val} {
                 upvar $var_name var
-                set var [expr {($var & ~0x00000700) | (($field_val << 8) & 0x00000700)}]
+                set var [expr {($var & ~0x00000100) | (($field_val << 8) & 0x00000100)}]
             }
             namespace export VERIFY
             proc VERIFY {field_val} {
-                return [expr {!(($field_val << 8) & ~0x00000700)}]
+                return [expr {!(($field_val << 8) & ~0x00000100)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000100) | (1 << 8)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000100}]
             }
             namespace export RESET_VALUE
             proc RESET_VALUE {} {
-                return 0x00000004
+                return 0x00000000
+            }
+        }
+        namespace eval HOW2WKUP_LPCOMP {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 9
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000200
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000200) >> 9}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 9) & 0x00000200}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000200) | (($field_val << 9) & 0x00000200)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 9) & ~0x00000200)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000200) | (1 << 9)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000200}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval HOW2WKUP_TIMER {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 10
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000400
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000400) >> 10}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 10) & 0x00000400}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000400) | (($field_val << 10) & 0x00000400)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 10) & ~0x00000400)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000400) | (1 << 10)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000400}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000001
             }
         }
         namespace eval LPCOMP_IN_SEL {
@@ -5479,7 +5579,7 @@ namespace eval CMSDK_PMU_TOP {
                 return 0x00000000
             }
         }
-        namespace eval UNUSED {
+        namespace eval FORCE_HIGH_PORB_VDDIO {
             namespace export SHIFT
             proc SHIFT {} {
                 return 12
@@ -9570,7 +9670,7 @@ namespace eval CMSDK_PMU_TOP {
                 return 0x00000000
             }
         }
-        namespace eval SRVEVAUX_ENCOMP_OVR {
+        namespace eval ENABLE_LOW_REFPOR_TRANS {
             namespace export SHIFT
             proc SHIFT {} {
                 return 16
@@ -9615,7 +9715,7 @@ namespace eval CMSDK_PMU_TOP {
                 return 0x00000000
             }
         }
-        namespace eval SRVEVAUX_ENCOMP_OVR_VAL {
+        namespace eval ENABLE_VBAT_VSTO_RESET {
             namespace export SHIFT
             proc SHIFT {} {
                 return 17
@@ -16266,39 +16366,199 @@ namespace eval CMSDK_PMU_TOP {
                 return 0x00000000
             }
         }
-        namespace eval UNUSED {
+        namespace eval 32K_DOUBLER_DCC {
             namespace export SHIFT
             proc SHIFT {} {
                 return 9
             }
             namespace export WIDTH
             proc WIDTH {} {
-                return 12
+                return 3
             }
             namespace export MASK
             proc MASK {} {
-                return 0x001ffe00
+                return 0x00000e00
             }
             namespace export READ
             proc READ {reg_val} {
-                return [expr {($reg_val & 0x001ffe00) >> 9}]
+                return [expr {($reg_val & 0x00000e00) >> 9}]
             }
             namespace export WRITE
             proc WRITE {field_val} {
-                return [expr {($field_val << 9) & 0x001ffe00}]
+                return [expr {($field_val << 9) & 0x00000e00}]
             }
             namespace export MODIFY
             proc MODIFY {var_name field_val} {
                 upvar $var_name var
-                set var [expr {($var & ~0x001ffe00) | (($field_val << 9) & 0x001ffe00)}]
+                set var [expr {($var & ~0x00000e00) | (($field_val << 9) & 0x00000e00)}]
             }
             namespace export VERIFY
             proc VERIFY {field_val} {
-                return [expr {!(($field_val << 9) & ~0x001ffe00)}]
+                return [expr {!(($field_val << 9) & ~0x00000e00)}]
             }
             namespace export RESET_VALUE
             proc RESET_VALUE {} {
                 return 0x00000007
+            }
+        }
+        namespace eval UNUSED_SPARES {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 12
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 5
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x0001f000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x0001f000) >> 12}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 12) & 0x0001f000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x0001f000) | (($field_val << 12) & 0x0001f000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 12) & ~0x0001f000)}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval VMAX_LOW_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 17
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00020000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00020000) >> 17}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 17) & 0x00020000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00020000) | (($field_val << 17) & 0x00020000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 17) & ~0x00020000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00020000) | (1 << 17)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00020000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval EN_VPTAT_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 18
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00040000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00040000) >> 18}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 18) & 0x00040000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00040000) | (($field_val << 18) & 0x00040000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 18) & ~0x00040000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00040000) | (1 << 18)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00040000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_VSTOGOODTOCHRGHYST {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 19
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 2
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00180000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00180000) >> 19}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 19) & 0x00180000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00180000) | (($field_val << 19) & 0x00180000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 19) & ~0x00180000)}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
             }
         }
         namespace eval EN_CLK_CP_SAMPLING {
@@ -16360,70 +16620,1050 @@ namespace eval CMSDK_PMU_TOP {
         proc REG_ADDR { {base [::CMSDK_PMU_TOP::BASE]} } {
             return [expr { [expr $base] + 0x68 }]
         }
-        namespace eval PMU_SPARES {
+        namespace eval OFF_TRANS_WAIT_REG {
             namespace export SHIFT
             proc SHIFT {} {
                 return 0
             }
             namespace export WIDTH
             proc WIDTH {} {
-                return 16
+                return 7
             }
             namespace export MASK
             proc MASK {} {
-                return 0x0000ffff
+                return 0x0000007f
             }
             namespace export READ
             proc READ {reg_val} {
-                return [expr {($reg_val & 0x0000ffff) >> 0}]
+                return [expr {($reg_val & 0x0000007f) >> 0}]
             }
             namespace export WRITE
             proc WRITE {field_val} {
-                return [expr {($field_val << 0) & 0x0000ffff}]
+                return [expr {($field_val << 0) & 0x0000007f}]
             }
             namespace export MODIFY
             proc MODIFY {var_name field_val} {
                 upvar $var_name var
-                set var [expr {($var & ~0x0000ffff) | (($field_val << 0) & 0x0000ffff)}]
+                set var [expr {($var & ~0x0000007f) | (($field_val << 0) & 0x0000007f)}]
             }
             namespace export VERIFY
             proc VERIFY {field_val} {
-                return [expr {!(($field_val << 0) & ~0x0000ffff)}]
+                return [expr {!(($field_val << 0) & ~0x0000007f)}]
             }
             namespace export RESET_VALUE
             proc RESET_VALUE {} {
                 return 0x0000006e
             }
         }
-        namespace eval PMU_SPARES_NEW {
+        namespace eval EN_REFGEN_PRE_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 7
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000080
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000080) >> 7}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 7) & 0x00000080}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000080) | (($field_val << 7) & 0x00000080)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 7) & ~0x00000080)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000080) | (1 << 7)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000080}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval EN_REFGEN_PRE_OVR_VAL {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 8
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000100
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000100) >> 8}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 8) & 0x00000100}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000100) | (($field_val << 8) & 0x00000100)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 8) & ~0x00000100)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000100) | (1 << 8)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000100}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval HARV1_RECT_EN_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 9
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000200
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000200) >> 9}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 9) & 0x00000200}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000200) | (($field_val << 9) & 0x00000200)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 9) & ~0x00000200)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000200) | (1 << 9)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000200}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval HARV1_RECT_EN_OVR_VAL {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 10
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000400
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000400) >> 10}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 10) & 0x00000400}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000400) | (($field_val << 10) & 0x00000400)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 10) & ~0x00000400)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000400) | (1 << 10)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000400}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_REFEXTEND_OUT_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 11
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00000800
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00000800) >> 11}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 11) & 0x00000800}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000800) | (($field_val << 11) & 0x00000800)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 11) & ~0x00000800)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00000800) | (1 << 11)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00000800}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_REFEXTEND_OUT_OVR_VAL {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 12
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00001000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00001000) >> 12}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 12) & 0x00001000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00001000) | (($field_val << 12) & 0x00001000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 12) & ~0x00001000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00001000) | (1 << 12)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00001000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval FASTCUR_WITH_VBATTGOOD {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 13
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00002000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00002000) >> 13}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 13) & 0x00002000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00002000) | (($field_val << 13) & 0x00002000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 13) & ~0x00002000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00002000) | (1 << 13)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00002000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval WAKE_ONLY_IF_ENOUGH_ENERGY {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 14
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00004000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00004000) >> 14}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 14) & 0x00004000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00004000) | (($field_val << 14) & 0x00004000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 14) & ~0x00004000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00004000) | (1 << 14)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00004000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval EN_PROTECTION_WITHOUT_HARV {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 15
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00008000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00008000) >> 15}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 15) & 0x00008000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00008000) | (($field_val << 15) & 0x00008000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 15) & ~0x00008000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00008000) | (1 << 15)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00008000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval ZEROMPPTREF_FORCEB {
             namespace export SHIFT
             proc SHIFT {} {
                 return 16
             }
             namespace export WIDTH
             proc WIDTH {} {
-                return 16
+                return 1
             }
             namespace export MASK
             proc MASK {} {
-                return 0xffff0000
+                return 0x00010000
             }
             namespace export READ
             proc READ {reg_val} {
-                return [expr {($reg_val & 0xffff0000) >> 16}]
+                return [expr {($reg_val & 0x00010000) >> 16}]
             }
             namespace export WRITE
             proc WRITE {field_val} {
-                return [expr {($field_val << 16) & 0xffff0000}]
+                return [expr {($field_val << 16) & 0x00010000}]
             }
             namespace export MODIFY
             proc MODIFY {var_name field_val} {
                 upvar $var_name var
-                set var [expr {($var & ~0xffff0000) | (($field_val << 16) & 0xffff0000)}]
+                set var [expr {($var & ~0x00010000) | (($field_val << 16) & 0x00010000)}]
             }
             namespace export VERIFY
             proc VERIFY {field_val} {
-                return [expr {!(($field_val << 16) & ~0xffff0000)}]
+                return [expr {!(($field_val << 16) & ~0x00010000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00010000) | (1 << 16)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00010000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_MAXREF1V3_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 17
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00020000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00020000) >> 17}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 17) & 0x00020000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00020000) | (($field_val << 17) & 0x00020000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 17) & ~0x00020000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00020000) | (1 << 17)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00020000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_MAXREF1V3_OVR_VAL {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 18
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00040000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00040000) >> 18}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 18) & 0x00040000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00040000) | (($field_val << 18) & 0x00040000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 18) & ~0x00040000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00040000) | (1 << 18)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00040000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval EN_REFGENFAST_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 19
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00080000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00080000) >> 19}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 19) & 0x00080000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00080000) | (($field_val << 19) & 0x00080000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 19) & ~0x00080000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00080000) | (1 << 19)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00080000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval EN_REFGENFAST_OVR_VAL {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 20
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00100000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00100000) >> 20}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 20) & 0x00100000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00100000) | (($field_val << 20) & 0x00100000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 20) & ~0x00100000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00100000) | (1 << 20)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00100000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval MPPT_DEBUG {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 21
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 2
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00600000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00600000) >> 21}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 21) & 0x00600000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00600000) | (($field_val << 21) & 0x00600000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 21) & ~0x00600000)}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval MPPTSTART_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 23
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x00800000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x00800000) >> 23}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 23) & 0x00800000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00800000) | (($field_val << 23) & 0x00800000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 23) & ~0x00800000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x00800000) | (1 << 23)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x00800000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval MPPTSTART_OVR_VAL {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 24
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x01000000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x01000000) >> 24}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 24) & 0x01000000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x01000000) | (($field_val << 24) & 0x01000000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 24) & ~0x01000000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x01000000) | (1 << 24)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x01000000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_CUFAST_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 25
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x02000000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x02000000) >> 25}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 25) & 0x02000000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x02000000) | (($field_val << 25) & 0x02000000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 25) & ~0x02000000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x02000000) | (1 << 25)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x02000000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_CUFAST_OVR_VAL {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 26
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 2
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x0c000000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x0c000000) >> 26}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 26) & 0x0c000000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x0c000000) | (($field_val << 26) & 0x0c000000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 26) & ~0x0c000000)}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval SW_MPPTEVENT {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 28
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x10000000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x10000000) >> 28}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 28) & 0x10000000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x10000000) | (($field_val << 28) & 0x10000000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 28) & ~0x10000000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x10000000) | (1 << 28)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x10000000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_PMOSDIVON_OVR {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 29
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x20000000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x20000000) >> 29}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 29) & 0x20000000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x20000000) | (($field_val << 29) & 0x20000000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 29) & ~0x20000000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x20000000) | (1 << 29)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x20000000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval CTR_PMOSDIVON_OVR_VAL {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 30
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x40000000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x40000000) >> 30}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 30) & 0x40000000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x40000000) | (($field_val << 30) & 0x40000000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 30) & ~0x40000000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x40000000) | (1 << 30)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x40000000}]
+            }
+            namespace export RESET_VALUE
+            proc RESET_VALUE {} {
+                return 0x00000000
+            }
+        }
+        namespace eval OVR_LIIONPRESENTWAKEUP {
+            namespace export SHIFT
+            proc SHIFT {} {
+                return 31
+            }
+            namespace export WIDTH
+            proc WIDTH {} {
+                return 1
+            }
+            namespace export MASK
+            proc MASK {} {
+                return 0x80000000
+            }
+            namespace export READ
+            proc READ {reg_val} {
+                return [expr {($reg_val & 0x80000000) >> 31}]
+            }
+            namespace export WRITE
+            proc WRITE {field_val} {
+                return [expr {($field_val << 31) & 0x80000000}]
+            }
+            namespace export MODIFY
+            proc MODIFY {var_name field_val} {
+                upvar $var_name var
+                set var [expr {($var & ~0x80000000) | (($field_val << 31) & 0x80000000)}]
+            }
+            namespace export VERIFY
+            proc VERIFY {field_val} {
+                return [expr {!(($field_val << 31) & ~0x80000000)}]
+            }
+            namespace export SET
+            proc SET {var_name} {
+                upvar $var_name var
+                set var [expr {($var & ~0x80000000) | (1 << 31)}]
+            }
+            namespace export CLR
+            proc CLR {var_name} {
+                upvar $var_name var
+                set var [expr {$var & ~0x80000000}]
             }
             namespace export RESET_VALUE
             proc RESET_VALUE {} {

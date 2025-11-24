@@ -11,6 +11,7 @@ menuconfig ATM_GFPS
     select APP_WORK_Q
     select BT_PRIVACY
     select BT_RPA_TIMEOUT_DYNAMIC
+    select BT_SMP
     select BASE64
     help
 	"Google Fast Pair Service (GFPS)"
@@ -21,8 +22,26 @@ rsource "Kconfig.logging"
 
 config FAST_PAIR_MAX_ACCOUNT_KEY_COUNT
     int "account key number support"
-    default 5 if FP_FMDN_VALIDATOR_TEST
-    default 1
+    default 5
+    help
+      Maximum number of account keys that can be stored and used for
+      Fast Pair authentication. This affects the account key filter
+      buffer size in advertising data.
+
+config FAST_PAIR_ACCOUNT_KEY_FILTER_MAX_LEN
+    int "Maximum account key filter buffer size in bytes"
+    default 27 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 20
+    default 33 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 25
+    default 39 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 30
+    range 4 31
+    help
+      Maximum size of the account key filter buffer in advertising data.
+      This must be large enough to hold the Bloom filter for all configured
+      account keys. The required size is approximately: 1.2 * key_count + 3.
+
+      The range is limited to 31 bytes to fit within BLE advertising payload
+      constraints. If you need more account keys, consider reducing other
+      advertising data or using a more efficient filter algorithm.
 
 config FAST_PAIR_MODEL_ID
     hex "Google Fast Pair Model ID"
@@ -34,8 +53,31 @@ config FAST_PAIR_AS_KEY
     default "wLhpDl6Z4da3v/s1/AA32ZUtvMUkgtmPTCy5weMIDrs=" if SOC_SERIES_ATM33
     default "3H/wrAa6A5Bn2IvSq0E6RrNMucXdhEtI/Vv4sKiHtoI=" if SOC_SERIES_ATM34
 
+config FAST_PAIR_AS_KEY_TAG
+    hex "Google Fast Pair Anti-Spoofing key tag in secure journal"
+    default 0xdf
+    help
+	Secure journal tag for Google Fast Pair Anti-Spoofing key.
+
+	The fp_as_key_load() function will:
+	1. First try to load 32-byte binary key from secure journal using this tag
+	2. If successful, use the binary key directly (no decoding needed)
+	3. If not found or invalid length, fall back to FAST_PAIR_AS_KEY (Base64 format)
+
+	The secure journal key must be exactly 32 bytes of binary data.
+	This allows production devices to use provisioned keys while maintaining development
+	fallback support.
+
 config FAST_PAIR_USER_PAIR_BT_ADDR
     bool "Enable user to specify Google Fast Pair Static Random BT Address"
+    depends on !FAST_PAIR_USE_BT_ID_DEFAULT
+    help
+      Enable custom Bluetooth device address for testing or development purposes.
+      Otherwise, the device's EUI-48 MAC address will be used.
+
+      Note: This option is not compatible with FAST_PAIR_USE_BT_ID_DEFAULT.
+      When using BT_ID_DEFAULT, the address is managed by the Bluetooth stack
+      and cannot be customized through this configuration.
 
 config FAST_PAIR_PAIR_BT_ADDR
     string "Google Fast Pair Static Random BT Address, must in mac address format"
@@ -71,8 +113,55 @@ config FP_FMDN_VALIDATOR_TEST
 
 config FP_BT_ID_NUM
     int "FP BT ID number"
-    default 3 if FAST_PAIR_FMDN_DULT
+    default 3 if FAST_PAIR_FMDN_DULT && !FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR
+    default 2 if FAST_PAIR_FMDN_DULT && FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR
+    default 1
+
+config FAST_PAIR_RECREATE_ADV_ON_MODE_SWITCH
+    bool "Recreate advertising when mode switch"
+    help
+      Automatically recreate Fast Pair advertising when the device mode changes.
+      This ensures advertising parameters are updated correctly for each mode.
+
+      When enabled:
+      - Advertising is recreated on mode transitions (pairing, paired, provisioned)
+      - Ensures correct advertising intervals and parameters for each mode
+      - Required when using BT_ID_DEFAULT
+
+      When disabled:
+      - Manual advertising control is required
+      - May be used for custom advertising management
+
+config FAST_PAIR_USE_BT_ID_DEFAULT
+    bool "Use BT_ID_DEFAULT for Fast Pair"
+    select FAST_PAIR_RECREATE_ADV_ON_MODE_SWITCH
+    help
+      Use BT_ID_DEFAULT (ID 0) for Fast Pair advertising instead of creating new BT IDs.
+
+      When enabled:
+      - Uses BT_ID_DEFAULT for Fast Pair advertising
+      - Supports both public and random static addresses
+      - Requires CONFIG_BT_HCI_SET_PUBLIC_ADDR=y for public addresses
+      - Recommended when using public addresses
+
+      When disabled:
+      - Creates dedicated BT IDs starting from next available ID
+      - Only supports static random addresses
+      - Traditional Fast Pair implementation
+      - Seeker auto-disconnects after account key or provisioned
+
+config FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR
+    bool "Use the same BT_ID of Fast Pair for FMND"
+    depends on FAST_PAIR_FMDN
+    default y
+    help
+      Use same BT_ID of Fast Pair for FMDN.
+
+config FP_MAX_CONNECTIONS
+    int "Maximum Fast Pair connections"
     default 2
+    help
+      Maximum concurrent connections for Fast Pair.
 
 if FP_FMDN_VALIDATOR_TEST
 

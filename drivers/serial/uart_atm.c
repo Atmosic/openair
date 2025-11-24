@@ -31,11 +31,9 @@
 #include "pinmux.h"
 #endif
 
-#ifdef CMSDK_AT_UART0_NONSECURE
 #include "at_apb_uart_regs_core_macro.h"
-#endif
 
-#if defined(CONFIG_SOC_SERIES_ATMX2) || defined(CONFIG_SOC_SERIES_ATM33) || \
+#if defined(CONFIG_SOC_SERIES_ATM33) || \
 	(defined(CONFIG_SOC_SERIES_ATM34) && !defined(CMSDK_AT_UART_STATE__RX_IDLE__READ))
 #define RTS_GPIO_REQUIRED(inst) DT_INST_NODE_HAS_PROP(inst, rts_pin)
 #else
@@ -48,71 +46,10 @@
 #define UART_TX_GLITCH 0
 #endif
 
-/* UART registers struct */
-struct uart_atm {
-	/* offset: 0x000 (r/w) data register    */
-	volatile uint32_t data;
-	/* offset: 0x004 (r/w) status register  */
-	volatile uint32_t state;
-	/* offset: 0x008 (r/w) control register */
-	volatile uint32_t ctrl;
-	union {
-		/* offset: 0x00c (r/ ) interrupt status register */
-		volatile uint32_t intstatus;
-		/* offset: 0x00c ( /w) interrupt clear register  */
-		volatile uint32_t intclear;
-	};
-	/* offset: 0x010 (r/w) baudrate divider register */
-	volatile uint32_t bauddiv;
-	/* offset: 0x014 (r/w) receive low watermark register */
-	volatile uint32_t rx_lwm;
-	/* offset: 0x018 (r/w) transmit low watermark register */
-	volatile uint32_t tx_lwm;
-	/* offset: 0x01c (r/) unoccupied spaces in rx fifo register */
-	volatile uint32_t rx_fifo_spaces;
-	/* offset: 0x020 (r/) unoccupied spaces in tx fifo register */
-	volatile uint32_t tx_fifo_spaces;
-	/* offset: 0x024 (r/w) flow control register */
-	volatile uint32_t hw_flow_ovrd;
-};
-
-/* UART Bits */
-/* CTRL Register */
-#define UART_TX_EN (1 << 0)
-#define UART_RX_EN (1 << 1)
-#define UART_TX_IN_EN (1 << 2)
-#define UART_RX_IN_EN (1 << 3)
-#define UART_TX_OV_EN (1 << 4)
-#define UART_RX_OV_EN (1 << 5)
-#define UART_HS_TM_TX (1 << 6)
-
-/* STATE Register */
-#define UART_TX_BF (1 << 0)
-#define UART_RX_BF (1 << 1)
-#define UART_TX_B_OV (1 << 2)
-#define UART_RX_B_OV (1 << 3)
-#define UART_nRTS (1 << 4)
-#define UART_nCTS (1 << 5)
-
-/* INTSTATUS Register */
-#define UART_TX_IN (1 << 0)
-#define UART_RX_IN (1 << 1)
-#define UART_TX_OV_IN (1 << 2)
-#define UART_RX_OV_IN (1 << 3)
-
-/* FIFO Registers */
-#define UART_FIFO_SIZE 16
-
-/* HW_FLOW_OVRD Register */
-#define UART_nRTS_VAL (1 << 0)
-#define UART_nRTS_OVRD (1 << 1)
-#define UART_nCTS_VAL (1 << 2)
-#define UART_nCTS_OVRD (1 << 3)
-
 typedef void (*set_callback_t)(void);
 
 struct uart_atm_config {
-	volatile struct uart_atm *uart;
+	volatile CMSDK_AT_APB_UART_TypeDef *uart;
 	uint32_t sys_clk_freq;
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
 	uart_irq_config_func_t irq_config_func;
@@ -132,9 +69,9 @@ struct uart_atm_dev_data {
 	void *irq_cb_data;
 #endif
 #ifdef CONFIG_PM
-	struct k_thread pm_rx_thread;
-	struct k_sem pm_rx_sem;
-	struct k_timer pm_rx_timer;
+	struct k_thread *pm_rx_thread;
+	struct k_sem *pm_rx_sem;
+	struct k_timer *pm_rx_timer;
 	k_thread_stack_t *pm_rx_thread_stack;
 	size_t pm_rx_thread_stack_sizeof;
 	k_tid_t pm_rx_tid;
@@ -207,7 +144,7 @@ static void uart_atm_pm_rx_post(const struct device *dev, uint8_t events)
 	dev_data->pm_rx_events |= events;
 	irq_unlock(key);
 
-	k_sem_give(&dev_data->pm_rx_sem);
+	k_sem_give(dev_data->pm_rx_sem);
 }
 
 static void uart_atm_pm_rx_activity(const struct device *dev)
@@ -262,14 +199,15 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 #endif
 
 		// Release RTS override
-		dev_cfg->uart->hw_flow_ovrd &= ~(UART_nRTS_OVRD | UART_nRTS_VAL);
+		dev_cfg->uart->HW_FLOW_OVRD &= ~(CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk |
+						 CMSDK_UART_HW_FLOW_OVRD_NRTS_VAL_Msk);
 
 		uart_atm_pm_rx_constraint_set(dev);
 		dev_data->pm_rx_sleeping = false;
 
 		unsigned int key = irq_lock();
 		dev_data->pm_rx_events &= ~EVT_TIMEOUT;
-		k_timer_start(&dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_WAKE_MS),
+		k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_WAKE_MS),
 			      K_NO_WAIT);
 		irq_unlock(key);
 
@@ -281,11 +219,12 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 			    atm_get_sys_time() - dev_data->pm_rx_sleeping_when_set);
 
 		// Release RTS override
-		dev_cfg->uart->hw_flow_ovrd &= ~(UART_nRTS_OVRD | UART_nRTS_VAL);
+		dev_cfg->uart->HW_FLOW_OVRD &= ~(CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk |
+						 CMSDK_UART_HW_FLOW_OVRD_NRTS_VAL_Msk);
 
 		unsigned int key = irq_lock();
 		dev_data->pm_rx_events &= ~EVT_TIMEOUT;
-		k_timer_start(&dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_ACTIVE_MS),
+		k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_ACTIVE_MS),
 			      K_NO_WAIT);
 		irq_unlock(key);
 
@@ -294,58 +233,64 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 	if (events & EVT_TIMEOUT) {
 		if (dev_data->pm_rx_sleeping) {
 			// Release RTS override
-			dev_cfg->uart->hw_flow_ovrd &= ~(UART_nRTS_OVRD | UART_nRTS_VAL);
+			dev_cfg->uart->HW_FLOW_OVRD &= ~(CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk |
+							 CMSDK_UART_HW_FLOW_OVRD_NRTS_VAL_Msk);
 
 			uart_atm_pm_rx_constraint_set(dev);
 			dev_data->pm_rx_sleeping = false;
-			k_timer_start(&dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_WAKE_MS),
+			k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_WAKE_MS),
 				      K_NO_WAIT);
 			return;
 		}
 
 		// Deassert RTS
-		dev_cfg->uart->hw_flow_ovrd |= (UART_nRTS_OVRD | UART_nRTS_VAL);
+		dev_cfg->uart->HW_FLOW_OVRD |= (CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk |
+						CMSDK_UART_HW_FLOW_OVRD_NRTS_VAL_Msk);
 
 #ifdef CMSDK_AT_UART_STATE__RX_IDLE__READ
 		// Account for latency of cable length and peer data equipment
 		uint32_t lpc_ticks = 1 + CONFIG_UART_ATM_RTT_LPC;
 		ASSERT_ERR(lpc_ticks < 164); // 5ms
-		ATM_TIMER_DO {
+		ATM_TIMER_DO
+		{
 			if (dev_data->pm_rx_events & EVT_RECV) {
 				return;
 			}
 
 			// Rx in flight?  Let it complete.
-			if (!CMSDK_AT_UART_STATE__RX_IDLE__READ(dev_cfg->uart->state)) {
+			if (!CMSDK_AT_UART_STATE__RX_IDLE__READ(dev_cfg->uart->STATE)) {
 				uart_atm_pm_rx_activity(dev);
 				return;
 			}
-		} ATM_TIMER_WHILE_LPC_DELAY(lpc_ticks);
+		}
+		ATM_TIMER_WHILE_LPC_DELAY(lpc_ticks);
 #else
 		// Rx might be in flight, so make sure it has time to complete.
 		// Frame LPC cycles = round(BAUDDIV * 10 bits * lpc_rcos_hz() / UART_CLK)
 		uint32_t frame_lpc =
-			atm_to_lpc_round(dev_cfg->sys_clk_freq / 10, dev_cfg->uart->bauddiv);
+			atm_to_lpc_round(dev_cfg->sys_clk_freq / 10, dev_cfg->uart->BAUDDIV);
 		// Account for latency of cable length and peer data equipment
 		uint32_t lpc_ticks = 1 + CONFIG_UART_ATM_RTT_LPC + frame_lpc;
 		ASSERT_ERR(lpc_ticks < 164); // 5ms
-		ATM_TIMER_DO {
+		ATM_TIMER_DO
+		{
 			if (dev_data->pm_rx_events & EVT_RECV) {
 				return;
 			}
 
 			// Anything in Rx FIFO?
-			if (dev_cfg->uart->state & UART_RX_BF) {
+			if (dev_cfg->uart->STATE & CMSDK_UART_STATE_RXBF_Msk) {
 				uart_atm_pm_rx_activity(dev);
 				return;
 			}
-		} ATM_TIMER_WHILE_LPC_DELAY(lpc_ticks);
+		}
+		ATM_TIMER_WHILE_LPC_DELAY(lpc_ticks);
 #endif
 
 		uart_atm_pm_rx_constraint_release(dev);
 		dev_data->pm_rx_sleeping = true;
 		dev_data->pm_rx_sleeping_when_set = atm_get_sys_time();
-		k_timer_start(&dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_MAX_SLEEP_MS),
+		k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_MAX_SLEEP_MS),
 			      K_NO_WAIT);
 	}
 }
@@ -359,7 +304,7 @@ static void uart_atm_pm_rx_thread(void *p1, void *p2, void *p3)
 	uart_atm_pm_rx_constraint_set(dev);
 	struct uart_atm_dev_data *const dev_data = dev->data;
 	for (;;) {
-		k_sem_take(&dev_data->pm_rx_sem, K_FOREVER);
+		k_sem_take(dev_data->pm_rx_sem, K_FOREVER);
 
 		unsigned int key = irq_lock();
 		uint32_t events = dev_data->pm_rx_events;
@@ -392,16 +337,17 @@ static void baudrate_set(const struct device *dev)
 	if ((baudrate != 0U) && (sys_clk != 0U)) {
 		/* calculate baud rate divisor */
 		uint32_t bauddiv = (sys_clk + (baudrate / 2)) / baudrate;
-		if (bauddiv == dev_cfg->uart->bauddiv) {
+		if (bauddiv == dev_cfg->uart->BAUDDIV) {
 			return;
 		}
 #ifdef CMSDK_AT_UART_STATE__TX_IDLE__READ
-		uint32_t save_hw_flow_ovrd = dev_cfg->uart->hw_flow_ovrd;
-		dev_cfg->uart->hw_flow_ovrd |= UART_nCTS_OVRD;
-		while (!CMSDK_AT_UART_STATE__TX_IDLE__READ(dev_cfg->uart->state));
-		dev_cfg->uart->hw_flow_ovrd = save_hw_flow_ovrd;
+		uint32_t save_hw_flow_ovrd = dev_cfg->uart->HW_FLOW_OVRD;
+		dev_cfg->uart->HW_FLOW_OVRD |= CMSDK_UART_HW_FLOW_OVRD_NCTS_OVRD_Msk;
+		while (!CMSDK_AT_UART_STATE__TX_IDLE__READ(dev_cfg->uart->STATE))
+			;
+		dev_cfg->uart->HW_FLOW_OVRD = save_hw_flow_ovrd;
 #endif
-		dev_cfg->uart->bauddiv = bauddiv;
+		dev_cfg->uart->BAUDDIV = bauddiv;
 	}
 }
 
@@ -426,26 +372,28 @@ static int uart_atm_init(const struct device *dev)
 	baudrate_set(dev);
 
 	/* Enable transmitter */
-	dev_cfg->uart->ctrl = UART_TX_EN;
+	dev_cfg->uart->CTRL = CMSDK_UART_CTRL_TXEN_Msk;
 
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
 	dev_cfg->irq_config_func(dev);
 #endif
 
-	uint32_t cts_ovrd =
-		(dev_cfg->has_cts_pin && dev_data->hw_flow_control) ? 0 : UART_nCTS_OVRD;
-	uint32_t rts_ovrd =
-		(dev_cfg->has_rts_pin && dev_data->hw_flow_control) ? 0 : UART_nRTS_OVRD;
-	dev_cfg->uart->hw_flow_ovrd = cts_ovrd | rts_ovrd;
+	uint32_t cts_ovrd = (dev_cfg->has_cts_pin && dev_data->hw_flow_control)
+				    ? 0
+				    : CMSDK_UART_HW_FLOW_OVRD_NCTS_OVRD_Msk;
+	uint32_t rts_ovrd = (dev_cfg->has_rts_pin && dev_data->hw_flow_control)
+				    ? 0
+				    : CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk;
+	dev_cfg->uart->HW_FLOW_OVRD = cts_ovrd | rts_ovrd;
 
 #ifdef CONFIG_PM
 	if (dev_cfg->has_rts_pin) {
-		k_sem_init(&dev_data->pm_rx_sem, 0, 1);
-		k_timer_init(&dev_data->pm_rx_timer, uart_atm_pm_rx_timeout, NULL);
-		k_timer_user_data_set(&dev_data->pm_rx_timer, (void *)dev);
+		k_sem_init(dev_data->pm_rx_sem, 0, 1);
+		k_timer_init(dev_data->pm_rx_timer, uart_atm_pm_rx_timeout, NULL);
+		k_timer_user_data_set(dev_data->pm_rx_timer, (void *)dev);
 
 		dev_data->pm_rx_tid = k_thread_create(
-			&dev_data->pm_rx_thread, dev_data->pm_rx_thread_stack,
+			dev_data->pm_rx_thread, dev_data->pm_rx_thread_stack,
 			dev_data->pm_rx_thread_stack_sizeof, uart_atm_pm_rx_thread, (void *)dev,
 			NULL, NULL, K_PRIO_COOP(CONFIG_UART_ATM_PM_RX_THREAD_PRIO), 0, K_FOREVER);
 		k_thread_name_set(dev_data->pm_rx_tid, "ATM UART Rx PM");
@@ -476,7 +424,8 @@ static int uart_atm_configure(const struct device *dev, const struct uart_config
 	switch (cfg->flow_ctrl) {
 	case UART_CFG_FLOW_CTRL_NONE:
 		dev_data->hw_flow_control = false;
-		dev_cfg->uart->hw_flow_ovrd = (UART_nCTS_OVRD | UART_nRTS_OVRD);
+		dev_cfg->uart->HW_FLOW_OVRD = (CMSDK_UART_HW_FLOW_OVRD_NCTS_OVRD_Msk |
+					       CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk);
 #ifdef CONFIG_PM
 		uart_atm_pm_rx_start(dev);
 #endif
@@ -486,7 +435,7 @@ static int uart_atm_configure(const struct device *dev, const struct uart_config
 			return -ENOTSUP;
 		}
 		dev_data->hw_flow_control = true;
-		dev_cfg->uart->hw_flow_ovrd = 0;
+		dev_cfg->uart->HW_FLOW_OVRD = 0;
 #ifdef CONFIG_PM
 		uart_atm_pm_rx_start(dev);
 #endif
@@ -505,13 +454,14 @@ static int uart_atm_config_get(const struct device *dev, struct uart_config *cfg
 {
 	const struct uart_atm_config *const dev_cfg = dev->config;
 	const struct uart_atm_dev_data *const dev_data = dev->data;
-	const uint32_t hw_flow_reg = dev_cfg->uart->hw_flow_ovrd;
+	const uint32_t hw_flow_reg = dev_cfg->uart->HW_FLOW_OVRD;
 
 	cfg->stop_bits = UART_CFG_STOP_BITS_1;
 	cfg->data_bits = UART_CFG_DATA_BITS_8;
 	cfg->parity = UART_CFG_PARITY_NONE;
 
-	if ((hw_flow_reg & (UART_nCTS_OVRD | UART_nRTS_OVRD)) == 0) {
+	if ((hw_flow_reg & (CMSDK_UART_HW_FLOW_OVRD_NCTS_OVRD_Msk |
+			    CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk)) == 0) {
 		cfg->flow_ctrl = UART_CFG_FLOW_CTRL_RTS_CTS;
 	} else {
 		cfg->flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
@@ -544,19 +494,19 @@ static int uart_atm_poll_in(const struct device *dev, unsigned char *c)
 
 	unsigned int key = irq_lock();
 	do {
-		rx_start = !(dev_cfg->uart->ctrl & UART_RX_EN);
+		rx_start = !(dev_cfg->uart->CTRL & CMSDK_UART_CTRL_RXEN_Msk);
 		if (rx_start) {
-			dev_cfg->uart->ctrl |= UART_RX_EN;
+			dev_cfg->uart->CTRL |= CMSDK_UART_CTRL_RXEN_Msk;
 		}
 
 		/* If the receiver is not ready returns -1 */
-		if (!(dev_cfg->uart->state & UART_RX_BF)) {
+		if (!(dev_cfg->uart->STATE & CMSDK_UART_STATE_RXBF_Msk)) {
 			ret = -1;
 			break;
 		}
 
 		/* got a character */
-		*c = (unsigned char)dev_cfg->uart->data;
+		*c = (unsigned char)dev_cfg->uart->DATA;
 	} while (0);
 	irq_unlock(key);
 
@@ -586,9 +536,10 @@ static void uart_atm_poll_out(const struct device *dev, unsigned char c)
 
 	/* Wait for FIFO to be empty */
 	for (;;) {
-		if (dev_cfg->uart->tx_fifo_spaces == UART_FIFO_SIZE) {
+		if (dev_cfg->uart->TX_FIFO_SPACES == CMSDK_AT_UART_TX_FIFO_SPACES__RESET_VALUE) {
 			key = irq_lock();
-			if (dev_cfg->uart->tx_fifo_spaces == UART_FIFO_SIZE) {
+			if (dev_cfg->uart->TX_FIFO_SPACES ==
+			    CMSDK_AT_UART_TX_FIFO_SPACES__RESET_VALUE) {
 				break;
 			}
 			irq_unlock(key);
@@ -608,12 +559,12 @@ static void uart_atm_poll_out(const struct device *dev, unsigned char c)
 		uart_atm_pm_tx_constraint_set(dev);
 
 		/* Enable TX interrupt so we can release suspend constraint when done */
-		dev_cfg->uart->ctrl |= UART_TX_IN_EN;
+		dev_cfg->uart->CTRL |= CMSDK_UART_CTRL_TXIRQEN_Msk;
 	}
 #endif /* CONFIG_PM */
 
 	/* Send a character */
-	dev_cfg->uart->data = (uint32_t)c;
+	dev_cfg->uart->DATA = (uint32_t)c;
 	irq_unlock(key);
 }
 
@@ -635,11 +586,11 @@ static int uart_atm_fifo_fill(const struct device *dev, const uint8_t *tx_data, 
 	unsigned int key = irq_lock();
 
 	while (len - num_tx > 0) {
-		if (dev_cfg->uart->state & UART_TX_BF) {
-			dev_cfg->uart->intclear = UART_TX_IN;
+		if (dev_cfg->uart->STATE & CMSDK_UART_STATE_TXBF_Msk) {
+			dev_cfg->uart->INTCLEAR = CMSDK_UART_INTSTATUS_TXIRQ_Msk;
 			break;
 		}
-		dev_cfg->uart->data = (uint32_t)tx_data[num_tx++];
+		dev_cfg->uart->DATA = (uint32_t)tx_data[num_tx++];
 	}
 
 	irq_unlock(key);
@@ -663,27 +614,27 @@ static int uart_atm_fifo_read(const struct device *dev, uint8_t *rx_data, const 
 
 	while (size - num_rx > 0) {
 		/*
-		 * When set, UART_RX_BF indicates that RX Buffer
+		 * When set, CMSDK_UART_STATE_RXBF_Msk indicates that RX Buffer
 		 * is not empty. We keep reading either until the buffer is empty
 		 * or if the size is reached.
 		 */
-		if (!(dev_cfg->uart->state & UART_RX_BF)) {
+		if (!(dev_cfg->uart->STATE & CMSDK_UART_STATE_RXBF_Msk)) {
 			/* RX Buffer is empty, nothing more to read */
-			dev_cfg->uart->intclear = UART_RX_IN;
+			dev_cfg->uart->INTCLEAR = CMSDK_UART_INTSTATUS_RXIRQ_Msk;
 			// Check one more time to avoid race
-			if (!(dev_cfg->uart->state & UART_RX_BF)) {
+			if (!(dev_cfg->uart->STATE & CMSDK_UART_STATE_RXBF_Msk)) {
 				return num_rx;
 			}
 		}
-		rx_data[num_rx++] = (unsigned char)dev_cfg->uart->data;
+		rx_data[num_rx++] = (unsigned char)dev_cfg->uart->DATA;
 	}
 
 	/*
 	 * Do not forget to clear the RX interrupt when the size is same as
 	 * available data in the RX buffer.
 	 */
-	if (!(dev_cfg->uart->state & UART_RX_BF)) {
-		dev_cfg->uart->intclear = UART_RX_IN;
+	if (!(dev_cfg->uart->STATE & CMSDK_UART_STATE_RXBF_Msk)) {
+		dev_cfg->uart->INTCLEAR = CMSDK_UART_INTSTATUS_RXIRQ_Msk;
 	}
 
 	return num_rx;
@@ -702,23 +653,26 @@ static void uart_atm_isr(const struct device *dev)
 
 #ifdef CONFIG_PM
 	const struct uart_atm_config *const dev_cfg = dev->config;
-	if ((dev_cfg->uart->ctrl & UART_TX_IN_EN) && (dev_cfg->uart->intstatus & UART_TX_IN)) {
+	if ((dev_cfg->uart->CTRL & CMSDK_UART_CTRL_TXIRQEN_Msk) &&
+	    (dev_cfg->uart->INTSTATUS & CMSDK_UART_INTSTATUS_TXIRQ_Msk)) {
 		if (data->tx_poll_stream_on) {
-			if (dev_cfg->uart->tx_fifo_spaces == UART_FIFO_SIZE) {
+			if (dev_cfg->uart->TX_FIFO_SPACES ==
+			    CMSDK_AT_UART_TX_FIFO_SPACES__RESET_VALUE) {
 				/* A poll stream transmission just completed.
 				 * Allow system to suspend. */
-				dev_cfg->uart->ctrl &= ~UART_TX_IN_EN;
+				dev_cfg->uart->CTRL &= ~CMSDK_UART_CTRL_TXIRQEN_Msk;
 				data->tx_poll_stream_on = false;
 				uart_atm_pm_tx_constraint_release(dev);
 			}
-			dev_cfg->uart->intclear = UART_TX_IN;
+			dev_cfg->uart->INTCLEAR = CMSDK_UART_INTSTATUS_TXIRQ_Msk;
 		} else {
 			/* Stream transmission was IRQ based.  Constraint will
 			 * be released at the same time TX_IN is disabled.
 			 */
 		}
 	}
-	if ((dev_cfg->uart->ctrl & UART_RX_IN_EN) && (dev_cfg->uart->intstatus & UART_RX_IN)) {
+	if ((dev_cfg->uart->CTRL & CMSDK_UART_CTRL_RXIRQEN_Msk) &&
+	    (dev_cfg->uart->INTSTATUS & CMSDK_UART_INTSTATUS_RXIRQ_Msk)) {
 		uart_atm_pm_rx_activity(dev);
 	}
 #endif /* CONFIG_PM */
@@ -746,7 +700,7 @@ static void uart_atm_irq_tx_enable(const struct device *dev)
 	uart_atm_pm_tx_constraint_set(dev);
 #endif
 
-	dev_cfg->uart->ctrl |= UART_TX_IN_EN;
+	dev_cfg->uart->CTRL |= CMSDK_UART_CTRL_TXIRQEN_Msk;
 	/* The expectation is that TX is a level interrupt, active for as
 	 * long as TX buffer is empty. But in CMSDK UART it's an edge
 	 * interrupt, firing on a state change of TX buffer from full to
@@ -771,20 +725,20 @@ static void uart_atm_irq_tx_disable(const struct device *dev)
 
 #ifdef CONFIG_PM
 	struct uart_atm_dev_data *data = dev->data;
-	if (dev_cfg->uart->tx_fifo_spaces != UART_FIFO_SIZE) {
-	    /* Cannot release constraint now - hand off to poll stream logic */
-	    data->tx_poll_stream_on = true;
+	if (dev_cfg->uart->TX_FIFO_SPACES != CMSDK_AT_UART_TX_FIFO_SPACES__RESET_VALUE) {
+		/* Cannot release constraint now - hand off to poll stream logic */
+		data->tx_poll_stream_on = true;
 	} else {
-	    dev_cfg->uart->ctrl &= ~UART_TX_IN_EN;
-	    /* Clear any pending TX interrupt after disabling it */
-	    dev_cfg->uart->intclear = UART_TX_IN;
-	    uart_atm_pm_tx_constraint_release(dev);
+		dev_cfg->uart->CTRL &= ~CMSDK_UART_CTRL_TXIRQEN_Msk;
+		/* Clear any pending TX interrupt after disabling it */
+		dev_cfg->uart->INTCLEAR = CMSDK_UART_INTSTATUS_TXIRQ_Msk;
+		uart_atm_pm_tx_constraint_release(dev);
 	}
 	data->tx_int_stream_on = false;
 #else
-	dev_cfg->uart->ctrl &= ~UART_TX_IN_EN;
+	dev_cfg->uart->CTRL &= ~CMSDK_UART_CTRL_TXIRQEN_Msk;
 	/* Clear any pending TX interrupt after disabling it */
-	dev_cfg->uart->intclear = UART_TX_IN;
+	dev_cfg->uart->INTCLEAR = CMSDK_UART_INTSTATUS_TXIRQ_Msk;
 #endif
 
 	irq_unlock(key);
@@ -800,7 +754,8 @@ static void uart_atm_irq_tx_disable(const struct device *dev)
 static int uart_atm_irq_tx_ready(const struct device *dev)
 {
 	const struct uart_atm_config *const dev_cfg = dev->config;
-	return (dev_cfg->uart->intstatus & UART_TX_IN) || !(dev_cfg->uart->state & UART_TX_BF);
+	return (dev_cfg->uart->INTSTATUS & CMSDK_UART_INTSTATUS_TXIRQ_Msk) ||
+	       !(dev_cfg->uart->STATE & CMSDK_UART_STATE_TXBF_Msk);
 }
 
 /**
@@ -817,11 +772,11 @@ static void uart_atm_irq_rx_enable(const struct device *dev)
 
 	unsigned int key = irq_lock();
 
-	dev_cfg->uart->ctrl |= (UART_RX_IN_EN | UART_RX_EN);
+	dev_cfg->uart->CTRL |= (CMSDK_UART_CTRL_RXIRQEN_Msk | CMSDK_UART_CTRL_RXEN_Msk);
 	/* Data already sitting in the buffer won't trigger an interrupt.
 	 * Call the ISR directly to notify about it.
 	 */
-	if ((dev_cfg->uart->state & UART_RX_BF)) {
+	if ((dev_cfg->uart->STATE & CMSDK_UART_STATE_RXBF_Msk)) {
 		uart_atm_isr(dev);
 	}
 	irq_unlock(key);
@@ -838,9 +793,9 @@ static void uart_atm_irq_rx_enable(const struct device *dev)
 static void uart_atm_irq_rx_disable(const struct device *dev)
 {
 	const struct uart_atm_config *const dev_cfg = dev->config;
-	dev_cfg->uart->ctrl &= ~UART_RX_IN_EN;
+	dev_cfg->uart->CTRL &= ~CMSDK_UART_CTRL_RXIRQEN_Msk;
 	/* Clear any pending RX interrupt after disabling it */
-	dev_cfg->uart->intclear = UART_RX_IN;
+	dev_cfg->uart->INTCLEAR = CMSDK_UART_INTSTATUS_RXIRQ_Msk;
 }
 
 /**
@@ -854,9 +809,9 @@ static int uart_atm_irq_tx_complete(const struct device *dev)
 {
 	const struct uart_atm_config *const dev_cfg = dev->config;
 #ifdef CMSDK_AT_UART_STATE__TX_IDLE__READ
-	return CMSDK_AT_UART_STATE__TX_IDLE__READ(dev_cfg->uart->state);
+	return CMSDK_AT_UART_STATE__TX_IDLE__READ(dev_cfg->uart->STATE);
 #else
-	return (dev_cfg->uart->tx_fifo_spaces == UART_FIFO_SIZE);
+	return (dev_cfg->uart->TX_FIFO_SPACES == CMSDK_AT_UART_TX_FIFO_SPACES__RESET_VALUE);
 #endif
 }
 
@@ -870,7 +825,8 @@ static int uart_atm_irq_tx_complete(const struct device *dev)
 static int uart_atm_irq_rx_ready(const struct device *dev)
 {
 	const struct uart_atm_config *const dev_cfg = dev->config;
-	return (dev_cfg->uart->intstatus & UART_RX_IN) || (dev_cfg->uart->state & UART_RX_BF);
+	return (dev_cfg->uart->INTSTATUS & CMSDK_UART_INTSTATUS_RXIRQ_Msk) ||
+	       (dev_cfg->uart->STATE & CMSDK_UART_STATE_RXBF_Msk);
 }
 
 /**
@@ -904,7 +860,7 @@ static int uart_atm_irq_is_pending(const struct device *dev)
 {
 	const struct uart_atm_config *const dev_cfg = dev->config;
 	/*
-	 * Check UART_RX_BF in case of race condition where interrupt cleared
+	 * Check CMSDK_UART_STATE_RXBF_Msk in case of race condition where interrupt cleared
 	 * but FIFO not empty. When RX_LWM is 1 (default) the RX_IN interrupt
 	 * is only asserted when FIFO was previously empty and a new byte is
 	 * received
@@ -912,10 +868,11 @@ static int uart_atm_irq_is_pending(const struct device *dev)
 	 * Don't have level trigger for UART TX so emulate a TX_FIFO_EMPTY
 	 * interrupt by checking FIFO spaces when UART TX INT is enabled
 	 */
-	return (dev_cfg->uart->intstatus & (UART_RX_IN | UART_TX_IN)) ||
-	       (dev_cfg->uart->state & UART_RX_BF) ||
-	       ((dev_cfg->uart->ctrl & UART_TX_IN_EN) &&
-	        (dev_cfg->uart->tx_fifo_spaces >= dev_cfg->uart->tx_lwm));
+	return (dev_cfg->uart->INTSTATUS &
+		(CMSDK_UART_INTSTATUS_RXIRQ_Msk | CMSDK_UART_INTSTATUS_TXIRQ_Msk)) ||
+	       (dev_cfg->uart->STATE & CMSDK_UART_STATE_RXBF_Msk) ||
+	       ((dev_cfg->uart->CTRL & CMSDK_UART_CTRL_TXIRQEN_Msk) &&
+		(dev_cfg->uart->TX_FIFO_SPACES >= dev_cfg->uart->TX_LWM));
 }
 
 /**
@@ -971,8 +928,8 @@ static const struct uart_driver_api uart_atm_driver_api = {
 #endif /* CONFIG_UART_INTERRUPT_DRIVEN */
 };
 
-#define ATMOSIC_UART_PM_NOTIFIER_DECL(inst)						\
-IF_ENABLED(CONFIG_PM, (									\
+#define ATMOSIC_UART_PM_NOTIFIER_DECL(inst)                                                        \
+	IF_ENABLED(CONFIG_PM, (									\
 IF_ENABLED(UTIL_OR(RTS_GPIO_REQUIRED(inst), UART_TX_GLITCH), (				\
 __FAST static void notify_pm_state_entry##inst(enum pm_state state)			\
 {											\
@@ -1013,44 +970,38 @@ static struct pm_notifier uart_atm_pm_notifier##inst = {				\
 IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (					\
 static K_KERNEL_STACK_DEFINE(uart_atm_pm_rx_thread_stack##inst,				\
 			     CONFIG_UART_ATM_PM_RX_THREAD_STACK_SIZE);			\
+static struct k_thread uart_atm_pm_rx_thread##inst;					\
+static struct k_sem uart_atm_pm_rx_sem##inst;						\
+static struct k_timer uart_atm_pm_rx_timer##inst;					\
 )) /* rts_pin */									\
-)) /* CONFIG_PM */									\
+)) /* CONFIG_PM */
 
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
-#define ATMOSIC_UART_IRQ_HANDLER_DECL(inst)				\
+#define ATMOSIC_UART_IRQ_HANDLER_DECL(inst)                                                        \
 	static void uart_atm_irq_config_func_##inst(const struct device *dev);
-#define ATMOSIC_UART_IRQ_HANDLER(inst)					\
-static void uart_atm_irq_config_func_##inst(const struct device *dev)	\
-{									\
-	IRQ_CONNECT(DT_INST_IRQ_BY_NAME(inst, tx, irq),			\
-		    DT_INST_IRQ_BY_NAME(inst, tx, priority),		\
-		    uart_atm_isr,					\
-		    DEVICE_DT_INST_GET(inst),				\
-		    0);							\
-	irq_enable(DT_INST_IRQ_BY_NAME(inst, tx, irq));			\
-									\
-	IRQ_CONNECT(DT_INST_IRQ_BY_NAME(inst, rx, irq),			\
-		    DT_INST_IRQ_BY_NAME(inst, rx, priority),		\
-		    uart_atm_isr,					\
-		    DEVICE_DT_INST_GET(inst),				\
-		    0);							\
-	irq_enable(DT_INST_IRQ_BY_NAME(inst, rx, irq));			\
-}
-#define ATMOSIC_UART_IRQ_HANDLER_FUNC(inst)				\
-	.irq_config_func = uart_atm_irq_config_func_##inst,
+#define ATMOSIC_UART_IRQ_HANDLER(inst)                                                             \
+	static void uart_atm_irq_config_func_##inst(const struct device *dev)                      \
+	{                                                                                          \
+		IRQ_CONNECT(DT_INST_IRQ_BY_NAME(inst, tx, irq),                                    \
+			    DT_INST_IRQ_BY_NAME(inst, tx, priority), uart_atm_isr,                 \
+			    DEVICE_DT_INST_GET(inst), 0);                                          \
+		irq_enable(DT_INST_IRQ_BY_NAME(inst, tx, irq));                                    \
+                                                                                                   \
+		IRQ_CONNECT(DT_INST_IRQ_BY_NAME(inst, rx, irq),                                    \
+			    DT_INST_IRQ_BY_NAME(inst, rx, priority), uart_atm_isr,                 \
+			    DEVICE_DT_INST_GET(inst), 0);                                          \
+		irq_enable(DT_INST_IRQ_BY_NAME(inst, rx, irq));                                    \
+	}
+#define ATMOSIC_UART_IRQ_HANDLER_FUNC(inst) .irq_config_func = uart_atm_irq_config_func_##inst,
 #else
 #define ATMOSIC_UART_IRQ_HANDLER_DECL(inst) /* Not used */
-#define ATMOSIC_UART_IRQ_HANDLER(inst) /* Not used */
+#define ATMOSIC_UART_IRQ_HANDLER(inst)      /* Not used */
 #define ATMOSIC_UART_IRQ_HANDLER_FUNC(inst) /* Not used */
 #endif
 
 #define UART_SIG(n, sig) CONCAT(CONCAT(UART, DT_INST_PROP(n, instance)), _##sig)
-#ifdef CMSDK_AT_UART0_NONSECURE
 #define UART_BASE(inst) CONCAT(CMSDK_AT_UART,				\
 	CONCAT(DT_INST_PROP(inst, instance), _NONSECURE))
-#else
-#define UART_BASE(inst) CONCAT(CMSDK_UART, DT_INST_PROP(inst, instance))
-#endif
 
 #ifdef WRPR_CTRL__CLK_SEL
 #define CLK_ENABLE (WRPR_CTRL__CLK_SEL | WRPR_CTRL__CLK_ENABLE)
@@ -1058,15 +1009,15 @@ static void uart_atm_irq_config_func_##inst(const struct device *dev)	\
 #define CLK_ENABLE WRPR_CTRL__CLK_ENABLE
 #endif
 
-#define ATMOSIC_UART_INIT(inst)						\
-ATMOSIC_UART_PM_NOTIFIER_DECL(inst)					\
-ATMOSIC_UART_IRQ_HANDLER_DECL(inst)					\
-									\
-static void uart_atm_config_pins##inst(void)				\
-{									\
-	WRPR_CTRL_SET(UART_BASE(inst), WRPR_CTRL__SRESET);		\
-	WRPR_CTRL_SET(UART_BASE(inst), CLK_ENABLE);			\
-	IF_ENABLED(CONFIG_PM, (						\
+#define ATMOSIC_UART_INIT(inst)                                                                    \
+	ATMOSIC_UART_PM_NOTIFIER_DECL(inst)                                                        \
+	ATMOSIC_UART_IRQ_HANDLER_DECL(inst)                                                        \
+                                                                                                   \
+	static void uart_atm_config_pins##inst(void)                                               \
+	{                                                                                          \
+		WRPR_CTRL_SET(UART_BASE(inst), WRPR_CTRL__SRESET);                                 \
+		WRPR_CTRL_SET(UART_BASE(inst), CLK_ENABLE);                                        \
+		IF_ENABLED(CONFIG_PM, (						\
 		IF_ENABLED(UART_TX_GLITCH, (PIN_SELECT_GPIO_HIGH(DT_INST_PROP(inst, tx_pin));)) \
 		IF_ENABLED(RTS_GPIO_REQUIRED(inst), (			\
 			PIN_SELECT_GPIO_HIGH(DT_INST_PROP(inst, rts_pin)); \
@@ -1074,51 +1025,49 @@ static void uart_atm_config_pins##inst(void)				\
 		IF_ENABLED(UTIL_OR(DT_INST_NODE_HAS_PROP(inst, rts_pin), UART_TX_GLITCH), ( \
 			pm_notifier_register(&uart_atm_pm_notifier##inst); \
 		)) /* rts_pin || UART_TX_GLITCH */			\
-	)) /* CONFIG_PM */						\
-	IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rx_pin), (		\
+	))                             /* CONFIG_PM */       \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rx_pin), (		\
 		PIN_SELECT(DT_INST_PROP(inst, rx_pin), UART_SIG(inst, RX)); \
 		PIN_PULLUP(DT_INST_PROP(inst, rx_pin));			\
-	)) /* rx_pin */							\
-	PIN_SELECT(DT_INST_PROP(inst, tx_pin), UART_SIG(inst, TX));	\
-	IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (		\
+	)) /* rx_pin */          \
+		PIN_SELECT(DT_INST_PROP(inst, tx_pin), UART_SIG(inst, TX));                        \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (		\
 		PIN_SELECT(DT_INST_PROP(inst, rts_pin), UART_SIG(inst, RTS)); \
-	)) /* rts_pin */						\
-	IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, cts_pin), (		\
+	)) /* rts_pin */              \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, cts_pin), (		\
 		PIN_SELECT(DT_INST_PROP(inst, cts_pin), UART_SIG(inst, CTS)); \
-	)) /* cts_pin */						\
-}									\
-									\
-static const struct uart_atm_config uart_atm_dev_cfg_##inst = {		\
-	.uart = (volatile struct uart_atm *)DT_INST_REG_ADDR(inst),	\
-	.sys_clk_freq = DT_INST_PROP_BY_PHANDLE(inst, clocks, clock_frequency),	\
-	ATMOSIC_UART_IRQ_HANDLER_FUNC(inst)				\
-	.has_cts_pin = DT_INST_NODE_HAS_PROP(inst, cts_pin),		\
-	.has_rts_pin = DT_INST_NODE_HAS_PROP(inst, rts_pin),		\
-	.has_rx_pin = DT_INST_NODE_HAS_PROP(inst, rx_pin),		\
-};									\
-									\
-static struct uart_atm_dev_data uart_atm_dev_data_##inst = {		\
-	.baudrate = DT_INST_PROP(inst, current_speed),			\
-	.hw_flow_control = DT_INST_PROP(inst, hw_flow_control),		\
-	.config_pins = uart_atm_config_pins##inst,			\
-	IF_ENABLED(CONFIG_PM, (						\
+	)) /* cts_pin */              \
+	}                                                                                          \
+                                                                                                   \
+	static const struct uart_atm_config uart_atm_dev_cfg_##inst = {                            \
+		.uart = (volatile CMSDK_AT_APB_UART_TypeDef *)DT_INST_REG_ADDR(inst),              \
+		.sys_clk_freq = DT_INST_PROP_BY_PHANDLE(inst, clocks, clock_frequency),            \
+		ATMOSIC_UART_IRQ_HANDLER_FUNC(inst).has_cts_pin =                                  \
+			DT_INST_NODE_HAS_PROP(inst, cts_pin),                                      \
+		.has_rts_pin = DT_INST_NODE_HAS_PROP(inst, rts_pin),                               \
+		.has_rx_pin = DT_INST_NODE_HAS_PROP(inst, rx_pin),                                 \
+	};                                                                                         \
+                                                                                                   \
+	static struct uart_atm_dev_data uart_atm_dev_data_##inst = {                               \
+		.baudrate = DT_INST_PROP(inst, current_speed),                                     \
+		.hw_flow_control = DT_INST_PROP(inst, hw_flow_control),                            \
+		.config_pins = uart_atm_config_pins##inst,                                         \
+		IF_ENABLED(CONFIG_PM, (						\
 		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (	\
+			.pm_rx_thread = &uart_atm_pm_rx_thread##inst,	\
+			.pm_rx_sem = &uart_atm_pm_rx_sem##inst,		\
+			.pm_rx_timer = &uart_atm_pm_rx_timer##inst,	\
 			.pm_rx_thread_stack = uart_atm_pm_rx_thread_stack##inst, \
 			.pm_rx_thread_stack_sizeof =			\
 				K_KERNEL_STACK_SIZEOF(uart_atm_pm_rx_thread_stack##inst), \
 		)) /* rts_pin */					\
-	)) /* CONFIG_PM */						\
-};									\
-									\
-DEVICE_DT_INST_DEFINE(inst,						\
-		      &uart_atm_init,					\
-		      NULL,						\
-		      &uart_atm_dev_data_##inst,			\
-		      &uart_atm_dev_cfg_##inst,				\
-		      PRE_KERNEL_1,					\
-		      CONFIG_SERIAL_INIT_PRIORITY,			\
-		      &uart_atm_driver_api);				\
-									\
-ATMOSIC_UART_IRQ_HANDLER(inst)
+	)) /* CONFIG_PM */                                             \
+	};                                                                                         \
+                                                                                                   \
+	DEVICE_DT_INST_DEFINE(inst, &uart_atm_init, NULL, &uart_atm_dev_data_##inst,               \
+			      &uart_atm_dev_cfg_##inst, PRE_KERNEL_1, CONFIG_SERIAL_INIT_PRIORITY, \
+			      &uart_atm_driver_api);                                               \
+                                                                                                   \
+	ATMOSIC_UART_IRQ_HANDLER(inst)
 
 DT_INST_FOREACH_STATUS_OKAY(ATMOSIC_UART_INIT)

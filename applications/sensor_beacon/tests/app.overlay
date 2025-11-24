@@ -1,0 +1,52 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025 Atmosic
+ */
+
+/*
+ * The arduino_i2c alias automatically resolves to the correct I2C bus
+ * for each board variant, eliminating the need for board-specific overlays.
+ */
+
+&arduino_i2c {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+
+	/* ENS210 temperature and humidity sensor */
+	ens210: ens210@43 {
+		compatible = "ams,ens210";
+		reg = <0x43>;
+		status = "okay";
+	};
+
+	/* LIS2DH accelerometer */
+	lis2dh: lis2dh@19 {
+		compatible = "st,lis2dh";
+		reg = <0x19>;
+		status = "okay";
+	};
+};
+
+&adc {
+	status = "okay";
+
+	/* Battery voltage monitoring channels */
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* VBatt channel (ch-cell = <1>) */
+	channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1_8";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+
+	/* VStore channel (ch-store = <2>) */
+	channel@2 {
+		reg = <2>;
+		zephyr,gain = "ADC_GAIN_1_8";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+};

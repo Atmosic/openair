@@ -1,0 +1,77 @@
+# Copyright (c) 2024-2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_PC_CTR
+	bool "Atmosic pc_ctr module"
+	default y if ATM_BLE
+	depends on ATM_ATLC
+
+if ATM_PC_CTR
+config ATM_MAX_ADV_DATA_LEN
+	int "Override max adv data length"
+	default 0
+
+config ATM_MAX_SCAN_DATA_LEN
+	int "Override max scan data length"
+	default 0
+
+config ATM_CLKPPM
+	int "Override clkppm"
+	default 500 if ATM_LPC_RCOS
+	default 0
+
+config ATM_MAX_ADV_SET
+	int "Override max adv set"
+	default 0
+
+config ATM_PC_HIGH_THD
+	int "Override power control high threshold"
+	default 0
+
+config ATM_PC_LOW_THD
+	int "Override power control low threshold"
+	default 0
+
+config ATM_LL_HEAP_SIZE
+	int "Override LL heap size"
+	default 40388 if ATM_LCROM_IFACE && ATMWSTK_PD50
+	default 30000 if ATM_ENA_LL_FEAT_CS && ATMWSTK_PD50
+	default 60388 if ATM_LCROM_IFACE && ATMWSTK_CPD200
+	default 0
+
+config ATM_ENA_DBG_PC_CTR_MEM_USAGE
+	bool "Show pc_ctr memory usage information"
+
+config ATM_PC_FSU_ACL_IFS_MIN
+	int "Override minimum value of frame space update ACL IFS"
+	default 0
+
+config ATM_PC_FSU_CIS_IFS_MIN
+	int "Override minimum value of frame space update CIS IFS"
+	default 0
+
+config ATM_ENA_BLE_CS_MANDATORY_TIMING_ONLY
+	bool "Use channel sounding mandatory timing only"
+
+config ATM_ENA_SCAN_RANDOM_BACKOFF
+	bool "Enable scan random backoff"
+	default y
+
+config ATM_ENA_BLE_CS_DBG_VECTOR
+	bool "Enable channel sounding debug vector"
+
+config ATM_MAX_ACL_TXBUF_SIZE
+	int "Override max value of ACL Tx buffer size"
+	default BT_BUF_ACL_TX_SIZE if BT_RAS
+	default 0
+
+config ATM_BLE_CS_SYNC_PHY_2M_ENABLE
+	bool "Enable 2M PHY for Channel Sounding Sync exchanges"
+	default y
+
+config ATM_BLE_CS_SYNC_PHY_2M_BT2_ENABLE
+	bool "Enable 2M BT 2.0 PHY for Channel Sounding Sync exchanges"
+	default y
+
+endif # ATM_PC_CTR

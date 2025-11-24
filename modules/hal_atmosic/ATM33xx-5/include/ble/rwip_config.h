@@ -6,7 +6,7 @@
  * @brief Configuration of the RW IP SW
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -115,6 +115,8 @@
 /// Flag indicating BT 6.0 support
 
 /// Flag indicating BT 6.1 support
+
+/// Flag indicating BT 7.0 support
 
 /******************************************************************************************/
 /* -------------------------   INTERFACES DEFINITIONS      -------------------------------*/
@@ -604,21 +606,21 @@
 #endif //CFG_HCI_C2H_FLOW_CTRL
 
 /******************************************************************************************/
-/* --------------------------   DISPLAY SETUP        -------------------------------------*/
+/* --------------------------   MAIBLOX SUPPORT      -------------------------------------*/
 /******************************************************************************************/
 
-/// Display controller enable/disable
-#if defined(CFG_DISPLAY)
-#define DISPLAY_SUPPORT      1
+/// Mailbox support
+#if defined(CFG_MBOX)
+#define MAILBOX_SUPPORT      1
 #else
-#define DISPLAY_SUPPORT      0
-#endif //CFG_DISPLAY
+#define MAILBOX_SUPPORT      0
+#endif // CFG_MBOX
 
 /******************************************************************************************/
 /* --------------------------   GPIO SETUP        -------------------------------------*/
 /******************************************************************************************/
 
-/// Display controller enable/disable
+/// GPIO enable/disable
 #if defined(CFG_GPIO)
 #define GPIO_SUPPORT      1
 #else
@@ -745,6 +747,8 @@
 /// Margin for SW to program a frame at wake-up (in half-us)
 #define SLEEP_PROG_MARGIN   700      // 350 us
 
+/// Low Power Clock Jitter
+#define RWIP_LPCLK_JITTER   0 // Default jitter is 0us. May modify for platform specifics.
 
 /******************************************************************************************/
 /* --------------------------   BASEBAND SETUP       -------------------------------------*/
@@ -758,9 +762,11 @@
 /// Default programming delay, margin for programming the baseband in advance of each activity (in half-slots)
 #define IP_PROG_DELAY_DFT  (3)
 
-#ifndef REMOVE_CEVA_CASE_18829
 /// Low threshold for scheduling arbiter programming a HW timer (in half-us)
+#ifndef REMOVE_CEVA_CASE_18829
 #define IP_ARB_TIMER_PROG_THR (150)
+#else
+#define IP_ARB_TIMER_PROG_THR (50)
 #endif
 
 /**
@@ -799,6 +805,9 @@
 #define BLE_PHY_1MBPS_SUPPORT                       (RF_BLE_PHY_1MBPS_SUPPORT)
 #define BLE_PHY_2MBPS_SUPPORT                       (RF_BLE_PHY_2MBPS_SUPPORT)
 #define BLE_PHY_CODED_SUPPORT                       (RF_BLE_PHY_CODED_SUPPORT)
+
+#define BLE_PHY_HDT_SUPPORT                         (0)
+
 #define BLE_STABLE_MOD_IDX_TX_SUPPORT               (RF_STABLE_MOD_IDX_TX_SUPPORT)
 #define BLE_STABLE_MOD_IDX_RX_SUPPORT               (RF_STABLE_MOD_IDX_RX_SUPPORT)
 #define BLE_PWR_CLASS_1_SUPPORT                     (RF_PWR_CLASS_1_SUPPORT)
@@ -1037,10 +1046,6 @@
 /*@TRACE*/
 enum KE_EVENT_TYPE
 {
-    #if DISPLAY_SUPPORT
-    KE_EVENT_DISPLAY,
-    #endif //DISPLAY_SUPPORT
-
     #if RTC_SUPPORT
     KE_EVENT_RTC_1S_TICK,
     #endif //RTC_SUPPORT
@@ -1119,10 +1124,6 @@ enum KE_TASK_TYPE
     TASK_DBG,
 #endif // ((BLE_EMB_PRESENT) || (BT_EMB_PRESENT))
 
-
-#if (DISPLAY_SUPPORT)
-    TASK_DISPLAY,
-#endif // (DISPLAY_SUPPORT)
 
     #if (HOST_PRESENT && HOST_MSG_API)
     #if (APP_PRESENT || defined(CFG_FRAMEWORK))
@@ -1296,6 +1297,9 @@ enum PARAM_ID
     /// Default MD bit used by slave when sending a data packet on a BLE connection
     PARAM_ID_DFT_SLAVE_MD               = 0x20,
 
+    /// PCA for HDT test mode
+    PARAM_ID_HDT_TEST_PCA               = 0x21,
+
     /// Adjust sleep duration
     PARAM_ID_SLEEP_ADJ                  = 0x2B,
 
@@ -1376,6 +1380,9 @@ enum PARAM_LEN
      PARAM_LEN_SLEEP_ENABLE               = 1,
      /// Enable External Wakeup
      PARAM_LEN_EXT_WAKEUP_ENABLE          = 1,
+
+     /// PCA for HDT test mode
+     PARAM_LEN_HDT_TEST_PCA               = 5,
 
      /// Activity Move Configuration
      PARAM_LEN_ACTIVITY_MOVE_CONFIG       = 1,

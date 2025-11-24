@@ -1,0 +1,12 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config BATT_MODEL_HSC_LIION
+	bool "HSC/Li-ion Battery Model Driver"
+	depends on ADC
+	select BATT_MODEL
+	help
+	  Battery model driver for HSC (Hybrid Super Capacitor) and Li-ion batteries
+	  with energy harvesting support. The driver uses device tree batt-type property
+	  to determine the appropriate battery model at compile time.

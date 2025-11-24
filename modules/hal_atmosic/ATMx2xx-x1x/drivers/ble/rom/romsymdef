@@ -1,2 +1,0 @@
-lld_con_env = 0x20000dac;
-lld_con_sched = 0x0001a3cd;

@@ -1,0 +1,15 @@
+sample:
+  name: Bluetooth Periodic Advertising with Responses Synchronization Procedure
+tests:
+  samples.bluetooth.periodic_sync_rsp.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - Starting Periodic Advertising with Responses Synchronization Demo
+    tags:
+      - bluetooth
+      - no_mcuboot
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

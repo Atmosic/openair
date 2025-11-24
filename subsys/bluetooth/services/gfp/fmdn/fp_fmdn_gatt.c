@@ -16,6 +16,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
 #include "app_work_q.h"
 #include "atm_utils_c.h"
 #include "fp_conn.h"
@@ -26,8 +27,19 @@
 #include "fp_mode.h"
 #include "fp_storage.h"
 #include "gfp_crypto.h"
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+#include "fp_fhpf_gatt.h"
+#endif
 
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
+
+#define FMDN_CONN_INTERVAL_MIN 760
+#define FMDN_CONN_INTERVAL_MAX 800
+#define FMDN_CONN_LATENCY      0
+#define FMDN_CONN_TIMEOUT      800
+
+static struct bt_le_conn_param const fmdn_conn_params = BT_LE_CONN_PARAM_INIT(
+	FMDN_CONN_INTERVAL_MIN, FMDN_CONN_INTERVAL_MAX, FMDN_CONN_LATENCY, FMDN_CONN_TIMEOUT);
 
 static fp_fmdn_utp_mode_cb utp_mode_cb;
 static fp_fmdn_ring_action_cb ring_action_cb;
@@ -39,7 +51,7 @@ static bcna_conn_ctx_t conn_contexts[CONFIG_BT_MAX_CONN];
 
 static void fp_fmdn_provision_cleanup(void);
 static bool delay_provision_cleanup;
-static uint8_t utp_ignore_ring_auth;
+
 static struct bt_gatt_attr *fmdn_attr;
 
 static int fp_fmdn_bcna_resp_send(struct bt_conn *conn, const struct bt_gatt_attr *attr,
@@ -123,15 +135,17 @@ static void bcna_auth_data_gen(uint8_t *auth_data, uint16_t *auth_data_len,
 				 add_len;
 	}
 	size_t offset = 0;
-	FMDN_MEMCPY_SHIFT(auth_data, &major_ver, sizeof(major_ver), offset);
-	FMDN_MEMCPY_SHIFT(auth_data, conn_context->random_nonce, BCNA_RNDM_NONCE_LEN, offset);
-	FMDN_MEMCPY_SHIFT(auth_data, &data->header.data_id, sizeof(data->header.data_id), offset);
-	FMDN_MEMCPY_SHIFT(auth_data, &data->header.data_len, sizeof(data->header.data_len), offset);
+	FP_UTIL_MEMCPY_SHIFT(auth_data, &major_ver, sizeof(major_ver), offset);
+	FP_UTIL_MEMCPY_SHIFT(auth_data, conn_context->random_nonce, BCNA_RNDM_NONCE_LEN, offset);
+	FP_UTIL_MEMCPY_SHIFT(auth_data, &data->header.data_id, sizeof(data->header.data_id),
+			     offset);
+	FP_UTIL_MEMCPY_SHIFT(auth_data, &data->header.data_len, sizeof(data->header.data_len),
+			     offset);
 	if (data_type != FP_FMDN_AUTH_DATA_EID_READ_REQ) {
-		FMDN_MEMCPY_SHIFT(auth_data, data->addition_data, add_len, offset);
+		FP_UTIL_MEMCPY_SHIFT(auth_data, data->addition_data, add_len, offset);
 	}
 	if (data_type == FP_FMDN_AUTH_DATA_RES) {
-		FMDN_MEMCPY_SHIFT(auth_data, &constant_end, sizeof(constant_end), offset);
+		FP_UTIL_MEMCPY_SHIFT(auth_data, &constant_end, sizeof(constant_end), offset);
 	}
 }
 
@@ -175,7 +189,8 @@ static uint16_t bcna_auth_validate(bcna_conn_ctx_t *conn_context, bcna_write_dat
 			return BCNA_ERR_INVALID_VALUE;
 		}
 		if ((req->header.data_id == BCNA_OP_RING_STATE_CHANGE) &&
-		    (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) && utp_ignore_ring_auth) {
+		    (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) &&
+		    fp_storage_utp_ignore_ring_auth_get()) {
 			LOG_INF("BCNA UTP ignore ring auth");
 			return 0;
 		}
@@ -266,7 +281,7 @@ static size_t fp_fmdn_bcna_parameter_read_handle(bcna_conn_ctx_t const *conn_con
 	uint8_t *dst_ptr = addition_data;
 	size_t offset = 0;
 	uint8_t power = FP_APP_TX_PWR;
-	FMDN_MEMCPY_SHIFT(dst_ptr, &power, sizeof(power), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &power, sizeof(power), offset);
 
 	// The current clock value in seconds (big endian).
 	uint32_t clock = fp_fmdn_key_clock_read();
@@ -274,16 +289,16 @@ static size_t fp_fmdn_bcna_parameter_read_handle(bcna_conn_ctx_t const *conn_con
 	offset += sizeof(clock);
 	// The elliptic curve being used for encryption
 	uint8_t curve_sel = FP_FMDN_CURVE_SEL;
-	FMDN_MEMCPY_SHIFT(dst_ptr, &curve_sel, sizeof(curve_sel), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &curve_sel, sizeof(curve_sel), offset);
 
 	uint8_t components = BCNA_RING_COMPONENTS_ALL;
-	FMDN_MEMCPY_SHIFT(dst_ptr, &components, sizeof(components), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &components, sizeof(components), offset);
 	uint8_t ring_cap = BCNA_RING_SEL_AVAILABLE;
-	FMDN_MEMCPY_SHIFT(dst_ptr, &ring_cap, sizeof(ring_cap), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &ring_cap, sizeof(ring_cap), offset);
 	// Zero padding for AES encryption
 	uint8_t pad[8];
 	memset(pad, 0, sizeof(pad));
-	FMDN_MEMCPY_SHIFT(dst_ptr, pad, sizeof(pad), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, pad, sizeof(pad), offset);
 	if (BCNA_READ_PARAM_LEN != offset) {
 		LOG_WRN("BCNA parameter read addition_data (%zu) not expected %d", offset,
 			BCNA_READ_PARAM_LEN);
@@ -313,12 +328,12 @@ static size_t fp_fmdn_bcna_provision_status_read_handle(bcna_conn_ctx_t const *c
 		status |= FP_FMDN_PROVISION_STATE_EIDK_SET;
 	}
 	size_t offset = 0;
-	FMDN_MEMCPY_SHIFT(dst_ptr, &status, sizeof(status), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &status, sizeof(status), offset);
 	// to do copy eid
 	uint8_t fmdn_eid[FP_FMDN_STATE_EID_LEN];
 	uint8_t len = fp_fmdn_key_get_eid(fmdn_eid);
 	if (len) {
-		FMDN_MEMCPY_SHIFT(dst_ptr, fmdn_eid, len, offset);
+		FP_UTIL_MEMCPY_SHIFT(dst_ptr, fmdn_eid, len, offset);
 	}
 	resp->header.data_len = BCNA_AUTH_KEY_LEN + offset;
 	// data_id and data_len
@@ -334,8 +349,8 @@ bool fp_fmdn_bcna_eik_auth_seg_gen(bcna_conn_ctx_t const *conn_context, uint8_t 
 	/* the first 8 bytes of SHA256(current ephemeral identity key ||
 	 * the last nonce read from the characteristic)
 	 */
-	FMDN_MEMCPY_SHIFT(auth_data, curr_eidk, FP_FMDN_EID_KEY_LEN, offset);
-	FMDN_MEMCPY_SHIFT(auth_data, conn_context->random_nonce, BCNA_RNDM_NONCE_LEN, offset);
+	FP_UTIL_MEMCPY_SHIFT(auth_data, curr_eidk, FP_FMDN_EID_KEY_LEN, offset);
+	FP_UTIL_MEMCPY_SHIFT(auth_data, conn_context->random_nonce, BCNA_RNDM_NONCE_LEN, offset);
 	/// SHA256(ephemeral identity key || the last nonce read from the
 	/// characteristic)
 	gfp_crypto_sha256(auth_data, BCNA_EID_KEY_AUTH_LEN, auth_seg);
@@ -434,7 +449,7 @@ static size_t fp_fmdn_bcna_read_eid_key_handle(bcna_conn_ctx_t const *conn_conte
 	uint8_t addition_data[FP_EIK_LEN];
 	static uint8_t eid_key[FP_EIK_LEN];
 	fp_storage_eid_key_get(eid_key);
-	FMDN_MEMCPY_SHIFT(addition_data, eid_key, FP_EIK_LEN, offset);
+	FP_UTIL_MEMCPY_SHIFT(addition_data, eid_key, FP_EIK_LEN, offset);
 	resp->header.data_len = BCNA_AUTH_KEY_LEN + offset;
 	uint8_t enc_data[FP_EIK_LEN];
 	if (!gfp_crypto_aes_ecb_enc(enc_data, addition_data, offset, conn_context->secret_key,
@@ -462,12 +477,12 @@ static uint16_t fp_fmdn_bcna_ring_state_resp_handler(bcna_write_data_t *resp, ui
 	uint8_t addition_data[FP_FMDN_EID_KEY_LEN];
 	uint8_t *dst_ptr = addition_data;
 	size_t add_len = 0;
-	FMDN_MEMCPY_SHIFT(dst_ptr, &ring_state, sizeof(ring_state), add_len);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &ring_state, sizeof(ring_state), add_len);
 	uint8_t components = BCNA_RING_COMPONENTS_ALL;
-	FMDN_MEMCPY_SHIFT(dst_ptr, &components, sizeof(components), add_len);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &components, sizeof(components), add_len);
 	uint16_t tmp_ring_to;
 	atm_set_be16(&tmp_ring_to, ring_to);
-	FMDN_MEMCPY_SHIFT(dst_ptr, &tmp_ring_to, sizeof(tmp_ring_to), add_len);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &tmp_ring_to, sizeof(tmp_ring_to), add_len);
 	resp->header.data_len = BCNA_AUTH_KEY_LEN + add_len;
 	memcpy(resp->addition_data, addition_data, add_len);
 	// data_id and data_len
@@ -510,7 +525,8 @@ static void fp_fmdn_ring_state_stop(uint8_t state)
 	ring_start_time_ms = 0;
 	gatt_ring_en = false;
 	if (ring_action_cb) {
-		ring_action_cb(cur_ring_state == FP_FMDN_RING_STATE_STARTED);
+		ring_action_cb(cur_ring_state == FP_FMDN_RING_STATE_STARTED, FMDN_RING_OP_RING_ALL,
+			       FP_FMDN_RING_VOL_DEFAULT);
 	}
 	atm_work_submit_to_app_work_q(&fp_fmdn_gatt_ring_stop_noti);
 }
@@ -522,10 +538,10 @@ static void fp_fmdn_ring_timeout_handler(struct k_work *work)
 }
 K_WORK_DELAYABLE_DEFINE(fp_fmdn_ring_timer_id, fp_fmdn_ring_timeout_handler);
 
-static void fp_fmnd_gatt_ring_update(bool en, uint16_t to)
+static void fp_fmnd_gatt_ring_update(bool en, uint16_t to, uint8_t ring_op, uint8_t ring_vol)
 {
 	if (ring_action_cb) {
-		ring_action_cb(en);
+		ring_action_cb(en, ring_op, ring_vol);
 	}
 	if (en && to) {
 		uint16_t to_s = to / 10;
@@ -542,7 +558,7 @@ static size_t fp_fmdn_bcna_ring_read_ringing_state_handle(bcna_write_data_t *res
 	uint8_t *dst_ptr = addition_data;
 	size_t offset = 0;
 	uint8_t components = BCNA_RING_COMPONENTS_ALL;
-	FMDN_MEMCPY_SHIFT(dst_ptr, &components, sizeof(components), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &components, sizeof(components), offset);
 	uint16_t ring_to = 0x0;
 	if (cur_ring_to && ring_start_time_ms) {
 		uint32_t ring_diff = k_uptime_get() - ring_start_time_ms;
@@ -551,7 +567,7 @@ static size_t fp_fmdn_bcna_ring_read_ringing_state_handle(bcna_write_data_t *res
 		ring_to = (cur_ring_to > ring_diff) ? (cur_ring_to - ring_diff) : 0;
 		atm_set_be16(&ring_to, ring_to);
 	}
-	FMDN_MEMCPY_SHIFT(dst_ptr, &ring_to, sizeof(ring_to), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &ring_to, sizeof(ring_to), offset);
 	resp->header.data_len = BCNA_AUTH_KEY_LEN + offset;
 	memcpy(resp->addition_data, addition_data, offset);
 	// data_id and data_len
@@ -570,16 +586,12 @@ static size_t fp_fmdn_bcna_ring_state_change_handle(bcna_write_data_t *resp, uin
 	offset += sizeof(cur_ring_to);
 	memcpy(&ring_vol, resp->addition_data + offset, sizeof(ring_vol));
 	offset += sizeof(ring_vol);
-#define FMDN_RING_OP_RING_RIGHT 0x01
-#define FMDN_RING_OP_RING_LEFT  0x02
-#define FMDN_RING_OP_RING_CASE  0x04
-#define FMDN_RING_OP_RING_ALL   0xFF
-#define FMDN_RING_OP_RING_STOP  0x00
 	gatt_ring_en = (ring_op != FMDN_RING_OP_RING_STOP);
 	cur_ring_state = (ring_op == FMDN_RING_OP_RING_STOP)
 				 ? FP_FMDN_RING_STATE_STOPED_GATT_REQUEST
 				 : FP_FMDN_RING_STATE_STARTED;
-	fp_fmnd_gatt_ring_update(cur_ring_state == FP_FMDN_RING_STATE_STARTED, cur_ring_to);
+	fp_fmnd_gatt_ring_update(cur_ring_state == FP_FMDN_RING_STATE_STARTED, cur_ring_to, ring_op,
+				 ring_vol);
 	if (cur_ring_state == FP_FMDN_RING_STATE_STARTED) {
 		ring_start_time_ms = k_uptime_get();
 	} else {
@@ -592,10 +604,15 @@ static size_t fp_fmdn_bcna_set_utp_handle(bcna_write_data_t *resp, uint16_t *res
 					  fp_fmdn_utp_mode_t utp_mode)
 {
 	if ((utp_mode == FP_FMDN_UTP_MODE_ON) && (resp->header.data_len > BCNA_AUTH_KEY_LEN)) {
-		utp_ignore_ring_auth = resp->addition_data[0];
+		// UTP ON with control flags provided - check bit 0 for skip authentication
+		LOG_INF("BCNA UTP control flags 0x%02X", resp->addition_data[0]);
+		fp_storage_utp_ignore_ring_auth_save(resp->addition_data[0] & 0x01);
+	} else if (utp_mode == FP_FMDN_UTP_MODE_OFF) {
+		// UTP OFF: Clear the flag (deactivated)
+		fp_storage_utp_ignore_ring_auth_save(false);
 	}
 	fp_storage_utp_mode_save(utp_mode);
-	fp_fmdn_adv_recreate(true, false);
+	fp_fmdn_adv_recreate(false, false);
 	if (utp_mode_cb) {
 		utp_mode_cb(utp_mode);
 	}
@@ -604,6 +621,57 @@ static size_t fp_fmdn_bcna_set_utp_handle(bcna_write_data_t *resp, uint16_t *res
 	*resp_len = resp->header.data_len + 2;
 	return 0;
 }
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+static size_t fp_fhpf_gatt_bcna_ranging_handle(struct bt_conn *conn, uint8_t data_id,
+					       bcna_write_data_t *req, uint16_t *resp_len)
+{
+	size_t err = 0;
+	uint16_t response_size = 0;
+	uint8_t add_data_len = req->header.data_len - BCNA_AUTH_KEY_LEN;
+	if (add_data_len == 0) {
+		LOG_ERR("BCNA RC: No additional data provided for RC request");
+		return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+	}
+	LOG_HEXDUMP_DBG(req->addition_data, add_data_len, "BCNA RC: Request Ranging DE:");
+	if (add_data_len < sizeof(ranging_oob_de_header_t)) {
+		LOG_ERR("BCNA RC: No version and msg_id for RC request");
+		return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+	}
+	switch (data_id) {
+	case BCNA_OP_RANGING_CAPABILITY:
+		err = fp_fhpf_gatt_bcna_ranging_cap_handle(conn, req->addition_data, add_data_len,
+							   &response_size);
+		break;
+	case BCNA_OP_RANGING_CAPABILITY_CONFIG:
+		err = fp_fhpf_gatt_bcna_ranging_conf_handle(conn, req->addition_data, add_data_len,
+							    &response_size);
+		break;
+	case BCNA_OP_RANGING_CAPABILITY_START:
+		err = fp_fhpf_gatt_bcna_ranging_start_handle(conn, req->addition_data, add_data_len,
+							     &response_size);
+		break;
+	case BCNA_OP_RANGING_CAPABILITY_STOP:
+		err = fp_fhpf_gatt_bcna_ranging_stop_handle(conn, req->addition_data, add_data_len,
+							    &response_size);
+		break;
+	default:
+		LOG_WRN("BCNA: unrecognized request: data_id=%#x", data_id);
+		err = BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+	}
+	if (err) {
+		return err;
+	}
+	// Keep the same data_id, just update data_len to include the response data
+	req->header.data_len = BCNA_AUTH_KEY_LEN + response_size;
+
+	// Set total response length (header + auth key + additional data)
+	*resp_len = req->header.data_len + 2; // +2 for data_id and data_len fields
+	LOG_DBG("BCNA RC: Created Ranging response, size: %zu bytes", response_size);
+	LOG_HEXDUMP_DBG(req->addition_data, response_size, "BCNA RC: Response Ranging DE:");
+	return 0;
+}
+#endif
 
 ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
 			   uint16_t len, uint16_t offset, uint8_t flags)
@@ -703,6 +771,15 @@ ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr
 	case BCNA_OP_DEACTIVATE_UTP:
 		err = fp_fmdn_bcna_set_utp_handle(&bcna_w_req, &resp_len, FP_FMDN_UTP_MODE_OFF);
 		break;
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	case BCNA_OP_RANGING_CAPABILITY:
+	case BCNA_OP_RANGING_CAPABILITY_CONFIG:
+	case BCNA_OP_RANGING_CAPABILITY_START:
+	case BCNA_OP_RANGING_CAPABILITY_STOP:
+		err = fp_fhpf_gatt_bcna_ranging_handle(conn, bcna_w_req.header.data_id, &bcna_w_req,
+						       &resp_len);
+		break;
+#endif
 	default:
 		LOG_WRN("BCNA: unrecognized request: data_id=%#x", bcna_w_req.header.data_id);
 		err = BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
@@ -773,6 +850,12 @@ static void fp_fmdn_gatt_connected(struct bt_conn *conn, uint8_t err)
 	if (!fp_mode_is_provisioned()) {
 		return;
 	}
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	// Handle precision finding connection event
+	fp_fhpf_gatt_conn_event(conn, true);
+#endif
+
 	atm_work_submit_to_app_work_q(&fp_fmdn_gatt_conn_action);
 }
 
@@ -786,12 +869,56 @@ static void fp_fmdn_gatt_disconnected(struct bt_conn *conn, uint8_t reason)
 	if (!fp_mode_is_provisioned()) {
 		return;
 	}
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	// Handle precision finding disconnection event
+	fp_fhpf_gatt_conn_event(conn, false);
+#endif
+
 	atm_work_submit_to_app_work_q(&fp_fmdn_gatt_disconn_action);
+}
+
+static void fp_fmdn_security_changed(struct bt_conn *conn, bt_security_t level,
+				     enum bt_security_err err)
+{
+	if (!fp_conn_validate(conn)) {
+		return;
+	}
+	char addr[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+	if (err) {
+		LOG_ERR("Security failed: %s level:%u err:%d", addr, level, err);
+		return;
+	}
+
+	struct bt_conn_info info;
+	bt_conn_get_info(conn, &info);
+
+	LOG_INF("Security changed: %s level:%u ID:%d", addr, level, info.id);
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	// Handle precision finding security change event
+	fp_fhpf_gatt_security_changed(conn, level, err);
+#endif
+
+	// Log successful pairing for FMDN connection
+	if (level >= BT_SECURITY_L2) {
+		LOG_INF("FMDN connection secured: %s level:%u", addr, level);
+		if (fp_mode_is_provisioned()) {
+			bt_conn_le_param_update(conn, &fmdn_conn_params);
+		}
+	}
 }
 
 BT_CONN_CB_DEFINE(fp_fmdn_gatt_conn_callbacks) = {
 	.connected = fp_fmdn_gatt_connected,
 	.disconnected = fp_fmdn_gatt_disconnected,
+	.security_changed = fp_fmdn_security_changed,
+#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
+	.le_cs_procedure_enable_complete = fp_fhpf_gatt_cs_procedure_enabled_cb,
+	.le_cs_config_complete = fp_fhpf_gatt_cs_config_created_cb,
+#endif
 };
 
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
@@ -860,6 +987,15 @@ void fp_fmdn_gatt_deinit(void)
 void fp_fmdn_button_notify(void)
 {
 	if (cur_ring_state == FP_FMDN_RING_STATE_STARTED) {
+		k_work_cancel_delayable(&fp_fmdn_ring_timer_id);
 		fp_fmdn_ring_state_stop(FP_FMDN_RING_STATE_STOPED_BUTTON_PRESS);
 	}
 }
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+void fp_fmdn_ranging_handler_register(fp_fmdn_ranging_handler_t const *handler)
+{
+	// Forward to FHPF module
+	fp_fhpf_gatt_ranging_handler_register(handler);
+}
+#endif

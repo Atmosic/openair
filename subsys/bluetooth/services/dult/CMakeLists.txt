@@ -5,5 +5,7 @@
 if(CONFIG_ATM_DULT)
   zephyr_include_directories(.)
   zephyr_sources(dult.c)
-  zephyr_sources(dult_adv.c)
+  if(CONFIG_DULT_ADV_SUPPORT)
+    zephyr_sources(dult_adv.c)
+  endif()
 endif()

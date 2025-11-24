@@ -1,0 +1,10 @@
+sample:
+  name: GPIO Interrupt Basic Test
+tests:
+  samples.basic.gpio_interrupt_test.atm:
+    sysbuild: true
+    harness: ztest
+    tags:
+      - gpio
+      - interrupt
+      - no_mcuboot

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-'''
+"""
 @file ndk_esl_ap.py
 
 @brief Nordic ESL AP shell commands
 
 Copyright (C) Atmosic 2024-2025
-'''
+"""
 
 import sys
 import serial
@@ -31,6 +31,7 @@ exception_list = [
     "<err> bt_esls: unexp opcode:0",
     "<err> bt_scan: Unknown handle 0x0000 for periodic advertising report",
     "<err> bt_esls: Security failed",
+    "<err> bt_adv: No valid legacy adv to resume",
 ]
 
 esl_c_test_commands = [
@@ -85,15 +86,27 @@ esl_c_test_commands = [
     # LED control led0 OFF
     ("esl_c pawr push_sync_buf 0 B0000033000000000000000000\n", "#SLOT:0,0x03340100"),
     # LED control led0 timed control w/ abs_time > max
-    ("esl_c pawr push_sync_buf 0 F0000033000000000000000100FFFFFFFF\n", "#SLOT:0,0x0334000c"),
+    (
+        "esl_c pawr push_sync_buf 0 F0000033000000000000000100FFFFFFFF\n",
+        "#SLOT:0,0x0334000c",
+    ),
     # LED control led0 timed control
-    ("esl_c pawr push_sync_buf 0 F0000033000000000000000100400D0300\n", "#SLOT:0,0x03340100"),
+    (
+        "esl_c pawr push_sync_buf 0 F0000033000000000000000100400D0300\n",
+        "#SLOT:0,0x03340100",
+    ),
     # ping cmd -> basic state = sync bit | pending LED bit
     ("esl_c pawr push_sync_buf 0 0000\n", "#SLOT:0,0x0434100a00"),
     # LED control 2nd LED0 timed control cmd -> queue full
-    ("esl_c pawr push_sync_buf 0 F000003300000000000000010050340300\n", "#SLOT:0,0x0334000b"),
+    (
+        "esl_c pawr push_sync_buf 0 F000003300000000000000010050340300\n",
+        "#SLOT:0,0x0334000b",
+    ),
     # LED control delete pending LED0 timed control cmd
-    ("esl_c pawr push_sync_buf 0 F000003300000000000000010000000000\n", "#SLOT:0,0x03340100"),
+    (
+        "esl_c pawr push_sync_buf 0 F000003300000000000000010000000000\n",
+        "#SLOT:0,0x03340100",
+    ),
     # ping cmd -> basic state = sync bit
     ("esl_c pawr push_sync_buf 0 0000\n", "#SLOT:0,0x0434100200"),
 ]
@@ -105,8 +118,9 @@ factory_reset_commands = [
     ("esl_c factory 0\n", "Disconnected"),
 ]
 
+
 def reset_device():
-    command = ['nrfutil', 'device', 'reset', '--serial-number', id_ser_short]
+    command = ["nrfutil", "device", "reset", "--serial-number", id_ser_short]
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         print("reset_device...")
@@ -114,6 +128,7 @@ def reset_device():
     except subprocess.CalledProcessError as e:
         print(f"Error occurred: {e.stderr}")
         raise Exception("Reset nrf device failed")
+
 
 def send_and_check_response(command, expected_response, timeout=TIMEOUT):
     tries = 0
@@ -124,7 +139,7 @@ def send_and_check_response(command, expected_response, timeout=TIMEOUT):
         print(f"Sent: {command}")
         while time.time() - start_time < timeout:
             if ser.in_waiting > 0:
-                response = ser.readline().decode('utf-8').strip()
+                response = ser.readline().decode("utf-8").strip()
                 print(f"Received: {response}")
 
                 if expected_response in response:
@@ -135,6 +150,7 @@ def send_and_check_response(command, expected_response, timeout=TIMEOUT):
     print(f"Timeout waiting for response. Expected: {expected_response}")
     raise Exception("Timeout")
 
+
 def exe_cmds(commands):
     for command, expected_response in commands:
         if terminate_event.is_set():
@@ -144,12 +160,14 @@ def exe_cmds(commands):
         except Exception as e:
             raise Exception(f"Timeout while sending: {command}")
 
+
 def unbond():
     try:
         reset_device()
         send_and_check_response("esl_c reset_ap\n", "esl_c reset_ap")
     except:
         print(f"Error unbond: {e}")
+
 
 def discovery(associated=False):
     cmd = "esl_c esl_c tag_state\n"
@@ -162,6 +180,7 @@ def discovery(associated=False):
     except Exception as e:
         raise Exception(f"Timeout while sending: {cmd}")
 
+
 test_cmd_list = [
     lambda: unbond(),
     lambda: reset_device(),
@@ -169,18 +188,21 @@ test_cmd_list = [
     lambda: exe_cmds(esl_c_test_commands),
     lambda: exe_cmds(factory_reset_commands),
     lambda: unbond(),
-     #---------------------------------------------
+    # ---------------------------------------------
     lambda: reset_device(),
     lambda: discovery(False),
     lambda: exe_cmds(esl_c_test_commands),
-     #---------------------------------------------
+    # ---------------------------------------------
     lambda: reset_device(),
     # wait for ESL synchronization state timeout
     lambda: time.sleep(SYNC_TIMEOUT),
     lambda: discovery(True),
     lambda: exe_cmds(esl_c_test_commands),
-    lambda: send_and_check_response("esl_c pawr push_sync_buf 0 010000\n", "#SLOT:0,0x0434100000")
+    lambda: send_and_check_response(
+        "esl_c pawr push_sync_buf 0 010000\n", "#SLOT:0,0x0434100000"
+    ),
 ]
+
 
 def esl_test_task():
     for command_lambda in test_cmd_list:
@@ -193,16 +215,17 @@ def esl_test_task():
             return False
     return True
 
+
 def monitor_serial_port(ser, exception_list):
     """Monitor the serial port for output and detect errors."""
     while not terminate_event.is_set():
         try:
-            line = ser.readline().decode('utf-8', errors='ignore').strip()
+            line = ser.readline().decode("utf-8", errors="ignore").strip()
             if not line:
                 continue
             print(f"{line}")
             line_lower = line.lower()
-            has_err_tag = '<err>' in line_lower
+            has_err_tag = "<err>" in line_lower
             if has_err_tag:
                 is_exception = any(ex.lower() in line_lower for ex in exception_list)
                 if not is_exception:
@@ -212,21 +235,29 @@ def monitor_serial_port(ser, exception_list):
         except Exception as read_err:
             print(f"monitor_serial_port read error: {read_err}")
 
+
 def close_serials():
     if ser:
         ser.close()
     if ser_log:
         ser_log.close()
 
+
 def parsing_args():
-    parser = argparse.ArgumentParser(description='ESL test')
-    parser.add_argument('-p', '--port', dest='port', help='serial port',
-        required=True)
-    parser.add_argument('-s', '--short', dest='short', help='id serial short',
-        required=True)
-    parser.add_argument('-e', '--esltaglogport', dest='esltaglogport', help='ESL tag console log port',
-        required=True)
+    parser = argparse.ArgumentParser(description="ESL test")
+    parser.add_argument("-p", "--port", dest="port", help="serial port", required=True)
+    parser.add_argument(
+        "-s", "--short", dest="short", help="id serial short", required=True
+    )
+    parser.add_argument(
+        "-e",
+        "--esltaglogport",
+        dest="esltaglogport",
+        help="ESL tag console log port",
+        required=True,
+    )
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     # Parsing arguments
@@ -249,9 +280,7 @@ if __name__ == "__main__":
 
     # Initialize the monitoring thread
     monitor_thread = threading.Thread(
-        target=monitor_serial_port,
-        args=(ser_log, exception_list),
-        daemon=True
+        target=monitor_serial_port, args=(ser_log, exception_list), daemon=True
     )
     monitor_thread.start()
     time.sleep(0.5)

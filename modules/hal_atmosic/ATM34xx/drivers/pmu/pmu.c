@@ -72,6 +72,11 @@
 #if DT_NODE_HAS_PROP(DT_NODELABEL(pmu), inductor_nhenry)
 #define INDUCTOR_NHENRY DT_PROP(DT_NODELABEL(pmu), inductor_nhenry)
 #endif
+
+#if DT_NODE_HAS_PROP(DT_NODELABEL(pmu), xtal-32k-cap-in)
+#define XTAL_32K_CAP_IN DT_PROP(DT_NODELABEL(pmu), xtal-32k-cap-in)
+#define XTAL_32K_CAP_OUT DT_PROP(DT_NODELABEL(pmu), xtal-32k-cap-out)
+#endif
 #endif // CONFIG_SOC_FAMILY_ATM
 
 #ifdef CONFIG_PMU_WDOG_TIMEOUT
@@ -261,12 +266,22 @@ static void pmu_init(void)
 #else
 	    0,
 #endif
+	.hsc_mode =
+#ifdef BATT_MODEL_HSC
+	    true,
+#else
+	    false,
+#endif
     };
 
     if (!pmu_core_init(&param)) {
 	DEBUG_TRACE("Invalid vstore_max or batt_type");
 	return;
     }
+
+#ifdef XTAL_32K_CAP_IN
+    pmu_32k_xtal_cap_init(XTAL_32K_CAP_IN, XTAL_32K_CAP_OUT);
+#endif
 
 #if (defined(CFG_RF_HARV) || defined(CFG_NONRF_HARV)) && !defined(AUTO_TEST)
 #ifdef CFG_NONRF_HARV

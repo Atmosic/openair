@@ -132,11 +132,35 @@ proc fl_ram_erase { region_size region_start {er_sector_size 4096} } {
     set fl_ram_kick_program $_FL_RAM_KICK_PROGRAM
     set fl_ram_buf0_addr [mrw [expr {$fl_ram_block_info + 16}]]
 
+    global FLASH_TYPE_RRAM
+    global FL_RAM_FLASH_TYPE_OFS
+    set flash_type [mrb [expr {$fl_ram_block_info + $FL_RAM_FLASH_TYPE_OFS}]]
+    puts [format "<fast_load> flash type: 0x%x, 0x%x" \
+	[expr {$flash_type & $FLASH_TYPE_RRAM}] \
+	[expr {$flash_type & ~$FLASH_TYPE_RRAM}]]
+
+    global FLASH_BASE_ADDR
+    if {$region_start < $FLASH_BASE_ADDR} {
+	set flash_type $FLASH_TYPE_RRAM
+    } else {
+	set flash_type [expr {$flash_type & ~$FLASH_TYPE_RRAM}]
+    }
+
+    global FLASH_TYPE_UNKNOWN
+    if {$flash_type == $FLASH_TYPE_UNKNOWN} {
+	puts [format "<fast_load> skip (unknown flash)"]
+	return 1
+    }
+
     set FL_RAM_INPUT_ER_ALL 0xFFFFFFFF
     if { $region_size == $FL_RAM_INPUT_ER_ALL } {
 	set FL_RAM_ER_ALL 0xFFFF
 	set erase_size $FL_RAM_ER_ALL
     } else {
+	if { $flash_type == $FLASH_TYPE_RRAM && $region_size < $er_sector_size } {
+	    puts "Use 256B sector for RRAM"
+	    set er_sector_size 256
+	}
 	global FL_RAM_ER_SEC
 	global FL_RAM_ER_SEC_BASE
 	global FL_RAM_ER_SEC_${er_sector_size}
@@ -161,26 +185,6 @@ proc fl_ram_erase { region_size region_start {er_sector_size 4096} } {
 	    $er_length}]
 	puts [ format "<fast_load> erase sector idx=%d, len=%d, erase_size=%#x" \
 	    $er_sector_idx $er_sector_size $erase_size ]
-    }
-
-    global FLASH_TYPE_RRAM
-    global FL_RAM_FLASH_TYPE_OFS
-    set flash_type [mrb [expr {$fl_ram_block_info + $FL_RAM_FLASH_TYPE_OFS}]]
-    puts [format "<fast_load> flash type: 0x%x, 0x%x" \
-	[expr {$flash_type & $FLASH_TYPE_RRAM}] \
-	[expr {$flash_type & ~$FLASH_TYPE_RRAM}]]
-
-    global FLASH_BASE_ADDR
-    if {$region_start < $FLASH_BASE_ADDR} {
-	set flash_type $FLASH_TYPE_RRAM
-    } else {
-	set flash_type [expr {$flash_type & ~$FLASH_TYPE_RRAM}]
-    }
-
-    global FLASH_TYPE_UNKNOWN
-    if {$flash_type == $FLASH_TYPE_UNKNOWN} {
-	puts [format "<fast_load> skip (unknown flash)"]
-	return 1
     }
 
     global FL_RAM_OP_ERASE

@@ -37,14 +37,14 @@ LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 // Advertising interval within 2 seconds
 #define FP_FMDN_ADV_DISCOVER_MS 2000
 #endif
-#define FMDN_ADV_NONDISCOVER_MS_MIN ((uint32_t)(FP_FMDN_ADV_DISCOVER_MS - 20) * 1000 / 625)
-#define FMDN_ADV_NONDISCOVER_MS_MAX ((uint32_t)FP_FMDN_ADV_DISCOVER_MS * 1000 / 625)
+#define FMDN_ADV_NONDISCOVER_INT_MIN ((uint32_t)(FP_FMDN_ADV_DISCOVER_MS - 20) * 1000 / 625)
+#define FMDN_ADV_NONDISCOVER_INT_MAX ((uint32_t)FP_FMDN_ADV_DISCOVER_MS * 1000 / 625)
 
 #define FMDN_MAX_CONN CONFIG_FMDN_MAX_CONN
 static bool fmdn_conns[CONFIG_BT_MAX_CONN];
 static struct bt_le_ext_adv *fmdn_adv_set = NULL;
 static struct bt_le_adv_param fmdn_adv_param = {
-	.id = 1,
+	.id = 0, // Will be set dynamically in fp_fmdn_adv_start()
 	.sid = 0,
 	.secondary_max_skip = 0,
 	.options =
@@ -118,7 +118,7 @@ static void fp_fmdn_adv_connected(struct bt_le_ext_adv *instance,
 	fmdn_conns[bt_conn_index(info->conn)] = true;
 	uint8_t fmdn_conn_cnt = fp_fmdn_get_conn_cnt();
 
-	if (fmdn_conn_cnt < FMDN_MAX_CONN && fmdn_adv_set) {
+	if (fmdn_conn_cnt <= FMDN_MAX_CONN && fmdn_adv_set) {
 		fp_fmdn_adv_adv_start();
 	} else {
 		LOG_WRN("Connection %u exceed %d", fmdn_conn_cnt, FMDN_MAX_CONN);
@@ -206,9 +206,10 @@ static void fp_fmdn_adv_start(void)
 {
 	int err;
 	if (!fmdn_adv_set) {
-		fmdn_adv_param.id = fp_storage_bt_id_base_get() + FP_FMDN_ADV_BT_ID;
-		fmdn_adv_param.interval_min = FMDN_ADV_NONDISCOVER_MS_MIN;
-		fmdn_adv_param.interval_max = FMDN_ADV_NONDISCOVER_MS_MIN;
+		fmdn_adv_param.id = fp_conn_get_bt_id(FP_FMDN_ADV_BT_ID);
+		LOG_INF("FMDN advertising on BT_ID %u", fmdn_adv_param.id);
+		fmdn_adv_param.interval_min = FMDN_ADV_NONDISCOVER_INT_MIN;
+		fmdn_adv_param.interval_max = FMDN_ADV_NONDISCOVER_INT_MAX;
 		uint16_t rpa_timeout = fp_mode_rpa_timeout();
 		int err = bt_le_set_rpa_timeout(rpa_timeout);
 		if (err) {

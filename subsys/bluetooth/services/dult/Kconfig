@@ -73,4 +73,26 @@ config DULT_BATTERY_TYPE
     help
 	See https://www.ietf.org/archive/id/draft-detecting-unwanted-location-trackers-01.html#name-accessory-category-value for specific category value.
 
+config DULT_NETWORK_VERSION_MAJOR
+    int "DULT Network major version"
+    default 1
+    range 0 65535
+    help
+	Default is set to 1
+
+config DULT_NETWORK_VERSION_MINOR
+    int "DULT Network major version"
+    default 0
+    range 0 255
+
+config DULT_NETWORK_VERSION_REVISION
+    int "DULT Network revision version"
+    default 0
+    range 0 255
+
+config DULT_ADV_SUPPORT
+    bool "DULT advertising support"
+    help
+	Enable DULT advertising support.
+
 endif # ATM_DULT

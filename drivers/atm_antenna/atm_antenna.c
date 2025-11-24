@@ -5,8 +5,10 @@
  */
 
 #include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/pm/pm.h>
 
 #include "arch.h"
 #include "at_wrpr.h"
@@ -41,6 +43,11 @@ LOG_MODULE_REGISTER(atm_antenna, CONFIG_ATM_ANTENNA_SWITCH_LOG_LEVEL);
 #if DT_NODE_HAS_PROP(DT_NODELABEL(atm_antenna), ant_out7_pin)
 #define ANT_OUT7_PIN DT_PROP(DT_NODELABEL(atm_antenna), ant_out7_pin)
 #endif
+#if DT_NODE_HAS_PROP(DT_NODELABEL(atm_antenna), power_source_gpios)
+#define HAS_POWER_GPIO
+static const struct gpio_dt_spec power_source_gpio =
+	GPIO_DT_SPEC_GET(DT_NODELABEL(atm_antenna), power_source_gpios);
+#endif
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(atm_antenna), mdm_ant_rx_3to0)
 #define MDM_ANTRX3TO0_TABLE DT_PROP(DT_NODELABEL(atm_antenna), mdm_ant_rx_3to0)
@@ -56,6 +63,27 @@ LOG_MODULE_REGISTER(atm_antenna, CONFIG_ATM_ANTENNA_SWITCH_LOG_LEVEL);
 #endif
 #if DT_NODE_HAS_PROP(DT_NODELABEL(atm_antenna), mdm_ant_idle)
 #define MDM_ANTIDLE_TABLE DT_PROP(DT_NODELABEL(atm_antenna), mdm_ant_idle)
+#endif
+
+#if defined(HAS_POWER_GPIO) && defined(CONFIG_PM)
+static void atm_antenna_pm_notify_entry(enum pm_state state)
+{
+	if (state >= PM_STATE_SUSPEND_TO_RAM) {
+		gpio_pin_set_dt(&power_source_gpio, 0);
+	}
+}
+
+static void atm_antenna_pm_notify_exit(enum pm_state state)
+{
+	if (state >= PM_STATE_SUSPEND_TO_RAM) {
+		gpio_pin_set_dt(&power_source_gpio, 1);
+	}
+}
+
+static struct pm_notifier atm_antenna_pm_notifier = {
+	.state_entry = atm_antenna_pm_notify_entry,
+	.state_exit = atm_antenna_pm_notify_exit,
+};
 #endif
 
 static int atm_antenna_init(const struct device *dev)
@@ -85,6 +113,19 @@ static int atm_antenna_init(const struct device *dev)
 #if defined(ANT_OUT7_PIN)
 	PIN_SELECT(ANT_OUT7_PIN, ANT_OUT7);
 #endif
+#if defined(HAS_POWER_GPIO)
+	if (!gpio_is_ready_dt(&power_source_gpio)) {
+		LOG_ERR("Power source GPIO device not ready");
+		return -ENODEV;
+	}
+
+	int ret = gpio_pin_configure_dt(&power_source_gpio,
+					GPIO_OUTPUT | GPIO_OUTPUT_INIT_HIGH);
+	if (ret < 0) {
+		LOG_ERR("Failed to configure power source GPIO: %d", ret);
+		return ret;
+	}
+#endif
 
 	WRPR_CTRL_PUSH(CMSDK_MDM, WRPR_CTRL__CLK_ENABLE)
 	{
@@ -105,6 +146,10 @@ static int atm_antenna_init(const struct device *dev)
 #endif
 	}
 	WRPR_CTRL_POP();
+
+#if defined(HAS_POWER_GPIO) && defined(CONFIG_PM)
+	pm_notifier_register(&atm_antenna_pm_notifier);
+#endif
 
 	return 0;
 }

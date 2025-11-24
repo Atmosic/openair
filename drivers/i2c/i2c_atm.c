@@ -38,7 +38,7 @@ LOG_MODULE_REGISTER(i2c_atm, CONFIG_I2C_LOG_LEVEL);
 #define I2C(DEF) (I2C_##DEF)
 #endif
 
-#if defined(CONFIG_SOC_SERIES_ATMX2) || defined(CONFIG_SOC_SERIES_ATM33)
+#if defined(CONFIG_SOC_SERIES_ATM33)
 #define I2C_GPIO_REQUIRED 1
 #endif
 
@@ -611,8 +611,6 @@ static int i2c_atm_init(struct device const *dev)
 			      POST_KERNEL, CONFIG_I2C_INIT_PRIORITY, &i2c_atm_driver_api);         \
 	IF_DISABLED(I2C_CLK_STRETCH_SUPPORTED, (                                                   \
 	BUILD_ASSERT(!DT_INST_PROP(n, clk_stretch));                                               \
-	))                                                                                         \
-	BUILD_ASSERT(I2C_BASE(n) == (CMSDK_AT_APB_I2C_TypeDef *)DT_REG_ADDR(DT_NODELABEL(          \
-					    CONCAT(i2c, DT_INST_PROP(n, instance)))));
+	));
 
 DT_INST_FOREACH_STATUS_OKAY(I2C_DEVICE_INIT)

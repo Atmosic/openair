@@ -6,7 +6,7 @@
  * @brief Common list structures definitions
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -35,7 +35,7 @@
 #include <stdbool.h>        // boolean definition
 #include <stddef.h>         // for NULL and size_t
 #include "rwip_config.h"    // stack configuration
-#include "compiler.h"       // for __INLINE
+#include "compiler.h"       // for __RWIP_INLINE
 
 
 /*
@@ -259,7 +259,7 @@ uint16_t co_list_size(struct co_list *list);
  * @return true if the list is empty, false else otherwise.
  ****************************************************************************************
  */
-__INLINE bool co_list_is_empty(const struct co_list *const list)
+__RWIP_INLINE bool co_list_is_empty(const struct co_list *const list)
 {
     bool listempty;
     listempty = (list->first == NULL);
@@ -275,7 +275,7 @@ __INLINE bool co_list_is_empty(const struct co_list *const list)
  * @return First element address. Returns NULL pointer if the list is empty.
  ****************************************************************************************
  */
-__INLINE struct co_list_hdr *co_list_pick(const struct co_list *const list)
+__RWIP_INLINE struct co_list_hdr *co_list_pick(const struct co_list *const list)
 {
     return(list->first);
 }
@@ -289,7 +289,7 @@ __INLINE struct co_list_hdr *co_list_pick(const struct co_list *const list)
  * @return Last element address. Returns NULL pointer if the list is empty.
  ****************************************************************************************
  */
-__INLINE struct co_list_hdr *co_list_tail(const struct co_list *const list)
+__RWIP_INLINE struct co_list_hdr *co_list_tail(const struct co_list *const list)
 {
     return(list->last);
 }
@@ -304,7 +304,7 @@ __INLINE struct co_list_hdr *co_list_tail(const struct co_list *const list)
  * @return The pointer to the next element.
  ****************************************************************************************
  */
-__INLINE struct co_list_hdr *co_list_next(const struct co_list_hdr *const list_hdr)
+__RWIP_INLINE struct co_list_hdr *co_list_next(const struct co_list_hdr *const list_hdr)
 {
     return(list_hdr->next);
 }
@@ -320,7 +320,7 @@ __INLINE struct co_list_hdr *co_list_next(const struct co_list_hdr *const list_h
  * @return True if list element is on head of the list, False otherwise
  ****************************************************************************************
  */
-__INLINE bool co_list_is_head(struct co_list *list, struct co_list_hdr *list_hdr)
+__RWIP_INLINE bool co_list_is_head(struct co_list *list, struct co_list_hdr *list_hdr)
 {
     return (list->first == list_hdr);
 }

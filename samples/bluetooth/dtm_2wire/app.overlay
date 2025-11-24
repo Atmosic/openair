@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	chosen {
+		zephyr,dtm-2wire-uart = &uart0;  /* or &uart1, &uart2, etc. */
+	};
+};
+
+&uart0 {
+	status = "okay";
+	current-speed = <115200>;  /* Change baudrate: 115200, 57600, 38400, etc. */
+	/delete-property/ hw-flow-control;  /* Disable hardware flow control for DTM 2-wire */
+};
+
+&uart1 {
+	status = "okay";
+	current-speed = <115200>;  /* Change baudrate: 115200, 57600, 38400, etc. */
+	/delete-property/ hw-flow-control;  /* Disable hardware flow control for DTM 2-wire */
+};

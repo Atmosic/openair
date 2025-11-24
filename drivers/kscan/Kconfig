@@ -1,7 +1,0 @@
-# SPDX-License-Identifier: Apache-2.0
-
-if KSCAN
-
-rsource "Kconfig.atm"
-
-endif # KSCAN

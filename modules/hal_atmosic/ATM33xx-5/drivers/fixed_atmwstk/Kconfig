@@ -6,7 +6,7 @@ if BT || ENTROPY_ATM_TRNG
 
 config USE_FIXED_ATMWSTK
 	bool
-	default y if ATMWSTK_FULL
+	default y if ATMWSTK_CPD200
 
 config FIXED_ATMWSTK_PATH
 	string "path of BLE link stack image"

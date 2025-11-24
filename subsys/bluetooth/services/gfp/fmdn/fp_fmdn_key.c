@@ -53,8 +53,8 @@ bool fp_fmdn_key_generate(uint8_t const *eid_key, fp_fmdn_auth_key_type_t key_ty
 		return false;
 	}
 	size_t offset = 0;
-	FMDN_MEMCPY_SHIFT(dst_ptr, eid_key, FP_FMDN_EID_KEY_LEN, offset);
-	FMDN_MEMCPY_SHIFT(dst_ptr, &seed_end_byte, sizeof(seed_end_byte), offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, eid_key, FP_FMDN_EID_KEY_LEN, offset);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &seed_end_byte, sizeof(seed_end_byte), offset);
 	uint8_t hash[GFP_CRYPTO_SHA256_DIG_LEN];
 	gfp_crypto_sha256(key_data, sizeof(key_data), hash);
 	memcpy(auth_key, hash, auth_key_len);
@@ -67,8 +67,8 @@ void fp_fmdn_key_eik_auth_data(bcna_conn_ctx_t *conn_context, uint8_t *eid_key, 
 	 * the last nonce read from the characteristic)
 	 */
 	size_t offset = 0;
-	FMDN_MEMCPY_SHIFT(auth_data, eid_key, FP_FMDN_EID_KEY_LEN, offset);
-	FMDN_MEMCPY_SHIFT(auth_data, conn_context->random_nonce, BCNA_RNDM_NONCE_LEN, offset);
+	FP_UTIL_MEMCPY_SHIFT(auth_data, eid_key, FP_FMDN_EID_KEY_LEN, offset);
+	FP_UTIL_MEMCPY_SHIFT(auth_data, conn_context->random_nonce, BCNA_RNDM_NONCE_LEN, offset);
 }
 
 static void fp_fmdn_key_eid_construct_data(uint8_t *data, uint32_t fmdn_clock, uint8_t kbits)

@@ -1,0 +1,16 @@
+sample:
+  name: Bluetooth High Duty Cycle Directed Advertising
+  description: Demonstrates high duty cycle Bluetooth LE directed advertising to a random target address
+common:
+  sysbuild: true
+  harness: console
+  tags:
+    - bluetooth
+tests:
+  samples.bluetooth.high_duty_adv.atm:
+    harness_config:
+      type: one_line
+      regex:
+        - "High duty cycle directed advertising started successfully"
+    tags:
+      - no_mcuboot

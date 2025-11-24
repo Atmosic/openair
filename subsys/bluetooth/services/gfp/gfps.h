@@ -46,6 +46,9 @@ typedef struct gfps_hdlrs_s {
 	/// FP FMDN update dult id callback function
 	fp_fmdn_update_id_cb update_id_cb;
 #endif
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	fp_fmdn_ranging_handler_t *ranging_handlers;
+#endif // CONFIG_FMDN_PRECISION_FINDING
 #endif // CONFIG_FAST_PAIR_FMDN
 } gfps_hdlrs_t;
 
@@ -82,14 +85,12 @@ void gfps_reset(void);
  */
 void gfps_fp_pairing_adv(void);
 
-#ifdef CONFIG_ATM_GFP_MUTLIMODE_TAG
 /**
  * @brief GPFS fp is provisioned from eik in storage directly
  *
  * @return true if provisioned.
  */
 bool gfps_fp_is_provisioned(void);
-#endif
 
 #ifdef __cplusplus
 }

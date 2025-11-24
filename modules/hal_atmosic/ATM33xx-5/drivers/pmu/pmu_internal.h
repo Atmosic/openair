@@ -5,7 +5,7 @@
  *
  * @brief Power Management Unit internal APIs
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2025
  *
  ******************************************************************************
  */
@@ -42,6 +42,7 @@ void pmu_cfg_dbg_sig(void);
 bool pmu_harv_meter_core_init(uint32_t *pmu_rb_mppt);
 void pmu_update_hm_stats(hm_stats_t *stats, hm_status_t *stats_valid);
 void pmu_reset_harv_meter(void);
+void pmu_32k_xtal_cap_init(uint8_t capin, uint8_t capout);
 
 #ifdef __cplusplus
 }

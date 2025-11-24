@@ -20,6 +20,7 @@
  */
 
 #include <stdbool.h>
+#include <zephyr/bluetooth/conn.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -219,6 +220,39 @@ void fmna_main_start_pairing_adv(void);
  * @brief FMNA main inititalize
  */
 void fmna_main_init(struct fmna_init_params const *params);
+
+/**
+ * @brief FMNA connected callback
+ * @param conn New connection object.
+ * @param err HCI error. Zero for success, non-zero otherwise.
+ */
+void fmna_connected(struct bt_conn *conn, uint8_t err);
+
+/**
+ * @brief FMNA disconnected callback
+ * @param conn Connection object.
+ * @param reason HCI reason for disconnection.
+ */
+void fmna_disconnected(struct bt_conn *conn, uint8_t reason);
+
+/**
+ * @brief FMNA security changed callback
+ * @param conn Connection object.
+ * @param level New security level of the connection.
+ * @param err Security error. Zero for success, non-zero otherwise.
+ */
+void fmna_security_changed(struct bt_conn *conn, bt_security_t level,
+    enum bt_security_err err);
+
+/**
+ * @brief FMNA LE connection parameter updated callback
+ * @param conn Connection object.
+ * @param interval New connection interval.
+ * @param latency New connection latency.
+ * @param timeout New connection supervision timeout.
+ */
+void fmna_le_param_updated(struct bt_conn *conn, uint16_t interval,
+    uint16_t latency, uint16_t timeout);
 
 #ifdef __cplusplus
 }

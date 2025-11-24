@@ -136,8 +136,8 @@ proc otp_set_bit { bit } {
 
 proc otp_set_bits { bits } {
     mww [::CMSDK_NVM_SECURE::CTRL::REG_ADDR] \
-        [expr { [::CMSDK_NVM_SECURE::CTRL::NUM_PGM_BIT::WRITE $::OTP_SIZE }] | \
-        [::CMSDK_NVM_SECURE::CTRL::BURST_MODE::MASK]]
+        [expr {[::CMSDK_NVM_SECURE::CTRL::NUM_PGM_BIT::WRITE $::OTP_SIZE] | \
+        [::CMSDK_NVM_SECURE::CTRL::BURST_MODE::MASK]}]
     puts [format "Programming bits: %016x" $bits]
     set d0 [expr { $bits & ((1 << 32) - 1) }]
     set d1 [expr { ($bits >> 32) & ((1 << 32) - 1) }]

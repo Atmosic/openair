@@ -1,0 +1,14 @@
+sample:
+  name: PIR Click shield sample
+tests:
+  samples.shields.pir_click.atm:
+    platform_allow: ATMBTCSTAG-3405/ATM34xx-5
+    tags:
+      - shield
+      - sensor
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "ADC: (.*) mV, MCP3221: (.*) mV"

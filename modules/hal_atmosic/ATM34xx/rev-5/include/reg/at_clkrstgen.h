@@ -256,7 +256,20 @@ at_clkrstgen_set_doubler(bool set, bool commit)
 __CLKRSTGEN_SET_STATIC_INLINE void
 at_clkrstgen_enable_pll(uint8_t sel, uint8_t type, bool set, bool commit)
 {
-    if (set) {
+    do {
+	if (!set) {
+	    break;
+	}
+	uint32_t pll = CMSDK_CLKRSTGEN_NONSECURE->PLL;
+	if (CLKRSTGEN_PLL_CTRL__PLL_ENABLE__READ(
+	    CMSDK_CLKRSTGEN_NONSECURE->PLL_CTRL) &&
+	    (CLKRSTGEN_PLL__DIVFB__READ(pll) == sel) &&
+	    (CLKRSTGEN_CLK_BP_CTRL__DIV2_TYPE__READ(
+	    CMSDK_CLKRSTGEN_NONSECURE->CLK_BP_CTRL) == type)) {
+	    // PLL does not need to change
+	    break;
+	}
+
 	// Get off PLL before changing it
 	at_clkrstgen_set_clk16x(CLKRSTGEN_CLK_BP_CTRL__CLUSTER_SEL__READ(
 	    CMSDK_CLKRSTGEN_NONSECURE->CLK_BP_CTRL) & (CLUSTER_SEL__PLL |
@@ -282,7 +295,6 @@ at_clkrstgen_enable_pll(uint8_t sel, uint8_t type, bool set, bool commit)
 	}
 
 	// Configure PLL
-	uint32_t pll = CMSDK_CLKRSTGEN_NONSECURE->PLL;
 	CLKRSTGEN_PLL__DIVACCESS__SET(pll);
 	CLKRSTGEN_PLL__DIVREF__MODIFY(pll, 1);
 	CLKRSTGEN_PLL__DIVFB__MODIFY(pll, sel);
@@ -293,7 +305,7 @@ at_clkrstgen_enable_pll(uint8_t sel, uint8_t type, bool set, bool commit)
 	// Enable PLL
 	CMSDK_CLKRSTGEN_NONSECURE->PLL_CTRL =
 	    CLKRSTGEN_PLL_CTRL__PLL_ENABLE__MASK;
-    }
+    } while (0);
     if (!commit) {
 	return;
     }
@@ -403,12 +415,11 @@ at_clkrstgen_asic_set_bp_hint(uint32_t freq, bool set, bool commit)
 
     uint32_t clk_bp_ctrl = CMSDK_CLKRSTGEN_NONSECURE->CLK_BP_CTRL;
 
-    // Disable PLL when not needed
+    // Clean up PLL settings when not needed
     if (!(CLKRSTGEN_CLK_BP_CTRL__CLUSTER_SEL__READ(clk_bp_ctrl) &
 	(CLUSTER_SEL__PLL | CLUSTER_SEL__PLL_DIV2))) {
 	CLKRSTGEN_CLKSYNC__CLK16_SRC__MODIFY(
 	    CMSDK_CLKRSTGEN_NONSECURE->CLKSYNC, 0);
-	CMSDK_CLKRSTGEN_NONSECURE->PLL_CTRL = 0;
 	CLKRSTGEN_CLKSYNC__DIV_VAL__MODIFY(CMSDK_CLKRSTGEN_NONSECURE->CLKSYNC,
 	    0);
     }

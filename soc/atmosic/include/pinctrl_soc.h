@@ -16,6 +16,7 @@ typedef struct pinctrl_soc_pin {
 	uint8_t pin;
 	uint8_t signal;
 	uint8_t pupd;
+	uint8_t pdsn;
 } pinctrl_soc_pin_t;
 
 #define Z_PINCTRL_ATM_PUPD_INIT(node_id)                                       \
@@ -23,11 +24,12 @@ typedef struct pinctrl_soc_pin {
 	 (ATM_PULL_UP * DT_PROP(node_id, bias_pull_up)) |                      \
 	 (ATM_PULL_DOWN * DT_PROP(node_id, bias_pull_down)))
 
-#define ATM_DT_PIN(node_id)                                                    \
-	{                                                                      \
-		.pin = DT_PROP_BY_IDX(node_id, pinmux, 0),                     \
-		.signal = DT_PROP_BY_IDX(node_id, pinmux, 1),                  \
-		.pupd = Z_PINCTRL_ATM_PUPD_INIT(node_id),                      \
+#define ATM_DT_PIN(node_id)                                                                        \
+	{                                                                                          \
+		.pin = DT_PROP_BY_IDX(node_id, pinmux, 0),                                         \
+		.signal = DT_PROP_BY_IDX(node_id, pinmux, 1),                                      \
+		.pupd = Z_PINCTRL_ATM_PUPD_INIT(node_id),                                          \
+		.pdsn = DT_PROP(node_id, drive_strength),                                          \
 	},
 
 #define Z_PINCTRL_STATE_PIN_INIT(node_id, prop, idx) \

@@ -4,10 +4,9 @@ cmake_minimum_required(VERSION 3.20.0)
 
 set(OA_APP_DIR samples/drivers/i2s/output)
 
-# Ensure that APPLICATION_CONFIG_DIR does not have path errors during
-# cross-platform compilation.
-cmake_path(CONVERT "$ENV{ZEPHYR_BASE}" TO_CMAKE_PATH_LIST OA_ZEPHYR_BASE)
-set(APPLICATION_CONFIG_DIR ${OA_ZEPHYR_BASE}/${OA_APP_DIR})
+# Use the openair sample directory as the application configuration directory
+# so that overlay files in this directory are found by the build system
+set(APPLICATION_CONFIG_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(APPLICATION_BOARD_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 

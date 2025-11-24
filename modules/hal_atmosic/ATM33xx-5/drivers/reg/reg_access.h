@@ -95,74 +95,74 @@
 
 #if (defined(CFG_BLE_EMB) || defined(CFG_BT_EMB))
 /// retrieve EM address from system address
-__INLINE uint16_t em_addr_get(void *sys_addr)
+__RWIP_INLINE uint16_t em_addr_get(void *sys_addr)
 {
     return ((uint16_t) (((uint32_t) sys_addr) - EM_BASE_ADDR));
 }
 
 /// Read bytes from EM
-__INLINE void em_rd(void *sys_addr, uint16_t em_addr, uint16_t len)
+__RWIP_INLINE void em_rd(void *sys_addr, uint16_t em_addr, uint16_t len)
 {
     dma_memcpy(sys_addr, (void *)(em_addr + EM_BASE_ADDR), len);
 }
 /// Write bytes to EM
-__INLINE void em_wr(void const *sys_addr, uint16_t em_addr, uint16_t len)
+__RWIP_INLINE void em_wr(void const *sys_addr, uint16_t em_addr, uint16_t len)
 {
     dma_memcpy((void *)(em_addr + EM_BASE_ADDR), sys_addr, len);
 }
 
 // copy two exchange memory area
-__INLINE void em_cpy(uint16_t dst_em_addr, uint16_t src_em_addr, uint16_t len)
+__RWIP_INLINE void em_cpy(uint16_t dst_em_addr, uint16_t src_em_addr, uint16_t len)
 {
     dma_memcpy((void *)(dst_em_addr + EM_BASE_ADDR), (void *)(src_em_addr + EM_BASE_ADDR), len);
 }
 
 /// Fill an EM space with the same value
-__INLINE void em_set(int value, uint16_t em_addr, uint16_t len)
+__RWIP_INLINE void em_set(int value, uint16_t em_addr, uint16_t len)
 {
     dma_memset((void *)(em_addr + EM_BASE_ADDR), value, len);
 }
 
 /// Read 32-bits value from EM
-__INLINE uint32_t em_rd32p(uint16_t em_addr)
+__RWIP_INLINE uint32_t em_rd32p(uint16_t em_addr)
 {
     return co_read32((void *)(em_addr + EM_BASE_ADDR));
 }
 /// Write 32-bits value to EM
-__INLINE void em_wr32p(uint16_t em_addr, uint32_t value)
+__RWIP_INLINE void em_wr32p(uint16_t em_addr, uint32_t value)
 {
     co_write32((void *)(em_addr + EM_BASE_ADDR), value);
 }
 
 /// Read 24-bits value from EM
-__INLINE uint32_t em_rd24p(uint16_t em_addr)
+__RWIP_INLINE uint32_t em_rd24p(uint16_t em_addr)
 {
     return co_read24((void *)(em_addr + EM_BASE_ADDR));
 }
 /// Write 24-bits value to EM
-__INLINE void em_wr24p(uint16_t em_addr, uint32_t value)
+__RWIP_INLINE void em_wr24p(uint16_t em_addr, uint32_t value)
 {
     co_write24((void *)(em_addr + EM_BASE_ADDR), value);
 }
 
 /// Read 16-bits value from EM
-__INLINE uint16_t em_rd16p(uint16_t em_addr)
+__RWIP_INLINE uint16_t em_rd16p(uint16_t em_addr)
 {
     return co_read16((void *)(em_addr + EM_BASE_ADDR));
 }
 /// Write 16-bits value to EM
-__INLINE void em_wr16p(uint16_t em_addr, uint16_t value)
+__RWIP_INLINE void em_wr16p(uint16_t em_addr, uint16_t value)
 {
     co_write16((void *)(em_addr + EM_BASE_ADDR), value);
 }
 
 /// Read 8-bits value from EM
-__INLINE uint8_t em_rd8p(uint16_t em_addr)
+__RWIP_INLINE uint8_t em_rd8p(uint16_t em_addr)
 {
     return *((uint8_t *)(em_addr + EM_BASE_ADDR));
 }
 /// Write 8-bits value to EM
-__INLINE void em_wr8p(uint16_t em_addr, uint8_t value)
+__RWIP_INLINE void em_wr8p(uint16_t em_addr, uint8_t value)
 {
     *(uint8_t *)(em_addr + EM_BASE_ADDR) = value;
 }

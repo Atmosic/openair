@@ -8,7 +8,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (c) 2023-2025 Atmosic, Inc. All rights reserved.
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -123,6 +125,35 @@ void PalSysSetTrap(bool enable);
 
 /*************************************************************************************************/
 /*!
+ *  \brief      Assertion failure callback function type.
+ *
+ *  \param      assertAddr  Return address where the assertion failed.
+ */
+/*************************************************************************************************/
+typedef void (*PalSysAssertFailCb_t)(uint32_t assertAddr);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Register callback for assertion failures.
+ *
+ *  \note       In non-debug builds, critical assertions will always invoke the registered
+ *              assertion callback. In debug builds, assertions are logged as WSF assertions
+ *              to the console.
+ *
+ *  \param      cb          Callback function to invoke on assertion failure, or NULL to unregister.
+ */
+/*************************************************************************************************/
+__attribute__((weak)) void PalSysRegisterAssertFailCb(PalSysAssertFailCb_t cb);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Handle assertion failure by calling registered callback with return address.
+ */
+/*************************************************************************************************/
+__attribute__((weak)) void PalSysAssertFailCrit(void);
+
+/*************************************************************************************************/
+/*!
  *  \brief      Get assert count.
  *
  *  \param      clear     Clear counter.
@@ -189,14 +220,6 @@ void PalSysCsEnter(void);
 /*************************************************************************************************/
 void PalSysCsExit(void);
 
-/*************************************************************************************************/
-/*!
- *  \brief  Pal background task entry
- */
-/*************************************************************************************************/
-#ifdef PAL_SYS_BACKGROUND_TASK
-void PalSysRunBackground(void);
-#endif
 /* Reset */
 
 /*************************************************************************************************/
@@ -251,6 +274,18 @@ void PalSysCiExit(void);
  */
 /*************************************************************************************************/
 void PalSysCiSetIrq(void);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Set the priority of BB scheduling interrupt.
+ *
+ *  \param      priority    Interrupt priority level.
+ *
+ *  Set the NVIC priority for the BB scheduling interrupt. Lower values indicate
+ *  higher priority. The priority should be within the valid range for the system.
+ */
+/*************************************************************************************************/
+void PalSysCiSetPriority(uint32_t priority);
 
 /*! \} */    /* PAL_SYS */
 

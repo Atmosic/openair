@@ -17,6 +17,6 @@ common:
       - "load SETTINGS/TEST_KEY key: 0xa55af00f"
 tests:
   samples.subsys.settings.atm:
-    tags: introduction atm33 atm34 no_mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
+    tags:
+      - introduction
+      - no_mcuboot

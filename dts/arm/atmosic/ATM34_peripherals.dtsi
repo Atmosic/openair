@@ -26,6 +26,7 @@ wdog0: wdog@81000 {
 	compatible = "arm,cmsdk-watchdog";
 	clocks = <&clk_16M>;
 	reg = <0x00081000 0x1000>;
+	status = "disabled";
 };
 
 gpio0: gpio@100000 {
@@ -198,8 +199,8 @@ spi0: spi@147000 {
 	status = "disabled";
 };
 
-kscan: kscan@14a000 {
-	compatible = "atmosic,kscan";
+input_kbd_matrix: input_kbd_matrix@14a000 {
+	compatible = "atmosic,input-kbd-matrix";
 	reg = <0x0014a000 0x1000>;
 	interrupts = <43 12>;
 	status = "disabled";
@@ -296,6 +297,36 @@ adc: adc@15a000 {
 	clock-freq = <2>;
 	sample-avg = <5>;
 	osr-select = <0>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* VBatt channel (ch-cell = <1>) */
+	channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1_8";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <15>;
+	};
+
+	/* VStore channel (ch-store = <2>) */
+	channel@2 {
+		reg = <2>;
+		zephyr,gain = "ADC_GAIN_1_8";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <15>;
+	};
+
+	/* Vdd1a channel (ch-core = <3>) */
+	channel@3 {
+		reg = <3>;
+		zephyr,gain = "ADC_GAIN_1_2";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <15>;
+	};
 };
 
 trng: trng@15b000 {
@@ -336,6 +367,15 @@ atm_antenna: atm_antenna {
 };
 
 pinctrl: pin-controller {
-	compatible = "atmosic,atm-pinctrl";
+	compatible = "atmosic,atm34-pinctrl";
 	num-pins = <54>;
+};
+
+wurx: wurx {
+	compatible = "atmosic,wurx";
+	wurx0-enabled;
+	wake-timeout-ms = <500>;
+	consecutive-signals = <4>;
+	signal-spacing-ms = <250>;
+	status = "disabled";
 };

@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config INPUT_ATM_KBD_MATRIX
+	bool "ATM keyboard matrix input driver"
+	default y
+	depends on DT_HAS_ATMOSIC_INPUT_KBD_MATRIX_ENABLED
+	help
+	  Enable keyboard matrix input driver for ATM.
+
+config INPUT_ATM_KBD_MATRIX_THREAD_STACK_SIZE
+	int "thread stack size"
+	default 1024
+	depends on INPUT_ATM_KBD_MATRIX
+	help
+	  Input keyboard matrix thread stack size.

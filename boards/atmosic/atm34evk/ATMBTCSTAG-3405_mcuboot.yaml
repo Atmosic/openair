@@ -1,0 +1,7 @@
+identifier: ATMBTCSTAG-3405@mcuboot/ATM34xx-5
+name: ATMBTCSTAG-3405_mcuboot
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+vendor: atmosic

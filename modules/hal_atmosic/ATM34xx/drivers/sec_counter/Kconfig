@@ -1,7 +1,12 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
+
+config ATM_SEC_COUNTER_PRESENT
+	bool "Atmosic platform has access to sec_counter functions"
+	default y if TRUSTED_EXECUTION_NONSECURE || TRUSTED_EXECUTION_SECURE
 
 config ATM_SEC_COUNTER
 	bool "Atmosic Secure Counter module"
 	depends on TRUSTED_EXECUTION_SECURE
+	select ATM_OTP

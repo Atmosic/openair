@@ -20,6 +20,10 @@
 #include "ble_common.h"
 #endif
 
+#ifdef CFG_VND_XTAL_32K_PIN_OUT
+#include "atm_vendor_drv.h"
+#endif
+
 /**
  * @addtogroup ATM_BTFM_VEND HCI Vendor Command
  * @ingroup ATM_BTFM_PROC
@@ -78,6 +82,7 @@ typedef enum {
     VND_OCF_PMU_RADIO_REG_RD,
     VND_OCF_PMU_RADIO_REG_WR,
     VND_OCF_XTAL_32K_PIN_OUTPUT,
+    VND_OCF_SET_SCAN_CHMAP = 0x3E0,
 
     VND_OCF_END
 } VND_OCF;
@@ -159,7 +164,6 @@ typedef enum {
 #define PSM_NONE SLEEP_ENABLE_NONE
 #define PSM_DEEP SLEEP_ENABLE_DEEP
 #define PSM_RETAIN SLEEP_ENABLE_RETAIN
-#define PSM_RETAIN_DROP SLEEP_ENABLE_RETAIN_DROP
 #define PSM_HIBERNATE SLEEP_ENABLE_HIBERNATE
 #define PSM_SOC_OFF SLEEP_ENABLE_SOC_OFF
 
@@ -214,6 +218,11 @@ typedef enum {
 #define VS_SET_TX_POWER_CMD_OCF VND_OCF_SET_TX_POWER
 #define VS_SET_TX_POWER_CMD_OGF VND_OGF_SB1
 #define VS_SET_TX_POWER_CMD_LEN 0x03
+
+// Set Scan Channel Map
+#define VS_SET_SCAN_CHMAP_CMD_OCF VND_OCF_SET_SCAN_CHMAP
+#define VS_SET_SCAN_CHMAP_CMD_OGF VND_OGF_SB1
+#define VS_SET_SCAN_CHMAP_CMD_LEN 0x01
 
 // BLE register Read (0xFC30)
 #define BLE_REG_RD_CMD_OCF VND_OCF_BLE_REG_RD
@@ -435,17 +444,9 @@ typedef struct {
 #define SET_ADV_CH_CMD 0
 #endif
 
-#ifdef CFG_VND_OTP_PUSH
-#define OTP_PUSH_CMD 1
-typedef struct {
-    uint32_t otppush_address;
-    uint8_t otppush_checksum;
-} otp_push_cmd_t;
-#else
 #define OTP_PUSH_CMD 0
-#endif
 
-#if (defined(CFG_VND_MALLOC) || defined(CFG_VND_OTP_PUSH))
+#ifdef CFG_VND_MALLOC
 #define MALLOC_CMD 1
 typedef struct {
     enum malloc_type type;

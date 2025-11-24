@@ -1,0 +1,20 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig DTM_2WIRE
+	bool "DTM 2-wire Direct Test Mode support"
+	depends on BT
+	help
+	  Enable DTM 2-wire Direct Test Mode support. This provides
+	  a lightweight 2-wire UART interface for Bluetooth LE radio
+	  testing using the DTM protocol specified in Bluetooth Core
+	  Specification Volume 6, Part F.
+
+if DTM_2WIRE
+
+module = DTM_2WIRE
+module-str = DTM-2-wire
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # DTM_2WIRE

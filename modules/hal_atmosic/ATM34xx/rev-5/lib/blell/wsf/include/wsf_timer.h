@@ -124,6 +124,15 @@ wsfTimerTicks_t WsfTimerNextExpiration(bool *pTimerRunning);
 
 /*************************************************************************************************/
 /*!
+ *  \brief  Check if the timer queue is empty (no timers pending).
+ *
+ *  \return True if no timers are pending, false if there are pending timers.
+ */
+/*************************************************************************************************/
+bool WsfTimerEmpty(void);
+
+/*************************************************************************************************/
+/*!
  *  \brief  Service expired timers for the given task.  This function is typically called only
  *          WSF OS porting code.
  *

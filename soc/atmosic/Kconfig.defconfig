@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2024 Atmosic
+# Copyright (c) 2021-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,6 +13,17 @@ config SOC_FAMILY_ATM
 config AUTO_TEST
 	bool "Enable Auto Test"
 	default n
+
+config PM
+	bool "Enable Power Management"
+	default y
+
+# Set the discardable HCI event buffer size to 255 bytes by default when both
+# Extended Advertising and Observer role are enabled. This value matches the HCI
+# Event packet with up to 255 bytes of data defined in the BLE specification for
+# Extended Advertising Report events, which are received in Observer role.
+config BT_BUF_EVT_DISCARDABLE_SIZE
+	default 255 if BT_EXT_ADV && BT_OBSERVER
 
 if ENTROPY_ATM_TRNG
 

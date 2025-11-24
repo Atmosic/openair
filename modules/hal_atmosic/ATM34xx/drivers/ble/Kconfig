@@ -18,7 +18,7 @@ config ATM_BLE
 
 config ATM_ATLC
 	bool "Atmosic ATLC driver"
-	default y if BT || IEEE802154_ATM34 || PM
+	default y if BT || IEEE802154_ATM34
 	depends on DT_HAS_ATMOSIC_BLE_ENABLED
 
 if ATM_ATLC
@@ -36,7 +36,8 @@ config ATLC_DEEP_SLEEP
 
 config ATM_BLE_STACK_SIZE
 	int "Size of the event loop thread stack"
-	default 1200
+	default 2048 if CTR_DRBG_CSPRNG_GENERATOR
+	default 1350
 
 config ATM_BLE_HIGH_PRIO
 	int

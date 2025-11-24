@@ -29,6 +29,8 @@ typedef enum {
 	DULT_NO_MODE_SEPERATED,
 	/// Index of DULT Near Owner mode
 	DULT_NO_MODE_NEAR_OWNER,
+	/// Index of DULT Unknown mode
+	DULT_NO_MODE_UNKNOWN,
 } dult_mode_t;
 
 #ifdef __cplusplus

@@ -1,0 +1,16 @@
+sample:
+  description: DTM 2-wire Direct Test Mode sample
+  name: DTM 2-wire
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "DTM 2-wire application started"
+tests:
+  samples.bluetooth.dtm_2wire.atm:
+    tags:
+      - bluetooth
+      - dtm
+      - no_mcuboot

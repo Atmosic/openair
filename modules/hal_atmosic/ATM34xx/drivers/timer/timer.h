@@ -143,7 +143,7 @@ atm_timer_error_t atm_timer_usleep(atm_timer_id_t id, uint32_t usec);
 /**
  * @brief Get the current system time based on the 32kHz clock
  */
-__INLINE uint32_t atm_get_sys_time(void)
+__STATIC_FORCEINLINE uint32_t atm_get_sys_time(void)
 {
 #ifdef __WRPRPINS_PSEQ_CURRENT_REAL_TIME_MACRO__
     return CMSDK_WRPR0_NONSECURE->PSEQ_CURRENT_REAL_TIME;
@@ -204,7 +204,7 @@ __attribute__((weak)) uint32_t lpc_rcos_hz(void);
  * @param[in] ticks Delay value in counts of PSEQ CURRENT_REAL_TIME.
  * @return Success or Error status
  */
-__INLINE void atm_timer_lpc_delay(uint32_t ticks)
+__STATIC_FORCEINLINE void atm_timer_lpc_delay(uint32_t ticks)
 {
     uint32_t then = atm_get_sys_time();
     while (atm_get_sys_time() - then < ticks) {

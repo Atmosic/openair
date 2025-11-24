@@ -1,0 +1,8 @@
+common:
+  tags:
+    - drivers
+    - watchdog
+    - no_mcuboot
+tests:
+  tests.drivers.watchdog.wdt_basic_reset_none.atm:
+    sysbuild: true

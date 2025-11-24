@@ -12,6 +12,41 @@ config CS_PROC_ANT_CFG_SEL
 	range 0 7
 	default 7
 
+config TX_POWER_DELTA
+	int "Transmit Power Delta (signed dB)"
+	range -128 127
+	default 0
+	help
+	  Transmit power delta, in signed dB, to indicate the recommended difference
+	  between the remote device's power level for the CS tones and RTT packets
+	  and the existing power level for the PHY indicated by the PHY parameter.
+	  Value 0x80 (-128) indicates that the host does not have a recommendation
+	  for transmit power delta.
+
+config TX_PHY_CS_REF
+	bool "Use current TX PHY as CS reference TX power PHY"
+	default y
+	help
+	  Enable to use the current TX PHY as the reference PHY for CS transmit power.
+	  When enabled, the CS procedure will use the same PHY settings as the current
+	  TX PHY for power reference calculations.
+
+config READ_RSSI
+	bool "Read RSSI after CS procedure"
+
+config ATM_BT_PHY_1M
+	bool "Enable 1M PHY for long-distance testing"
+	help
+	  Enable 1M PHY mode for improved range and signal penetration.
+	  This will automatically disable CONFIG_BT_AUTO_PHY_UPDATE to
+	  ensure consistent 1M PHY usage throughout the connection.
+
+# Override the default BT_AUTO_PHY_UPDATE behavior
+config BT_AUTO_PHY_UPDATE
+	bool
+	default n if ATM_BT_PHY_1M
+	default y
+
 module = RREQ
 module-str = RREQ
 source "subsys/logging/Kconfig.template.log_config"

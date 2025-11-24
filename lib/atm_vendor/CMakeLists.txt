@@ -24,10 +24,8 @@ if(CONFIG_ATM_VENDOR)
     zephyr_compile_definitions_ifdef(CONFIG_VND_TAG_RD_V2 CFG_VND_TAG_RD_V2)
     zephyr_compile_definitions_ifdef(CONFIG_VND_SET_BDDR CFG_VND_SET_BDDR)
     zephyr_compile_definitions_ifdef(CONFIG_VND_SET_ADV_CH CFG_VND_SET_ADV_CH)
-    zephyr_compile_definitions_ifdef(CONFIG_VND_OTP_PUSH CFG_VND_OTP_PUSH)
     zephyr_compile_definitions_ifdef(CONFIG_VND_MALLOC CFG_VND_MALLOC)
     zephyr_compile_definitions_ifdef(CONFIG_VND_IO_CTRL CFG_VND_IO_CTRL)
-    zephyr_compile_definitions_ifdef(CONFIG_VND_GADC_V1 CFG_VND_CFG_VND_GADC_V1)
     zephyr_compile_definitions_ifdef(CONFIG_VND_GADC_V2 CFG_VND_CFG_VND_GADC_V2)
     zephyr_compile_definitions_ifdef(CONFIG_VND_GPIO_TEST CFG_VND_GPIO_TEST)
     zephyr_compile_definitions_ifdef(CONFIG_VND_COREMARK CFG_VND_COREMARK)
@@ -47,13 +45,15 @@ if(CONFIG_ATM_VENDOR_API)
     zephyr_compile_definitions_ifdef(CONFIG_VND_API_SET_MAX_TX_POWER CFG_VND_API_SET_MAX_TX_POWER)
     zephyr_compile_definitions_ifdef(CONFIG_VND_API_SET_ADV_TX_POWER CFG_VND_API_SET_ADV_TX_POWER)
     zephyr_compile_definitions_ifdef(CONFIG_VND_API_SET_CON_TX_POWER CFG_VND_API_SET_CON_TX_POWER)
+    zephyr_compile_definitions_ifdef(CONFIG_VND_API_SET_SCAN_CHMAP CFG_VND_API_SET_SCAN_CHMAP)
 
-    if(NOT CONFIG_VND_API_SET_PREF_SLAVE_LAT AND NOT CONFIG_VND_API_SET_ADV_TX_POWER AND NOT CONFIG_VND_API_SET_CON_TX_POWER)
+    if(NOT CONFIG_VND_API_SET_PREF_SLAVE_LAT AND NOT CONFIG_VND_API_SET_ADV_TX_POWER AND NOT CONFIG_VND_API_SET_CON_TX_POWER AND NOT CONFIG_VND_API_SET_SCAN_CHMAP)
         message(FATAL_ERROR
             "CONFIG_ATM_VENDOR_API is enabled, but none of the following options are set:\n"
             "  CONFIG_VND_API_SET_PREF_SLAVE_LAT\n"
             "  CONFIG_VND_API_SET_ADV_TX_POWER\n"
             "  CONFIG_VND_API_SET_CON_TX_POWER\n"
+            "  CONFIG_VND_API_SET_SCAN_CHMAP\n"
             "Please enable at least one."
         )
     endif()

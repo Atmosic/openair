@@ -2,7 +2,7 @@
 proc verify_si_det {} {
     enable_pseq
     namespace eval ::::CMSDK_PSEQ${::SX}::PMU_STATUS {
-	if {[VBUS5DET::READ [mrw [REG_ADDR]]] != 1} {
+	if {[SI_DET::READ [mrw [REG_ADDR]]] != 1} {
 	    error "Incompatible ATM33xx-5 part!"
 	}
     }

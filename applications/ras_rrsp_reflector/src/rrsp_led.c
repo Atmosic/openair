@@ -21,7 +21,6 @@ typedef enum rrsp_led_index_e {
 	RRSP_LED_IDX_STS_GREEN,
 	RRSP_LED_IDX_STS_RED,
 	RRSP_LED_IDX_BAT_GREEN,
-	RRSP_LED_IDX_BAT_RED,
 
 	RRSP_LED_IDX_MAX
 } rrsp_led_index_t;
@@ -75,10 +74,10 @@ static const rrsp_led_pattern_t rrsp_led_pattern[RRSP_LED_PAT_MAX] = {
 	 2,
 	 {LED_MASK(RRSP_LED_IDX_BAT_GREEN), 0, 0, 0},
 	 {500, 500, 0, 0}},
-	{LED_MASK(RRSP_LED_IDX_BAT_RED),
+	{LED_MASK(RRSP_LED_IDX_BAT_GREEN),
 	 2,
 	 1,
-	 {LED_MASK(RRSP_LED_IDX_BAT_RED), 0, 0, 0},
+	 {LED_MASK(RRSP_LED_IDX_BAT_GREEN), 0, 0, 0},
 	 {500, 500, 0, 0}},
 	{(LED_MASK(RRSP_LED_IDX_STS_GREEN) | LED_MASK(RRSP_LED_IDX_STS_RED)),
 	 3,

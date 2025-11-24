@@ -1,11 +1,9 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
-if (CONFIG_ATM_BROWNOUT)
-    zephyr_include_directories(.)
-    zephyr_sources(brwnout.c)
-    zephyr_link_libraries(
-	${LINKERFLAGPREFIX},${CMAKE_CURRENT_SOURCE_DIR}/brwnout_core.po
-    )
-endif ()
+if(CONFIG_ATM_BROWNOUT)
+  zephyr_include_directories(.)
+  zephyr_sources(brwnout.c)
+  atm_source_core_file(brwnout_core brwnout)
+endif()

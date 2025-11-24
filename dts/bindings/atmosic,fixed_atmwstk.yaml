@@ -1,0 +1,11 @@
+description: Atmosic fixed wireless stack image partition
+
+compatible: "atmosic,fixed_atmwstk"
+
+include: atmosic,tz-fixed-partitions.yaml
+
+child-binding:
+  properties:
+    variant:
+      type: string
+      description: Fixed wireless stack flavor/variant identifier

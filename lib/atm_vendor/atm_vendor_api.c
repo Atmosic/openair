@@ -26,7 +26,7 @@
 
 LOG_MODULE_REGISTER(atm_vendor_api, CONFIG_ATM_VENDOR_API_LOG_LEVEL);
 
-#ifdef CFG_VND_API_SET_PREF_SLAVE_LAT
+#if  defined(CFG_VND_API_SET_PREF_SLAVE_LAT) || defined(CFG_VND_API_SET_SCAN_CHMAP)
 /**
  * @brief send hci command
  *
@@ -39,7 +39,7 @@ LOG_MODULE_REGISTER(atm_vendor_api, CONFIG_ATM_VENDOR_API_LOG_LEVEL);
 static int atm_vendor_api_send_command(uint16_t opcode, uint8_t const *payload,
     uint16_t payload_size)
 {
-	struct net_buf *buf = bt_hci_cmd_create(opcode, payload_size);
+	struct net_buf *buf = bt_hci_cmd_alloc(K_FOREVER);
 	if (!buf) {
 		LOG_ERR("No Buf");
 		return -ENOBUFS;
@@ -58,7 +58,9 @@ static int atm_vendor_api_send_command(uint16_t opcode, uint8_t const *payload,
 
 	return 0;
 }
+#endif
 
+#ifdef CFG_VND_API_SET_PREF_SLAVE_LAT
 /**
  * @brief Set Prefer Slave Latency
  *
@@ -134,3 +136,12 @@ uint8_t atm_vendor_set_con_tx_power(uint16_t conhdl, int8_t tx_pwr)
     return TX_POWER_VALUE_ADJUST_SUCCESS;
 }
 #endif // CFG_VND_API_SET_CON_TX_POWER
+
+#ifdef CFG_VND_API_SET_SCAN_CHMAP
+uint8_t atm_vendor_set_scan_chmap(uint8_t chmap)
+{
+	return atm_vendor_api_send_command(VND_OPCODE(VS_SET_SCAN_CHMAP_CMD_OGF,
+		VS_SET_SCAN_CHMAP_CMD_OCF), &chmap,
+		VS_SET_SCAN_CHMAP_CMD_LEN);
+}
+#endif

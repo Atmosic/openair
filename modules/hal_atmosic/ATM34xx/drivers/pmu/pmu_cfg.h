@@ -50,7 +50,7 @@ extern "C" {
 #define BOOST_FROM_VHARV_INDUCTOR
 #endif
 
-#ifdef CONFIG_BATT_MODEL_HSC
+#if DT_NODE_HAS_PROP(DT_NODELABEL(pmu), hsc_mode)
 #define BATT_MODEL_HSC
 #endif
 #endif // CONFIG_SOC_FAMILY_ATM

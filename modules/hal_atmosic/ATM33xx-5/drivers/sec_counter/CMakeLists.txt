@@ -1,9 +1,7 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
-if (CONFIG_ATM_SEC_COUNTER)
-    zephyr_include_directories(.)
-    zephyr_sources(sec_counter.c)
-endif ()
+zephyr_include_directories_ifdef(CONFIG_ATM_SEC_COUNTER_PRESENT .)
+zephyr_sources_ifdef(CONFIG_ATM_SEC_COUNTER sec_counter.c)
 

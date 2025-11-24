@@ -1,0 +1,17 @@
+sample:
+  name: Direction Finding Connectionless Beacon
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Started extended advertising"
+tests:
+  samples.bluetooth.direction_finding_connectionless_tx.atm:
+    tags:
+      - bluetooth
+      - no_mcuboot
+    extra_args:
+      - SB_CONFIG_ATMWSTK_FULL=y
+      - CONFIG_BT_DF_CTE_TX_AOD=n

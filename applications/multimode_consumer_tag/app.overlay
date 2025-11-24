@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&wdog0 {
+	status = "okay";
+};
+
+&soc_off {
+	status = "okay";
+};
+
+&cpu0 {
+	cpu-power-states = <&idle &sleep &retain &hibernate &soc_off>;
+};

@@ -1,0 +1,89 @@
+# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Atmosic WuRx (Wake upon receive) driver
+
+  The WuRx driver provides wake-up radio functionality for Atmosic ATM33x and ATM34x chips.
+  It supports dual-algorithm wake-up detection with configurable timing parameters
+  and power management integration.
+
+  Example usage:
+
+  wurx: wurx {
+      compatible = "atmosic,wurx";
+      wurx0-enabled;
+      wurx1-enabled;
+      wake-timeout-ms = <500>;
+      consecutive-signals = <4>;
+      signal-spacing-ms = <250>;
+      status = "okay";
+  };
+
+compatible: "atmosic,wurx"
+
+include: base.yaml
+
+properties:
+  wurx0-enabled:
+    type: boolean
+    description: |
+      Enable WuRx algorithm 0. When enabled, this algorithm will participate
+      in wake-up detection.
+
+  wurx1-enabled:
+    type: boolean
+    description: |
+      Enable WuRx algorithm 1. When enabled, this algorithm will participate
+      in wake-up detection.
+
+  wake-timeout-ms:
+    type: int
+    default: 500
+    description: |
+      Wake-up detection timeout in milliseconds. This defines how long the
+      WuRx hardware will wait for a valid wake-up signal before timing out.
+
+  consecutive-signals:
+    type: int
+    default: 4
+    description: |
+      Number of consecutive signals required for wake-up detection.
+      Higher values provide better noise immunity but may increase latency.
+
+  signal-spacing-ms:
+    type: int
+    default: 250
+    description: |
+      Expected spacing between consecutive signals in milliseconds.
+      This helps the algorithm distinguish between valid wake-up patterns
+      and random noise.
+
+  # PMU WURX register default values
+  wurx-general-default:
+    type: int
+    default: 0x00202600
+    description: |
+      Default value for PMU WURX_GENERAL register.
+      This corresponds to the first 32-bit value in the WuRx configuration.
+
+  wurx-general2-default:
+    type: int
+    default: 0x000320c8
+    description: |
+      Default value for PMU WURX_GENERAL2 register.
+      This corresponds to the second 32-bit value in the WuRx configuration.
+
+  wurx0-regs-default:
+    type: array
+    default: [0x0000aaaa, 0x0000aaaa, 0x0a0f78d0, 0x20100c04, 0x08802013]
+    description: |
+      Default values for PMU WURX0 registers (wurx0_0 through wurx0_4).
+      Array of 5 32-bit values corresponding to the WuRx0 configuration.
+
+  wurx1-regs-default:
+    type: array
+    default: [0xaaaaaaaa, 0xffffffff, 0x0c0a515f, 0x20100c04, 0x0880200f]
+    description: |
+      Default values for PMU WURX1 registers (wurx1_0 through wurx1_4).
+      Array of 5 32-bit values corresponding to the WuRx1 configuration.

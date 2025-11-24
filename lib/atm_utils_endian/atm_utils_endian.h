@@ -34,7 +34,7 @@ extern "C" {
  * @param[in] len The length of byte array
  */
 __NONNULL(1)
-__INLINE void atm_reverse(uint8_t *ptr, uint16_t len)
+__STATIC_FORCEINLINE void atm_reverse(uint8_t *ptr, uint16_t len)
 {
     int low = 0;
     int high = len - 1;
@@ -55,7 +55,7 @@ __INLINE void atm_reverse(uint8_t *ptr, uint16_t len)
  * @param[in] len The length of byte array
  */
 __NONNULL(1, 2)
-__INLINE void atm_reverse_bcpy(uint8_t *dst, uint8_t const *src, uint16_t len)
+__STATIC_FORCEINLINE void atm_reverse_bcpy(uint8_t *dst, uint8_t const *src, uint16_t len)
 {
     // Can't reverse and copy overlapping buffers
     ASSERT_ERR(((dst <= src) && ((dst + len) <= src)) ||
@@ -74,7 +74,7 @@ __INLINE void atm_reverse_bcpy(uint8_t *dst, uint8_t const *src, uint16_t len)
  * @param[in] val The input value
  * @return The swapped value
  */
-__INLINE uint32_t atm_bswap32(uint32_t val)
+__STATIC_FORCEINLINE uint32_t atm_bswap32(uint32_t val)
 {
     return __REV(val);
 }
@@ -85,7 +85,7 @@ __INLINE uint32_t atm_bswap32(uint32_t val)
  * @param[in] val The input value
  * @return The swapped value
  */
-__INLINE uint16_t atm_bswap16(uint16_t val)
+__STATIC_FORCEINLINE uint16_t atm_bswap16(uint16_t val)
 {
     return __REV16(val);
 }
@@ -101,7 +101,7 @@ __INLINE uint16_t atm_bswap16(uint16_t val)
  * @param[in] val The input value
  * @return The little-endian 32-bit value
  */
-__INLINE uint32_t atm_convert_le32(uint32_t val)
+__STATIC_FORCEINLINE uint32_t atm_convert_le32(uint32_t val)
 {
 #if (CPU_LE)
     return val;
@@ -116,7 +116,7 @@ __INLINE uint32_t atm_convert_le32(uint32_t val)
  * @param[in] val The input value.
  * @return The little-endian 16-bit value
  */
-__INLINE uint16_t atm_convert_le16(uint16_t val)
+__STATIC_FORCEINLINE uint16_t atm_convert_le16(uint16_t val)
 {
 #if (CPU_LE)
     return val;

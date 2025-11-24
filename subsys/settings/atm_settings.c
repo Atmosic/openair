@@ -17,8 +17,10 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/storage/flash_map.h>
 #include "atm_settings.h"
-#ifdef FACTORY_IN_RRAM
+#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
 #include "rram_rom_prot.h"
+#elif CONFIG_DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
+#include "flash_prot.h"
 #endif
 
 #define LOG_MODULE_NAME atm_settings
@@ -69,20 +71,24 @@ static int atm_settings_init(void)
     }
     LOG_INF("settings factory initialization: OK.");
 
-#ifdef FACTORY_IN_RRAM
+#if DT_NODE_EXISTS(DT_NODELABEL(factory_partition)) && \
+    (DT_NODE_EXISTS(DT_NODELABEL(rram_controller)) || \
+	CONFIG_DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED)
     uint32_t factory_offset = factory_config.part_info.part_offset;
     uint32_t factory_size = factory_config.part_info.part_size;
-    bool sec_s = rram_prot_sticky_write_disable(factory_offset, factory_size);
+    bool sec_s;
+#if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
+    sec_s = rram_prot_sticky_write_disable(factory_offset, factory_size);
+#elif CONFIG_DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
+    sec_s = flash_prot_sticky_write_disable(factory_offset, factory_size);
+#endif
     if (!sec_s) {
 	LOG_INF("settings factory data WP: fail (0x%" PRIx32 ", 0x%" PRIx32 ")",
 	    factory_offset, factory_size);
 	return -EINVAL;
     }
     LOG_INF("settings factory data WP: OK.");
-#endif
-#ifdef FACTORY_IN_FLASH
-    // FIXME: Waiting for sticky lock for flash to be implemented
-#endif
+#endif // factory_partition
 
     return 0;
 }

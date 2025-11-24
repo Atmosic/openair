@@ -1,0 +1,45 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_PROT
+	bool "Enable Atmosic platform protections"
+
+if ATM_PROT
+
+config ATM_PROT_DISABLE_SHUB
+	bool "Disable Sensor Hub"
+
+config ATM_PROT_DISABLE_ROM_PATCH
+	bool "Disable ROM PATCH controller"
+
+config ATM_PROT_DISABLE_OTP
+	bool "Disable OTP controller"
+
+config ATM_PROT_RP_BOOT_ROM
+	bool "Read protect the boot ROM"
+
+config ATM_PROT_WP_ATMWSTK
+	bool "Write protect the ATMWSTK image, if used"
+
+config ATM_PROT_RP_MCUBOOT
+	bool "Read protect the MCUBOOT image, if used"
+
+endif
+
+config ATM_PROT_AUTO
+	bool "Auto enable platform protections"
+	default y if ATM_NO_SPE
+	depends on !ARM_FIRMWARE_HAS_SECURE_ENTRY_FUNCS
+	select ATM_PROT
+	select ATM_PROT_WP_ATMWSTK
+	select ATM_PROT_RP_MCUBOOT
+	select ATM_PROT_RP_BOOT_ROM
+	select ATM_PROT_DISABLE_OTP
+	select ATM_PROT_DISABLE_ROM_PATCH
+	select ATM_PROT_DISABLE_SHUB
+	select ATM_NV_MEM_FLASH_PROT if DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
+	help
+	  This option will protect the platform at early bootup in the absence of
+	  the SPE. When a SPE in use it will use this protection library to enable
+	  protections before enabling the SAU.

@@ -499,6 +499,21 @@ void BbBleBackupData(void);
 /*************************************************************************************************/
 void BbBleRestoreData(void);
 
+/*************************************************************************************************/
+/*!
+ *  \brief      Overwrite BLE setup delay table.
+ *
+ *  \param      setupDelayTable    Pointer to setup delay table array.
+ *  \param      tableSize          Size of the delay table array.
+ *
+ *  Overwrite the default setup delay table for BLE operations. The table should
+ *  contain delay values indexed by BLE operation type (BB_BLE_OP_*). The table
+ *  size must match BB_BLE_OP_NUM. The table must remain valid for the lifetime
+ *  of the BLE operations.
+ */
+/*************************************************************************************************/
+void BbBleOverwriteSetupDelayTable(uint16_t *setupDelayTable, uint8_t tableSize);
+
 /*! \} */    /* BB_API_BLE */
 
 #ifdef __cplusplus

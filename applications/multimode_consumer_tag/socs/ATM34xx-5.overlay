@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* *** DEPRECATION WARNING - DO NOT MODIFY *** */
+
+/ {
+	zephyr,user {
+		io-channels = <&adc 1>;
+	};
+	aliases {
+		tag-pwm = &pwm_led0;
+		sw0 = &button1;
+	};
+	buzzer: buzzer {
+		compatible = "atmosic,atm3x-pwm-buzzer";
+		pulse = <PWM_USEC(500)>;
+	};
+};

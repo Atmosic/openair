@@ -9,9 +9,9 @@
 &rram0 {
 	partitions {
 #if ATM_SPE_SIZE
-		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+		compatible = "atmosic,fixed_atmwstk", "atmosic,tz-fixed-partitions", "fixed-partitions";
 #else
-		compatible = "fixed-partitions";
+		compatible = "atmosic,fixed_atmwstk", "fixed-partitions";
 #endif
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -50,6 +50,7 @@
 #if ATMWSTK_SIZE
 		slot2_partition: partition@ATMWSTK_NODE_ID {
 			label = "image-2";
+			variant = ATMWSTK_VARIANT_STRING;
 			reg = <ATMWSTK_OFFSET ATMWSTK_SIZE>;
 		};
 #endif
@@ -65,7 +66,7 @@
 		compatible = "fixed-partitions";
 		storage_partition: partition@0 {
 			label = "storage";
-			reg = <0 0x4000>;
+			reg = <0 0x8000>;
 		};
 	};
 };

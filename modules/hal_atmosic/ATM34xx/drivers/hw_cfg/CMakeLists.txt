@@ -5,7 +5,5 @@
 if(CONFIG_ATM_HW_CFG)
   zephyr_include_directories(.)
   zephyr_sources(hw_cfg.c)
-  zephyr_link_libraries(
-    ${LINKERFLAGPREFIX},"${PRECOMPILED_DRIVER_DIR}/hw_cfg/hw_cfg_core.po"
-  )
+  atm_source_core_file(hw_cfg_core hw_cfg)
 endif()

@@ -212,6 +212,15 @@ void WsfBufGetPoolStats(WsfBufPoolStat_t *pStat, uint8_t numPool);
 
 /*************************************************************************************************/
 /*!
+ *  \brief  Get the maximum buffer length from all pools.
+ *
+ *  \return Maximum buffer length available, or 0 if no pools exist.
+ */
+/*************************************************************************************************/
+uint16_t WsfBufGetMaxLength(void);
+
+/*************************************************************************************************/
+/*!
  *  \brief  Called to register the buffer diagnostics callback function.
  *
  *  \param  callback   Pointer to the callback function.

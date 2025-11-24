@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Atmosic
+
+common:
+  sysbuild: true
+  harness: ztest
+  tags:
+    - drivers
+    - wurx
+    - no_mcuboot
+
+tests:
+  tests.drivers.wurx.atm: {}

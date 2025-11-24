@@ -209,11 +209,15 @@ module_to_ctrl(volatile const void *addr)
 #endif // CHIP_PAR
 #endif // CONFIG_SOC_FAMILY_ATM
 
+#ifndef PINMUX_ASSERT
+#define PINMUX_ASSERT STATIC_ASSERT
+#endif
+
 /*
  * Set pin pullup
  */
 #define PIN_PULLUP(pin) do { \
-    STATIC_ASSERT((pin < 32) ? (WRPRPINS_PUPD_OVRD__WRITE & (1U << pin)) : \
+    PINMUX_ASSERT((pin < 32) ? (WRPRPINS_PUPD_OVRD__WRITE & (1U << pin)) : \
 	((pin < 54) ? (WRPRPINS_PUPD_OVRD2__WRITE & (1U << (pin % 32))) : 0), \
 	"Pin does not support pull"); \
     uint32_t mask = (1U << (pin % 32)); \
@@ -230,7 +234,7 @@ module_to_ctrl(volatile const void *addr)
  * Set pin pulldown
  */
 #define PIN_PULLDOWN(pin) do { \
-    STATIC_ASSERT((pin < 32) ? (WRPRPINS_PUPD_OVRD__WRITE & (1U << pin)) : \
+    PINMUX_ASSERT((pin < 32) ? (WRPRPINS_PUPD_OVRD__WRITE & (1U << pin)) : \
 	((pin < 54) ? (WRPRPINS_PUPD_OVRD2__WRITE & (1U << (pin % 32))) : 0), \
 	"Pin does not support pull"); \
     uint32_t mask = (1U << (pin % 32)); \
@@ -247,7 +251,7 @@ module_to_ctrl(volatile const void *addr)
  * Clear pin pull
  */
 #define PIN_PULL_CLR(pin) do { \
-    STATIC_ASSERT((pin < 32) ? (WRPRPINS_PUPD_OVRD__WRITE & (1U << pin)) : \
+    PINMUX_ASSERT((pin < 32) ? (WRPRPINS_PUPD_OVRD__WRITE & (1U << pin)) : \
 	((pin < 54) ? (WRPRPINS_PUPD_OVRD2__WRITE & (1U << (pin % 32))) : 0), \
 	"Pin does not support pull"); \
     uint32_t mask = (1U << (pin % 32)); \
@@ -262,11 +266,11 @@ module_to_ctrl(volatile const void *addr)
  * Set pin drive strength
  */
 #define PIN_PDSN_CFG(pin, val) do { \
-    STATIC_ASSERT((pin < 16) ? (WRPRPINS_PDSN_A__WRITE & (3U << (2 * pin))) : \
+    PINMUX_ASSERT((pin < 16) ? (WRPRPINS_PDSN_A__WRITE & (3U << (2 * pin))) : \
 	((pin < 32) ? (WRPRPINS_PDSN_B__WRITE & (3U << (2 * (pin % 16)))) : \
 	((pin < 48) ? (WRPRPINS_PDSN_C__WRITE & (3U << (2 * (pin % 16)))) : \
 	((pin < 54) ? (WRPRPINS_PDSN_D__WRITE & (3U << (2 * (pin % 16)))) : \
-	0)), "Pin does not support drive strength"); \
+	0))), "Pin does not support drive strength"); \
     uint32_t mask = (3U << (2 * (pin % 16))); \
     if (pin < 16) { \
 	CMSDK_WRPR0_NONSECURE->PDSN_A = \

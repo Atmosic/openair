@@ -85,35 +85,47 @@ static void rrsp_mmi_disconnected_cb(struct bt_conn *conn, uint8_t reason)
 }
 
 static void rrsp_mmi_remote_capabilities_cb(struct bt_conn *conn,
+					    uint8_t status,
 					    struct bt_conn_le_cs_capabilities *params)
 {
 	ARG_UNUSED(params);
-	LOG_INF("CS capability exchange completed.");
+	if (status == BT_HCI_ERR_SUCCESS) {
+		LOG_INF("CS capability exchange completed.");
+	}
 }
 
-static void rrsp_mmi_cs_config_created_cb(struct bt_conn *conn, struct bt_conn_le_cs_config *config)
+static void rrsp_mmi_cs_config_created_cb(struct bt_conn *conn,
+					  uint8_t status,
+					  struct bt_conn_le_cs_config *config)
 {
-	LOG_INF("CS config creation complete. ID: %d", config->id);
-	rrsp_mmi.cs_cfg = config->id;
+	if (status == BT_HCI_ERR_SUCCESS) {
+		LOG_INF("CS config creation complete. ID: %d", config->id);
+		rrsp_mmi.cs_cfg = config->id;
+	}
 }
 
-static void rrsp_mmi_cs_security_enabled_cb(struct bt_conn *conn)
+static void rrsp_mmi_cs_security_enabled_cb(struct bt_conn *conn, uint8_t status)
 {
-	LOG_INF("CS security enabled.");
-	rrsp_mmi_run_event(RRSP_MMI_EVT_CS_SEC_EN);
+	if (status == BT_HCI_ERR_SUCCESS) {
+		LOG_INF("CS security enabled.");
+		rrsp_mmi_run_event(RRSP_MMI_EVT_CS_SEC_EN);
+	}
 }
 
 static void rrsp_mmi_cs_procedure_enabled_cb(struct bt_conn *conn,
+					     uint8_t status,
 					     struct bt_conn_le_cs_procedure_enable_complete *params)
 {
-	LOG_INF("CS procedures enable: %u cnt:%u", params->state, params->procedure_count);
+	if (status == BT_HCI_ERR_SUCCESS) {
+		LOG_INF("CS procedures enable: %u cnt:%u", params->state, params->procedure_count);
 
-	if (params->state) {
-		rrsp_mmi_run_event(RRSP_MMI_EVT_CS_PROC_EN);
-		rrsp_mmi.remaining_cs_cnt = params->procedure_count;
-	} else {
-		rrsp_mmi_run_event(RRSP_MMI_EVT_CS_PROC_DIS);
-		rrsp_mmi.remaining_cs_cnt = 0;
+		if (params->state) {
+			rrsp_mmi_run_event(RRSP_MMI_EVT_CS_PROC_EN);
+			rrsp_mmi.remaining_cs_cnt = params->procedure_count;
+		} else {
+			rrsp_mmi_run_event(RRSP_MMI_EVT_CS_PROC_DIS);
+			rrsp_mmi.remaining_cs_cnt = 0;
+		}
 	}
 }
 
@@ -133,10 +145,10 @@ static void rrsp_mmi_cs_subevent_result_cb(struct bt_conn *conn,
 BT_CONN_CB_DEFINE(rrsp_mmi) = {
 	.connected = rrsp_mmi_connected_cb,
 	.disconnected = rrsp_mmi_disconnected_cb,
-	.le_cs_remote_capabilities_available = rrsp_mmi_remote_capabilities_cb,
-	.le_cs_config_created = rrsp_mmi_cs_config_created_cb,
-	.le_cs_security_enabled = rrsp_mmi_cs_security_enabled_cb,
-	.le_cs_procedure_enabled = rrsp_mmi_cs_procedure_enabled_cb,
+	.le_cs_read_remote_capabilities_complete = rrsp_mmi_remote_capabilities_cb,
+	.le_cs_config_complete = rrsp_mmi_cs_config_created_cb,
+	.le_cs_security_enable_complete = rrsp_mmi_cs_security_enabled_cb,
+	.le_cs_procedure_enable_complete = rrsp_mmi_cs_procedure_enabled_cb,
 	.le_cs_subevent_data_available = rrsp_mmi_cs_subevent_result_cb,
 };
 
@@ -270,7 +282,7 @@ static void rrsp_mmi_init_entry(void *obj)
 	}
 }
 
-static void rrsp_mmi_init_run(void *obj)
+static enum smf_state_result rrsp_mmi_init_run(void *obj)
 {
 	LOG_INF("init_run:%u", rrsp_mmi.evt);
 
@@ -279,9 +291,10 @@ static void rrsp_mmi_init_run(void *obj)
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_ADV]);
 	} break;
 	default: {
-		LOG_ERR("Uxexpected evt:%u", rrsp_mmi.evt);
+		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
 	}
+	return SMF_EVENT_PROPAGATE;
 }
 
 static void rrsp_mmi_adv_entry(void *obj)
@@ -293,7 +306,7 @@ static void rrsp_mmi_adv_entry(void *obj)
 #endif
 }
 
-static void rrsp_mmi_adv_run(void *obj)
+static enum smf_state_result rrsp_mmi_adv_run(void *obj)
 {
 	LOG_INF("adv_run-%u", rrsp_mmi.evt);
 
@@ -321,9 +334,10 @@ static void rrsp_mmi_adv_run(void *obj)
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_OFF]);
 	} break;
 	default: {
-		LOG_ERR("Uxexpected evt:%u", rrsp_mmi.evt);
+		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
 	}
+	return SMF_EVENT_PROPAGATE;
 }
 
 static void rrsp_mmi_adv_exit(void *obj)
@@ -346,7 +360,7 @@ static void rrsp_mmi_connected_entry(void *obj)
 #endif
 }
 
-static void rrsp_mmi_connected_run(void *obj)
+static enum smf_state_result rrsp_mmi_connected_run(void *obj)
 {
 	LOG_INF("con_run-%u", rrsp_mmi.evt);
 
@@ -368,9 +382,10 @@ static void rrsp_mmi_connected_run(void *obj)
 	case RRSP_MMI_EVT_ADV_OFF: {
 	} break;
 	default: {
-		LOG_ERR("Uxexpected evt:%u", rrsp_mmi.evt);
+		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
 	}
+	return SMF_EVENT_PROPAGATE;
 }
 
 static void rrsp_mmi_connected_exit(void *obj)
@@ -390,13 +405,16 @@ static void rrsp_mmi_cs_setup_cmp_entry(void *obj)
 #endif
 }
 
-static void rrsp_mmi_cs_setup_cmp_run(void *obj)
+static enum smf_state_result rrsp_mmi_cs_setup_cmp_run(void *obj)
 {
 	LOG_INF("setup_run-%u", rrsp_mmi.evt);
 
 	switch (rrsp_mmi.evt) {
 	case RRSP_MMI_EVT_BT_DISC: {
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_ADV]);
+	} break;
+	case RRSP_MMI_EVT_CS_SEC_EN: {
+		LOG_INF("Re-config again");
 	} break;
 	case RRSP_MMI_EVT_CS_PROC_EN: {
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_CS_PROC_EN]);
@@ -410,9 +428,10 @@ static void rrsp_mmi_cs_setup_cmp_run(void *obj)
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_OFF]);
 	} break;
 	default: {
-		LOG_ERR("Uxexpected evt:%u", rrsp_mmi.evt);
+		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
 	}
+	return SMF_EVENT_PROPAGATE;
 }
 
 static void rrsp_mmi_cs_setup_cmp_exit(void *obj)
@@ -430,7 +449,7 @@ static void rrsp_mmi_cs_proc_en_entry(void *obj)
 #endif
 }
 
-static void rrsp_mmi_cs_proc_en_run(void *obj)
+static enum smf_state_result rrsp_mmi_cs_proc_en_run(void *obj)
 {
 	LOG_INF("cs_run-%u", rrsp_mmi.evt);
 
@@ -456,9 +475,10 @@ static void rrsp_mmi_cs_proc_en_run(void *obj)
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_OFF]);
 	} break;
 	default: {
-		LOG_ERR("Uxexpected evt:%u", rrsp_mmi.evt);
+		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
 	}
+	return SMF_EVENT_PROPAGATE;
 }
 
 static void rrsp_mmi_cs_proc_en_exit(void *obj)
@@ -479,7 +499,7 @@ static void rrsp_mmi_off_entry(void *obj)
 #endif
 }
 
-static void rrsp_mmi_off_run(void *obj)
+static enum smf_state_result rrsp_mmi_off_run(void *obj)
 {
 	switch (rrsp_mmi.evt) {
 	case RRSP_MMI_EVT_ADV_OFF: {
@@ -495,9 +515,10 @@ static void rrsp_mmi_off_run(void *obj)
 		LOG_INF("Off: CS Disable");
 	} break;
 	default: {
-		LOG_ERR("Uxexpected evt:%u", rrsp_mmi.evt);
+		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
 	}
+	return SMF_EVENT_PROPAGATE;
 }
 
 static const struct smf_state rrsp_mmi_states[RRSP_MMI_STATE_IDX_MAX] = {

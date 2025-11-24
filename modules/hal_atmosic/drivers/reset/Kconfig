@@ -1,0 +1,12 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_RESET
+	bool "Atmosic Reset module"
+	default y if ATM_ATLC
+	default y if ATM_RWLC
+	default y if DTOP_BYPASS
+	default y if ENTROPY_ATM_TRNG
+	default y if PM
+	default y if ATM_BROWNOUT

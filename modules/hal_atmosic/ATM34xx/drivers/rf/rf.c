@@ -29,7 +29,13 @@
 #define CFG_CONN_TX_PWR 0
 #endif
 
-#ifndef CONFIG_SOC_FAMILY_ATM
+#define UNSET_FORCE_TX_PWR_VALUE 255
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+STATIC_ASSERT(CONFIG_FORCE_TX_PWR == UNSET_FORCE_TX_PWR_VALUE ||
+    (CONFIG_FORCE_TX_PWR >= -20 && CONFIG_FORCE_TX_PWR <= 10),
+    "CONFIG_FORCE_TX_PWR must be UNSET_FORCE_TX_PWR_VALUE (disabled) or -20..10");
+#else
 #define CFG_MAX_TX_PWR_UB 10
 STATIC_ASSERT(CONFIG_MAX_TX_PWR <= CFG_MAX_TX_PWR_UB,
     "MAX_TX_PWR value exceeds the upper bound");
@@ -77,11 +83,16 @@ int8_t rf_set_cs_txpwr_val(uint16_t conhdl, int8_t txpwr_dbm)
 	atm_mac_get_tx_power_index(txpwr_con_dbm));
 }
 
-void rf_set_txpwr_override(int8_t txpwr_dbm)
+atm_txpwr_ovr_key rf_set_txpwr_override(int8_t txpwr_dbm)
 {
     uint8_t gain_index = atm_mac_get_tx_power_index(txpwr_dbm);
 
-    rf_core_set_txpwr_override(gain_index);
+    return (rf_core_set_txpwr_override(gain_index));
+}
+
+void rf_restore_txpwr_override(atm_txpwr_ovr_key key)
+{
+    rf_core_restore_txpwr_override(key);
 }
 
 bool rf_set_txpwr_advertising_val(int8_t txpwr_dbm)
@@ -110,7 +121,8 @@ __attribute__((constructor))
 static void rf_init(void)
 {
     rf_set_txpwr_maximum_val(CONFIG_MAX_TX_PWR);
-#if defined(CONFIG_RF_TEST) || defined(CONFIG_FORCE_TX_PWR)
+#if defined(CONFIG_FORCE_TX_PWR) && \
+    (CONFIG_FORCE_TX_PWR != UNSET_FORCE_TX_PWR_VALUE)
     // Vector replacement
     rf_set_txpwr_override(CONFIG_FORCE_TX_PWR);
 #endif

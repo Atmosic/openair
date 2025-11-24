@@ -5,7 +5,7 @@
  *
  * @brief Atmosic settings partition initialization for settings subsystem
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  *******************************************************************************
  */
@@ -13,7 +13,7 @@
 #pragma once
 
 #include "compiler.h"
-#include "atm_settings_nvs.h"
+#include "atm_settings_backend.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -130,17 +130,17 @@ Running the Tests
 Sysbuild Support
 ~~~~~~~~~~~~~~~~
 
-The test supports sysbuild for building with SPE configuration:
+The test supports sysbuild for building:
 
-**Basic sysbuild (SPE only):**
+**Basic sysbuild:**
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>//ns openair/tests/drivers/retained_mem --sysbuild -T drivers.retained_mem.atm
+   west build -p always -b <BOARD> openair/tests/drivers/retained_mem --sysbuild -T drivers.retained_mem.atm
 
 **Available sysbuild test configuration:**
 
-- ``drivers.retained_mem.atm`` - Basic SPE configuration for ATM33/ATM34 SOCs
+- ``drivers.retained_mem.atm`` - Basic configuration for ATM33/ATM34 SOCs
 
 Standard Build (Non-sysbuild)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -149,7 +149,7 @@ For simple testing without sysbuild:
 
 .. code-block:: bash
 
-   west build -b atmevk_3430e_yqn_5_ns tests/drivers/retained_mem
+   west build -b atmevk_3430e_yqn_5 tests/drivers/retained_mem
 
 Flash command:
 

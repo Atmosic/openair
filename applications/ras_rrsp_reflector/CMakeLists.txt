@@ -10,8 +10,11 @@ include_directories(
   src
 )
 
-FILE(GLOB app_sources src/*.c)
-
 target_sources(app PRIVATE
-  ${app_sources}
+  src/main.c
+  src/rrsp_batt.c
+  src/rrsp_buttons.c
+  src/rrsp_buzzer.c
+  src/rrsp_led.c
+  src/rrsp_mmi.c
 )

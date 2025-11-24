@@ -19268,7 +19268,7 @@ namespace eval CMSDK_MDM_NONSECURE {
                 return 0x00000010
             }
         }
-        namespace eval RF_STTL_CNT {
+        namespace eval BB1Q_DCOC_TRNG {
             namespace export SHIFT
             proc SHIFT {} {
                 return 10
@@ -19307,7 +19307,7 @@ namespace eval CMSDK_MDM_NONSECURE {
                 return 0x00000080
             }
         }
-        namespace eval RF_STTL_CNT_TWOMEG {
+        namespace eval BB1I_DCOC_TRNG {
             namespace export SHIFT
             proc SHIFT {} {
                 return 20

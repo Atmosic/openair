@@ -150,33 +150,43 @@ enum
 
 /*************************************************************************************************/
 /*!
- *  \brief      Generate CS First Step data.
+ *  \brief      Generates a sounding sequence for CS initiator and reflector.
  *
- *  \param      pCs      CS BOD data.
+ *  \param      pSeqInit        Output buffer for initiator sounding sequence.
+ *  \param      pSeqRefl        Output buffer for reflector sounding sequence.
+ *  \param      rttType         RTT type for the sounding sequence.
+ *  \param      transCntPos     Transaction counter for position randomization.
+ *  \param      stepCnt         Step counter.
+ *  \param      markPosOverride Enable marker position override.
+ *  \param      pos1            First marker position (when override enabled).
+ *  \param      pos2            Second marker position (when override enabled).
+ *  \param      markValOverride Enable marker value override.
+ *  \param      val             Marker value (when override enabled).
+ *  \param      count           Marker count.
+ *  \param      pCtx            DRBG control block.
+ *  \param      pTrCnt          Transaction counter pointer.
  */
 /*************************************************************************************************/
-void BbCsGenerateSoundingSequence(drbgData_t * pData, uint8_t len, uint8_t transCntPos, uint8_t transCntSel, uint8_t stepCnt, bool markPosOverride, uint8_t pos1, uint8_t pos2, bool markValOverride, uint8_t val, uint8_t count, BbBleDrbgCtx_t *pCtx, uint16_t *pTrCnt);
+__attribute__((nonnull(1, 2)))
+void BbCsGenerateSoundingSequence(uint32_t *pSeqInit, uint32_t *pSeqRefl, uint8_t rttType, uint8_t stepCnt, bool markPosOverride, uint8_t pos1, uint8_t pos2, bool markValOverride, uint8_t val, uint8_t count, BbBleDrbgCtx_t *pCtx);
 
 /*************************************************************************************************/
 /*!
- *  \brief      Generate CS Procedure data.
+ *  \brief      Generates random sequences for CS initiator and reflector.
  *
- *  \param      pCs      CS BOD data.
+ *  \param      pSeqInit            Output buffer for initiator sequence.
+ *  \param      pSeqRefl            Output buffer for reflector sequence.
+ *  \param      rttType             RTT type for the random sequence.
+ *  \param      stepCnt             Step counter.
+ *  \param      transCnt            Transaction counter.
+ *  \param      payloadOverride     Enable payload override mode.
+ *  \param      payloadType         Type of payload when override is enabled.
+ *  \param      pUserPayloadPattern User-defined payload pattern.
+ *  \param      pCtx                DRBG control block.
  */
 /*************************************************************************************************/
-void BbGenerateProcedureData(BbBleCsEvent_t *pCs);
-
-/*************************************************************************************************/
-/*!
- *  \brief      Generates a random sequence.
- *
- *  \param      pBuf    Output buffer.
- *  \param      len     Length of the random sequence.
- *  \param      stepCnt Step counter.
- *  \param      pCtx    DRBG control block
- */
-/*************************************************************************************************/
-void BbCsGenerateRandomSequence(uint8_t *pSeqInit, uint8_t *pSeqRefl, uint8_t len, uint8_t stepCnt, uint8_t transCnt, bool payloadOverride, uint8_t payloadType, uint64_t *pUserPayloadPattern, BbBleDrbgCtx_t *pCtx);
+__attribute__((nonnull(1, 2)))
+void BbCsGenerateRandomSequence(uint8_t *pSeqInit, uint8_t *pSeqRefl, uint8_t rttType, uint8_t stepCnt, uint8_t transCnt, bool payloadOverride, uint8_t payloadType, uint8_t *pUserPayloadPattern, BbBleDrbgCtx_t *pCtx);
 
 /*************************************************************************************************/
 /*!
@@ -188,6 +198,7 @@ void BbCsGenerateRandomSequence(uint8_t *pSeqInit, uint8_t *pSeqRefl, uint8_t le
  *  \return    Size of array
  */
 /*************************************************************************************************/
+__attribute__((nonnull(1, 2)))
 uint8_t bbCsGenerateChanArr(uint8_t *chanMap, uint8_t *chanArr);
 
 /*! \} */ /* BB_API_BLE_CS */

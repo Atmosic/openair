@@ -208,7 +208,7 @@ static struct gadc_fifo_s gadc_read_ch_data(void)
 }
 
 /* Enable/Disable GADC analog side */
-__INLINE void gadc_analog_control(bool enable)
+__STATIC_FORCEINLINE void gadc_analog_control(bool enable)
 {
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
@@ -634,5 +634,3 @@ static struct gadc_atm_data gadc_atm_data_0 = {
 };
 DEVICE_DT_INST_DEFINE(0, gadc_atm_init, NULL, &gadc_atm_data_0, NULL, POST_KERNEL,
 		      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &api_atm_driver_api);
-BUILD_ASSERT(CMSDK_GADC == (CMSDK_AT_APB_GADC_TypeDef *)DT_REG_ADDR(DT_NODELABEL(adc)),
-	     "INVALID CMSDK CONFIGURATION");

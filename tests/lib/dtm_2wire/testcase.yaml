@@ -1,0 +1,9 @@
+tests:
+  tests.lib.dtm_2wire.atm:
+    sysbuild: true
+    harness: ztest
+    tags:
+      - bluetooth
+      - dtm
+      - no_mcuboot
+    timeout: 60

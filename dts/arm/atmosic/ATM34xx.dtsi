@@ -5,31 +5,84 @@
  */
 
 #include <arm/atmosic/ATM34.dtsi>
+#include <zephyr/dt-bindings/memory-attr/memory-attr.h>
+#include <zephyr/dt-bindings/memory-attr/memory-attr-arm.h>
 
 #ifndef FLASH_SIZE
 #define FLASH_SIZE 0x80000
 #endif
 
-#if defined(ATM_SPE_SIZE) && (ATM_SPE_SIZE == 0)
-#define SRAM_SIZE 0x20000
+#ifndef ATM_NS_APP
+#ifndef ROM_NULL_PAGE_SIZE
+#define ROM_NULL_PAGE_SIZE 4096
+#endif
+
+#ifdef ATM_NO_TZ
+#ifndef SRAM_SIZE
+#define SRAM_SIZE 0x40000
+#endif // SRAM_SIZE
 #else
 #if defined(RUN_IN_FLASH) && (RUN_IN_FLASH == 2)
-#define SRAM_SIZE 0x1000
+#define SRAM_SIZE 0x1800
+
+#if ATM_SEC_FAULT_STORAGE
+#define ATM_SEC_FAULT_STORAGE_NODE 300017E0
+#endif
+
 #else
 #define SRAM_SIZE 0x4000
+
+#if ATM_SEC_FAULT_STORAGE
+#define ATM_SEC_FAULT_STORAGE_NODE 30003FE0
 #endif
-#endif // ATM_SPE_SIZE
+#endif // defined(RUN_IN_FLASH) && (RUN_IN_FLASH == 2)
+
+#if ATM_SEC_FAULT_STORAGE
+#define ATM_SEC_FAULT_STORAGE_SIZE 32
+#define ATM_SEC_FAULT_STORAGE_ADDR (0x30000000 + SRAM_SIZE - ATM_SEC_FAULT_STORAGE_SIZE)
+
+#define CAT(a, b) a##b
+#define CAT_HEX(x) CAT(0x, x)
+#if ATM_SEC_FAULT_STORAGE_ADDR != CAT_HEX(ATM_SEC_FAULT_STORAGE_NODE)
+#error "ATM_SEC_FAULT_STORAGE_ADDR must equal ATM_SEC_FAULT_STORAGE_NODE"
+#endif
+
+#endif // ATM_SEC_FAULT_STORAGE
+#endif // ATM_NO_TZ
+#endif // ATM_NS_APP
 
 / {
+#ifndef ATM_NS_APP
+	// define the area for the MPU to catch NULL pointers
+	// NS applications use secure access violations to detect NULL
+	rom_null_page: memory@0 {
+		compatible = "zephyr,memory-attr","zephyr,memory-region";
+		zephyr,memory-region = "NULL_PAGE";
+		zephyr,memory-attr = <( DT_MEM_ARM(ATTR_MPU_FLASH) )>;
+		device_type = "memory";
+		reg = <0x0 ROM_NULL_PAGE_SIZE>;
+	};
+#endif
+
 #if FLASH_SIZE
+#ifdef ATM_NS_APP
+	flash_controller: flash-controller@200000 {
+#else
 	flash_controller: flash-controller@10200000 {
+#endif
 		compatible = "atmosic,external-flash-controller";
 
 		#address-cells = <1>;
 		#size-cells = <1>;
 
 		reg = <0x10200000 0x1000000>;
+#ifdef ATM_NS_APP
+		reg = <0x200000 0x1000000>;
+		ranges = <0x0 0x200000 0x1000000>;
+#else
+		reg = <0x10200000 0x1000000>;
 		ranges = <0x0 0x10200000 0x1000000>;
+#endif
 
 		flash0: flash@0 {
 			compatible = "soc-nv-flash";
@@ -38,24 +91,38 @@
 			reg = <0x0 FLASH_SIZE>;
 		};
 	};
-#endif
+#endif // FLASH_SIZE
 
+#ifdef ATM_NS_APP
+	rram_controller: rram-controller@10000 {
+#else
 	rram_controller: rram-controller@10010000 {
+#endif
 		compatible = "atmosic,rram-controller";
 		no-erase-before-write;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+#ifdef ATM_NS_APP
+		reg = <0x10000 0x7f800>;
+		rram0: rram@10000 {
+#else
 		reg = <0x10010000 0x7f800>;
-
 		rram0: rram@10010000 {
+#endif
 			compatible = "soc-nv-flash";
 			erase-block-size = <1024>;
 			write-block-size = <1>;
+#ifdef ATM_NS_APP
+			reg = <0x10000 0x7f800>;
+#else
 			reg = <0x10010000 0x7f800>;
+#endif
 		};
 	};
+
+#ifndef ATM_NS_APP
 
 	sec_jrnl: sec_jrnl@1008F800 {
 		compatible = "atmosic,sec-jrnl";
@@ -92,16 +159,80 @@
 		status = "okay";
 	};
 
+	sec_tz: sec_tz {
+		compatible = "atmosic,sec-tz";
+#ifdef ATM_NO_TZ
+		status = "disabled";
+#else
+		allow_nsc_in_ram;
+		status = "okay";
+#endif
+	};
+
 	sec_mem_prot: sec_mem_prot {
 		compatible = "atmosic,sec-mem-prot";
 		status = "okay";
 	};
-
+#if ATM_SEC_FAULT_STORAGE
+	sram0: memory@30000000 {
+		device_type = "memory";
+		compatible = "mmio-sram";
+		reg = <0x30000000 (SRAM_SIZE - ATM_SEC_FAULT_STORAGE_SIZE)>;
+	};
+	spe_fault_storage: spe_fault_storage@ATM_SEC_FAULT_STORAGE_NODE {
+		device_type = "memory";
+		compatible = "atmosic,spe-fault-storage";
+		reg = <ATM_SEC_FAULT_STORAGE_ADDR ATM_SEC_FAULT_STORAGE_SIZE>;
+	};
+#else
 	sram0: memory@30000000 {
 		device_type = "memory";
 		compatible = "mmio-sram";
 		reg = <0x30000000 SRAM_SIZE>;
 	};
+#endif
+
+#else // ATM_NS_APP
+
+	sec_tz: sec_tz {
+		compatible = "atmosic,sec-tz";
+		ns_app;
+		// NS side cannot configure TZ
+		status = "disabled";
+	};
+
+#if defined(RUN_IN_FLASH) && (RUN_IN_FLASH == 2)
+	// need a bit more memory taken from the SPE for certain
+	// applications
+	sram0: memory@20001000 {
+		device_type = "memory";
+		compatible = "mmio-sram";
+		reg = <0x20001800 0x3e800>;
+	};
+#else
+	sram0: memory@20004000 {
+		device_type = "memory";
+		compatible = "mmio-sram";
+		reg = <0x20004000 0x3c000>;
+	};
+#endif
+
+#endif // ATM_NS_APP
 };
 
 #include "ATM34xx_partitions.dtsi"
+
+/ {
+	chosen {
+#if defined(ATM_NO_TZ)
+		zephyr,code-partition = &app_partition;
+#elif defined(ATM_NS_APP)
+		zephyr,code-partition = &nspe_partition;
+#else
+		zephyr,code-partition = &spe_partition;
+#endif
+#ifdef ATM_DTS_USER_APP
+		zephyr,bt-hci = &ble;
+#endif
+	};
+};

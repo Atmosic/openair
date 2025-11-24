@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Atmosic
+
+source "Kconfig.zephyr"
+
+config SENSOR_BEACON_UPDATE_INTERVAL
+	int "Sensor data update interval in centiseconds"
+	default 100
+	help
+	  Interval between sensor data updates and beacon advertisement updates.
+	  Value is in centiseconds (1 centisecond = 10ms).
+	  Default is 100 centiseconds = 1 second for responsive debugging.
+
+config SENSOR_BEACON_FAST_ADV
+	bool "Fast advertising mode"
+	default n
+	help
+	  Enable fast advertising mode for quick device discovery.
+	  Fast mode: 100-150ms intervals (higher power, better responsiveness)
+	  Normal mode: 1-1.2s intervals (balanced power and responsiveness)
+
+	  Fast mode is recommended for applications requiring immediate discovery,
+	  while normal mode provides good balance for most use cases.
+
+config SENSOR_BEACON_ACCEL_SCALING_FACTOR
+	int "Accelerometer scaling factor"
+	default 16000
+	help
+	  Scaling factor to convert Zephyr sensor values to match the
+	  mobile app expectations. Set to 16000 to compensate for mobile
+	  app scaling (÷16÷1000) with ±16g range for optimal sensitivity.
+
+config SENSOR_BEACON_TEMP_SCALING_FACTOR
+	int "Temperature scaling factor"
+	default 256
+	help
+	  Scaling factor for temperature values using fixed-point with 256 scale factor.
+
+config SENSOR_BEACON_HUMIDITY_SCALING_FACTOR
+	int "Humidity scaling factor"
+	default 256
+	help
+	  Scaling factor for humidity values using fixed-point with 256 scale factor.
+
+config SENSOR_BEACON_BUTTON_POWER_CONTROL
+	bool "Button-controlled power management"
+	select HWINFO
+	help
+	  Enable button-controlled device power management functionality.
+	  When enabled, this mode provides:
+	  - Device starts in OFF state and requires button activation
+	  - Device ON/OFF control via 2-second button press
+	  - Power state LED indications (Green LED for ON, Red LED for OFF)
+	  - Device state management with low power mode support
+
+	  When disabled (default), the device operates in immediate beaconing mode:
+	  - Device starts beaconing immediately after power on
+	  - No device ON/OFF functionality via button
+	  - Only beacon status LED indication is active
+
+config SENSOR_BEACON_WURX_ACTIVE_ADV_TIME_MS
+	int "WURX active advertising time in milliseconds"
+	depends on WURX
+	default 60000
+	help
+	  Duration in milliseconds for active advertising period before entering
+	  hibernation when WURX mode is enabled. During this time, the device
+	  advertises normally to allow discovery. After this period expires,
+	  the device enters hibernation and waits for WURX wake-up signals.
+	  Default is 60000 ms (60 seconds).
+
+# Logging configuration for sensor beacon application modules
+module = SENSOR_BEACON
+module-str = sensor_beacon
+source "subsys/logging/Kconfig.template.log_config"

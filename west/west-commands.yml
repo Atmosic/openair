@@ -14,3 +14,8 @@ west-commands:
       - name: atm_arch
         class: AtmArchCommand
         help: Atmosic ISP file generate, show and program with bin files
+  - file: west/atm_zsg_extension.py
+    commands:
+      - name: zsg
+        class: AtmZsgCommand
+        help: Atmosic ZSG tool for generate and show bin files.

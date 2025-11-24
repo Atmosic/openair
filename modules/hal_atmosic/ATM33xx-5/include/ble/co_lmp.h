@@ -7,7 +7,7 @@
  *        definitions for use by all modules in RW stack.
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  ****************************************************************************************
  */
@@ -60,11 +60,8 @@ enum co_lmp_opcode
     LMP_HOLD_REQ_OPCODE               = 21 ,
     LMP_SNIFF_REQ_OPCODE              = 23 ,
     LMP_UNSNIFF_REQ_OPCODE            = 24 ,
-    LMP_PARK_REQ_OPCODE               = 25 ,
     LMP_SET_BSWIN_OPCODE              = 27 ,
     LMP_MODIF_BEACON_OPCODE           = 28 ,
-    LMP_UNPARK_BD_REQ_OPCODE          = 29 ,
-    LMP_UNPARK_PM_REQ_OPCODE          = 30 ,
     LMP_INCR_PWR_REQ_OPCODE           = 31 ,
     LMP_DECR_PWR_REQ_OPCODE           = 32 ,
     LMP_MAX_PWR_OPCODE                = 33 ,
@@ -170,7 +167,6 @@ enum co_lmp_pdu_length
     LMP_HOLD_REQ_LEN              = 7 ,
     LMP_SNIFF_REQ_LEN             = 10,
     LMP_UNSNIFF_REQ_LEN           = 1 ,
-    LMP_PARK_REQ_LEN              = 17,
     LMP_INCR_PWR_REQ_LEN          = 2 ,
     LMP_DECR_PWR_REQ_LEN          = 2 ,
     LMP_MAX_PWR_LEN               = 1 ,

@@ -44,6 +44,20 @@ void fp_conn_disconnect_all(void);
  */
 bool fp_conn_validate(struct bt_conn *conn);
 
+/**
+ * @brief fp conn id validate for ap
+ * @param[in] id bluetooth conn id
+ * @return true if id is valid, false otherwise
+ */
+bool fp_conn_id_validate(uint8_t id);
+
+/**
+ * @brief fp conn get bt id
+ * @param[in] idx bt id index
+ * @return bt id
+ */
+uint8_t fp_conn_get_bt_id(uint8_t idx);
+
 #ifdef __cplusplus
 }
 #endif

@@ -37,7 +37,7 @@
     } while (0)
 #endif
 
-#ifdef CONFIG_SOC_FAMILY_ATM
+#if defined(CONFIG_SOC_FAMILY_ATM) && defined(SECURE_PROC_ENV)
 #include <zephyr/devicetree.h>
 #include "at_tz_ppc.h"
 
@@ -75,7 +75,7 @@ static inline void sec_switch_console_ns(void)
     sec_switch_uart_domain(false);
 }
 
-#endif // CONFIG_SOC_FAMILY_ATM
+#endif // defined(CONFIG_SOC_FAMILY_ATM) && defined(SECURE_PROC_ENV)
 
 /**
  * @brief Print the sercure assertion error reason and halt execution to wait

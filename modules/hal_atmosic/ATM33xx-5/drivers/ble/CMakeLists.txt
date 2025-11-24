@@ -16,7 +16,7 @@ if(CONFIG_ATM_RWLC)
     ../../include/ble
   )
 
-  set(BLE_FULL_STACK_C_FLAGS
+  set(BLE_CPD200_STACK_C_FLAGS
     -DCFG_ACT=12
     -DCFG_ADV_CH_IDX
     -DCFG_AOA
@@ -31,6 +31,8 @@ if(CONFIG_ATM_RWLC)
     -DCFG_ECC_P256_SUPPORT
     -DCFG_H4TL
     -DCFG_HCITL
+    -DCFG_HCI_C2H_FLOW_CTRL
+    -DCFG_HL_ACT=9
     -DCFG_ISO_CON=0
     -DCFG_LE_PWR_CTRL
     -DCFG_MODEM_NONE
@@ -52,6 +54,8 @@ if(CONFIG_ATM_RWLC)
     -DCFG_ECC_P256_SUPPORT
     -DCFG_H4TL
     -DCFG_HCITL
+    -DCFG_HCI_C2H_FLOW_CTRL
+    -DCFG_HL_ACT=9
     -DCFG_ISO_CON=0
     -DCFG_MODEM_NONE
     -DCFG_PERIPHERAL
@@ -68,13 +72,13 @@ if(CONFIG_ATM_RWLC)
   )
 
   if(CONFIG_USE_FIXED_ATMWSTK)
-    if(CONFIG_ATMWSTK_FULL)
-      zephyr_compile_definitions(${BLE_FULL_STACK_C_FLAGS})
+    if(CONFIG_ATMWSTK_CPD200)
+      zephyr_compile_definitions(${BLE_CPD200_STACK_C_FLAGS})
       zephyr_link_libraries(
-        ${LINKERFLAGPREFIX},-R${CMAKE_CURRENT_SOURCE_DIR}/atmwstk_FULL.elf
+        ${LINKERFLAGPREFIX},-R${CMAKE_CURRENT_SOURCE_DIR}/atmwstk_CPD200.elf
       )
     else()
-      message(FATAL_ERROR "Fixed BLE stack only supports FULL for atm33. Please set CONFIG_ATMWSTK_FULL=y.")
+      message(FATAL_ERROR "Fixed BLE stack only supports CPD200 for atm33. Please set CONFIG_ATMWSTK_CPD200=y.")
     endif()
   else()
     if(CONFIG_ATMWSTK_PD50)

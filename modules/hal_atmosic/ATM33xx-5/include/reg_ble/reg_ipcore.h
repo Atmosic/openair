@@ -28,12 +28,12 @@
 #define IP_RWDMCNTL_INDEX  0x00000000
 #define IP_RWDMCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_rwdmcntl_get(void)
+__RWIP_INLINE uint32_t ip_rwdmcntl_get(void)
 {
     return REG_IP_RD(IP_RWDMCNTL_ADDR);
 }
 
-__INLINE void ip_rwdmcntl_set(uint32_t value)
+__RWIP_INLINE void ip_rwdmcntl_set(uint32_t value)
 {
     REG_IP_WR(IP_RWDMCNTL_ADDR, value);
 }
@@ -56,7 +56,7 @@ __INLINE void ip_rwdmcntl_set(uint32_t value)
 #define IP_RADIOCNTL_SOFT_RST_RST    0x0
 #define IP_SWINT_REQ_RST             0x0
 
-__INLINE void ip_rwdmcntl_pack(uint8_t mastersoftrst, uint8_t mastertgsoftrst, uint8_t regsoftrst, uint8_t radiocntlsoftrst, uint8_t swintreq)
+__RWIP_INLINE void ip_rwdmcntl_pack(uint8_t mastersoftrst, uint8_t mastertgsoftrst, uint8_t regsoftrst, uint8_t radiocntlsoftrst, uint8_t swintreq)
 {
     ASSERT_ERR((((uint32_t)mastersoftrst << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)mastertgsoftrst << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -66,7 +66,7 @@ __INLINE void ip_rwdmcntl_pack(uint8_t mastersoftrst, uint8_t mastertgsoftrst, u
     REG_IP_WR(IP_RWDMCNTL_ADDR,  ((uint32_t)mastersoftrst << 31) | ((uint32_t)mastertgsoftrst << 30) | ((uint32_t)regsoftrst << 29) | ((uint32_t)radiocntlsoftrst << 28) | ((uint32_t)swintreq << 27));
 }
 
-__INLINE void ip_rwdmcntl_unpack(uint8_t* mastersoftrst, uint8_t* mastertgsoftrst, uint8_t* regsoftrst, uint8_t* radiocntlsoftrst, uint8_t* swintreq)
+__RWIP_INLINE void ip_rwdmcntl_unpack(uint8_t* mastersoftrst, uint8_t* mastertgsoftrst, uint8_t* regsoftrst, uint8_t* radiocntlsoftrst, uint8_t* swintreq)
 {
     uint32_t localVal = REG_IP_RD(IP_RWDMCNTL_ADDR);
 
@@ -77,61 +77,61 @@ __INLINE void ip_rwdmcntl_unpack(uint8_t* mastersoftrst, uint8_t* mastertgsoftrs
     *swintreq = (localVal & ((uint32_t)0x08000000)) >> 27;
 }
 
-__INLINE uint8_t ip_rwdmcntl_master_soft_rst_getf(void)
+__RWIP_INLINE uint8_t ip_rwdmcntl_master_soft_rst_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RWDMCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_rwdmcntl_master_soft_rst_setf(uint8_t mastersoftrst)
+__RWIP_INLINE void ip_rwdmcntl_master_soft_rst_setf(uint8_t mastersoftrst)
 {
     ASSERT_ERR((((uint32_t)mastersoftrst << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_RWDMCNTL_ADDR, (REG_IP_RD(IP_RWDMCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)mastersoftrst << 31));
 }
 
-__INLINE uint8_t ip_rwdmcntl_master_tgsoft_rst_getf(void)
+__RWIP_INLINE uint8_t ip_rwdmcntl_master_tgsoft_rst_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RWDMCNTL_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ip_rwdmcntl_master_tgsoft_rst_setf(uint8_t mastertgsoftrst)
+__RWIP_INLINE void ip_rwdmcntl_master_tgsoft_rst_setf(uint8_t mastertgsoftrst)
 {
     ASSERT_ERR((((uint32_t)mastertgsoftrst << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_IP_WR(IP_RWDMCNTL_ADDR, (REG_IP_RD(IP_RWDMCNTL_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)mastertgsoftrst << 30));
 }
 
-__INLINE uint8_t ip_rwdmcntl_reg_soft_rst_getf(void)
+__RWIP_INLINE uint8_t ip_rwdmcntl_reg_soft_rst_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RWDMCNTL_ADDR);
     return ((localVal & ((uint32_t)0x20000000)) >> 29);
 }
 
-__INLINE void ip_rwdmcntl_reg_soft_rst_setf(uint8_t regsoftrst)
+__RWIP_INLINE void ip_rwdmcntl_reg_soft_rst_setf(uint8_t regsoftrst)
 {
     ASSERT_ERR((((uint32_t)regsoftrst << 29) & ~((uint32_t)0x20000000)) == 0);
     REG_IP_WR(IP_RWDMCNTL_ADDR, (REG_IP_RD(IP_RWDMCNTL_ADDR) & ~((uint32_t)0x20000000)) | ((uint32_t)regsoftrst << 29));
 }
 
-__INLINE uint8_t ip_rwdmcntl_radiocntl_soft_rst_getf(void)
+__RWIP_INLINE uint8_t ip_rwdmcntl_radiocntl_soft_rst_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RWDMCNTL_ADDR);
     return ((localVal & ((uint32_t)0x10000000)) >> 28);
 }
 
-__INLINE void ip_rwdmcntl_radiocntl_soft_rst_setf(uint8_t radiocntlsoftrst)
+__RWIP_INLINE void ip_rwdmcntl_radiocntl_soft_rst_setf(uint8_t radiocntlsoftrst)
 {
     ASSERT_ERR((((uint32_t)radiocntlsoftrst << 28) & ~((uint32_t)0x10000000)) == 0);
     REG_IP_WR(IP_RWDMCNTL_ADDR, (REG_IP_RD(IP_RWDMCNTL_ADDR) & ~((uint32_t)0x10000000)) | ((uint32_t)radiocntlsoftrst << 28));
 }
 
-__INLINE uint8_t ip_rwdmcntl_swint_req_getf(void)
+__RWIP_INLINE uint8_t ip_rwdmcntl_swint_req_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RWDMCNTL_ADDR);
     return ((localVal & ((uint32_t)0x08000000)) >> 27);
 }
 
-__INLINE void ip_rwdmcntl_swint_req_setf(uint8_t swintreq)
+__RWIP_INLINE void ip_rwdmcntl_swint_req_setf(uint8_t swintreq)
 {
     ASSERT_ERR((((uint32_t)swintreq << 27) & ~((uint32_t)0x08000000)) == 0);
     REG_IP_WR(IP_RWDMCNTL_ADDR, (REG_IP_RD(IP_RWDMCNTL_ADDR) & ~((uint32_t)0x08000000)) | ((uint32_t)swintreq << 27));
@@ -153,7 +153,7 @@ __INLINE void ip_rwdmcntl_swint_req_setf(uint8_t swintreq)
 #define IP_VERSION_INDEX  0x00000001
 #define IP_VERSION_RESET  0x0B000500
 
-__INLINE uint32_t ip_version_get(void)
+__RWIP_INLINE uint32_t ip_version_get(void)
 {
     return REG_IP_RD(IP_VERSION_ADDR);
 }
@@ -177,7 +177,7 @@ __INLINE uint32_t ip_version_get(void)
 #define IP_UPG_RST      0x5
 #define IP_BUILD_RST    0x0
 
-__INLINE void ip_version_unpack(uint8_t* typ, uint8_t* rel, uint8_t* upg, uint8_t* build)
+__RWIP_INLINE void ip_version_unpack(uint8_t* typ, uint8_t* rel, uint8_t* upg, uint8_t* build)
 {
     uint32_t localVal = REG_IP_RD(IP_VERSION_ADDR);
 
@@ -187,25 +187,25 @@ __INLINE void ip_version_unpack(uint8_t* typ, uint8_t* rel, uint8_t* upg, uint8_
     *build = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ip_version_typ_getf(void)
+__RWIP_INLINE uint8_t ip_version_typ_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_VERSION_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE uint8_t ip_version_rel_getf(void)
+__RWIP_INLINE uint8_t ip_version_rel_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_VERSION_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE uint8_t ip_version_upg_getf(void)
+__RWIP_INLINE uint8_t ip_version_upg_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_VERSION_ADDR);
     return ((localVal & ((uint32_t)0x0000FF00)) >> 8);
 }
 
-__INLINE uint8_t ip_version_build_getf(void)
+__RWIP_INLINE uint8_t ip_version_build_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_VERSION_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
@@ -224,12 +224,12 @@ __INLINE uint8_t ip_version_build_getf(void)
 #define IP_INTCNTL0_INDEX  0x00000003
 #define IP_INTCNTL0_RESET  0x00000000
 
-__INLINE uint32_t ip_intcntl0_get(void)
+__RWIP_INLINE uint32_t ip_intcntl0_get(void)
 {
     return REG_IP_RD(IP_INTCNTL0_ADDR);
 }
 
-__INLINE void ip_intcntl0_set(uint32_t value)
+__RWIP_INLINE void ip_intcntl0_set(uint32_t value)
 {
     REG_IP_WR(IP_INTCNTL0_ADDR, value);
 }
@@ -240,14 +240,14 @@ __INLINE void ip_intcntl0_set(uint32_t value)
 
 #define IP_ERRORINTMSK_RST    0x0
 
-__INLINE uint8_t ip_intcntl0_errorintmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl0_errorintmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL0_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00010000)) == 0);
     return (localVal >> 16);
 }
 
-__INLINE void ip_intcntl0_errorintmsk_setf(uint8_t errorintmsk)
+__RWIP_INLINE void ip_intcntl0_errorintmsk_setf(uint8_t errorintmsk)
 {
     ASSERT_ERR((((uint32_t)errorintmsk << 16) & ~((uint32_t)0x00010000)) == 0);
     REG_IP_WR(IP_INTCNTL0_ADDR, (uint32_t)errorintmsk << 16);
@@ -266,7 +266,7 @@ __INLINE void ip_intcntl0_errorintmsk_setf(uint8_t errorintmsk)
 #define IP_INTSTAT0_INDEX  0x00000004
 #define IP_INTSTAT0_RESET  0x00000000
 
-__INLINE uint32_t ip_intstat0_get(void)
+__RWIP_INLINE uint32_t ip_intstat0_get(void)
 {
     return REG_IP_RD(IP_INTSTAT0_ADDR);
 }
@@ -277,7 +277,7 @@ __INLINE uint32_t ip_intstat0_get(void)
 
 #define IP_ERRORINTSTAT_RST    0x0
 
-__INLINE uint8_t ip_intstat0_errorintstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat0_errorintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT0_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00010000)) == 0);
@@ -297,12 +297,12 @@ __INLINE uint8_t ip_intstat0_errorintstat_getf(void)
 #define IP_INTACK0_INDEX  0x00000005
 #define IP_INTACK0_RESET  0x00000000
 
-__INLINE uint32_t ip_intack0_get(void)
+__RWIP_INLINE uint32_t ip_intack0_get(void)
 {
     return REG_IP_RD(IP_INTACK0_ADDR);
 }
 
-__INLINE void ip_intack0_clear(uint32_t value)
+__RWIP_INLINE void ip_intack0_clear(uint32_t value)
 {
     REG_IP_WR(IP_INTACK0_ADDR, value);
 }
@@ -313,14 +313,14 @@ __INLINE void ip_intack0_clear(uint32_t value)
 
 #define IP_ERRORINTACK_RST    0x0
 
-__INLINE uint8_t ip_intack0_errorintack_getf(void)
+__RWIP_INLINE uint8_t ip_intack0_errorintack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK0_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00010000)) == 0);
     return (localVal >> 16);
 }
 
-__INLINE void ip_intack0_errorintack_clearf(uint8_t errorintack)
+__RWIP_INLINE void ip_intack0_errorintack_clearf(uint8_t errorintack)
 {
     ASSERT_ERR((((uint32_t)errorintack << 16) & ~((uint32_t)0x00010000)) == 0);
     REG_IP_WR(IP_INTACK0_ADDR, (uint32_t)errorintack << 16);
@@ -349,12 +349,12 @@ __INLINE void ip_intack0_errorintack_clearf(uint8_t errorintack)
 #define IP_INTCNTL1_INDEX  0x00000006
 #define IP_INTCNTL1_RESET  0x00008003
 
-__INLINE uint32_t ip_intcntl1_get(void)
+__RWIP_INLINE uint32_t ip_intcntl1_get(void)
 {
     return REG_IP_RD(IP_INTCNTL1_ADDR);
 }
 
-__INLINE void ip_intcntl1_set(uint32_t value)
+__RWIP_INLINE void ip_intcntl1_set(uint32_t value)
 {
     REG_IP_WR(IP_INTCNTL1_ADDR, value);
 }
@@ -397,7 +397,7 @@ __INLINE void ip_intcntl1_set(uint32_t value)
 #define IP_SLPINTMSK_RST              0x1
 #define IP_CLKNINTMSK_RST             0x1
 
-__INLINE void ip_intcntl1_pack(uint8_t clknintsrmsk, uint8_t clknintsrval, uint8_t fifointmsk, uint8_t timestamptgt3intmsk, uint8_t timestamptgt2intmsk, uint8_t timestamptgt1intmsk, uint8_t finetgtintmsk, uint8_t swintmsk, uint8_t cryptintmsk, uint8_t slpintmsk, uint8_t clknintmsk)
+__RWIP_INLINE void ip_intcntl1_pack(uint8_t clknintsrmsk, uint8_t clknintsrval, uint8_t fifointmsk, uint8_t timestamptgt3intmsk, uint8_t timestamptgt2intmsk, uint8_t timestamptgt1intmsk, uint8_t finetgtintmsk, uint8_t swintmsk, uint8_t cryptintmsk, uint8_t slpintmsk, uint8_t clknintmsk)
 {
     ASSERT_ERR((((uint32_t)clknintsrmsk << 28) & ~((uint32_t)0x70000000)) == 0);
     ASSERT_ERR((((uint32_t)clknintsrval << 24) & ~((uint32_t)0x0F000000)) == 0);
@@ -413,7 +413,7 @@ __INLINE void ip_intcntl1_pack(uint8_t clknintsrmsk, uint8_t clknintsrval, uint8
     REG_IP_WR(IP_INTCNTL1_ADDR,  ((uint32_t)clknintsrmsk << 28) | ((uint32_t)clknintsrval << 24) | ((uint32_t)fifointmsk << 15) | ((uint32_t)timestamptgt3intmsk << 7) | ((uint32_t)timestamptgt2intmsk << 6) | ((uint32_t)timestamptgt1intmsk << 5) | ((uint32_t)finetgtintmsk << 4) | ((uint32_t)swintmsk << 3) | ((uint32_t)cryptintmsk << 2) | ((uint32_t)slpintmsk << 1) | ((uint32_t)clknintmsk << 0));
 }
 
-__INLINE void ip_intcntl1_unpack(uint8_t* clknintsrmsk, uint8_t* clknintsrval, uint8_t* fifointmsk, uint8_t* timestamptgt3intmsk, uint8_t* timestamptgt2intmsk, uint8_t* timestamptgt1intmsk, uint8_t* finetgtintmsk, uint8_t* swintmsk, uint8_t* cryptintmsk, uint8_t* slpintmsk, uint8_t* clknintmsk)
+__RWIP_INLINE void ip_intcntl1_unpack(uint8_t* clknintsrmsk, uint8_t* clknintsrval, uint8_t* fifointmsk, uint8_t* timestamptgt3intmsk, uint8_t* timestamptgt2intmsk, uint8_t* timestamptgt1intmsk, uint8_t* finetgtintmsk, uint8_t* swintmsk, uint8_t* cryptintmsk, uint8_t* slpintmsk, uint8_t* clknintmsk)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
 
@@ -430,133 +430,133 @@ __INLINE void ip_intcntl1_unpack(uint8_t* clknintsrmsk, uint8_t* clknintsrval, u
     *clknintmsk = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_intcntl1_clknintsrmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_clknintsrmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x70000000)) >> 28);
 }
 
-__INLINE void ip_intcntl1_clknintsrmsk_setf(uint8_t clknintsrmsk)
+__RWIP_INLINE void ip_intcntl1_clknintsrmsk_setf(uint8_t clknintsrmsk)
 {
     ASSERT_ERR((((uint32_t)clknintsrmsk << 28) & ~((uint32_t)0x70000000)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x70000000)) | ((uint32_t)clknintsrmsk << 28));
 }
 
-__INLINE uint8_t ip_intcntl1_clknintsrval_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_clknintsrval_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x0F000000)) >> 24);
 }
 
-__INLINE void ip_intcntl1_clknintsrval_setf(uint8_t clknintsrval)
+__RWIP_INLINE void ip_intcntl1_clknintsrval_setf(uint8_t clknintsrval)
 {
     ASSERT_ERR((((uint32_t)clknintsrval << 24) & ~((uint32_t)0x0F000000)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x0F000000)) | ((uint32_t)clknintsrval << 24));
 }
 
-__INLINE uint8_t ip_intcntl1_fifointmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_fifointmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ip_intcntl1_fifointmsk_setf(uint8_t fifointmsk)
+__RWIP_INLINE void ip_intcntl1_fifointmsk_setf(uint8_t fifointmsk)
 {
     ASSERT_ERR((((uint32_t)fifointmsk << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)fifointmsk << 15));
 }
 
-__INLINE uint8_t ip_intcntl1_timestamptgt3intmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_timestamptgt3intmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ip_intcntl1_timestamptgt3intmsk_setf(uint8_t timestamptgt3intmsk)
+__RWIP_INLINE void ip_intcntl1_timestamptgt3intmsk_setf(uint8_t timestamptgt3intmsk)
 {
     ASSERT_ERR((((uint32_t)timestamptgt3intmsk << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)timestamptgt3intmsk << 7));
 }
 
-__INLINE uint8_t ip_intcntl1_timestamptgt2intmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_timestamptgt2intmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE void ip_intcntl1_timestamptgt2intmsk_setf(uint8_t timestamptgt2intmsk)
+__RWIP_INLINE void ip_intcntl1_timestamptgt2intmsk_setf(uint8_t timestamptgt2intmsk)
 {
     ASSERT_ERR((((uint32_t)timestamptgt2intmsk << 6) & ~((uint32_t)0x00000040)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00000040)) | ((uint32_t)timestamptgt2intmsk << 6));
 }
 
-__INLINE uint8_t ip_intcntl1_timestamptgt1intmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_timestamptgt1intmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE void ip_intcntl1_timestamptgt1intmsk_setf(uint8_t timestamptgt1intmsk)
+__RWIP_INLINE void ip_intcntl1_timestamptgt1intmsk_setf(uint8_t timestamptgt1intmsk)
 {
     ASSERT_ERR((((uint32_t)timestamptgt1intmsk << 5) & ~((uint32_t)0x00000020)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00000020)) | ((uint32_t)timestamptgt1intmsk << 5));
 }
 
-__INLINE uint8_t ip_intcntl1_finetgtintmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_finetgtintmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE void ip_intcntl1_finetgtintmsk_setf(uint8_t finetgtintmsk)
+__RWIP_INLINE void ip_intcntl1_finetgtintmsk_setf(uint8_t finetgtintmsk)
 {
     ASSERT_ERR((((uint32_t)finetgtintmsk << 4) & ~((uint32_t)0x00000010)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00000010)) | ((uint32_t)finetgtintmsk << 4));
 }
 
-__INLINE uint8_t ip_intcntl1_swintmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_swintmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ip_intcntl1_swintmsk_setf(uint8_t swintmsk)
+__RWIP_INLINE void ip_intcntl1_swintmsk_setf(uint8_t swintmsk)
 {
     ASSERT_ERR((((uint32_t)swintmsk << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00000008)) | ((uint32_t)swintmsk << 3));
 }
 
-__INLINE uint8_t ip_intcntl1_cryptintmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_cryptintmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ip_intcntl1_cryptintmsk_setf(uint8_t cryptintmsk)
+__RWIP_INLINE void ip_intcntl1_cryptintmsk_setf(uint8_t cryptintmsk)
 {
     ASSERT_ERR((((uint32_t)cryptintmsk << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)cryptintmsk << 2));
 }
 
-__INLINE uint8_t ip_intcntl1_slpintmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_slpintmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ip_intcntl1_slpintmsk_setf(uint8_t slpintmsk)
+__RWIP_INLINE void ip_intcntl1_slpintmsk_setf(uint8_t slpintmsk)
 {
     ASSERT_ERR((((uint32_t)slpintmsk << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)slpintmsk << 1));
 }
 
-__INLINE uint8_t ip_intcntl1_clknintmsk_getf(void)
+__RWIP_INLINE uint8_t ip_intcntl1_clknintmsk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ip_intcntl1_clknintmsk_setf(uint8_t clknintmsk)
+__RWIP_INLINE void ip_intcntl1_clknintmsk_setf(uint8_t clknintmsk)
 {
     ASSERT_ERR((((uint32_t)clknintmsk << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_INTCNTL1_ADDR, (REG_IP_RD(IP_INTCNTL1_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)clknintmsk << 0));
@@ -583,7 +583,7 @@ __INLINE void ip_intcntl1_clknintmsk_setf(uint8_t clknintmsk)
 #define IP_INTSTAT1_INDEX  0x00000007
 #define IP_INTSTAT1_RESET  0x00000000
 
-__INLINE uint32_t ip_intstat1_get(void)
+__RWIP_INLINE uint32_t ip_intstat1_get(void)
 {
     return REG_IP_RD(IP_INTSTAT1_ADDR);
 }
@@ -618,7 +618,7 @@ __INLINE uint32_t ip_intstat1_get(void)
 #define IP_SLPINTSTAT_RST              0x0
 #define IP_CLKNINTSTAT_RST             0x0
 
-__INLINE void ip_intstat1_unpack(uint8_t* fifointstat, uint8_t* timestamptgt3intstat, uint8_t* timestamptgt2intstat, uint8_t* timestamptgt1intstat, uint8_t* finetgtintstat, uint8_t* swintstat, uint8_t* cryptintstat, uint8_t* slpintstat, uint8_t* clknintstat)
+__RWIP_INLINE void ip_intstat1_unpack(uint8_t* fifointstat, uint8_t* timestamptgt3intstat, uint8_t* timestamptgt2intstat, uint8_t* timestamptgt1intstat, uint8_t* finetgtintstat, uint8_t* swintstat, uint8_t* cryptintstat, uint8_t* slpintstat, uint8_t* clknintstat)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
 
@@ -633,55 +633,55 @@ __INLINE void ip_intstat1_unpack(uint8_t* fifointstat, uint8_t* timestamptgt3int
     *clknintstat = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_intstat1_fifointstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_fifointstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE uint8_t ip_intstat1_timestamptgt3intstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_timestamptgt3intstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE uint8_t ip_intstat1_timestamptgt2intstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_timestamptgt2intstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE uint8_t ip_intstat1_timestamptgt1intstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_timestamptgt1intstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE uint8_t ip_intstat1_finetgtintstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_finetgtintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE uint8_t ip_intstat1_swintstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_swintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE uint8_t ip_intstat1_cryptintstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_cryptintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE uint8_t ip_intstat1_slpintstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_slpintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE uint8_t ip_intstat1_clknintstat_getf(void)
+__RWIP_INLINE uint8_t ip_intstat1_clknintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTSTAT1_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
@@ -708,12 +708,12 @@ __INLINE uint8_t ip_intstat1_clknintstat_getf(void)
 #define IP_INTACK1_INDEX  0x00000008
 #define IP_INTACK1_RESET  0x00000000
 
-__INLINE uint32_t ip_intack1_get(void)
+__RWIP_INLINE uint32_t ip_intack1_get(void)
 {
     return REG_IP_RD(IP_INTACK1_ADDR);
 }
 
-__INLINE void ip_intack1_clear(uint32_t value)
+__RWIP_INLINE void ip_intack1_clear(uint32_t value)
 {
     REG_IP_WR(IP_INTACK1_ADDR, value);
 }
@@ -748,7 +748,7 @@ __INLINE void ip_intack1_clear(uint32_t value)
 #define IP_SLPINTACK_RST              0x0
 #define IP_CLKNINTACK_RST             0x0
 
-__INLINE void ip_intack1_pack(uint8_t fifointack, uint8_t timestamptgt3intack, uint8_t timestamptgt2intack, uint8_t timestamptgt1intack, uint8_t finetgtintack, uint8_t swintack, uint8_t cryptintack, uint8_t slpintack, uint8_t clknintack)
+__RWIP_INLINE void ip_intack1_pack(uint8_t fifointack, uint8_t timestamptgt3intack, uint8_t timestamptgt2intack, uint8_t timestamptgt1intack, uint8_t finetgtintack, uint8_t swintack, uint8_t cryptintack, uint8_t slpintack, uint8_t clknintack)
 {
     ASSERT_ERR((((uint32_t)fifointack << 15) & ~((uint32_t)0x00008000)) == 0);
     ASSERT_ERR((((uint32_t)timestamptgt3intack << 7) & ~((uint32_t)0x00000080)) == 0);
@@ -762,7 +762,7 @@ __INLINE void ip_intack1_pack(uint8_t fifointack, uint8_t timestamptgt3intack, u
     REG_IP_WR(IP_INTACK1_ADDR,  ((uint32_t)fifointack << 15) | ((uint32_t)timestamptgt3intack << 7) | ((uint32_t)timestamptgt2intack << 6) | ((uint32_t)timestamptgt1intack << 5) | ((uint32_t)finetgtintack << 4) | ((uint32_t)swintack << 3) | ((uint32_t)cryptintack << 2) | ((uint32_t)slpintack << 1) | ((uint32_t)clknintack << 0));
 }
 
-__INLINE void ip_intack1_unpack(uint8_t* fifointack, uint8_t* timestamptgt3intack, uint8_t* timestamptgt2intack, uint8_t* timestamptgt1intack, uint8_t* finetgtintack, uint8_t* swintack, uint8_t* cryptintack, uint8_t* slpintack, uint8_t* clknintack)
+__RWIP_INLINE void ip_intack1_unpack(uint8_t* fifointack, uint8_t* timestamptgt3intack, uint8_t* timestamptgt2intack, uint8_t* timestamptgt1intack, uint8_t* finetgtintack, uint8_t* swintack, uint8_t* cryptintack, uint8_t* slpintack, uint8_t* clknintack)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
 
@@ -777,109 +777,109 @@ __INLINE void ip_intack1_unpack(uint8_t* fifointack, uint8_t* timestamptgt3intac
     *clknintack = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_intack1_fifointack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_fifointack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ip_intack1_fifointack_clearf(uint8_t fifointack)
+__RWIP_INLINE void ip_intack1_fifointack_clearf(uint8_t fifointack)
 {
     ASSERT_ERR((((uint32_t)fifointack << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)fifointack << 15);
 }
 
-__INLINE uint8_t ip_intack1_timestamptgt3intack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_timestamptgt3intack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ip_intack1_timestamptgt3intack_clearf(uint8_t timestamptgt3intack)
+__RWIP_INLINE void ip_intack1_timestamptgt3intack_clearf(uint8_t timestamptgt3intack)
 {
     ASSERT_ERR((((uint32_t)timestamptgt3intack << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)timestamptgt3intack << 7);
 }
 
-__INLINE uint8_t ip_intack1_timestamptgt2intack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_timestamptgt2intack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE void ip_intack1_timestamptgt2intack_clearf(uint8_t timestamptgt2intack)
+__RWIP_INLINE void ip_intack1_timestamptgt2intack_clearf(uint8_t timestamptgt2intack)
 {
     ASSERT_ERR((((uint32_t)timestamptgt2intack << 6) & ~((uint32_t)0x00000040)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)timestamptgt2intack << 6);
 }
 
-__INLINE uint8_t ip_intack1_timestamptgt1intack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_timestamptgt1intack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE void ip_intack1_timestamptgt1intack_clearf(uint8_t timestamptgt1intack)
+__RWIP_INLINE void ip_intack1_timestamptgt1intack_clearf(uint8_t timestamptgt1intack)
 {
     ASSERT_ERR((((uint32_t)timestamptgt1intack << 5) & ~((uint32_t)0x00000020)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)timestamptgt1intack << 5);
 }
 
-__INLINE uint8_t ip_intack1_finetgtintack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_finetgtintack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE void ip_intack1_finetgtintack_clearf(uint8_t finetgtintack)
+__RWIP_INLINE void ip_intack1_finetgtintack_clearf(uint8_t finetgtintack)
 {
     ASSERT_ERR((((uint32_t)finetgtintack << 4) & ~((uint32_t)0x00000010)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)finetgtintack << 4);
 }
 
-__INLINE uint8_t ip_intack1_swintack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_swintack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ip_intack1_swintack_clearf(uint8_t swintack)
+__RWIP_INLINE void ip_intack1_swintack_clearf(uint8_t swintack)
 {
     ASSERT_ERR((((uint32_t)swintack << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)swintack << 3);
 }
 
-__INLINE uint8_t ip_intack1_cryptintack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_cryptintack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ip_intack1_cryptintack_clearf(uint8_t cryptintack)
+__RWIP_INLINE void ip_intack1_cryptintack_clearf(uint8_t cryptintack)
 {
     ASSERT_ERR((((uint32_t)cryptintack << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)cryptintack << 2);
 }
 
-__INLINE uint8_t ip_intack1_slpintack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_slpintack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ip_intack1_slpintack_clearf(uint8_t slpintack)
+__RWIP_INLINE void ip_intack1_slpintack_clearf(uint8_t slpintack)
 {
     ASSERT_ERR((((uint32_t)slpintack << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)slpintack << 1);
 }
 
-__INLINE uint8_t ip_intack1_clknintack_getf(void)
+__RWIP_INLINE uint8_t ip_intack1_clknintack_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_INTACK1_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ip_intack1_clknintack_clearf(uint8_t clknintack)
+__RWIP_INLINE void ip_intack1_clknintack_clearf(uint8_t clknintack)
 {
     ASSERT_ERR((((uint32_t)clknintack << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_INTACK1_ADDR, (uint32_t)clknintack << 0);
@@ -907,7 +907,7 @@ __INLINE void ip_intack1_clknintack_clearf(uint8_t clknintack)
 #define IP_ACTFIFOSTAT_INDEX  0x00000009
 #define IP_ACTFIFOSTAT_RESET  0x00000000
 
-__INLINE uint32_t ip_actfifostat_get(void)
+__RWIP_INLINE uint32_t ip_actfifostat_get(void)
 {
     return REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
 }
@@ -947,7 +947,7 @@ __INLINE uint32_t ip_actfifostat_get(void)
 #define IP_ENDACTINTSTAT_RST      0x0
 #define IP_STARTACTINTSTAT_RST    0x0
 
-__INLINE void ip_actfifostat_unpack(uint8_t* skipetidx, uint8_t* currentetidx, uint8_t* actflag, uint8_t* isorxintstat, uint8_t* isotxintstat, uint8_t* rxintstat, uint8_t* txintstat, uint8_t* skipactintstat, uint8_t* endactintstat, uint8_t* startactintstat)
+__RWIP_INLINE void ip_actfifostat_unpack(uint8_t* skipetidx, uint8_t* currentetidx, uint8_t* actflag, uint8_t* isorxintstat, uint8_t* isotxintstat, uint8_t* rxintstat, uint8_t* txintstat, uint8_t* skipactintstat, uint8_t* endactintstat, uint8_t* startactintstat)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
 
@@ -963,61 +963,61 @@ __INLINE void ip_actfifostat_unpack(uint8_t* skipetidx, uint8_t* currentetidx, u
     *startactintstat = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_actfifostat_skip_et_idx_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_skip_et_idx_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0xF0000000)) >> 28);
 }
 
-__INLINE uint8_t ip_actfifostat_current_et_idx_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_current_et_idx_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x0F000000)) >> 24);
 }
 
-__INLINE uint8_t ip_actfifostat_actflag_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_actflag_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE uint8_t ip_actfifostat_isorxintstat_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_isorxintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE uint8_t ip_actfifostat_isotxintstat_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_isotxintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE uint8_t ip_actfifostat_rxintstat_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_rxintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE uint8_t ip_actfifostat_txintstat_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_txintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE uint8_t ip_actfifostat_skipactintstat_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_skipactintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE uint8_t ip_actfifostat_endactintstat_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_endactintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE uint8_t ip_actfifostat_startactintstat_getf(void)
+__RWIP_INLINE uint8_t ip_actfifostat_startactintstat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTFIFOSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
@@ -1036,12 +1036,12 @@ __INLINE uint8_t ip_actfifostat_startactintstat_getf(void)
 #define IP_ETPTR_INDEX  0x0000000B
 #define IP_ETPTR_RESET  0x00000000
 
-__INLINE uint32_t ip_etptr_get(void)
+__RWIP_INLINE uint32_t ip_etptr_get(void)
 {
     return REG_IP_RD(IP_ETPTR_ADDR);
 }
 
-__INLINE void ip_etptr_set(uint32_t value)
+__RWIP_INLINE void ip_etptr_set(uint32_t value)
 {
     REG_IP_WR(IP_ETPTR_ADDR, value);
 }
@@ -1053,14 +1053,14 @@ __INLINE void ip_etptr_set(uint32_t value)
 
 #define IP_ETPTR_RST    0x0
 
-__INLINE uint16_t ip_etptr_getf(void)
+__RWIP_INLINE uint16_t ip_etptr_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ETPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_etptr_setf(uint16_t etptr)
+__RWIP_INLINE void ip_etptr_setf(uint16_t etptr)
 {
     ASSERT_ERR((((uint32_t)etptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_IP_WR(IP_ETPTR_ADDR, (uint32_t)etptr << 0);
@@ -1084,12 +1084,12 @@ __INLINE void ip_etptr_setf(uint16_t etptr)
 #define IP_DEEPSLCNTL_INDEX  0x0000000C
 #define IP_DEEPSLCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_deepslcntl_get(void)
+__RWIP_INLINE uint32_t ip_deepslcntl_get(void)
 {
     return REG_IP_RD(IP_DEEPSLCNTL_ADDR);
 }
 
-__INLINE void ip_deepslcntl_set(uint32_t value)
+__RWIP_INLINE void ip_deepslcntl_set(uint32_t value)
 {
     REG_IP_WR(IP_DEEPSLCNTL_ADDR, value);
 }
@@ -1115,7 +1115,7 @@ __INLINE void ip_deepslcntl_set(uint32_t value)
 #define IP_RADIO_SLEEP_EN_RST        0x0
 #define IP_OSC_SLEEP_EN_RST          0x0
 
-__INLINE void ip_deepslcntl_pack(uint8_t extwkupdsb, uint8_t deepsleepcorren, uint8_t deepsleepon, uint8_t radiosleepen, uint8_t oscsleepen)
+__RWIP_INLINE void ip_deepslcntl_pack(uint8_t extwkupdsb, uint8_t deepsleepcorren, uint8_t deepsleepon, uint8_t radiosleepen, uint8_t oscsleepen)
 {
     ASSERT_ERR((((uint32_t)extwkupdsb << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)deepsleepcorren << 3) & ~((uint32_t)0x00000008)) == 0);
@@ -1125,7 +1125,7 @@ __INLINE void ip_deepslcntl_pack(uint8_t extwkupdsb, uint8_t deepsleepcorren, ui
     REG_IP_WR(IP_DEEPSLCNTL_ADDR,  ((uint32_t)extwkupdsb << 31) | ((uint32_t)deepsleepcorren << 3) | ((uint32_t)deepsleepon << 2) | ((uint32_t)radiosleepen << 1) | ((uint32_t)oscsleepen << 0));
 }
 
-__INLINE void ip_deepslcntl_unpack(uint8_t* extwkupdsb, uint8_t* deepsleepstat, uint8_t* deepsleepcorren, uint8_t* deepsleepon, uint8_t* radiosleepen, uint8_t* oscsleepen)
+__RWIP_INLINE void ip_deepslcntl_unpack(uint8_t* extwkupdsb, uint8_t* deepsleepstat, uint8_t* deepsleepcorren, uint8_t* deepsleepon, uint8_t* radiosleepen, uint8_t* oscsleepen)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLCNTL_ADDR);
 
@@ -1137,67 +1137,67 @@ __INLINE void ip_deepslcntl_unpack(uint8_t* extwkupdsb, uint8_t* deepsleepstat, 
     *oscsleepen = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_deepslcntl_extwkupdsb_getf(void)
+__RWIP_INLINE uint8_t ip_deepslcntl_extwkupdsb_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_deepslcntl_extwkupdsb_setf(uint8_t extwkupdsb)
+__RWIP_INLINE void ip_deepslcntl_extwkupdsb_setf(uint8_t extwkupdsb)
 {
     ASSERT_ERR((((uint32_t)extwkupdsb << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_DEEPSLCNTL_ADDR, (REG_IP_RD(IP_DEEPSLCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)extwkupdsb << 31));
 }
 
-__INLINE uint8_t ip_deepslcntl_deep_sleep_stat_getf(void)
+__RWIP_INLINE uint8_t ip_deepslcntl_deep_sleep_stat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE uint8_t ip_deepslcntl_deep_sleep_corr_en_getf(void)
+__RWIP_INLINE uint8_t ip_deepslcntl_deep_sleep_corr_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ip_deepslcntl_deep_sleep_corr_en_setf(uint8_t deepsleepcorren)
+__RWIP_INLINE void ip_deepslcntl_deep_sleep_corr_en_setf(uint8_t deepsleepcorren)
 {
     ASSERT_ERR((((uint32_t)deepsleepcorren << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_IP_WR(IP_DEEPSLCNTL_ADDR, (REG_IP_RD(IP_DEEPSLCNTL_ADDR) & ~((uint32_t)0x00000008)) | ((uint32_t)deepsleepcorren << 3));
 }
 
-__INLINE uint8_t ip_deepslcntl_deep_sleep_on_getf(void)
+__RWIP_INLINE uint8_t ip_deepslcntl_deep_sleep_on_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ip_deepslcntl_deep_sleep_on_setf(uint8_t deepsleepon)
+__RWIP_INLINE void ip_deepslcntl_deep_sleep_on_setf(uint8_t deepsleepon)
 {
     ASSERT_ERR((((uint32_t)deepsleepon << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_IP_WR(IP_DEEPSLCNTL_ADDR, (REG_IP_RD(IP_DEEPSLCNTL_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)deepsleepon << 2));
 }
 
-__INLINE uint8_t ip_deepslcntl_radio_sleep_en_getf(void)
+__RWIP_INLINE uint8_t ip_deepslcntl_radio_sleep_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ip_deepslcntl_radio_sleep_en_setf(uint8_t radiosleepen)
+__RWIP_INLINE void ip_deepslcntl_radio_sleep_en_setf(uint8_t radiosleepen)
 {
     ASSERT_ERR((((uint32_t)radiosleepen << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_IP_WR(IP_DEEPSLCNTL_ADDR, (REG_IP_RD(IP_DEEPSLCNTL_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)radiosleepen << 1));
 }
 
-__INLINE uint8_t ip_deepslcntl_osc_sleep_en_getf(void)
+__RWIP_INLINE uint8_t ip_deepslcntl_osc_sleep_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ip_deepslcntl_osc_sleep_en_setf(uint8_t oscsleepen)
+__RWIP_INLINE void ip_deepslcntl_osc_sleep_en_setf(uint8_t oscsleepen)
 {
     ASSERT_ERR((((uint32_t)oscsleepen << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_DEEPSLCNTL_ADDR, (REG_IP_RD(IP_DEEPSLCNTL_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)oscsleepen << 0));
@@ -1216,12 +1216,12 @@ __INLINE void ip_deepslcntl_osc_sleep_en_setf(uint8_t oscsleepen)
 #define IP_DEEPSLWKUP_INDEX  0x0000000D
 #define IP_DEEPSLWKUP_RESET  0x00000000
 
-__INLINE uint32_t ip_deepslwkup_get(void)
+__RWIP_INLINE uint32_t ip_deepslwkup_get(void)
 {
     return REG_IP_RD(IP_DEEPSLWKUP_ADDR);
 }
 
-__INLINE void ip_deepslwkup_set(uint32_t value)
+__RWIP_INLINE void ip_deepslwkup_set(uint32_t value)
 {
     REG_IP_WR(IP_DEEPSLWKUP_ADDR, value);
 }
@@ -1233,14 +1233,14 @@ __INLINE void ip_deepslwkup_set(uint32_t value)
 
 #define IP_DEEPSLTIME_RST    0x0
 
-__INLINE uint32_t ip_deepslwkup_deepsltime_getf(void)
+__RWIP_INLINE uint32_t ip_deepslwkup_deepsltime_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLWKUP_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_deepslwkup_deepsltime_setf(uint32_t deepsltime)
+__RWIP_INLINE void ip_deepslwkup_deepsltime_setf(uint32_t deepsltime)
 {
     ASSERT_ERR((((uint32_t)deepsltime << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_IP_WR(IP_DEEPSLWKUP_ADDR, (uint32_t)deepsltime << 0);
@@ -1259,7 +1259,7 @@ __INLINE void ip_deepslwkup_deepsltime_setf(uint32_t deepsltime)
 #define IP_DEEPSLSTAT_INDEX  0x0000000E
 #define IP_DEEPSLSTAT_RESET  0x00000000
 
-__INLINE uint32_t ip_deepslstat_get(void)
+__RWIP_INLINE uint32_t ip_deepslstat_get(void)
 {
     return REG_IP_RD(IP_DEEPSLSTAT_ADDR);
 }
@@ -1271,7 +1271,7 @@ __INLINE uint32_t ip_deepslstat_get(void)
 
 #define IP_DEEPSLDUR_RST    0x0
 
-__INLINE uint32_t ip_deepslstat_deepsldur_getf(void)
+__RWIP_INLINE uint32_t ip_deepslstat_deepsldur_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEEPSLSTAT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
@@ -1293,12 +1293,12 @@ __INLINE uint32_t ip_deepslstat_deepsldur_getf(void)
 #define IP_ENBPRESET_INDEX  0x0000000F
 #define IP_ENBPRESET_RESET  0x14028020
 
-__INLINE uint32_t ip_enbpreset_get(void)
+__RWIP_INLINE uint32_t ip_enbpreset_get(void)
 {
     return REG_IP_RD(IP_ENBPRESET_ADDR);
 }
 
-__INLINE void ip_enbpreset_set(uint32_t value)
+__RWIP_INLINE void ip_enbpreset_set(uint32_t value)
 {
     REG_IP_WR(IP_ENBPRESET_ADDR, value);
 }
@@ -1318,7 +1318,7 @@ __INLINE void ip_enbpreset_set(uint32_t value)
 #define IP_TWOSC_RST    0xA0
 #define IP_TWRM_RST     0x20
 
-__INLINE void ip_enbpreset_pack(uint16_t twext, uint16_t twosc, uint16_t twrm)
+__RWIP_INLINE void ip_enbpreset_pack(uint16_t twext, uint16_t twosc, uint16_t twrm)
 {
     ASSERT_ERR((((uint32_t)twext << 21) & ~((uint32_t)0xFFE00000)) == 0);
     ASSERT_ERR((((uint32_t)twosc << 10) & ~((uint32_t)0x001FFC00)) == 0);
@@ -1326,7 +1326,7 @@ __INLINE void ip_enbpreset_pack(uint16_t twext, uint16_t twosc, uint16_t twrm)
     REG_IP_WR(IP_ENBPRESET_ADDR,  ((uint32_t)twext << 21) | ((uint32_t)twosc << 10) | ((uint32_t)twrm << 0));
 }
 
-__INLINE void ip_enbpreset_unpack(uint16_t* twext, uint16_t* twosc, uint16_t* twrm)
+__RWIP_INLINE void ip_enbpreset_unpack(uint16_t* twext, uint16_t* twosc, uint16_t* twrm)
 {
     uint32_t localVal = REG_IP_RD(IP_ENBPRESET_ADDR);
 
@@ -1335,37 +1335,37 @@ __INLINE void ip_enbpreset_unpack(uint16_t* twext, uint16_t* twosc, uint16_t* tw
     *twrm = (localVal & ((uint32_t)0x000003FF)) >> 0;
 }
 
-__INLINE uint16_t ip_enbpreset_twext_getf(void)
+__RWIP_INLINE uint16_t ip_enbpreset_twext_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ENBPRESET_ADDR);
     return ((localVal & ((uint32_t)0xFFE00000)) >> 21);
 }
 
-__INLINE void ip_enbpreset_twext_setf(uint16_t twext)
+__RWIP_INLINE void ip_enbpreset_twext_setf(uint16_t twext)
 {
     ASSERT_ERR((((uint32_t)twext << 21) & ~((uint32_t)0xFFE00000)) == 0);
     REG_IP_WR(IP_ENBPRESET_ADDR, (REG_IP_RD(IP_ENBPRESET_ADDR) & ~((uint32_t)0xFFE00000)) | ((uint32_t)twext << 21));
 }
 
-__INLINE uint16_t ip_enbpreset_twosc_getf(void)
+__RWIP_INLINE uint16_t ip_enbpreset_twosc_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ENBPRESET_ADDR);
     return ((localVal & ((uint32_t)0x001FFC00)) >> 10);
 }
 
-__INLINE void ip_enbpreset_twosc_setf(uint16_t twosc)
+__RWIP_INLINE void ip_enbpreset_twosc_setf(uint16_t twosc)
 {
     ASSERT_ERR((((uint32_t)twosc << 10) & ~((uint32_t)0x001FFC00)) == 0);
     REG_IP_WR(IP_ENBPRESET_ADDR, (REG_IP_RD(IP_ENBPRESET_ADDR) & ~((uint32_t)0x001FFC00)) | ((uint32_t)twosc << 10));
 }
 
-__INLINE uint16_t ip_enbpreset_twrm_getf(void)
+__RWIP_INLINE uint16_t ip_enbpreset_twrm_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ENBPRESET_ADDR);
     return ((localVal & ((uint32_t)0x000003FF)) >> 0);
 }
 
-__INLINE void ip_enbpreset_twrm_setf(uint16_t twrm)
+__RWIP_INLINE void ip_enbpreset_twrm_setf(uint16_t twrm)
 {
     ASSERT_ERR((((uint32_t)twrm << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_IP_WR(IP_ENBPRESET_ADDR, (REG_IP_RD(IP_ENBPRESET_ADDR) & ~((uint32_t)0x000003FF)) | ((uint32_t)twrm << 0));
@@ -1384,12 +1384,12 @@ __INLINE void ip_enbpreset_twrm_setf(uint16_t twrm)
 #define IP_FINECNTCORR_INDEX  0x00000010
 #define IP_FINECNTCORR_RESET  0x00000000
 
-__INLINE uint32_t ip_finecntcorr_get(void)
+__RWIP_INLINE uint32_t ip_finecntcorr_get(void)
 {
     return REG_IP_RD(IP_FINECNTCORR_ADDR);
 }
 
-__INLINE void ip_finecntcorr_set(uint32_t value)
+__RWIP_INLINE void ip_finecntcorr_set(uint32_t value)
 {
     REG_IP_WR(IP_FINECNTCORR_ADDR, value);
 }
@@ -1401,14 +1401,14 @@ __INLINE void ip_finecntcorr_set(uint32_t value)
 
 #define IP_FINECNTCORR_RST    0x0
 
-__INLINE uint16_t ip_finecntcorr_getf(void)
+__RWIP_INLINE uint16_t ip_finecntcorr_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_FINECNTCORR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_finecntcorr_setf(uint16_t finecntcorr)
+__RWIP_INLINE void ip_finecntcorr_setf(uint16_t finecntcorr)
 {
     ASSERT_ERR((((uint32_t)finecntcorr << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_IP_WR(IP_FINECNTCORR_ADDR, (uint32_t)finecntcorr << 0);
@@ -1428,12 +1428,12 @@ __INLINE void ip_finecntcorr_setf(uint16_t finecntcorr)
 #define IP_CLKNCNTCORR_INDEX  0x00000011
 #define IP_CLKNCNTCORR_RESET  0x00000000
 
-__INLINE uint32_t ip_clkncntcorr_get(void)
+__RWIP_INLINE uint32_t ip_clkncntcorr_get(void)
 {
     return REG_IP_RD(IP_CLKNCNTCORR_ADDR);
 }
 
-__INLINE void ip_clkncntcorr_set(uint32_t value)
+__RWIP_INLINE void ip_clkncntcorr_set(uint32_t value)
 {
     REG_IP_WR(IP_CLKNCNTCORR_ADDR, value);
 }
@@ -1448,14 +1448,14 @@ __INLINE void ip_clkncntcorr_set(uint32_t value)
 #define IP_ABS_DELTA_RST      0x0
 #define IP_CLKNCNTCORR_RST    0x0
 
-__INLINE void ip_clkncntcorr_pack(uint8_t absdelta, uint32_t clkncntcorr)
+__RWIP_INLINE void ip_clkncntcorr_pack(uint8_t absdelta, uint32_t clkncntcorr)
 {
     ASSERT_ERR((((uint32_t)absdelta << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)clkncntcorr << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_IP_WR(IP_CLKNCNTCORR_ADDR,  ((uint32_t)absdelta << 31) | ((uint32_t)clkncntcorr << 0));
 }
 
-__INLINE void ip_clkncntcorr_unpack(uint8_t* absdelta, uint32_t* clkncntcorr)
+__RWIP_INLINE void ip_clkncntcorr_unpack(uint8_t* absdelta, uint32_t* clkncntcorr)
 {
     uint32_t localVal = REG_IP_RD(IP_CLKNCNTCORR_ADDR);
 
@@ -1463,25 +1463,25 @@ __INLINE void ip_clkncntcorr_unpack(uint8_t* absdelta, uint32_t* clkncntcorr)
     *clkncntcorr = (localVal & ((uint32_t)0x0FFFFFFF)) >> 0;
 }
 
-__INLINE uint8_t ip_clkncntcorr_abs_delta_getf(void)
+__RWIP_INLINE uint8_t ip_clkncntcorr_abs_delta_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_CLKNCNTCORR_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_clkncntcorr_abs_delta_setf(uint8_t absdelta)
+__RWIP_INLINE void ip_clkncntcorr_abs_delta_setf(uint8_t absdelta)
 {
     ASSERT_ERR((((uint32_t)absdelta << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_CLKNCNTCORR_ADDR, (REG_IP_RD(IP_CLKNCNTCORR_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)absdelta << 31));
 }
 
-__INLINE uint32_t ip_clkncntcorr_clkncntcorr_getf(void)
+__RWIP_INLINE uint32_t ip_clkncntcorr_clkncntcorr_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_CLKNCNTCORR_ADDR);
     return ((localVal & ((uint32_t)0x0FFFFFFF)) >> 0);
 }
 
-__INLINE void ip_clkncntcorr_clkncntcorr_setf(uint32_t clkncntcorr)
+__RWIP_INLINE void ip_clkncntcorr_clkncntcorr_setf(uint32_t clkncntcorr)
 {
     ASSERT_ERR((((uint32_t)clkncntcorr << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_IP_WR(IP_CLKNCNTCORR_ADDR, (REG_IP_RD(IP_CLKNCNTCORR_ADDR) & ~((uint32_t)0x0FFFFFFF)) | ((uint32_t)clkncntcorr << 0));
@@ -1507,12 +1507,12 @@ __INLINE void ip_clkncntcorr_clkncntcorr_setf(uint32_t clkncntcorr)
 #define IP_DIAGCNTL_INDEX  0x00000014
 #define IP_DIAGCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_diagcntl_get(void)
+__RWIP_INLINE uint32_t ip_diagcntl_get(void)
 {
     return REG_IP_RD(IP_DIAGCNTL_ADDR);
 }
 
-__INLINE void ip_diagcntl_set(uint32_t value)
+__RWIP_INLINE void ip_diagcntl_set(uint32_t value)
 {
     REG_IP_WR(IP_DIAGCNTL_ADDR, value);
 }
@@ -1548,7 +1548,7 @@ __INLINE void ip_diagcntl_set(uint32_t value)
 #define IP_DIAG0_EN_RST    0x0
 #define IP_DIAG0_RST       0x0
 
-__INLINE void ip_diagcntl_pack(uint8_t diag3en, uint8_t diag3, uint8_t diag2en, uint8_t diag2, uint8_t diag1en, uint8_t diag1, uint8_t diag0en, uint8_t diag0)
+__RWIP_INLINE void ip_diagcntl_pack(uint8_t diag3en, uint8_t diag3, uint8_t diag2en, uint8_t diag2, uint8_t diag1en, uint8_t diag1, uint8_t diag0en, uint8_t diag0)
 {
     ASSERT_ERR((((uint32_t)diag3en << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)diag3 << 24) & ~((uint32_t)0x3F000000)) == 0);
@@ -1561,7 +1561,7 @@ __INLINE void ip_diagcntl_pack(uint8_t diag3en, uint8_t diag3, uint8_t diag2en, 
     REG_IP_WR(IP_DIAGCNTL_ADDR,  ((uint32_t)diag3en << 31) | ((uint32_t)diag3 << 24) | ((uint32_t)diag2en << 23) | ((uint32_t)diag2 << 16) | ((uint32_t)diag1en << 15) | ((uint32_t)diag1 << 8) | ((uint32_t)diag0en << 7) | ((uint32_t)diag0 << 0));
 }
 
-__INLINE void ip_diagcntl_unpack(uint8_t* diag3en, uint8_t* diag3, uint8_t* diag2en, uint8_t* diag2, uint8_t* diag1en, uint8_t* diag1, uint8_t* diag0en, uint8_t* diag0)
+__RWIP_INLINE void ip_diagcntl_unpack(uint8_t* diag3en, uint8_t* diag3, uint8_t* diag2en, uint8_t* diag2, uint8_t* diag1en, uint8_t* diag1, uint8_t* diag0en, uint8_t* diag0)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
 
@@ -1575,97 +1575,97 @@ __INLINE void ip_diagcntl_unpack(uint8_t* diag3en, uint8_t* diag3, uint8_t* diag
     *diag0 = (localVal & ((uint32_t)0x0000003F)) >> 0;
 }
 
-__INLINE uint8_t ip_diagcntl_diag3_en_getf(void)
+__RWIP_INLINE uint8_t ip_diagcntl_diag3_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_diagcntl_diag3_en_setf(uint8_t diag3en)
+__RWIP_INLINE void ip_diagcntl_diag3_en_setf(uint8_t diag3en)
 {
     ASSERT_ERR((((uint32_t)diag3en << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_DIAGCNTL_ADDR, (REG_IP_RD(IP_DIAGCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)diag3en << 31));
 }
 
-__INLINE uint8_t ip_diagcntl_diag3_getf(void)
+__RWIP_INLINE uint8_t ip_diagcntl_diag3_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x3F000000)) >> 24);
 }
 
-__INLINE void ip_diagcntl_diag3_setf(uint8_t diag3)
+__RWIP_INLINE void ip_diagcntl_diag3_setf(uint8_t diag3)
 {
     ASSERT_ERR((((uint32_t)diag3 << 24) & ~((uint32_t)0x3F000000)) == 0);
     REG_IP_WR(IP_DIAGCNTL_ADDR, (REG_IP_RD(IP_DIAGCNTL_ADDR) & ~((uint32_t)0x3F000000)) | ((uint32_t)diag3 << 24));
 }
 
-__INLINE uint8_t ip_diagcntl_diag2_en_getf(void)
+__RWIP_INLINE uint8_t ip_diagcntl_diag2_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00800000)) >> 23);
 }
 
-__INLINE void ip_diagcntl_diag2_en_setf(uint8_t diag2en)
+__RWIP_INLINE void ip_diagcntl_diag2_en_setf(uint8_t diag2en)
 {
     ASSERT_ERR((((uint32_t)diag2en << 23) & ~((uint32_t)0x00800000)) == 0);
     REG_IP_WR(IP_DIAGCNTL_ADDR, (REG_IP_RD(IP_DIAGCNTL_ADDR) & ~((uint32_t)0x00800000)) | ((uint32_t)diag2en << 23));
 }
 
-__INLINE uint8_t ip_diagcntl_diag2_getf(void)
+__RWIP_INLINE uint8_t ip_diagcntl_diag2_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x003F0000)) >> 16);
 }
 
-__INLINE void ip_diagcntl_diag2_setf(uint8_t diag2)
+__RWIP_INLINE void ip_diagcntl_diag2_setf(uint8_t diag2)
 {
     ASSERT_ERR((((uint32_t)diag2 << 16) & ~((uint32_t)0x003F0000)) == 0);
     REG_IP_WR(IP_DIAGCNTL_ADDR, (REG_IP_RD(IP_DIAGCNTL_ADDR) & ~((uint32_t)0x003F0000)) | ((uint32_t)diag2 << 16));
 }
 
-__INLINE uint8_t ip_diagcntl_diag1_en_getf(void)
+__RWIP_INLINE uint8_t ip_diagcntl_diag1_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ip_diagcntl_diag1_en_setf(uint8_t diag1en)
+__RWIP_INLINE void ip_diagcntl_diag1_en_setf(uint8_t diag1en)
 {
     ASSERT_ERR((((uint32_t)diag1en << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_IP_WR(IP_DIAGCNTL_ADDR, (REG_IP_RD(IP_DIAGCNTL_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)diag1en << 15));
 }
 
-__INLINE uint8_t ip_diagcntl_diag1_getf(void)
+__RWIP_INLINE uint8_t ip_diagcntl_diag1_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00003F00)) >> 8);
 }
 
-__INLINE void ip_diagcntl_diag1_setf(uint8_t diag1)
+__RWIP_INLINE void ip_diagcntl_diag1_setf(uint8_t diag1)
 {
     ASSERT_ERR((((uint32_t)diag1 << 8) & ~((uint32_t)0x00003F00)) == 0);
     REG_IP_WR(IP_DIAGCNTL_ADDR, (REG_IP_RD(IP_DIAGCNTL_ADDR) & ~((uint32_t)0x00003F00)) | ((uint32_t)diag1 << 8));
 }
 
-__INLINE uint8_t ip_diagcntl_diag0_en_getf(void)
+__RWIP_INLINE uint8_t ip_diagcntl_diag0_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ip_diagcntl_diag0_en_setf(uint8_t diag0en)
+__RWIP_INLINE void ip_diagcntl_diag0_en_setf(uint8_t diag0en)
 {
     ASSERT_ERR((((uint32_t)diag0en << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_IP_WR(IP_DIAGCNTL_ADDR, (REG_IP_RD(IP_DIAGCNTL_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)diag0en << 7));
 }
 
-__INLINE uint8_t ip_diagcntl_diag0_getf(void)
+__RWIP_INLINE uint8_t ip_diagcntl_diag0_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGCNTL_ADDR);
     return ((localVal & ((uint32_t)0x0000003F)) >> 0);
 }
 
-__INLINE void ip_diagcntl_diag0_setf(uint8_t diag0)
+__RWIP_INLINE void ip_diagcntl_diag0_setf(uint8_t diag0)
 {
     ASSERT_ERR((((uint32_t)diag0 << 0) & ~((uint32_t)0x0000003F)) == 0);
     REG_IP_WR(IP_DIAGCNTL_ADDR, (REG_IP_RD(IP_DIAGCNTL_ADDR) & ~((uint32_t)0x0000003F)) | ((uint32_t)diag0 << 0));
@@ -1687,7 +1687,7 @@ __INLINE void ip_diagcntl_diag0_setf(uint8_t diag0)
 #define IP_DIAGSTAT_INDEX  0x00000015
 #define IP_DIAGSTAT_RESET  0x00000000
 
-__INLINE uint32_t ip_diagstat_get(void)
+__RWIP_INLINE uint32_t ip_diagstat_get(void)
 {
     return REG_IP_RD(IP_DIAGSTAT_ADDR);
 }
@@ -1711,7 +1711,7 @@ __INLINE uint32_t ip_diagstat_get(void)
 #define IP_DIAG1STAT_RST    0x0
 #define IP_DIAG0STAT_RST    0x0
 
-__INLINE void ip_diagstat_unpack(uint8_t* diag3stat, uint8_t* diag2stat, uint8_t* diag1stat, uint8_t* diag0stat)
+__RWIP_INLINE void ip_diagstat_unpack(uint8_t* diag3stat, uint8_t* diag2stat, uint8_t* diag1stat, uint8_t* diag0stat)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGSTAT_ADDR);
 
@@ -1721,25 +1721,25 @@ __INLINE void ip_diagstat_unpack(uint8_t* diag3stat, uint8_t* diag2stat, uint8_t
     *diag0stat = (localVal & ((uint32_t)0x000000FF)) >> 0;
 }
 
-__INLINE uint8_t ip_diagstat_diag3stat_getf(void)
+__RWIP_INLINE uint8_t ip_diagstat_diag3stat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGSTAT_ADDR);
     return ((localVal & ((uint32_t)0xFF000000)) >> 24);
 }
 
-__INLINE uint8_t ip_diagstat_diag2stat_getf(void)
+__RWIP_INLINE uint8_t ip_diagstat_diag2stat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGSTAT_ADDR);
     return ((localVal & ((uint32_t)0x00FF0000)) >> 16);
 }
 
-__INLINE uint8_t ip_diagstat_diag1stat_getf(void)
+__RWIP_INLINE uint8_t ip_diagstat_diag1stat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGSTAT_ADDR);
     return ((localVal & ((uint32_t)0x0000FF00)) >> 8);
 }
 
-__INLINE uint8_t ip_diagstat_diag0stat_getf(void)
+__RWIP_INLINE uint8_t ip_diagstat_diag0stat_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DIAGSTAT_ADDR);
     return ((localVal & ((uint32_t)0x000000FF)) >> 0);
@@ -1759,12 +1759,12 @@ __INLINE uint8_t ip_diagstat_diag0stat_getf(void)
 #define IP_DEBUGADDMAX_INDEX  0x00000016
 #define IP_DEBUGADDMAX_RESET  0x00000000
 
-__INLINE uint32_t ip_debugaddmax_get(void)
+__RWIP_INLINE uint32_t ip_debugaddmax_get(void)
 {
     return REG_IP_RD(IP_DEBUGADDMAX_ADDR);
 }
 
-__INLINE void ip_debugaddmax_set(uint32_t value)
+__RWIP_INLINE void ip_debugaddmax_set(uint32_t value)
 {
     REG_IP_WR(IP_DEBUGADDMAX_ADDR, value);
 }
@@ -1780,14 +1780,14 @@ __INLINE void ip_debugaddmax_set(uint32_t value)
 #define IP_REG_ADDMAX_RST    0x0
 #define IP_EM_ADDMAX_RST     0x0
 
-__INLINE void ip_debugaddmax_pack(uint16_t regaddmax, uint16_t emaddmax)
+__RWIP_INLINE void ip_debugaddmax_pack(uint16_t regaddmax, uint16_t emaddmax)
 {
     ASSERT_ERR((((uint32_t)regaddmax << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     ASSERT_ERR((((uint32_t)emaddmax << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_IP_WR(IP_DEBUGADDMAX_ADDR,  ((uint32_t)regaddmax << 16) | ((uint32_t)emaddmax << 0));
 }
 
-__INLINE void ip_debugaddmax_unpack(uint16_t* regaddmax, uint16_t* emaddmax)
+__RWIP_INLINE void ip_debugaddmax_unpack(uint16_t* regaddmax, uint16_t* emaddmax)
 {
     uint32_t localVal = REG_IP_RD(IP_DEBUGADDMAX_ADDR);
 
@@ -1795,25 +1795,25 @@ __INLINE void ip_debugaddmax_unpack(uint16_t* regaddmax, uint16_t* emaddmax)
     *emaddmax = (localVal & ((uint32_t)0x0000FFFF)) >> 0;
 }
 
-__INLINE uint16_t ip_debugaddmax_reg_addmax_getf(void)
+__RWIP_INLINE uint16_t ip_debugaddmax_reg_addmax_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEBUGADDMAX_ADDR);
     return ((localVal & ((uint32_t)0xFFFF0000)) >> 16);
 }
 
-__INLINE void ip_debugaddmax_reg_addmax_setf(uint16_t regaddmax)
+__RWIP_INLINE void ip_debugaddmax_reg_addmax_setf(uint16_t regaddmax)
 {
     ASSERT_ERR((((uint32_t)regaddmax << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     REG_IP_WR(IP_DEBUGADDMAX_ADDR, (REG_IP_RD(IP_DEBUGADDMAX_ADDR) & ~((uint32_t)0xFFFF0000)) | ((uint32_t)regaddmax << 16));
 }
 
-__INLINE uint16_t ip_debugaddmax_em_addmax_getf(void)
+__RWIP_INLINE uint16_t ip_debugaddmax_em_addmax_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEBUGADDMAX_ADDR);
     return ((localVal & ((uint32_t)0x0000FFFF)) >> 0);
 }
 
-__INLINE void ip_debugaddmax_em_addmax_setf(uint16_t emaddmax)
+__RWIP_INLINE void ip_debugaddmax_em_addmax_setf(uint16_t emaddmax)
 {
     ASSERT_ERR((((uint32_t)emaddmax << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_IP_WR(IP_DEBUGADDMAX_ADDR, (REG_IP_RD(IP_DEBUGADDMAX_ADDR) & ~((uint32_t)0x0000FFFF)) | ((uint32_t)emaddmax << 0));
@@ -1833,12 +1833,12 @@ __INLINE void ip_debugaddmax_em_addmax_setf(uint16_t emaddmax)
 #define IP_DEBUGADDMIN_INDEX  0x00000017
 #define IP_DEBUGADDMIN_RESET  0x00000000
 
-__INLINE uint32_t ip_debugaddmin_get(void)
+__RWIP_INLINE uint32_t ip_debugaddmin_get(void)
 {
     return REG_IP_RD(IP_DEBUGADDMIN_ADDR);
 }
 
-__INLINE void ip_debugaddmin_set(uint32_t value)
+__RWIP_INLINE void ip_debugaddmin_set(uint32_t value)
 {
     REG_IP_WR(IP_DEBUGADDMIN_ADDR, value);
 }
@@ -1854,14 +1854,14 @@ __INLINE void ip_debugaddmin_set(uint32_t value)
 #define IP_REG_ADDMIN_RST    0x0
 #define IP_EM_ADDMIN_RST     0x0
 
-__INLINE void ip_debugaddmin_pack(uint16_t regaddmin, uint16_t emaddmin)
+__RWIP_INLINE void ip_debugaddmin_pack(uint16_t regaddmin, uint16_t emaddmin)
 {
     ASSERT_ERR((((uint32_t)regaddmin << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     ASSERT_ERR((((uint32_t)emaddmin << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_IP_WR(IP_DEBUGADDMIN_ADDR,  ((uint32_t)regaddmin << 16) | ((uint32_t)emaddmin << 0));
 }
 
-__INLINE void ip_debugaddmin_unpack(uint16_t* regaddmin, uint16_t* emaddmin)
+__RWIP_INLINE void ip_debugaddmin_unpack(uint16_t* regaddmin, uint16_t* emaddmin)
 {
     uint32_t localVal = REG_IP_RD(IP_DEBUGADDMIN_ADDR);
 
@@ -1869,25 +1869,25 @@ __INLINE void ip_debugaddmin_unpack(uint16_t* regaddmin, uint16_t* emaddmin)
     *emaddmin = (localVal & ((uint32_t)0x0000FFFF)) >> 0;
 }
 
-__INLINE uint16_t ip_debugaddmin_reg_addmin_getf(void)
+__RWIP_INLINE uint16_t ip_debugaddmin_reg_addmin_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEBUGADDMIN_ADDR);
     return ((localVal & ((uint32_t)0xFFFF0000)) >> 16);
 }
 
-__INLINE void ip_debugaddmin_reg_addmin_setf(uint16_t regaddmin)
+__RWIP_INLINE void ip_debugaddmin_reg_addmin_setf(uint16_t regaddmin)
 {
     ASSERT_ERR((((uint32_t)regaddmin << 16) & ~((uint32_t)0xFFFF0000)) == 0);
     REG_IP_WR(IP_DEBUGADDMIN_ADDR, (REG_IP_RD(IP_DEBUGADDMIN_ADDR) & ~((uint32_t)0xFFFF0000)) | ((uint32_t)regaddmin << 16));
 }
 
-__INLINE uint16_t ip_debugaddmin_em_addmin_getf(void)
+__RWIP_INLINE uint16_t ip_debugaddmin_em_addmin_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DEBUGADDMIN_ADDR);
     return ((localVal & ((uint32_t)0x0000FFFF)) >> 0);
 }
 
-__INLINE void ip_debugaddmin_em_addmin_setf(uint16_t emaddmin)
+__RWIP_INLINE void ip_debugaddmin_em_addmin_setf(uint16_t emaddmin)
 {
     ASSERT_ERR((((uint32_t)emaddmin << 0) & ~((uint32_t)0x0000FFFF)) == 0);
     REG_IP_WR(IP_DEBUGADDMIN_ADDR, (REG_IP_RD(IP_DEBUGADDMIN_ADDR) & ~((uint32_t)0x0000FFFF)) | ((uint32_t)emaddmin << 0));
@@ -1909,7 +1909,7 @@ __INLINE void ip_debugaddmin_em_addmin_setf(uint16_t emaddmin)
 #define IP_ERRORTYPESTAT_INDEX  0x00000018
 #define IP_ERRORTYPESTAT_RESET  0x00000000
 
-__INLINE uint32_t ip_errortypestat_get(void)
+__RWIP_INLINE uint32_t ip_errortypestat_get(void)
 {
     return REG_IP_RD(IP_ERRORTYPESTAT_ADDR);
 }
@@ -1929,7 +1929,7 @@ __INLINE uint32_t ip_errortypestat_get(void)
 #define IP_FIFOWRITEERR_RST             0x0
 #define IP_RADIO_EMACC_ERROR_RST        0x0
 
-__INLINE void ip_errortypestat_unpack(uint8_t* actschdlapfmerror, uint8_t* actschdlentryerror, uint8_t* fifowriteerr, uint8_t* radioemaccerror)
+__RWIP_INLINE void ip_errortypestat_unpack(uint8_t* actschdlapfmerror, uint8_t* actschdlentryerror, uint8_t* fifowriteerr, uint8_t* radioemaccerror)
 {
     uint32_t localVal = REG_IP_RD(IP_ERRORTYPESTAT_ADDR);
 
@@ -1939,25 +1939,25 @@ __INLINE void ip_errortypestat_unpack(uint8_t* actschdlapfmerror, uint8_t* actsc
     *radioemaccerror = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_errortypestat_act_schdl_apfm_error_getf(void)
+__RWIP_INLINE uint8_t ip_errortypestat_act_schdl_apfm_error_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE uint8_t ip_errortypestat_act_schdl_entry_error_getf(void)
+__RWIP_INLINE uint8_t ip_errortypestat_act_schdl_entry_error_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE uint8_t ip_errortypestat_fifowriteerr_getf(void)
+__RWIP_INLINE uint8_t ip_errortypestat_fifowriteerr_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE uint8_t ip_errortypestat_radio_emacc_error_getf(void)
+__RWIP_INLINE uint8_t ip_errortypestat_radio_emacc_error_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ERRORTYPESTAT_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
@@ -2007,12 +2007,12 @@ __INLINE uint8_t ip_errortypestat_radio_emacc_error_getf(void)
 #define IP_SWPROFILING_INDEX  0x00000019
 #define IP_SWPROFILING_RESET  0x00000000
 
-__INLINE uint32_t ip_swprofiling_get(void)
+__RWIP_INLINE uint32_t ip_swprofiling_get(void)
 {
     return REG_IP_RD(IP_SWPROFILING_ADDR);
 }
 
-__INLINE void ip_swprofiling_set(uint32_t value)
+__RWIP_INLINE void ip_swprofiling_set(uint32_t value)
 {
     REG_IP_WR(IP_SWPROFILING_ADDR, value);
 }
@@ -2116,7 +2116,7 @@ __INLINE void ip_swprofiling_set(uint32_t value)
 #define IP_SWPROF1_RST     0x0
 #define IP_SWPROF0_RST     0x0
 
-__INLINE void ip_swprofiling_pack(uint8_t swprof31, uint8_t swprof30, uint8_t swprof29, uint8_t swprof28, uint8_t swprof27, uint8_t swprof26, uint8_t swprof25, uint8_t swprof24, uint8_t swprof23, uint8_t swprof22, uint8_t swprof21, uint8_t swprof20, uint8_t swprof19, uint8_t swprof18, uint8_t swprof17, uint8_t swprof16, uint8_t swprof15, uint8_t swprof14, uint8_t swprof13, uint8_t swprof12, uint8_t swprof11, uint8_t swprof10, uint8_t swprof9, uint8_t swprof8, uint8_t swprof7, uint8_t swprof6, uint8_t swprof5, uint8_t swprof4, uint8_t swprof3, uint8_t swprof2, uint8_t swprof1, uint8_t swprof0)
+__RWIP_INLINE void ip_swprofiling_pack(uint8_t swprof31, uint8_t swprof30, uint8_t swprof29, uint8_t swprof28, uint8_t swprof27, uint8_t swprof26, uint8_t swprof25, uint8_t swprof24, uint8_t swprof23, uint8_t swprof22, uint8_t swprof21, uint8_t swprof20, uint8_t swprof19, uint8_t swprof18, uint8_t swprof17, uint8_t swprof16, uint8_t swprof15, uint8_t swprof14, uint8_t swprof13, uint8_t swprof12, uint8_t swprof11, uint8_t swprof10, uint8_t swprof9, uint8_t swprof8, uint8_t swprof7, uint8_t swprof6, uint8_t swprof5, uint8_t swprof4, uint8_t swprof3, uint8_t swprof2, uint8_t swprof1, uint8_t swprof0)
 {
     ASSERT_ERR((((uint32_t)swprof31 << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)swprof30 << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -2153,7 +2153,7 @@ __INLINE void ip_swprofiling_pack(uint8_t swprof31, uint8_t swprof30, uint8_t sw
     REG_IP_WR(IP_SWPROFILING_ADDR,  ((uint32_t)swprof31 << 31) | ((uint32_t)swprof30 << 30) | ((uint32_t)swprof29 << 29) | ((uint32_t)swprof28 << 28) | ((uint32_t)swprof27 << 27) | ((uint32_t)swprof26 << 26) | ((uint32_t)swprof25 << 25) | ((uint32_t)swprof24 << 24) | ((uint32_t)swprof23 << 23) | ((uint32_t)swprof22 << 22) | ((uint32_t)swprof21 << 21) | ((uint32_t)swprof20 << 20) | ((uint32_t)swprof19 << 19) | ((uint32_t)swprof18 << 18) | ((uint32_t)swprof17 << 17) | ((uint32_t)swprof16 << 16) | ((uint32_t)swprof15 << 15) | ((uint32_t)swprof14 << 14) | ((uint32_t)swprof13 << 13) | ((uint32_t)swprof12 << 12) | ((uint32_t)swprof11 << 11) | ((uint32_t)swprof10 << 10) | ((uint32_t)swprof9 << 9) | ((uint32_t)swprof8 << 8) | ((uint32_t)swprof7 << 7) | ((uint32_t)swprof6 << 6) | ((uint32_t)swprof5 << 5) | ((uint32_t)swprof4 << 4) | ((uint32_t)swprof3 << 3) | ((uint32_t)swprof2 << 2) | ((uint32_t)swprof1 << 1) | ((uint32_t)swprof0 << 0));
 }
 
-__INLINE void ip_swprofiling_unpack(uint8_t* swprof31, uint8_t* swprof30, uint8_t* swprof29, uint8_t* swprof28, uint8_t* swprof27, uint8_t* swprof26, uint8_t* swprof25, uint8_t* swprof24, uint8_t* swprof23, uint8_t* swprof22, uint8_t* swprof21, uint8_t* swprof20, uint8_t* swprof19, uint8_t* swprof18, uint8_t* swprof17, uint8_t* swprof16, uint8_t* swprof15, uint8_t* swprof14, uint8_t* swprof13, uint8_t* swprof12, uint8_t* swprof11, uint8_t* swprof10, uint8_t* swprof9, uint8_t* swprof8, uint8_t* swprof7, uint8_t* swprof6, uint8_t* swprof5, uint8_t* swprof4, uint8_t* swprof3, uint8_t* swprof2, uint8_t* swprof1, uint8_t* swprof0)
+__RWIP_INLINE void ip_swprofiling_unpack(uint8_t* swprof31, uint8_t* swprof30, uint8_t* swprof29, uint8_t* swprof28, uint8_t* swprof27, uint8_t* swprof26, uint8_t* swprof25, uint8_t* swprof24, uint8_t* swprof23, uint8_t* swprof22, uint8_t* swprof21, uint8_t* swprof20, uint8_t* swprof19, uint8_t* swprof18, uint8_t* swprof17, uint8_t* swprof16, uint8_t* swprof15, uint8_t* swprof14, uint8_t* swprof13, uint8_t* swprof12, uint8_t* swprof11, uint8_t* swprof10, uint8_t* swprof9, uint8_t* swprof8, uint8_t* swprof7, uint8_t* swprof6, uint8_t* swprof5, uint8_t* swprof4, uint8_t* swprof3, uint8_t* swprof2, uint8_t* swprof1, uint8_t* swprof0)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
 
@@ -2191,385 +2191,385 @@ __INLINE void ip_swprofiling_unpack(uint8_t* swprof31, uint8_t* swprof30, uint8_
     *swprof0 = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_swprofiling_swprof31_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof31_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_swprofiling_swprof31_setf(uint8_t swprof31)
+__RWIP_INLINE void ip_swprofiling_swprof31_setf(uint8_t swprof31)
 {
     ASSERT_ERR((((uint32_t)swprof31 << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)swprof31 << 31));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof30_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof30_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ip_swprofiling_swprof30_setf(uint8_t swprof30)
+__RWIP_INLINE void ip_swprofiling_swprof30_setf(uint8_t swprof30)
 {
     ASSERT_ERR((((uint32_t)swprof30 << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)swprof30 << 30));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof29_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof29_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x20000000)) >> 29);
 }
 
-__INLINE void ip_swprofiling_swprof29_setf(uint8_t swprof29)
+__RWIP_INLINE void ip_swprofiling_swprof29_setf(uint8_t swprof29)
 {
     ASSERT_ERR((((uint32_t)swprof29 << 29) & ~((uint32_t)0x20000000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x20000000)) | ((uint32_t)swprof29 << 29));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof28_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof28_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x10000000)) >> 28);
 }
 
-__INLINE void ip_swprofiling_swprof28_setf(uint8_t swprof28)
+__RWIP_INLINE void ip_swprofiling_swprof28_setf(uint8_t swprof28)
 {
     ASSERT_ERR((((uint32_t)swprof28 << 28) & ~((uint32_t)0x10000000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x10000000)) | ((uint32_t)swprof28 << 28));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof27_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof27_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x08000000)) >> 27);
 }
 
-__INLINE void ip_swprofiling_swprof27_setf(uint8_t swprof27)
+__RWIP_INLINE void ip_swprofiling_swprof27_setf(uint8_t swprof27)
 {
     ASSERT_ERR((((uint32_t)swprof27 << 27) & ~((uint32_t)0x08000000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x08000000)) | ((uint32_t)swprof27 << 27));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof26_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof26_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x04000000)) >> 26);
 }
 
-__INLINE void ip_swprofiling_swprof26_setf(uint8_t swprof26)
+__RWIP_INLINE void ip_swprofiling_swprof26_setf(uint8_t swprof26)
 {
     ASSERT_ERR((((uint32_t)swprof26 << 26) & ~((uint32_t)0x04000000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x04000000)) | ((uint32_t)swprof26 << 26));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof25_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof25_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x02000000)) >> 25);
 }
 
-__INLINE void ip_swprofiling_swprof25_setf(uint8_t swprof25)
+__RWIP_INLINE void ip_swprofiling_swprof25_setf(uint8_t swprof25)
 {
     ASSERT_ERR((((uint32_t)swprof25 << 25) & ~((uint32_t)0x02000000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x02000000)) | ((uint32_t)swprof25 << 25));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof24_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof24_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x01000000)) >> 24);
 }
 
-__INLINE void ip_swprofiling_swprof24_setf(uint8_t swprof24)
+__RWIP_INLINE void ip_swprofiling_swprof24_setf(uint8_t swprof24)
 {
     ASSERT_ERR((((uint32_t)swprof24 << 24) & ~((uint32_t)0x01000000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x01000000)) | ((uint32_t)swprof24 << 24));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof23_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof23_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00800000)) >> 23);
 }
 
-__INLINE void ip_swprofiling_swprof23_setf(uint8_t swprof23)
+__RWIP_INLINE void ip_swprofiling_swprof23_setf(uint8_t swprof23)
 {
     ASSERT_ERR((((uint32_t)swprof23 << 23) & ~((uint32_t)0x00800000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00800000)) | ((uint32_t)swprof23 << 23));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof22_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof22_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00400000)) >> 22);
 }
 
-__INLINE void ip_swprofiling_swprof22_setf(uint8_t swprof22)
+__RWIP_INLINE void ip_swprofiling_swprof22_setf(uint8_t swprof22)
 {
     ASSERT_ERR((((uint32_t)swprof22 << 22) & ~((uint32_t)0x00400000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00400000)) | ((uint32_t)swprof22 << 22));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof21_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof21_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00200000)) >> 21);
 }
 
-__INLINE void ip_swprofiling_swprof21_setf(uint8_t swprof21)
+__RWIP_INLINE void ip_swprofiling_swprof21_setf(uint8_t swprof21)
 {
     ASSERT_ERR((((uint32_t)swprof21 << 21) & ~((uint32_t)0x00200000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00200000)) | ((uint32_t)swprof21 << 21));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof20_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof20_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00100000)) >> 20);
 }
 
-__INLINE void ip_swprofiling_swprof20_setf(uint8_t swprof20)
+__RWIP_INLINE void ip_swprofiling_swprof20_setf(uint8_t swprof20)
 {
     ASSERT_ERR((((uint32_t)swprof20 << 20) & ~((uint32_t)0x00100000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00100000)) | ((uint32_t)swprof20 << 20));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof19_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof19_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00080000)) >> 19);
 }
 
-__INLINE void ip_swprofiling_swprof19_setf(uint8_t swprof19)
+__RWIP_INLINE void ip_swprofiling_swprof19_setf(uint8_t swprof19)
 {
     ASSERT_ERR((((uint32_t)swprof19 << 19) & ~((uint32_t)0x00080000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00080000)) | ((uint32_t)swprof19 << 19));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof18_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof18_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00040000)) >> 18);
 }
 
-__INLINE void ip_swprofiling_swprof18_setf(uint8_t swprof18)
+__RWIP_INLINE void ip_swprofiling_swprof18_setf(uint8_t swprof18)
 {
     ASSERT_ERR((((uint32_t)swprof18 << 18) & ~((uint32_t)0x00040000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00040000)) | ((uint32_t)swprof18 << 18));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof17_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof17_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00020000)) >> 17);
 }
 
-__INLINE void ip_swprofiling_swprof17_setf(uint8_t swprof17)
+__RWIP_INLINE void ip_swprofiling_swprof17_setf(uint8_t swprof17)
 {
     ASSERT_ERR((((uint32_t)swprof17 << 17) & ~((uint32_t)0x00020000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00020000)) | ((uint32_t)swprof17 << 17));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof16_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof16_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00010000)) >> 16);
 }
 
-__INLINE void ip_swprofiling_swprof16_setf(uint8_t swprof16)
+__RWIP_INLINE void ip_swprofiling_swprof16_setf(uint8_t swprof16)
 {
     ASSERT_ERR((((uint32_t)swprof16 << 16) & ~((uint32_t)0x00010000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00010000)) | ((uint32_t)swprof16 << 16));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof15_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof15_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ip_swprofiling_swprof15_setf(uint8_t swprof15)
+__RWIP_INLINE void ip_swprofiling_swprof15_setf(uint8_t swprof15)
 {
     ASSERT_ERR((((uint32_t)swprof15 << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)swprof15 << 15));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof14_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof14_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00004000)) >> 14);
 }
 
-__INLINE void ip_swprofiling_swprof14_setf(uint8_t swprof14)
+__RWIP_INLINE void ip_swprofiling_swprof14_setf(uint8_t swprof14)
 {
     ASSERT_ERR((((uint32_t)swprof14 << 14) & ~((uint32_t)0x00004000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00004000)) | ((uint32_t)swprof14 << 14));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof13_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof13_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00002000)) >> 13);
 }
 
-__INLINE void ip_swprofiling_swprof13_setf(uint8_t swprof13)
+__RWIP_INLINE void ip_swprofiling_swprof13_setf(uint8_t swprof13)
 {
     ASSERT_ERR((((uint32_t)swprof13 << 13) & ~((uint32_t)0x00002000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00002000)) | ((uint32_t)swprof13 << 13));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof12_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof12_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00001000)) >> 12);
 }
 
-__INLINE void ip_swprofiling_swprof12_setf(uint8_t swprof12)
+__RWIP_INLINE void ip_swprofiling_swprof12_setf(uint8_t swprof12)
 {
     ASSERT_ERR((((uint32_t)swprof12 << 12) & ~((uint32_t)0x00001000)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00001000)) | ((uint32_t)swprof12 << 12));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof11_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof11_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000800)) >> 11);
 }
 
-__INLINE void ip_swprofiling_swprof11_setf(uint8_t swprof11)
+__RWIP_INLINE void ip_swprofiling_swprof11_setf(uint8_t swprof11)
 {
     ASSERT_ERR((((uint32_t)swprof11 << 11) & ~((uint32_t)0x00000800)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000800)) | ((uint32_t)swprof11 << 11));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof10_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof10_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000400)) >> 10);
 }
 
-__INLINE void ip_swprofiling_swprof10_setf(uint8_t swprof10)
+__RWIP_INLINE void ip_swprofiling_swprof10_setf(uint8_t swprof10)
 {
     ASSERT_ERR((((uint32_t)swprof10 << 10) & ~((uint32_t)0x00000400)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000400)) | ((uint32_t)swprof10 << 10));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof9_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof9_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000200)) >> 9);
 }
 
-__INLINE void ip_swprofiling_swprof9_setf(uint8_t swprof9)
+__RWIP_INLINE void ip_swprofiling_swprof9_setf(uint8_t swprof9)
 {
     ASSERT_ERR((((uint32_t)swprof9 << 9) & ~((uint32_t)0x00000200)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000200)) | ((uint32_t)swprof9 << 9));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof8_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof8_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000100)) >> 8);
 }
 
-__INLINE void ip_swprofiling_swprof8_setf(uint8_t swprof8)
+__RWIP_INLINE void ip_swprofiling_swprof8_setf(uint8_t swprof8)
 {
     ASSERT_ERR((((uint32_t)swprof8 << 8) & ~((uint32_t)0x00000100)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000100)) | ((uint32_t)swprof8 << 8));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof7_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof7_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ip_swprofiling_swprof7_setf(uint8_t swprof7)
+__RWIP_INLINE void ip_swprofiling_swprof7_setf(uint8_t swprof7)
 {
     ASSERT_ERR((((uint32_t)swprof7 << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)swprof7 << 7));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof6_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof6_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000040)) >> 6);
 }
 
-__INLINE void ip_swprofiling_swprof6_setf(uint8_t swprof6)
+__RWIP_INLINE void ip_swprofiling_swprof6_setf(uint8_t swprof6)
 {
     ASSERT_ERR((((uint32_t)swprof6 << 6) & ~((uint32_t)0x00000040)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000040)) | ((uint32_t)swprof6 << 6));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof5_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof5_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000020)) >> 5);
 }
 
-__INLINE void ip_swprofiling_swprof5_setf(uint8_t swprof5)
+__RWIP_INLINE void ip_swprofiling_swprof5_setf(uint8_t swprof5)
 {
     ASSERT_ERR((((uint32_t)swprof5 << 5) & ~((uint32_t)0x00000020)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000020)) | ((uint32_t)swprof5 << 5));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof4_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof4_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000010)) >> 4);
 }
 
-__INLINE void ip_swprofiling_swprof4_setf(uint8_t swprof4)
+__RWIP_INLINE void ip_swprofiling_swprof4_setf(uint8_t swprof4)
 {
     ASSERT_ERR((((uint32_t)swprof4 << 4) & ~((uint32_t)0x00000010)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000010)) | ((uint32_t)swprof4 << 4));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof3_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof3_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000008)) >> 3);
 }
 
-__INLINE void ip_swprofiling_swprof3_setf(uint8_t swprof3)
+__RWIP_INLINE void ip_swprofiling_swprof3_setf(uint8_t swprof3)
 {
     ASSERT_ERR((((uint32_t)swprof3 << 3) & ~((uint32_t)0x00000008)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000008)) | ((uint32_t)swprof3 << 3));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof2_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof2_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000004)) >> 2);
 }
 
-__INLINE void ip_swprofiling_swprof2_setf(uint8_t swprof2)
+__RWIP_INLINE void ip_swprofiling_swprof2_setf(uint8_t swprof2)
 {
     ASSERT_ERR((((uint32_t)swprof2 << 2) & ~((uint32_t)0x00000004)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000004)) | ((uint32_t)swprof2 << 2));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof1_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof1_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ip_swprofiling_swprof1_setf(uint8_t swprof1)
+__RWIP_INLINE void ip_swprofiling_swprof1_setf(uint8_t swprof1)
 {
     ASSERT_ERR((((uint32_t)swprof1 << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)swprof1 << 1));
 }
 
-__INLINE uint8_t ip_swprofiling_swprof0_getf(void)
+__RWIP_INLINE uint8_t ip_swprofiling_swprof0_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SWPROFILING_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ip_swprofiling_swprof0_setf(uint8_t swprof0)
+__RWIP_INLINE void ip_swprofiling_swprof0_setf(uint8_t swprof0)
 {
     ASSERT_ERR((((uint32_t)swprof0 << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_SWPROFILING_ADDR, (REG_IP_RD(IP_SWPROFILING_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)swprof0 << 0));
@@ -2592,12 +2592,12 @@ __INLINE void ip_swprofiling_swprof0_setf(uint8_t swprof0)
 #define IP_RADIOCNTL0_INDEX  0x0000001C
 #define IP_RADIOCNTL0_RESET  0x00000002
 
-__INLINE uint32_t ip_radiocntl0_get(void)
+__RWIP_INLINE uint32_t ip_radiocntl0_get(void)
 {
     return REG_IP_RD(IP_RADIOCNTL0_ADDR);
 }
 
-__INLINE void ip_radiocntl0_set(uint32_t value)
+__RWIP_INLINE void ip_radiocntl0_set(uint32_t value)
 {
     REG_IP_WR(IP_RADIOCNTL0_ADDR, value);
 }
@@ -2622,7 +2622,7 @@ __INLINE void ip_radiocntl0_set(uint32_t value)
 #define IP_SPICOMP_RST    0x1
 #define IP_SPIGO_RST      0x0
 
-__INLINE void ip_radiocntl0_pack(uint16_t spiptr, uint8_t spicfg, uint8_t spifreq, uint8_t spigo)
+__RWIP_INLINE void ip_radiocntl0_pack(uint16_t spiptr, uint8_t spicfg, uint8_t spifreq, uint8_t spigo)
 {
     ASSERT_ERR((((uint32_t)spiptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     ASSERT_ERR((((uint32_t)spicfg << 7) & ~((uint32_t)0x00000080)) == 0);
@@ -2631,7 +2631,7 @@ __INLINE void ip_radiocntl0_pack(uint16_t spiptr, uint8_t spicfg, uint8_t spifre
     REG_IP_WR(IP_RADIOCNTL0_ADDR,  ((uint32_t)spiptr << 16) | ((uint32_t)spicfg << 7) | ((uint32_t)spifreq << 4) | ((uint32_t)spigo << 0));
 }
 
-__INLINE void ip_radiocntl0_unpack(uint16_t* spiptr, uint8_t* spicfg, uint8_t* spifreq, uint8_t* spicomp, uint8_t* spigo)
+__RWIP_INLINE void ip_radiocntl0_unpack(uint16_t* spiptr, uint8_t* spicfg, uint8_t* spifreq, uint8_t* spicomp, uint8_t* spigo)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL0_ADDR);
 
@@ -2642,55 +2642,55 @@ __INLINE void ip_radiocntl0_unpack(uint16_t* spiptr, uint8_t* spicfg, uint8_t* s
     *spigo = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint16_t ip_radiocntl0_spiptr_getf(void)
+__RWIP_INLINE uint16_t ip_radiocntl0_spiptr_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x3FFF0000)) >> 16);
 }
 
-__INLINE void ip_radiocntl0_spiptr_setf(uint16_t spiptr)
+__RWIP_INLINE void ip_radiocntl0_spiptr_setf(uint16_t spiptr)
 {
     ASSERT_ERR((((uint32_t)spiptr << 16) & ~((uint32_t)0x3FFF0000)) == 0);
     REG_IP_WR(IP_RADIOCNTL0_ADDR, (REG_IP_RD(IP_RADIOCNTL0_ADDR) & ~((uint32_t)0x3FFF0000)) | ((uint32_t)spiptr << 16));
 }
 
-__INLINE uint8_t ip_radiocntl0_spicfg_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl0_spicfg_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ip_radiocntl0_spicfg_setf(uint8_t spicfg)
+__RWIP_INLINE void ip_radiocntl0_spicfg_setf(uint8_t spicfg)
 {
     ASSERT_ERR((((uint32_t)spicfg << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_IP_WR(IP_RADIOCNTL0_ADDR, (REG_IP_RD(IP_RADIOCNTL0_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)spicfg << 7));
 }
 
-__INLINE uint8_t ip_radiocntl0_spifreq_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl0_spifreq_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000030)) >> 4);
 }
 
-__INLINE void ip_radiocntl0_spifreq_setf(uint8_t spifreq)
+__RWIP_INLINE void ip_radiocntl0_spifreq_setf(uint8_t spifreq)
 {
     ASSERT_ERR((((uint32_t)spifreq << 4) & ~((uint32_t)0x00000030)) == 0);
     REG_IP_WR(IP_RADIOCNTL0_ADDR, (REG_IP_RD(IP_RADIOCNTL0_ADDR) & ~((uint32_t)0x00000030)) | ((uint32_t)spifreq << 4));
 }
 
-__INLINE uint8_t ip_radiocntl0_spicomp_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl0_spicomp_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE uint8_t ip_radiocntl0_spigo_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl0_spigo_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL0_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ip_radiocntl0_spigo_setf(uint8_t spigo)
+__RWIP_INLINE void ip_radiocntl0_spigo_setf(uint8_t spigo)
 {
     ASSERT_ERR((((uint32_t)spigo << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_RADIOCNTL0_ADDR, (REG_IP_RD(IP_RADIOCNTL0_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)spigo << 0));
@@ -2719,12 +2719,12 @@ __INLINE void ip_radiocntl0_spigo_setf(uint8_t spigo)
 #define IP_RADIOCNTL1_INDEX  0x0000001D
 #define IP_RADIOCNTL1_RESET  0x00000000
 
-__INLINE uint32_t ip_radiocntl1_get(void)
+__RWIP_INLINE uint32_t ip_radiocntl1_get(void)
 {
     return REG_IP_RD(IP_RADIOCNTL1_ADDR);
 }
 
-__INLINE void ip_radiocntl1_set(uint32_t value)
+__RWIP_INLINE void ip_radiocntl1_set(uint32_t value)
 {
     REG_IP_WR(IP_RADIOCNTL1_ADDR, value);
 }
@@ -2768,7 +2768,7 @@ __INLINE void ip_radiocntl1_set(uint32_t value)
 #define IP_XRFSEL_RST             0x0
 #define IP_SUBVERSION_RST         0x0
 
-__INLINE void ip_radiocntl1_pack(uint8_t forceagcen, uint8_t forceiq, uint8_t rxdnsl, uint8_t txdnsl, uint16_t forceagclength, uint8_t syncpulsemode, uint8_t syncpulsesrc, uint8_t dpcorren, uint8_t jefselect, uint8_t xrfsel, uint8_t subversion)
+__RWIP_INLINE void ip_radiocntl1_pack(uint8_t forceagcen, uint8_t forceiq, uint8_t rxdnsl, uint8_t txdnsl, uint16_t forceagclength, uint8_t syncpulsemode, uint8_t syncpulsesrc, uint8_t dpcorren, uint8_t jefselect, uint8_t xrfsel, uint8_t subversion)
 {
     ASSERT_ERR((((uint32_t)forceagcen << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)forceiq << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -2784,7 +2784,7 @@ __INLINE void ip_radiocntl1_pack(uint8_t forceagcen, uint8_t forceiq, uint8_t rx
     REG_IP_WR(IP_RADIOCNTL1_ADDR,  ((uint32_t)forceagcen << 31) | ((uint32_t)forceiq << 30) | ((uint32_t)rxdnsl << 29) | ((uint32_t)txdnsl << 28) | ((uint32_t)forceagclength << 16) | ((uint32_t)syncpulsemode << 15) | ((uint32_t)syncpulsesrc << 14) | ((uint32_t)dpcorren << 13) | ((uint32_t)jefselect << 12) | ((uint32_t)xrfsel << 4) | ((uint32_t)subversion << 0));
 }
 
-__INLINE void ip_radiocntl1_unpack(uint8_t* forceagcen, uint8_t* forceiq, uint8_t* rxdnsl, uint8_t* txdnsl, uint16_t* forceagclength, uint8_t* syncpulsemode, uint8_t* syncpulsesrc, uint8_t* dpcorren, uint8_t* jefselect, uint8_t* xrfsel, uint8_t* subversion)
+__RWIP_INLINE void ip_radiocntl1_unpack(uint8_t* forceagcen, uint8_t* forceiq, uint8_t* rxdnsl, uint8_t* txdnsl, uint16_t* forceagclength, uint8_t* syncpulsemode, uint8_t* syncpulsesrc, uint8_t* dpcorren, uint8_t* jefselect, uint8_t* xrfsel, uint8_t* subversion)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
 
@@ -2801,133 +2801,133 @@ __INLINE void ip_radiocntl1_unpack(uint8_t* forceagcen, uint8_t* forceiq, uint8_
     *subversion = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ip_radiocntl1_forceagc_en_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_forceagc_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_radiocntl1_forceagc_en_setf(uint8_t forceagcen)
+__RWIP_INLINE void ip_radiocntl1_forceagc_en_setf(uint8_t forceagcen)
 {
     ASSERT_ERR((((uint32_t)forceagcen << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)forceagcen << 31));
 }
 
-__INLINE uint8_t ip_radiocntl1_forceiq_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_forceiq_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ip_radiocntl1_forceiq_setf(uint8_t forceiq)
+__RWIP_INLINE void ip_radiocntl1_forceiq_setf(uint8_t forceiq)
 {
     ASSERT_ERR((((uint32_t)forceiq << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)forceiq << 30));
 }
 
-__INLINE uint8_t ip_radiocntl1_rxdnsl_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_rxdnsl_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x20000000)) >> 29);
 }
 
-__INLINE void ip_radiocntl1_rxdnsl_setf(uint8_t rxdnsl)
+__RWIP_INLINE void ip_radiocntl1_rxdnsl_setf(uint8_t rxdnsl)
 {
     ASSERT_ERR((((uint32_t)rxdnsl << 29) & ~((uint32_t)0x20000000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x20000000)) | ((uint32_t)rxdnsl << 29));
 }
 
-__INLINE uint8_t ip_radiocntl1_txdnsl_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_txdnsl_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x10000000)) >> 28);
 }
 
-__INLINE void ip_radiocntl1_txdnsl_setf(uint8_t txdnsl)
+__RWIP_INLINE void ip_radiocntl1_txdnsl_setf(uint8_t txdnsl)
 {
     ASSERT_ERR((((uint32_t)txdnsl << 28) & ~((uint32_t)0x10000000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x10000000)) | ((uint32_t)txdnsl << 28));
 }
 
-__INLINE uint16_t ip_radiocntl1_forceagc_length_getf(void)
+__RWIP_INLINE uint16_t ip_radiocntl1_forceagc_length_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x0FFF0000)) >> 16);
 }
 
-__INLINE void ip_radiocntl1_forceagc_length_setf(uint16_t forceagclength)
+__RWIP_INLINE void ip_radiocntl1_forceagc_length_setf(uint16_t forceagclength)
 {
     ASSERT_ERR((((uint32_t)forceagclength << 16) & ~((uint32_t)0x0FFF0000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x0FFF0000)) | ((uint32_t)forceagclength << 16));
 }
 
-__INLINE uint8_t ip_radiocntl1_sync_pulse_mode_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_sync_pulse_mode_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ip_radiocntl1_sync_pulse_mode_setf(uint8_t syncpulsemode)
+__RWIP_INLINE void ip_radiocntl1_sync_pulse_mode_setf(uint8_t syncpulsemode)
 {
     ASSERT_ERR((((uint32_t)syncpulsemode << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)syncpulsemode << 15));
 }
 
-__INLINE uint8_t ip_radiocntl1_sync_pulse_src_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_sync_pulse_src_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00004000)) >> 14);
 }
 
-__INLINE void ip_radiocntl1_sync_pulse_src_setf(uint8_t syncpulsesrc)
+__RWIP_INLINE void ip_radiocntl1_sync_pulse_src_setf(uint8_t syncpulsesrc)
 {
     ASSERT_ERR((((uint32_t)syncpulsesrc << 14) & ~((uint32_t)0x00004000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x00004000)) | ((uint32_t)syncpulsesrc << 14));
 }
 
-__INLINE uint8_t ip_radiocntl1_dpcorr_en_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_dpcorr_en_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00002000)) >> 13);
 }
 
-__INLINE void ip_radiocntl1_dpcorr_en_setf(uint8_t dpcorren)
+__RWIP_INLINE void ip_radiocntl1_dpcorr_en_setf(uint8_t dpcorren)
 {
     ASSERT_ERR((((uint32_t)dpcorren << 13) & ~((uint32_t)0x00002000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x00002000)) | ((uint32_t)dpcorren << 13));
 }
 
-__INLINE uint8_t ip_radiocntl1_jef_select_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_jef_select_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x00001000)) >> 12);
 }
 
-__INLINE void ip_radiocntl1_jef_select_setf(uint8_t jefselect)
+__RWIP_INLINE void ip_radiocntl1_jef_select_setf(uint8_t jefselect)
 {
     ASSERT_ERR((((uint32_t)jefselect << 12) & ~((uint32_t)0x00001000)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x00001000)) | ((uint32_t)jefselect << 12));
 }
 
-__INLINE uint8_t ip_radiocntl1_xrfsel_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_xrfsel_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x000003F0)) >> 4);
 }
 
-__INLINE void ip_radiocntl1_xrfsel_setf(uint8_t xrfsel)
+__RWIP_INLINE void ip_radiocntl1_xrfsel_setf(uint8_t xrfsel)
 {
     ASSERT_ERR((((uint32_t)xrfsel << 4) & ~((uint32_t)0x000003F0)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x000003F0)) | ((uint32_t)xrfsel << 4));
 }
 
-__INLINE uint8_t ip_radiocntl1_subversion_getf(void)
+__RWIP_INLINE uint8_t ip_radiocntl1_subversion_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RADIOCNTL1_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ip_radiocntl1_subversion_setf(uint8_t subversion)
+__RWIP_INLINE void ip_radiocntl1_subversion_setf(uint8_t subversion)
 {
     ASSERT_ERR((((uint32_t)subversion << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_IP_WR(IP_RADIOCNTL1_ADDR, (REG_IP_RD(IP_RADIOCNTL1_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)subversion << 0));
@@ -2947,12 +2947,12 @@ __INLINE void ip_radiocntl1_subversion_setf(uint8_t subversion)
 #define IP_AESCNTL_INDEX  0x0000002C
 #define IP_AESCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_aescntl_get(void)
+__RWIP_INLINE uint32_t ip_aescntl_get(void)
 {
     return REG_IP_RD(IP_AESCNTL_ADDR);
 }
 
-__INLINE void ip_aescntl_set(uint32_t value)
+__RWIP_INLINE void ip_aescntl_set(uint32_t value)
 {
     REG_IP_WR(IP_AESCNTL_ADDR, value);
 }
@@ -2966,14 +2966,14 @@ __INLINE void ip_aescntl_set(uint32_t value)
 #define IP_AES_MODE_RST     0x0
 #define IP_AES_START_RST    0x0
 
-__INLINE void ip_aescntl_pack(uint8_t aesmode, uint8_t aesstart)
+__RWIP_INLINE void ip_aescntl_pack(uint8_t aesmode, uint8_t aesstart)
 {
     ASSERT_ERR((((uint32_t)aesmode << 1) & ~((uint32_t)0x00000002)) == 0);
     ASSERT_ERR((((uint32_t)aesstart << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_AESCNTL_ADDR,  ((uint32_t)aesmode << 1) | ((uint32_t)aesstart << 0));
 }
 
-__INLINE void ip_aescntl_unpack(uint8_t* aesmode, uint8_t* aesstart)
+__RWIP_INLINE void ip_aescntl_unpack(uint8_t* aesmode, uint8_t* aesstart)
 {
     uint32_t localVal = REG_IP_RD(IP_AESCNTL_ADDR);
 
@@ -2981,25 +2981,25 @@ __INLINE void ip_aescntl_unpack(uint8_t* aesmode, uint8_t* aesstart)
     *aesstart = (localVal & ((uint32_t)0x00000001)) >> 0;
 }
 
-__INLINE uint8_t ip_aescntl_aes_mode_getf(void)
+__RWIP_INLINE uint8_t ip_aescntl_aes_mode_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_AESCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000002)) >> 1);
 }
 
-__INLINE void ip_aescntl_aes_mode_setf(uint8_t aesmode)
+__RWIP_INLINE void ip_aescntl_aes_mode_setf(uint8_t aesmode)
 {
     ASSERT_ERR((((uint32_t)aesmode << 1) & ~((uint32_t)0x00000002)) == 0);
     REG_IP_WR(IP_AESCNTL_ADDR, (REG_IP_RD(IP_AESCNTL_ADDR) & ~((uint32_t)0x00000002)) | ((uint32_t)aesmode << 1));
 }
 
-__INLINE uint8_t ip_aescntl_aes_start_getf(void)
+__RWIP_INLINE uint8_t ip_aescntl_aes_start_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_AESCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000001)) >> 0);
 }
 
-__INLINE void ip_aescntl_aes_start_setf(uint8_t aesstart)
+__RWIP_INLINE void ip_aescntl_aes_start_setf(uint8_t aesstart)
 {
     ASSERT_ERR((((uint32_t)aesstart << 0) & ~((uint32_t)0x00000001)) == 0);
     REG_IP_WR(IP_AESCNTL_ADDR, (REG_IP_RD(IP_AESCNTL_ADDR) & ~((uint32_t)0x00000001)) | ((uint32_t)aesstart << 0));
@@ -3018,12 +3018,12 @@ __INLINE void ip_aescntl_aes_start_setf(uint8_t aesstart)
 #define IP_AESKEY31_0_INDEX  0x0000002D
 #define IP_AESKEY31_0_RESET  0x00000000
 
-__INLINE uint32_t ip_aeskey31_0_get(void)
+__RWIP_INLINE uint32_t ip_aeskey31_0_get(void)
 {
     return REG_IP_RD(IP_AESKEY31_0_ADDR);
 }
 
-__INLINE void ip_aeskey31_0_set(uint32_t value)
+__RWIP_INLINE void ip_aeskey31_0_set(uint32_t value)
 {
     REG_IP_WR(IP_AESKEY31_0_ADDR, value);
 }
@@ -3035,14 +3035,14 @@ __INLINE void ip_aeskey31_0_set(uint32_t value)
 
 #define IP_AESKEY31_0_RST    0x0
 
-__INLINE uint32_t ip_aeskey31_0_getf(void)
+__RWIP_INLINE uint32_t ip_aeskey31_0_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_AESKEY31_0_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_aeskey31_0_setf(uint32_t aeskey310)
+__RWIP_INLINE void ip_aeskey31_0_setf(uint32_t aeskey310)
 {
     ASSERT_ERR((((uint32_t)aeskey310 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_IP_WR(IP_AESKEY31_0_ADDR, (uint32_t)aeskey310 << 0);
@@ -3061,12 +3061,12 @@ __INLINE void ip_aeskey31_0_setf(uint32_t aeskey310)
 #define IP_AESKEY63_32_INDEX  0x0000002E
 #define IP_AESKEY63_32_RESET  0x00000000
 
-__INLINE uint32_t ip_aeskey63_32_get(void)
+__RWIP_INLINE uint32_t ip_aeskey63_32_get(void)
 {
     return REG_IP_RD(IP_AESKEY63_32_ADDR);
 }
 
-__INLINE void ip_aeskey63_32_set(uint32_t value)
+__RWIP_INLINE void ip_aeskey63_32_set(uint32_t value)
 {
     REG_IP_WR(IP_AESKEY63_32_ADDR, value);
 }
@@ -3078,14 +3078,14 @@ __INLINE void ip_aeskey63_32_set(uint32_t value)
 
 #define IP_AESKEY63_32_RST    0x0
 
-__INLINE uint32_t ip_aeskey63_32_getf(void)
+__RWIP_INLINE uint32_t ip_aeskey63_32_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_AESKEY63_32_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_aeskey63_32_setf(uint32_t aeskey6332)
+__RWIP_INLINE void ip_aeskey63_32_setf(uint32_t aeskey6332)
 {
     ASSERT_ERR((((uint32_t)aeskey6332 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_IP_WR(IP_AESKEY63_32_ADDR, (uint32_t)aeskey6332 << 0);
@@ -3104,12 +3104,12 @@ __INLINE void ip_aeskey63_32_setf(uint32_t aeskey6332)
 #define IP_AESKEY95_64_INDEX  0x0000002F
 #define IP_AESKEY95_64_RESET  0x00000000
 
-__INLINE uint32_t ip_aeskey95_64_get(void)
+__RWIP_INLINE uint32_t ip_aeskey95_64_get(void)
 {
     return REG_IP_RD(IP_AESKEY95_64_ADDR);
 }
 
-__INLINE void ip_aeskey95_64_set(uint32_t value)
+__RWIP_INLINE void ip_aeskey95_64_set(uint32_t value)
 {
     REG_IP_WR(IP_AESKEY95_64_ADDR, value);
 }
@@ -3121,14 +3121,14 @@ __INLINE void ip_aeskey95_64_set(uint32_t value)
 
 #define IP_AESKEY95_64_RST    0x0
 
-__INLINE uint32_t ip_aeskey95_64_getf(void)
+__RWIP_INLINE uint32_t ip_aeskey95_64_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_AESKEY95_64_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_aeskey95_64_setf(uint32_t aeskey9564)
+__RWIP_INLINE void ip_aeskey95_64_setf(uint32_t aeskey9564)
 {
     ASSERT_ERR((((uint32_t)aeskey9564 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_IP_WR(IP_AESKEY95_64_ADDR, (uint32_t)aeskey9564 << 0);
@@ -3147,12 +3147,12 @@ __INLINE void ip_aeskey95_64_setf(uint32_t aeskey9564)
 #define IP_AESKEY127_96_INDEX  0x00000030
 #define IP_AESKEY127_96_RESET  0x00000000
 
-__INLINE uint32_t ip_aeskey127_96_get(void)
+__RWIP_INLINE uint32_t ip_aeskey127_96_get(void)
 {
     return REG_IP_RD(IP_AESKEY127_96_ADDR);
 }
 
-__INLINE void ip_aeskey127_96_set(uint32_t value)
+__RWIP_INLINE void ip_aeskey127_96_set(uint32_t value)
 {
     REG_IP_WR(IP_AESKEY127_96_ADDR, value);
 }
@@ -3164,14 +3164,14 @@ __INLINE void ip_aeskey127_96_set(uint32_t value)
 
 #define IP_AESKEY127_96_RST    0x0
 
-__INLINE uint32_t ip_aeskey127_96_getf(void)
+__RWIP_INLINE uint32_t ip_aeskey127_96_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_AESKEY127_96_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_aeskey127_96_setf(uint32_t aeskey12796)
+__RWIP_INLINE void ip_aeskey127_96_setf(uint32_t aeskey12796)
 {
     ASSERT_ERR((((uint32_t)aeskey12796 << 0) & ~((uint32_t)0xFFFFFFFF)) == 0);
     REG_IP_WR(IP_AESKEY127_96_ADDR, (uint32_t)aeskey12796 << 0);
@@ -3190,12 +3190,12 @@ __INLINE void ip_aeskey127_96_setf(uint32_t aeskey12796)
 #define IP_AESPTR_INDEX  0x00000031
 #define IP_AESPTR_RESET  0x00000000
 
-__INLINE uint32_t ip_aesptr_get(void)
+__RWIP_INLINE uint32_t ip_aesptr_get(void)
 {
     return REG_IP_RD(IP_AESPTR_ADDR);
 }
 
-__INLINE void ip_aesptr_set(uint32_t value)
+__RWIP_INLINE void ip_aesptr_set(uint32_t value)
 {
     REG_IP_WR(IP_AESPTR_ADDR, value);
 }
@@ -3207,14 +3207,14 @@ __INLINE void ip_aesptr_set(uint32_t value)
 
 #define IP_AESPTR_RST    0x0
 
-__INLINE uint16_t ip_aesptr_getf(void)
+__RWIP_INLINE uint16_t ip_aesptr_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_AESPTR_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x00003FFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_aesptr_setf(uint16_t aesptr)
+__RWIP_INLINE void ip_aesptr_setf(uint16_t aesptr)
 {
     ASSERT_ERR((((uint32_t)aesptr << 0) & ~((uint32_t)0x00003FFF)) == 0);
     REG_IP_WR(IP_AESPTR_ADDR, (uint32_t)aesptr << 0);
@@ -3233,7 +3233,7 @@ __INLINE void ip_aesptr_setf(uint16_t aesptr)
 #define IP_TXMICVAL_INDEX  0x00000032
 #define IP_TXMICVAL_RESET  0x00000000
 
-__INLINE uint32_t ip_txmicval_get(void)
+__RWIP_INLINE uint32_t ip_txmicval_get(void)
 {
     return REG_IP_RD(IP_TXMICVAL_ADDR);
 }
@@ -3245,7 +3245,7 @@ __INLINE uint32_t ip_txmicval_get(void)
 
 #define IP_TXMICVAL_RST    0x0
 
-__INLINE uint32_t ip_txmicval_getf(void)
+__RWIP_INLINE uint32_t ip_txmicval_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_TXMICVAL_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
@@ -3265,7 +3265,7 @@ __INLINE uint32_t ip_txmicval_getf(void)
 #define IP_RXMICVAL_INDEX  0x00000033
 #define IP_RXMICVAL_RESET  0x00000000
 
-__INLINE uint32_t ip_rxmicval_get(void)
+__RWIP_INLINE uint32_t ip_rxmicval_get(void)
 {
     return REG_IP_RD(IP_RXMICVAL_ADDR);
 }
@@ -3277,7 +3277,7 @@ __INLINE uint32_t ip_rxmicval_get(void)
 
 #define IP_RXMICVAL_RST    0x0
 
-__INLINE uint32_t ip_rxmicval_getf(void)
+__RWIP_INLINE uint32_t ip_rxmicval_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_RXMICVAL_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0xFFFFFFFF)) == 0);
@@ -3298,12 +3298,12 @@ __INLINE uint32_t ip_rxmicval_getf(void)
 #define IP_TIMGENCNTL_INDEX  0x00000038
 #define IP_TIMGENCNTL_RESET  0x01DF00BD
 
-__INLINE uint32_t ip_timgencntl_get(void)
+__RWIP_INLINE uint32_t ip_timgencntl_get(void)
 {
     return REG_IP_RD(IP_TIMGENCNTL_ADDR);
 }
 
-__INLINE void ip_timgencntl_set(uint32_t value)
+__RWIP_INLINE void ip_timgencntl_set(uint32_t value)
 {
     REG_IP_WR(IP_TIMGENCNTL_ADDR, value);
 }
@@ -3319,14 +3319,14 @@ __INLINE void ip_timgencntl_set(uint32_t value)
 #define IP_PREFETCHABORT_TIME_RST    0x1DF
 #define IP_PREFETCH_TIME_RST         0xBD
 
-__INLINE void ip_timgencntl_pack(uint16_t prefetchaborttime, uint16_t prefetchtime)
+__RWIP_INLINE void ip_timgencntl_pack(uint16_t prefetchaborttime, uint16_t prefetchtime)
 {
     ASSERT_ERR((((uint32_t)prefetchaborttime << 16) & ~((uint32_t)0x03FF0000)) == 0);
     ASSERT_ERR((((uint32_t)prefetchtime << 0) & ~((uint32_t)0x000001FF)) == 0);
     REG_IP_WR(IP_TIMGENCNTL_ADDR,  ((uint32_t)prefetchaborttime << 16) | ((uint32_t)prefetchtime << 0));
 }
 
-__INLINE void ip_timgencntl_unpack(uint16_t* prefetchaborttime, uint16_t* prefetchtime)
+__RWIP_INLINE void ip_timgencntl_unpack(uint16_t* prefetchaborttime, uint16_t* prefetchtime)
 {
     uint32_t localVal = REG_IP_RD(IP_TIMGENCNTL_ADDR);
 
@@ -3334,25 +3334,25 @@ __INLINE void ip_timgencntl_unpack(uint16_t* prefetchaborttime, uint16_t* prefet
     *prefetchtime = (localVal & ((uint32_t)0x000001FF)) >> 0;
 }
 
-__INLINE uint16_t ip_timgencntl_prefetchabort_time_getf(void)
+__RWIP_INLINE uint16_t ip_timgencntl_prefetchabort_time_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_TIMGENCNTL_ADDR);
     return ((localVal & ((uint32_t)0x03FF0000)) >> 16);
 }
 
-__INLINE void ip_timgencntl_prefetchabort_time_setf(uint16_t prefetchaborttime)
+__RWIP_INLINE void ip_timgencntl_prefetchabort_time_setf(uint16_t prefetchaborttime)
 {
     ASSERT_ERR((((uint32_t)prefetchaborttime << 16) & ~((uint32_t)0x03FF0000)) == 0);
     REG_IP_WR(IP_TIMGENCNTL_ADDR, (REG_IP_RD(IP_TIMGENCNTL_ADDR) & ~((uint32_t)0x03FF0000)) | ((uint32_t)prefetchaborttime << 16));
 }
 
-__INLINE uint16_t ip_timgencntl_prefetch_time_getf(void)
+__RWIP_INLINE uint16_t ip_timgencntl_prefetch_time_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_TIMGENCNTL_ADDR);
     return ((localVal & ((uint32_t)0x000001FF)) >> 0);
 }
 
-__INLINE void ip_timgencntl_prefetch_time_setf(uint16_t prefetchtime)
+__RWIP_INLINE void ip_timgencntl_prefetch_time_setf(uint16_t prefetchtime)
 {
     ASSERT_ERR((((uint32_t)prefetchtime << 0) & ~((uint32_t)0x000001FF)) == 0);
     REG_IP_WR(IP_TIMGENCNTL_ADDR, (REG_IP_RD(IP_TIMGENCNTL_ADDR) & ~((uint32_t)0x000001FF)) | ((uint32_t)prefetchtime << 0));
@@ -3371,12 +3371,12 @@ __INLINE void ip_timgencntl_prefetch_time_setf(uint16_t prefetchtime)
 #define IP_FINETIMTGT_INDEX  0x00000039
 #define IP_FINETIMTGT_RESET  0x00000000
 
-__INLINE uint32_t ip_finetimtgt_get(void)
+__RWIP_INLINE uint32_t ip_finetimtgt_get(void)
 {
     return REG_IP_RD(IP_FINETIMTGT_ADDR);
 }
 
-__INLINE void ip_finetimtgt_set(uint32_t value)
+__RWIP_INLINE void ip_finetimtgt_set(uint32_t value)
 {
     REG_IP_WR(IP_FINETIMTGT_ADDR, value);
 }
@@ -3388,14 +3388,14 @@ __INLINE void ip_finetimtgt_set(uint32_t value)
 
 #define IP_FINETARGET_RST    0x0
 
-__INLINE uint32_t ip_finetimtgt_finetarget_getf(void)
+__RWIP_INLINE uint32_t ip_finetimtgt_finetarget_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_FINETIMTGT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_finetimtgt_finetarget_setf(uint32_t finetarget)
+__RWIP_INLINE void ip_finetimtgt_finetarget_setf(uint32_t finetarget)
 {
     ASSERT_ERR((((uint32_t)finetarget << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_IP_WR(IP_FINETIMTGT_ADDR, (uint32_t)finetarget << 0);
@@ -3414,12 +3414,12 @@ __INLINE void ip_finetimtgt_finetarget_setf(uint32_t finetarget)
 #define IP_CLKNTGT1_INDEX  0x0000003A
 #define IP_CLKNTGT1_RESET  0x00000000
 
-__INLINE uint32_t ip_clkntgt1_get(void)
+__RWIP_INLINE uint32_t ip_clkntgt1_get(void)
 {
     return REG_IP_RD(IP_CLKNTGT1_ADDR);
 }
 
-__INLINE void ip_clkntgt1_set(uint32_t value)
+__RWIP_INLINE void ip_clkntgt1_set(uint32_t value)
 {
     REG_IP_WR(IP_CLKNTGT1_ADDR, value);
 }
@@ -3431,14 +3431,14 @@ __INLINE void ip_clkntgt1_set(uint32_t value)
 
 #define IP_CLKNTGT1_RST    0x0
 
-__INLINE uint32_t ip_clkntgt1_getf(void)
+__RWIP_INLINE uint32_t ip_clkntgt1_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_CLKNTGT1_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_clkntgt1_setf(uint32_t clkntgt1)
+__RWIP_INLINE void ip_clkntgt1_setf(uint32_t clkntgt1)
 {
     ASSERT_ERR((((uint32_t)clkntgt1 << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_IP_WR(IP_CLKNTGT1_ADDR, (uint32_t)clkntgt1 << 0);
@@ -3457,12 +3457,12 @@ __INLINE void ip_clkntgt1_setf(uint32_t clkntgt1)
 #define IP_HMICROSECTGT1_INDEX  0x0000003B
 #define IP_HMICROSECTGT1_RESET  0x00000000
 
-__INLINE uint32_t ip_hmicrosectgt1_get(void)
+__RWIP_INLINE uint32_t ip_hmicrosectgt1_get(void)
 {
     return REG_IP_RD(IP_HMICROSECTGT1_ADDR);
 }
 
-__INLINE void ip_hmicrosectgt1_set(uint32_t value)
+__RWIP_INLINE void ip_hmicrosectgt1_set(uint32_t value)
 {
     REG_IP_WR(IP_HMICROSECTGT1_ADDR, value);
 }
@@ -3474,14 +3474,14 @@ __INLINE void ip_hmicrosectgt1_set(uint32_t value)
 
 #define IP_HMICROSECTGT1_RST    0x0
 
-__INLINE uint16_t ip_hmicrosectgt1_getf(void)
+__RWIP_INLINE uint16_t ip_hmicrosectgt1_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_HMICROSECTGT1_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_hmicrosectgt1_setf(uint16_t hmicrosectgt1)
+__RWIP_INLINE void ip_hmicrosectgt1_setf(uint16_t hmicrosectgt1)
 {
     ASSERT_ERR((((uint32_t)hmicrosectgt1 << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_IP_WR(IP_HMICROSECTGT1_ADDR, (uint32_t)hmicrosectgt1 << 0);
@@ -3500,12 +3500,12 @@ __INLINE void ip_hmicrosectgt1_setf(uint16_t hmicrosectgt1)
 #define IP_CLKNTGT2_INDEX  0x0000003C
 #define IP_CLKNTGT2_RESET  0x00000000
 
-__INLINE uint32_t ip_clkntgt2_get(void)
+__RWIP_INLINE uint32_t ip_clkntgt2_get(void)
 {
     return REG_IP_RD(IP_CLKNTGT2_ADDR);
 }
 
-__INLINE void ip_clkntgt2_set(uint32_t value)
+__RWIP_INLINE void ip_clkntgt2_set(uint32_t value)
 {
     REG_IP_WR(IP_CLKNTGT2_ADDR, value);
 }
@@ -3517,14 +3517,14 @@ __INLINE void ip_clkntgt2_set(uint32_t value)
 
 #define IP_CLKNTGT2_RST    0x0
 
-__INLINE uint32_t ip_clkntgt2_getf(void)
+__RWIP_INLINE uint32_t ip_clkntgt2_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_CLKNTGT2_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_clkntgt2_setf(uint32_t clkntgt2)
+__RWIP_INLINE void ip_clkntgt2_setf(uint32_t clkntgt2)
 {
     ASSERT_ERR((((uint32_t)clkntgt2 << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_IP_WR(IP_CLKNTGT2_ADDR, (uint32_t)clkntgt2 << 0);
@@ -3543,12 +3543,12 @@ __INLINE void ip_clkntgt2_setf(uint32_t clkntgt2)
 #define IP_HMICROSECTGT2_INDEX  0x0000003D
 #define IP_HMICROSECTGT2_RESET  0x00000000
 
-__INLINE uint32_t ip_hmicrosectgt2_get(void)
+__RWIP_INLINE uint32_t ip_hmicrosectgt2_get(void)
 {
     return REG_IP_RD(IP_HMICROSECTGT2_ADDR);
 }
 
-__INLINE void ip_hmicrosectgt2_set(uint32_t value)
+__RWIP_INLINE void ip_hmicrosectgt2_set(uint32_t value)
 {
     REG_IP_WR(IP_HMICROSECTGT2_ADDR, value);
 }
@@ -3560,14 +3560,14 @@ __INLINE void ip_hmicrosectgt2_set(uint32_t value)
 
 #define IP_HMICROSECTGT2_RST    0x0
 
-__INLINE uint16_t ip_hmicrosectgt2_getf(void)
+__RWIP_INLINE uint16_t ip_hmicrosectgt2_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_HMICROSECTGT2_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_hmicrosectgt2_setf(uint16_t hmicrosectgt2)
+__RWIP_INLINE void ip_hmicrosectgt2_setf(uint16_t hmicrosectgt2)
 {
     ASSERT_ERR((((uint32_t)hmicrosectgt2 << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_IP_WR(IP_HMICROSECTGT2_ADDR, (uint32_t)hmicrosectgt2 << 0);
@@ -3586,12 +3586,12 @@ __INLINE void ip_hmicrosectgt2_setf(uint16_t hmicrosectgt2)
 #define IP_CLKNTGT3_INDEX  0x0000003E
 #define IP_CLKNTGT3_RESET  0x00000000
 
-__INLINE uint32_t ip_clkntgt3_get(void)
+__RWIP_INLINE uint32_t ip_clkntgt3_get(void)
 {
     return REG_IP_RD(IP_CLKNTGT3_ADDR);
 }
 
-__INLINE void ip_clkntgt3_set(uint32_t value)
+__RWIP_INLINE void ip_clkntgt3_set(uint32_t value)
 {
     REG_IP_WR(IP_CLKNTGT3_ADDR, value);
 }
@@ -3603,14 +3603,14 @@ __INLINE void ip_clkntgt3_set(uint32_t value)
 
 #define IP_CLKNTGT3_RST    0x0
 
-__INLINE uint32_t ip_clkntgt3_getf(void)
+__RWIP_INLINE uint32_t ip_clkntgt3_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_CLKNTGT3_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x0FFFFFFF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_clkntgt3_setf(uint32_t clkntgt3)
+__RWIP_INLINE void ip_clkntgt3_setf(uint32_t clkntgt3)
 {
     ASSERT_ERR((((uint32_t)clkntgt3 << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_IP_WR(IP_CLKNTGT3_ADDR, (uint32_t)clkntgt3 << 0);
@@ -3629,12 +3629,12 @@ __INLINE void ip_clkntgt3_setf(uint32_t clkntgt3)
 #define IP_HMICROSECTGT3_INDEX  0x0000003F
 #define IP_HMICROSECTGT3_RESET  0x00000000
 
-__INLINE uint32_t ip_hmicrosectgt3_get(void)
+__RWIP_INLINE uint32_t ip_hmicrosectgt3_get(void)
 {
     return REG_IP_RD(IP_HMICROSECTGT3_ADDR);
 }
 
-__INLINE void ip_hmicrosectgt3_set(uint32_t value)
+__RWIP_INLINE void ip_hmicrosectgt3_set(uint32_t value)
 {
     REG_IP_WR(IP_HMICROSECTGT3_ADDR, value);
 }
@@ -3646,14 +3646,14 @@ __INLINE void ip_hmicrosectgt3_set(uint32_t value)
 
 #define IP_HMICROSECTGT3_RST    0x0
 
-__INLINE uint16_t ip_hmicrosectgt3_getf(void)
+__RWIP_INLINE uint16_t ip_hmicrosectgt3_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_HMICROSECTGT3_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
     return (localVal >> 0);
 }
 
-__INLINE void ip_hmicrosectgt3_setf(uint16_t hmicrosectgt3)
+__RWIP_INLINE void ip_hmicrosectgt3_setf(uint16_t hmicrosectgt3)
 {
     ASSERT_ERR((((uint32_t)hmicrosectgt3 << 0) & ~((uint32_t)0x000003FF)) == 0);
     REG_IP_WR(IP_HMICROSECTGT3_ADDR, (uint32_t)hmicrosectgt3 << 0);
@@ -3674,12 +3674,12 @@ __INLINE void ip_hmicrosectgt3_setf(uint16_t hmicrosectgt3)
 #define IP_SLOTCLK_INDEX  0x00000040
 #define IP_SLOTCLK_RESET  0x00000000
 
-__INLINE uint32_t ip_slotclk_get(void)
+__RWIP_INLINE uint32_t ip_slotclk_get(void)
 {
     return REG_IP_RD(IP_SLOTCLK_ADDR);
 }
 
-__INLINE void ip_slotclk_set(uint32_t value)
+__RWIP_INLINE void ip_slotclk_set(uint32_t value)
 {
     REG_IP_WR(IP_SLOTCLK_ADDR, value);
 }
@@ -3697,7 +3697,7 @@ __INLINE void ip_slotclk_set(uint32_t value)
 #define IP_CLKN_UPD_RST    0x0
 #define IP_SCLK_RST        0x0
 
-__INLINE void ip_slotclk_pack(uint8_t samp, uint8_t clknupd, uint32_t sclk)
+__RWIP_INLINE void ip_slotclk_pack(uint8_t samp, uint8_t clknupd, uint32_t sclk)
 {
     ASSERT_ERR((((uint32_t)samp << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)clknupd << 30) & ~((uint32_t)0x40000000)) == 0);
@@ -3705,7 +3705,7 @@ __INLINE void ip_slotclk_pack(uint8_t samp, uint8_t clknupd, uint32_t sclk)
     REG_IP_WR(IP_SLOTCLK_ADDR,  ((uint32_t)samp << 31) | ((uint32_t)clknupd << 30) | ((uint32_t)sclk << 0));
 }
 
-__INLINE void ip_slotclk_unpack(uint8_t* samp, uint8_t* clknupd, uint32_t* sclk)
+__RWIP_INLINE void ip_slotclk_unpack(uint8_t* samp, uint8_t* clknupd, uint32_t* sclk)
 {
     uint32_t localVal = REG_IP_RD(IP_SLOTCLK_ADDR);
 
@@ -3714,37 +3714,37 @@ __INLINE void ip_slotclk_unpack(uint8_t* samp, uint8_t* clknupd, uint32_t* sclk)
     *sclk = (localVal & ((uint32_t)0x0FFFFFFF)) >> 0;
 }
 
-__INLINE uint8_t ip_slotclk_samp_getf(void)
+__RWIP_INLINE uint8_t ip_slotclk_samp_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SLOTCLK_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_slotclk_samp_setf(uint8_t samp)
+__RWIP_INLINE void ip_slotclk_samp_setf(uint8_t samp)
 {
     ASSERT_ERR((((uint32_t)samp << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_SLOTCLK_ADDR, (REG_IP_RD(IP_SLOTCLK_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)samp << 31));
 }
 
-__INLINE uint8_t ip_slotclk_clkn_upd_getf(void)
+__RWIP_INLINE uint8_t ip_slotclk_clkn_upd_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SLOTCLK_ADDR);
     return ((localVal & ((uint32_t)0x40000000)) >> 30);
 }
 
-__INLINE void ip_slotclk_clkn_upd_setf(uint8_t clknupd)
+__RWIP_INLINE void ip_slotclk_clkn_upd_setf(uint8_t clknupd)
 {
     ASSERT_ERR((((uint32_t)clknupd << 30) & ~((uint32_t)0x40000000)) == 0);
     REG_IP_WR(IP_SLOTCLK_ADDR, (REG_IP_RD(IP_SLOTCLK_ADDR) & ~((uint32_t)0x40000000)) | ((uint32_t)clknupd << 30));
 }
 
-__INLINE uint32_t ip_slotclk_sclk_getf(void)
+__RWIP_INLINE uint32_t ip_slotclk_sclk_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_SLOTCLK_ADDR);
     return ((localVal & ((uint32_t)0x0FFFFFFF)) >> 0);
 }
 
-__INLINE void ip_slotclk_sclk_setf(uint32_t sclk)
+__RWIP_INLINE void ip_slotclk_sclk_setf(uint32_t sclk)
 {
     ASSERT_ERR((((uint32_t)sclk << 0) & ~((uint32_t)0x0FFFFFFF)) == 0);
     REG_IP_WR(IP_SLOTCLK_ADDR, (REG_IP_RD(IP_SLOTCLK_ADDR) & ~((uint32_t)0x0FFFFFFF)) | ((uint32_t)sclk << 0));
@@ -3763,7 +3763,7 @@ __INLINE void ip_slotclk_sclk_setf(uint32_t sclk)
 #define IP_FINETIMECNT_INDEX  0x00000041
 #define IP_FINETIMECNT_RESET  0x00000000
 
-__INLINE uint32_t ip_finetimecnt_get(void)
+__RWIP_INLINE uint32_t ip_finetimecnt_get(void)
 {
     return REG_IP_RD(IP_FINETIMECNT_ADDR);
 }
@@ -3775,7 +3775,7 @@ __INLINE uint32_t ip_finetimecnt_get(void)
 
 #define IP_FINECNT_RST    0x0
 
-__INLINE uint16_t ip_finetimecnt_finecnt_getf(void)
+__RWIP_INLINE uint16_t ip_finetimecnt_finecnt_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_FINETIMECNT_ADDR);
     ASSERT_ERR((localVal & ~((uint32_t)0x000003FF)) == 0);
@@ -3796,12 +3796,12 @@ __INLINE uint16_t ip_finetimecnt_finecnt_getf(void)
 #define IP_ACTSCHCNTL_INDEX  0x00000044
 #define IP_ACTSCHCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_actschcntl_get(void)
+__RWIP_INLINE uint32_t ip_actschcntl_get(void)
 {
     return REG_IP_RD(IP_ACTSCHCNTL_ADDR);
 }
 
-__INLINE void ip_actschcntl_set(uint32_t value)
+__RWIP_INLINE void ip_actschcntl_set(uint32_t value)
 {
     REG_IP_WR(IP_ACTSCHCNTL_ADDR, value);
 }
@@ -3816,14 +3816,14 @@ __INLINE void ip_actschcntl_set(uint32_t value)
 #define IP_START_ACT_RST    0x0
 #define IP_ENTRY_IDX_RST    0x0
 
-__INLINE void ip_actschcntl_pack(uint8_t startact, uint8_t entryidx)
+__RWIP_INLINE void ip_actschcntl_pack(uint8_t startact, uint8_t entryidx)
 {
     ASSERT_ERR((((uint32_t)startact << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)entryidx << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_IP_WR(IP_ACTSCHCNTL_ADDR,  ((uint32_t)startact << 31) | ((uint32_t)entryidx << 0));
 }
 
-__INLINE void ip_actschcntl_unpack(uint8_t* startact, uint8_t* entryidx)
+__RWIP_INLINE void ip_actschcntl_unpack(uint8_t* startact, uint8_t* entryidx)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTSCHCNTL_ADDR);
 
@@ -3831,25 +3831,25 @@ __INLINE void ip_actschcntl_unpack(uint8_t* startact, uint8_t* entryidx)
     *entryidx = (localVal & ((uint32_t)0x0000000F)) >> 0;
 }
 
-__INLINE uint8_t ip_actschcntl_start_act_getf(void)
+__RWIP_INLINE uint8_t ip_actschcntl_start_act_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTSCHCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_actschcntl_start_act_setf(uint8_t startact)
+__RWIP_INLINE void ip_actschcntl_start_act_setf(uint8_t startact)
 {
     ASSERT_ERR((((uint32_t)startact << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_ACTSCHCNTL_ADDR, (REG_IP_RD(IP_ACTSCHCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)startact << 31));
 }
 
-__INLINE uint8_t ip_actschcntl_entry_idx_getf(void)
+__RWIP_INLINE uint8_t ip_actschcntl_entry_idx_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_ACTSCHCNTL_ADDR);
     return ((localVal & ((uint32_t)0x0000000F)) >> 0);
 }
 
-__INLINE void ip_actschcntl_entry_idx_setf(uint8_t entryidx)
+__RWIP_INLINE void ip_actschcntl_entry_idx_setf(uint8_t entryidx)
 {
     ASSERT_ERR((((uint32_t)entryidx << 0) & ~((uint32_t)0x0000000F)) == 0);
     REG_IP_WR(IP_ACTSCHCNTL_ADDR, (REG_IP_RD(IP_ACTSCHCNTL_ADDR) & ~((uint32_t)0x0000000F)) | ((uint32_t)entryidx << 0));
@@ -3875,12 +3875,12 @@ __INLINE void ip_actschcntl_entry_idx_setf(uint8_t entryidx)
 #define IP_DFANCNTL_INDEX  0x00000065
 #define IP_DFANCNTL_RESET  0x00000000
 
-__INLINE uint32_t ip_dfancntl_get(void)
+__RWIP_INLINE uint32_t ip_dfancntl_get(void)
 {
     return REG_IP_RD(IP_DFANCNTL_ADDR);
 }
 
-__INLINE void ip_dfancntl_set(uint32_t value)
+__RWIP_INLINE void ip_dfancntl_set(uint32_t value)
 {
     REG_IP_WR(IP_DFANCNTL_ADDR, value);
 }
@@ -3916,7 +3916,7 @@ __INLINE void ip_dfancntl_set(uint32_t value)
 #define IP_LETXPRIMIDCNTLEN_RST    0x0
 #define IP_LETXPRIMANTID_RST       0x0
 
-__INLINE void ip_dfancntl_pack(uint8_t btrxprimidcntlen, uint8_t btrxprimantid, uint8_t bttxprimidcntlen, uint8_t bttxprimantid, uint8_t lerxprimidcntlen, uint8_t lerxprimantid, uint8_t letxprimidcntlen, uint8_t letxprimantid)
+__RWIP_INLINE void ip_dfancntl_pack(uint8_t btrxprimidcntlen, uint8_t btrxprimantid, uint8_t bttxprimidcntlen, uint8_t bttxprimantid, uint8_t lerxprimidcntlen, uint8_t lerxprimantid, uint8_t letxprimidcntlen, uint8_t letxprimantid)
 {
     ASSERT_ERR((((uint32_t)btrxprimidcntlen << 31) & ~((uint32_t)0x80000000)) == 0);
     ASSERT_ERR((((uint32_t)btrxprimantid << 24) & ~((uint32_t)0x7F000000)) == 0);
@@ -3929,7 +3929,7 @@ __INLINE void ip_dfancntl_pack(uint8_t btrxprimidcntlen, uint8_t btrxprimantid, 
     REG_IP_WR(IP_DFANCNTL_ADDR,  ((uint32_t)btrxprimidcntlen << 31) | ((uint32_t)btrxprimantid << 24) | ((uint32_t)bttxprimidcntlen << 23) | ((uint32_t)bttxprimantid << 16) | ((uint32_t)lerxprimidcntlen << 15) | ((uint32_t)lerxprimantid << 8) | ((uint32_t)letxprimidcntlen << 7) | ((uint32_t)letxprimantid << 0));
 }
 
-__INLINE void ip_dfancntl_unpack(uint8_t* btrxprimidcntlen, uint8_t* btrxprimantid, uint8_t* bttxprimidcntlen, uint8_t* bttxprimantid, uint8_t* lerxprimidcntlen, uint8_t* lerxprimantid, uint8_t* letxprimidcntlen, uint8_t* letxprimantid)
+__RWIP_INLINE void ip_dfancntl_unpack(uint8_t* btrxprimidcntlen, uint8_t* btrxprimantid, uint8_t* bttxprimidcntlen, uint8_t* bttxprimantid, uint8_t* lerxprimidcntlen, uint8_t* lerxprimantid, uint8_t* letxprimidcntlen, uint8_t* letxprimantid)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
 
@@ -3943,97 +3943,97 @@ __INLINE void ip_dfancntl_unpack(uint8_t* btrxprimidcntlen, uint8_t* btrxprimant
     *letxprimantid = (localVal & ((uint32_t)0x0000007F)) >> 0;
 }
 
-__INLINE uint8_t ip_dfancntl_btrxprimidcntlen_getf(void)
+__RWIP_INLINE uint8_t ip_dfancntl_btrxprimidcntlen_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x80000000)) >> 31);
 }
 
-__INLINE void ip_dfancntl_btrxprimidcntlen_setf(uint8_t btrxprimidcntlen)
+__RWIP_INLINE void ip_dfancntl_btrxprimidcntlen_setf(uint8_t btrxprimidcntlen)
 {
     ASSERT_ERR((((uint32_t)btrxprimidcntlen << 31) & ~((uint32_t)0x80000000)) == 0);
     REG_IP_WR(IP_DFANCNTL_ADDR, (REG_IP_RD(IP_DFANCNTL_ADDR) & ~((uint32_t)0x80000000)) | ((uint32_t)btrxprimidcntlen << 31));
 }
 
-__INLINE uint8_t ip_dfancntl_btrxprimantid_getf(void)
+__RWIP_INLINE uint8_t ip_dfancntl_btrxprimantid_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x7F000000)) >> 24);
 }
 
-__INLINE void ip_dfancntl_btrxprimantid_setf(uint8_t btrxprimantid)
+__RWIP_INLINE void ip_dfancntl_btrxprimantid_setf(uint8_t btrxprimantid)
 {
     ASSERT_ERR((((uint32_t)btrxprimantid << 24) & ~((uint32_t)0x7F000000)) == 0);
     REG_IP_WR(IP_DFANCNTL_ADDR, (REG_IP_RD(IP_DFANCNTL_ADDR) & ~((uint32_t)0x7F000000)) | ((uint32_t)btrxprimantid << 24));
 }
 
-__INLINE uint8_t ip_dfancntl_bttxprimidcntlen_getf(void)
+__RWIP_INLINE uint8_t ip_dfancntl_bttxprimidcntlen_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00800000)) >> 23);
 }
 
-__INLINE void ip_dfancntl_bttxprimidcntlen_setf(uint8_t bttxprimidcntlen)
+__RWIP_INLINE void ip_dfancntl_bttxprimidcntlen_setf(uint8_t bttxprimidcntlen)
 {
     ASSERT_ERR((((uint32_t)bttxprimidcntlen << 23) & ~((uint32_t)0x00800000)) == 0);
     REG_IP_WR(IP_DFANCNTL_ADDR, (REG_IP_RD(IP_DFANCNTL_ADDR) & ~((uint32_t)0x00800000)) | ((uint32_t)bttxprimidcntlen << 23));
 }
 
-__INLINE uint8_t ip_dfancntl_bttxprimantid_getf(void)
+__RWIP_INLINE uint8_t ip_dfancntl_bttxprimantid_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x007F0000)) >> 16);
 }
 
-__INLINE void ip_dfancntl_bttxprimantid_setf(uint8_t bttxprimantid)
+__RWIP_INLINE void ip_dfancntl_bttxprimantid_setf(uint8_t bttxprimantid)
 {
     ASSERT_ERR((((uint32_t)bttxprimantid << 16) & ~((uint32_t)0x007F0000)) == 0);
     REG_IP_WR(IP_DFANCNTL_ADDR, (REG_IP_RD(IP_DFANCNTL_ADDR) & ~((uint32_t)0x007F0000)) | ((uint32_t)bttxprimantid << 16));
 }
 
-__INLINE uint8_t ip_dfancntl_lerxprimidcntlen_getf(void)
+__RWIP_INLINE uint8_t ip_dfancntl_lerxprimidcntlen_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00008000)) >> 15);
 }
 
-__INLINE void ip_dfancntl_lerxprimidcntlen_setf(uint8_t lerxprimidcntlen)
+__RWIP_INLINE void ip_dfancntl_lerxprimidcntlen_setf(uint8_t lerxprimidcntlen)
 {
     ASSERT_ERR((((uint32_t)lerxprimidcntlen << 15) & ~((uint32_t)0x00008000)) == 0);
     REG_IP_WR(IP_DFANCNTL_ADDR, (REG_IP_RD(IP_DFANCNTL_ADDR) & ~((uint32_t)0x00008000)) | ((uint32_t)lerxprimidcntlen << 15));
 }
 
-__INLINE uint8_t ip_dfancntl_lerxprimantid_getf(void)
+__RWIP_INLINE uint8_t ip_dfancntl_lerxprimantid_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00007F00)) >> 8);
 }
 
-__INLINE void ip_dfancntl_lerxprimantid_setf(uint8_t lerxprimantid)
+__RWIP_INLINE void ip_dfancntl_lerxprimantid_setf(uint8_t lerxprimantid)
 {
     ASSERT_ERR((((uint32_t)lerxprimantid << 8) & ~((uint32_t)0x00007F00)) == 0);
     REG_IP_WR(IP_DFANCNTL_ADDR, (REG_IP_RD(IP_DFANCNTL_ADDR) & ~((uint32_t)0x00007F00)) | ((uint32_t)lerxprimantid << 8));
 }
 
-__INLINE uint8_t ip_dfancntl_letxprimidcntlen_getf(void)
+__RWIP_INLINE uint8_t ip_dfancntl_letxprimidcntlen_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x00000080)) >> 7);
 }
 
-__INLINE void ip_dfancntl_letxprimidcntlen_setf(uint8_t letxprimidcntlen)
+__RWIP_INLINE void ip_dfancntl_letxprimidcntlen_setf(uint8_t letxprimidcntlen)
 {
     ASSERT_ERR((((uint32_t)letxprimidcntlen << 7) & ~((uint32_t)0x00000080)) == 0);
     REG_IP_WR(IP_DFANCNTL_ADDR, (REG_IP_RD(IP_DFANCNTL_ADDR) & ~((uint32_t)0x00000080)) | ((uint32_t)letxprimidcntlen << 7));
 }
 
-__INLINE uint8_t ip_dfancntl_letxprimantid_getf(void)
+__RWIP_INLINE uint8_t ip_dfancntl_letxprimantid_getf(void)
 {
     uint32_t localVal = REG_IP_RD(IP_DFANCNTL_ADDR);
     return ((localVal & ((uint32_t)0x0000007F)) >> 0);
 }
 
-__INLINE void ip_dfancntl_letxprimantid_setf(uint8_t letxprimantid)
+__RWIP_INLINE void ip_dfancntl_letxprimantid_setf(uint8_t letxprimantid)
 {
     ASSERT_ERR((((uint32_t)letxprimantid << 0) & ~((uint32_t)0x0000007F)) == 0);
     REG_IP_WR(IP_DFANCNTL_ADDR, (REG_IP_RD(IP_DFANCNTL_ADDR) & ~((uint32_t)0x0000007F)) | ((uint32_t)letxprimantid << 0));

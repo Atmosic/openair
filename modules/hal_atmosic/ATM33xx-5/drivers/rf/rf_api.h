@@ -25,6 +25,8 @@
 
 #define INVALID_TX_POWER_VALUE 0xFF
 
+typedef uint32_t atm_txpwr_ovr_key;
+
 /**
  *******************************************************************************
  * @brief Set the maximum tx power for all of the rf activities.
@@ -58,9 +60,18 @@ int rf_get_txpwr_advertising_val(void);
  *******************************************************************************
  * @brief Override tx_power index value from LC.
  * @param[in] txpwr_dbm Tx power in dbm.
+ * @return opaque value to be used during restore operation
  *******************************************************************************
  */
-void rf_set_txpwr_override(int8_t txpwr_dbm);
+atm_txpwr_ovr_key rf_set_txpwr_override(int8_t txpwr_dbm);
+
+/**
+ *******************************************************************************
+ * @brief Restore tx_power override settings
+ * @param[in] value opaque value obtained from rf_set_txpwr_override API
+ *******************************************************************************
+ */
+void rf_restore_txpwr_override(atm_txpwr_ovr_key value);
 
 /**
  *******************************************************************************

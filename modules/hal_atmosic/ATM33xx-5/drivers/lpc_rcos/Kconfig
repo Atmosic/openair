@@ -4,7 +4,7 @@
 
 config ATM_LPC_RCOS
 	bool "Atmosic Low Power Clock xtal omit module"
-	depends on BT
+	depends on ATM_RWLC
 
 config ATM_FORCE_LPC_RCOS
 	bool "Use RCOS for LPC even with xtal present"

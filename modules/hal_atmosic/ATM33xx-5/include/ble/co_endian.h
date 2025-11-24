@@ -6,7 +6,7 @@
  * @brief Common endianness conversion functions
  *
  * Copyright (C) RivieraWaves 2009-2025
- * Release Identifier: eedc1896
+ * Release Identifier: 4e03287e
  *
  *
  ****************************************************************************************
@@ -51,7 +51,7 @@
  * @param[in]  len       number of bytes to swap
  ****************************************************************************************
  */
-__INLINE void co_bswap_copy(uint8_t* p_val_out, const uint8_t* p_val_in, uint16_t len)
+__RWIP_INLINE void co_bswap_copy(uint8_t* p_val_out, const uint8_t* p_val_in, uint16_t len)
 {
     uint8_t* p_val_out_end = p_val_out + len;
     p_val_in += len - 1;
@@ -71,7 +71,7 @@ __INLINE void co_bswap_copy(uint8_t* p_val_out, const uint8_t* p_val_in, uint16_
  * @param[in] len       number of bytes to swap
  ****************************************************************************************
  */
-__INLINE void co_bswap(uint8_t* p_val, uint16_t len)
+__RWIP_INLINE void co_bswap(uint8_t* p_val, uint16_t len)
 {
     uint8_t* p_val_end = p_val + len - 1;
     while(p_val < p_val_end)
@@ -91,7 +91,7 @@ __INLINE void co_bswap(uint8_t* p_val, uint16_t len)
  * @return The 32 bit swapped value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_bswap32(uint32_t val32)
+__RWIP_INLINE uint32_t co_bswap32(uint32_t val32)
 {
     return (val32<<24) | ((val32<<8)&0xFF0000) | ((val32>>8)&0xFF00) | ((val32>>24)&0xFF);
 }
@@ -104,7 +104,7 @@ __INLINE uint32_t co_bswap32(uint32_t val32)
  * @return The 24 bit swapped value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_bswap24(uint32_t val24)
+__RWIP_INLINE uint32_t co_bswap24(uint32_t val24)
 {
     return ((val24<<16)&0xFF0000) | ((val24)&0xFF00) | ((val24>>16)&0xFF);
 }
@@ -117,7 +117,7 @@ __INLINE uint32_t co_bswap24(uint32_t val24)
  * @return The 16 bit swapped value.
  ****************************************************************************************
  */
-__INLINE uint16_t co_bswap16(uint16_t val16)
+__RWIP_INLINE uint16_t co_bswap16(uint16_t val16)
 {
     return (((uint32_t)(val16<<8))&0xFF00) | ((val16>>8)&0xFF);
 }
@@ -158,7 +158,7 @@ __INLINE uint16_t co_bswap16(uint16_t val16)
  * @return The converted long word.
  ****************************************************************************************
  */
-__INLINE uint32_t co_htobe32(uint32_t hostlong)
+__RWIP_INLINE uint32_t co_htobe32(uint32_t hostlong)
 {
     #if (!CPU_LE)
         return hostlong;
@@ -176,7 +176,7 @@ __INLINE uint32_t co_htobe32(uint32_t hostlong)
  * @return The converted 24-but value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_htobe24(uint32_t host24)
+__RWIP_INLINE uint32_t co_htobe24(uint32_t host24)
 {
     #if (!CPU_LE)
         return host24;
@@ -194,7 +194,7 @@ __INLINE uint32_t co_htobe24(uint32_t host24)
  * @return The converted short word.
  ****************************************************************************************
  */
-__INLINE uint16_t co_htobe16(uint16_t hostshort)
+__RWIP_INLINE uint16_t co_htobe16(uint16_t hostshort)
 {
     #if (!CPU_LE)
         return hostshort;
@@ -212,7 +212,7 @@ __INLINE uint16_t co_htobe16(uint16_t hostshort)
  * @return The converted long word.
  ****************************************************************************************
  */
-__INLINE uint32_t co_betoh32(uint32_t netlong)
+__RWIP_INLINE uint32_t co_betoh32(uint32_t netlong)
 {
     return co_htobe32(netlong);
 }
@@ -226,7 +226,7 @@ __INLINE uint32_t co_betoh32(uint32_t netlong)
  * @return The converted 24-bit value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_betoh24(uint32_t val24)
+__RWIP_INLINE uint32_t co_betoh24(uint32_t val24)
 {
     return co_htobe24(val24);
 }
@@ -240,7 +240,7 @@ __INLINE uint32_t co_betoh24(uint32_t val24)
  * @return The converted short word.
  ****************************************************************************************
  */
-__INLINE uint16_t co_betoh16(uint16_t netshort)
+__RWIP_INLINE uint16_t co_betoh16(uint16_t netshort)
 {
     return co_htobe16(netshort);
 }
@@ -276,7 +276,7 @@ __INLINE uint16_t co_betoh16(uint16_t netshort)
  * @return The converted 24-bit value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_htole24(uint32_t val24)
+__RWIP_INLINE uint32_t co_htole24(uint32_t val24)
 {
     #if (CPU_LE)
         return val24;
@@ -294,7 +294,7 @@ __INLINE uint32_t co_htole24(uint32_t val24)
  * @return The converted long word.
  ****************************************************************************************
  */
-__INLINE uint32_t co_htole32(uint32_t hostlong)
+__RWIP_INLINE uint32_t co_htole32(uint32_t hostlong)
 {
     #if (CPU_LE)
         return hostlong;
@@ -312,7 +312,7 @@ __INLINE uint32_t co_htole32(uint32_t hostlong)
  * @return The converted short word.
  ****************************************************************************************
  */
-__INLINE uint16_t co_htole16(uint16_t hostshort)
+__RWIP_INLINE uint16_t co_htole16(uint16_t hostshort)
 {
     #if (CPU_LE)
         return hostshort;
@@ -331,7 +331,7 @@ __INLINE uint16_t co_htole16(uint16_t hostshort)
  * @return The converted 24-bit value.
  ****************************************************************************************
  */
-__INLINE uint32_t co_letoh24(uint32_t val24)
+__RWIP_INLINE uint32_t co_letoh24(uint32_t val24)
 {
     return co_htole24(val24);
 }
@@ -345,7 +345,7 @@ __INLINE uint32_t co_letoh24(uint32_t val24)
  * @return The converted long word.
  ****************************************************************************************
  */
-__INLINE uint32_t co_letoh32(uint32_t btlong)
+__RWIP_INLINE uint32_t co_letoh32(uint32_t btlong)
 {
     return co_htole32(btlong);
 }
@@ -360,7 +360,7 @@ __INLINE uint32_t co_letoh32(uint32_t btlong)
  * @return The converted short word.
  ****************************************************************************************
  */
-__INLINE uint16_t co_letoh16(uint16_t btshort)
+__RWIP_INLINE uint16_t co_letoh16(uint16_t btshort)
 {
     return co_htole16(btshort);
 }

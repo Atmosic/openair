@@ -740,7 +740,8 @@ dma_exit_retention(void)
 #endif
 #endif // !CONFIG_SOC_FAMILY_ATM
 
-#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_PM)
+#if !defined(CONFIG_SOC_FAMILY_ATM) || \
+    (defined(CONFIG_PM) && defined(CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF))
 #ifdef CONFIG_ATM_DMA_RELOC_SRAM
 __ramfunc
 #endif
@@ -833,13 +834,36 @@ static void dma_constructor(void)
 #endif
 #endif // !CONFIG_SOC_FAMILY_ATM
 
-#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_PM)
+#if !defined(CONFIG_SOC_FAMILY_ATM) || \
+    (defined(CONFIG_PM) && defined(CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF))
     RV_PLF_BP_THROTTLE_ADD(dma_bp_throttle);
 #endif
 
 #ifdef DEBUG_DMA
     RV_PLF_SCHEDULE_ADD(dma_schedule);
 #endif
+
+#ifdef CONFIG_ATM_NO_SPE
+#ifdef __AT_DMA_CFG_HNONSEC_MACRO__
+    // set DMA to be a secure master
+    AT_DMA_CFG_HNONSEC__CFG_HNONSEC__CLR(CMSDK_AT_DMA_SECURE->CFG_HNONSEC);
+    AT_DMA_CFG_HNONSEC__CFG_HNONSEC__CLR(
+	CMSDK_AT_DMA_SECURE->CHAN1_CFG_HNONSEC);
+    AT_DMA_CFG_HNONSEC__CFG_HNONSEC__CLR(
+	CMSDK_AT_DMA_SECURE->CHAN2_CFG_HNONSEC);
+    AT_DMA_CFG_HNONSEC__CFG_HNONSEC__CLR(
+	CMSDK_AT_DMA_SECURE->CHAN3_CFG_HNONSEC);
+#endif
+#ifdef SEC_PRIV_CTRL_AHBNSPPCEXP1_DMA_Pos
+    // PPC is present, allow DMA unprivileged access to all peripherals
+    SEC_CTRL_REG->AHBSPPPCEXP1 = ~(0UL);
+    SEC_CTRL_REG->APBSPPPC0 = ~(0UL);
+    SEC_CTRL_REG->APBSPPPC1 = ~(0UL);
+    SEC_CTRL_REG->APBSPPPCEXP0 = ~(0UL);
+    SEC_CTRL_REG->APBSPPPCEXP1 = ~(0UL);
+    SEC_CTRL_REG->APBSPPPCEXP2 = ~(0UL);
+#endif
+#endif // CONFIG_ATM_NO_SPE
 }
 
 #ifdef CONFIG_SOC_FAMILY_ATM

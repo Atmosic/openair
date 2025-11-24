@@ -9,19 +9,61 @@ common:
     regex:
       - "scan entry"
 tests:
-  applications.ras_rreq_initiator.atm.atmwstklib.full:
-    tags: atm34 no_mcuboot
+  applications.ras_rreq_initiator.atm:
+    tags:
+      - no_mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_ATMWSTK_FULL=y
-      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/boards/${BOARD}_spe_uart0.overlay
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
-  applications.ras_rreq_initiator.atm.atmwstklib.full.uart1:
-    tags: atm34 no_mcuboot
+      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
+  applications.ras_rreq_initiator.atm.uart1:
+    tags:
+      - no_mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
-      - SB_CONFIG_ATMWSTK_FULL=y
-      - EXTRA_DTC_OVERLAY_FILE=boards/${BOARD}_ns_uart1.overlay
+      - FILE_SUFFIX=uart1
+  applications.ras_rreq_initiator.atm.uart1.ras_c_shell:
+    tags:
+      - no_mcuboot
+    extra_args:
+      - FILE_SUFFIX=uart1
     extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
+      - CONFIG_RAS_CLIENT_SHELL=y
+      - CONFIG_LOG_BACKEND_UART=y
+      - CONFIG_SHELL_LOG_BACKEND=n
+  applications.ras_rreq_initiator.atm.uart1.pwr_info:
+    tags:
+      - no_mcuboot
+    extra_args:
+      - FILE_SUFFIX=uart1
+    extra_configs:
+      - CONFIG_BT_TRANSMIT_POWER_CONTROL=y
+      - CONFIG_READ_RSSI=y
+  applications.ras_rreq_initiator.atm.uart1.1m_phy:
+    tags:
+      - no_mcuboot
+    extra_args:
+      - FILE_SUFFIX=uart1
+    extra_configs:
+      - CONFIG_ATM_BT_PHY_1M=y
+  applications.ras_rreq_initiator.atm.mcuboot.uart1.flash_xip:
+    tags:
+      - mcuboot
+      - flash_xip
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - FILE_SUFFIX=uart1
+  applications.ras_rreq_initiator.atm.mcuboot.uart1.flash_xip.overwrite:
+    tags:
+      - mcuboot
+      - flash_xip
+      - overwrite
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - mcuboot_CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS=n
+      - FILE_SUFFIX=uart1

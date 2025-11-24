@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&wurx {
+	status = "okay";
+
+	/* WuRx timing configuration for testing */
+	wake-timeout-ms = <1000>;
+	consecutive-signals = <3>;
+	signal-spacing-ms = <200>;
+};

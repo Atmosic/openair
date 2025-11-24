@@ -53,6 +53,8 @@ void pseq_core_power_all_sysram(void);
 void pseq_core_xtal_init(void);
 uint32_t pseq_core_init(void);
 void pseq_core_reset_radio_controller(void);
+void pseq_core_gpio_data_snapshot(void);
+bool pseq_core_gpio_pulse_restore(void);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <arm/atmosic/ATM34xx_partition_defs.h>
+
+#ifdef ATM_STORAGE_SIZE
+#undef ATM_STORAGE_SIZE
+#define ATM_STORAGE_SIZE 0x1000 // 4k
+#endif
+
+#define ATM_T_STORAGE_NODE_ID cece00F0
+#define T_STORAGE_SIZE 0x4000 //16KB
+
+#ifdef ATM_SLOT1_SIZE
+#define T_STORAGE_OFFSET (ATM_SLOT1_OFFSET + ATM_SLOT1_SIZE - T_STORAGE_SIZE)
+#else
+#define T_STORAGE_OFFSET (FLASH_SIZE - T_STORAGE_SIZE)
+#endif
+
+#if ((T_STORAGE_OFFSET+T_STORAGE_SIZE) > FLASH_SIZE)
+#error "Test storage size does not fit in specified FLASH_SIZE"
+#endif
+&flash0 {
+	partitions {
+		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		t_storage0: partition@ATM_T_STORAGE_NODE_ID {
+			label = "t_storage0";
+			reg = <T_STORAGE_OFFSET T_STORAGE_SIZE>;
+		};
+	};
+};

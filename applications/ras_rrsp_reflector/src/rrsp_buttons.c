@@ -8,14 +8,12 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/bluetooth/bluetooth.h>
-#ifdef CONFIG_BATT_FACTORY_RESET
-#include <zephyr/settings/settings.h>
-#endif
 #ifdef CONFIG_BTN_ON_OFF
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
+#include <zephyr/drivers/hwinfo.h>
 #include "compiler.h"
-#include "reset.h"
+#include "power.h"
 #endif
 #include "rrsp_mmi.h"
 #include "app_work_q.h"
@@ -25,6 +23,12 @@
 #ifdef CONFIG_RRSP_LED_IND
 #include "rrsp_led.h"
 #endif
+#ifdef CONFIG_BTN_FAKE_CS_DATA
+#include "ras.h"
+#endif
+#ifdef CONFIG_RRSP_BUZZER_IND
+#include "rrsp_buzzer.h"
+#endif
 
 LOG_MODULE_REGISTER(rrsp_btn, CONFIG_RRSP_BTN_LOG_LEVEL);
 
@@ -33,68 +37,11 @@ static const struct gpio_dt_spec rrsp_btn0 = GPIO_DT_SPEC_GET(SW0_NODE, gpios);
 static struct gpio_callback rrsp_button_cb;
 static struct k_work rrsp_button_work;
 
-#if !defined(CONFIG_BTN_ON_OFF) || defined(CONFIG_BATT_FACTORY_RESET)
+#if !defined(CONFIG_BTN_ON_OFF) || defined(CONFIG_BTN_FACTORY_RESET)
 static void rrsp_button_factory_reset_handler(void)
 {
 	LOG_INF("unpair button");
 	bt_unpair(BT_ID_DEFAULT, BT_ADDR_LE_ANY);
-}
-#endif
-
-#ifdef CONFIG_BATT_FACTORY_RESET
-static uint8_t batt_insert_times;
-
-static int rrsp_buttons_batt_insert_save(void)
-{
-	int err =
-		settings_save_one("rrsp_app/insert", &batt_insert_times, sizeof(batt_insert_times));
-	if (err) {
-		LOG_ERR("save batt insert times error %d", err);
-	}
-
-	return err;
-}
-
-static int rrsp_buttons_batt_insert_read(const char *name, size_t len, settings_read_cb read_cb,
-					 void *cb_arg)
-{
-	if (name || len > sizeof(batt_insert_times)) {
-		LOG_ERR("unexpected name:%s len:%u", name, len);
-		batt_insert_times = 0;
-		return 0;
-	}
-
-	int rc = read_cb(cb_arg, &batt_insert_times, sizeof(batt_insert_times));
-	if (rc < 0) {
-		LOG_ERR("failed to read batt_insert_times: %d", rc);
-		batt_insert_times = 0;
-		return rc;
-	}
-
-	LOG_INF("Read batt_insert_times:%u", batt_insert_times);
-
-	return 0;
-}
-
-SETTINGS_STATIC_HANDLER_DEFINE(rrsp_app, "rrsp_app/insert", NULL, rrsp_buttons_batt_insert_read,
-			       NULL, NULL);
-
-static void rrsp_buttons_batt_insert_reset(void)
-{
-	batt_insert_times = 0;
-	rrsp_buttons_batt_insert_save();
-}
-
-static void rrsp_button_bt_ready(int err)
-{
-	if (IS_ENABLED(CONFIG_SETTINGS)) {
-		settings_load();
-	}
-
-	if (err) {
-		LOG_ERR("BT initial fail: %d", err);
-	}
-	rrsp_button_factory_reset_handler();
 }
 #endif
 
@@ -139,18 +86,34 @@ static void rrsp_button_batt_rpt_handler(void)
 		}
 	}
 	rrsp_led_update(RRSP_LED_PAT_EVT_BAT1, true);
-#endif // CONFIG_RRSP_LED_IND
+#endif
 }
 #endif // CONFIG_BTN_BATT_REPORT
+
+#ifdef CONFIG_BTN_FACTORY_RESET
+#define BTN_LONG_LONG_PRESS_MS 10000
+static struct k_work_delayable rrsp_button_longlongpress_work;
+
+static void rrsp_button_longlongpress_handler(struct k_work *work)
+{
+	if (rrsp_mmi_get_state() == RRSP_MMI_STATE_OFF) {
+#ifdef CONFIG_RRSP_BUZZER_IND
+#define RRSP_FACTORY_RESET_BEEP_TIME_MS 500
+		rrsp_buzzer_beep(RRSP_FACTORY_RESET_BEEP_TIME_MS);
+#endif
+		rrsp_button_factory_reset_handler();
+		return;
+	} else {
+		LOG_ERR("Unexpected longlong press");
+	}
+}
+#endif
 
 static void rrsp_button_poweron_handler(void)
 {
 	LOG_INF("Key:Power on");
 #ifdef CONFIG_RRSP_LED_IND
 	rrsp_led_update(RRSP_LED_PAT_EVT_PWRON, true);
-#endif
-#ifdef CONFIG_BATT_FACTORY_RESET
-	rrsp_buttons_batt_insert_reset();
 #endif
 	rrsp_mmi_init();
 }
@@ -187,7 +150,36 @@ static void rrsp_button_lock_sleep(bool lock)
 	}
 	btn_lock = lock;
 }
-#endif
+
+static bool rrsp_button_check_boot_reason_button(void)
+{
+	uint32_t reset_cause;
+	int rc;
+
+	rc = hwinfo_get_reset_cause(&reset_cause);
+	LOG_INF("rc: %d reset_cause: %#x", rc, reset_cause);
+
+	if (!rc && (reset_cause & (RESET_POR | RESET_LOW_POWER_WAKE))) {
+		return true;
+	}
+
+	return false;
+}
+
+static bool rrsp_button_check_boot_reason_ota(void)
+{
+	uint32_t reset_cause;
+	int rc;
+
+	rc = hwinfo_get_reset_cause(&reset_cause);
+
+	if (!rc && (reset_cause & RESET_HARDWARE)) {
+		return true;
+	}
+
+	return false;
+}
+#endif // CONFIG_BTN_ON_OFF
 
 static void rrsp_button_work_handler(struct k_work *work)
 {
@@ -216,7 +208,7 @@ static void rrsp_button_work_handler(struct k_work *work)
 				k_work_cancel_delayable(&rrsp_button_cts_tap_timeout_work);
 				rrsp_button_batt_rpt_handler();
 			}
-#endif // CONFIG_BTN_BATT_REPORT
+#endif
 		} else {
 			LOG_DBG("Long Press Release");
 			if (rrsp_mmi_get_state() == RRSP_MMI_STATE_OFF) {
@@ -225,12 +217,22 @@ static void rrsp_button_work_handler(struct k_work *work)
 #ifdef CONFIG_BTN_BATT_REPORT
 			k_work_cancel_delayable(&rrsp_button_cts_tap_timeout_work);
 			cts_press = 0;
-#endif // CONFIG_BTN_BATT_REPORT
+#endif
 		}
 	}
-#else
-	rrsp_button_factory_reset_handler();
+#else // CONFIG_BTN_ON_OFF
+	if (gpio_pin_get_dt(&rrsp_btn0)) {
+#ifdef CONFIG_BTN_FAKE_CS_DATA
+#define FAKE_CS_DATA_RANGECOUNTER 0
+		if (rrsp_mmi_get_state() == RRSP_MMI_STATE_CONNECTED) {
+			LOG_DBG("Fake CS data:%u", FAKE_CS_DATA_RANGECOUNTER);
+			ras_fake_cs_data(FAKE_CS_DATA_RANGECOUNTER);
+			return;
+		}
 #endif
+		rrsp_button_factory_reset_handler();
+	}
+#endif // CONFIG_BTN_ON_OFF
 }
 
 static void rrsp_buttons_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
@@ -240,16 +242,22 @@ static void rrsp_buttons_pressed(const struct device *dev, struct gpio_callback 
 		hit_time = k_uptime_get();
 		hit_mask |= pins;
 		k_work_reschedule(&rrsp_button_longpress_work, K_MSEC(BTN_LONG_PRESS_MS));
+#ifdef CONFIG_BTN_FACTORY_RESET
+		k_work_reschedule(&rrsp_button_longlongpress_work, K_MSEC(BTN_LONG_LONG_PRESS_MS));
+#endif
 		LOG_DBG("Button Pressed");
 		rrsp_button_lock_sleep(true);
 	} else {
 		k_work_cancel_delayable(&rrsp_button_longpress_work);
+#ifdef CONFIG_BTN_FACTORY_RESET
+		k_work_cancel_delayable(&rrsp_button_longlongpress_work);
+#endif
 		hit_time = k_uptime_delta(&hit_time);
 		hit_mask &= (~pins);
 		LOG_DBG("Button Released");
 		rrsp_button_lock_sleep(false);
 	}
-#endif
+#endif // CONFIG_BTN_ON_OFF
 	atm_work_submit_to_app_work_q(&rrsp_button_work);
 }
 
@@ -259,6 +267,10 @@ static bool rrsp_buttons_configure_irq(const struct gpio_dt_spec btn)
 		LOG_ERR("button device is not ready");
 		return false;
 	}
+
+	gpio_init_callback(&rrsp_button_cb, rrsp_buttons_pressed, BIT(btn.pin));
+	gpio_add_callback(btn.port, &rrsp_button_cb);
+	LOG_INF("Set up button at %s pin %u", btn.port->name, btn.pin);
 	int err = gpio_pin_configure_dt(&btn, GPIO_INPUT);
 	if (err) {
 		LOG_ERR("Failed to configure %s pin %u err:%d", btn.port->name, btn.pin, err);
@@ -271,54 +283,46 @@ static bool rrsp_buttons_configure_irq(const struct gpio_dt_spec btn)
 		return false;
 	}
 #ifdef CONFIG_BTN_ON_OFF
-	if (!is_boot_uninit()) {
+	k_work_init_delayable(&rrsp_button_longpress_work, rrsp_button_longpress_handler);
+	atm_socoff_wakeup_gpio_set(true);
+#ifdef CONFIG_BTN_BATT_REPORT
+	k_work_init_delayable(&rrsp_button_cts_tap_timeout_work,
+			      rrsp_button_cts_tap_timeout_handler);
+#endif
+#ifdef CONFIG_BTN_FACTORY_RESET
+	k_work_init_delayable(&rrsp_button_longlongpress_work, rrsp_button_longlongpress_handler);
+#endif
+	if (!rrsp_button_check_boot_reason_button()) {
+		if (rrsp_button_check_boot_reason_ota()) {
+			LOG_INF("Power on: Boot with CPU reset for OTA");
+			rrsp_mmi_init();
+			return true;
+		}
 		LOG_INF("skip power on (boot type)");
 		return false;
 	}
 
 	if (!gpio_pin_get_dt(&btn)) {
 		LOG_INF("Button is not pressed");
-#ifdef CONFIG_BATT_FACTORY_RESET
-#define RRSP_BTN_BATT_INSERT_TIMES 5
-		if (is_boot_type(TYPE_POWER_ON)) {
-			err = settings_load_subtree("rrsp_app");
-			if (err) {
-				LOG_ERR("rrsp_app load_subtree failed %d", err);
-			}
-			batt_insert_times += 1;
-			if (batt_insert_times >= RRSP_BTN_BATT_INSERT_TIMES) {
-				bt_enable(rrsp_button_bt_ready);
-				batt_insert_times = 0;
-			}
-			rrsp_buttons_batt_insert_save();
-		}
-#endif
 		return false;
 	}
 
 	hit_time = k_uptime_get();
 	hit_mask = BIT(btn.pin);
 	rrsp_button_lock_sleep(true);
-	k_work_init_delayable(&rrsp_button_longpress_work, rrsp_button_longpress_handler);
 	k_work_reschedule(&rrsp_button_longpress_work, K_MSEC(BTN_LONG_PRESS_MS));
-#endif
-	gpio_init_callback(&rrsp_button_cb, rrsp_buttons_pressed, BIT(btn.pin));
-	gpio_add_callback(btn.port, &rrsp_button_cb);
-	LOG_INF("Set up button at %s pin %u", btn.port->name, btn.pin);
-#ifdef CONFIG_BTN_BATT_REPORT
-	k_work_init_delayable(&rrsp_button_cts_tap_timeout_work,
-			      rrsp_button_cts_tap_timeout_handler);
-#endif
+#endif // CONFIG_BTN_ON_OFF
 	return true;
 }
 
 bool rrsp_buttons_init(void)
 {
 	bool sts = true;
+
+	k_work_init(&rrsp_button_work, rrsp_button_work_handler);
+
 	if (!rrsp_buttons_configure_irq(rrsp_btn0)) {
 		sts = false;
-	} else {
-		k_work_init(&rrsp_button_work, rrsp_button_work_handler);
 	}
 #ifndef CONFIG_BTN_ON_OFF
 	rrsp_mmi_init();

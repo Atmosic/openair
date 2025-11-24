@@ -796,7 +796,6 @@ enum
 #define LL_CS_MAX_OVERRIDE_PARAMS         0x04   /*!< Maximum CS override parameter length. */
 #define LL_CS_MAX_MAIN_MODE_REP_CH_LEN    0x03   /*!< Maximum CS main mode repetition length. */
 #define LL_CS_USER_PAYLOAD_SIZE           0x10   /*!< CS user payload size. */
-#define LL_CS_MAX_NUM_STEPS_REPORT        0x05   /*!< Maximum CS number of steps reported. */
 #define LL_CS_MAX_NUM_ANT_PATHS           0x04   /*!< Maximum number of antenna paths. */
 #define LL_CS_SEC_INIT_VECTOR_LEN         8      /*!< CS security initialization vector length. */
 #define LL_CS_SEC_INST_NONCE_LEN          4      /*!< CS security instantiation nonce length. */

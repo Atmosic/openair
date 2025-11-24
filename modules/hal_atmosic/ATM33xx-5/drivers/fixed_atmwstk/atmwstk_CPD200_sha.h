@@ -11,6 +11,6 @@
  */
 #pragma once
 
-#define ATMWSTK_SHA {0x3142faba, 0x6cd3a891, 0xab110059, 0xeaf90ead, 0x98d933cc, 0x8444d891, 0x4679c881, 0x0564774f}
-#define ATMWSTK_SIZE 237628
+#define ATMWSTK_SHA {0x8d0d23c4, 0x6cfc2b92, 0xf0ed8da9, 0xa92b7110, 0xdf5ae3a1, 0xc3139ac9, 0x2ec75d7f, 0x38de052b}
+#define ATMWSTK_SIZE 233196
 #define ATMWSTK_START 0x00055000

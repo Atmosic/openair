@@ -15,18 +15,20 @@ Supported Platforms
 
 Starting 25.07.0 release, support for ATMx2xx(ATM2/3) platforms are deprecated.
 
-OpenAir branches
+OpenAir Branches
 ****************
 
 The main branch is used for development and to integrate all new features and bug fixes. It reflects the latest state of development.
 
-For Production Use
+For Production Use:
+-------------------
 
 If you need a stable version of this project, please use the code from one of the official releases_.
 
 .. _releases: https://github.com/Atmosic/openair/releases/
 
-For Contributors
+For Contributors:
+-----------------
 
 Please base all pull requests on the main branch.
 

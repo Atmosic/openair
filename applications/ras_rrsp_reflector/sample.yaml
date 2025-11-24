@@ -10,29 +10,42 @@ common:
       - "adv_entry"
 tests:
   applications.ras_rrsp_reflector.atm:
-    tags: atm34 no_mcuboot
+    tags:
+      - no_mcuboot
+  applications.ras_rrsp_reflector.atm.mcuboot:
+    tags:
+      - mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
-  applications.ras_rrsp_reflector.atm.mcuboot.atmwstklib.pd50:
-    tags: atm34 mcuboot
-    extra_args:
-      - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_CONFIG_ATMWSTK_PD50=y
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
   applications.ras_rrsp_reflector.atm.mcuboot.ota:
-    tags: atm34 mcuboot
+    tags:
+      - mcuboot
     extra_args:
-      - SB_CONFIG_SPE=y
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_CONFIG_ATMWSTK_PD50=y
       - EXTRA_CONF_FILE=basic_ota_bt.conf
-    extra_configs:
-      - CONFIG_ATM_SOC_ALLOW="ATM34"
+  applications.ras_rrsp_reflector.atm.mcuboot.flash_xip:
+    tags:
+      - mcuboot
+      - flash_xip
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+  applications.ras_rrsp_reflector.atm.mcuboot.flash_xip.overwrite:
+    tags:
+      - mcuboot
+      - flash_xip
+      - overwrite
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - mcuboot_CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS=n

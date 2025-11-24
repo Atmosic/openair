@@ -5,7 +5,7 @@
  *
  * @brief Secure Counter Driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  ******************************************************************************
  */
@@ -32,7 +32,7 @@
 
 #define SEC_CNTR_OTP_BIT 53
 
-#define SEC_CNTR_SC0_ADDR 0x0008FEF0
+#define SEC_CNTR_SC0_ADDR 0x1008FEF0
 
 #define SEC_CNTR_VERIFY_CNTR_IDX(idx) \
     (((idx) >= 0) && ((idx) < SEC_CNTR_NUM_CNTR))
@@ -145,15 +145,13 @@ sec_counter_ret_status_t sec_counter_set(uint8_t counter_idx, uint16_t value)
 }
 
 #ifdef SECURE_PROC_ENV
-__attribute__((cmse_nonsecure_entry))
-__attribute__((used))
+__SPE_NSC
 bool nsc_sec_counters_enabled(void)
 {
     return sec_counters_enabled();
 }
 
-__attribute__((cmse_nonsecure_entry))
-__attribute__((used))
+__SPE_NSC
 sec_counter_ret_status_t nsc_sec_counter_read(uint8_t counter_idx, uint16_t *out)
 {
     if (!mem_check_has_access(out, sizeof(uint16_t), true, true)) {
@@ -162,8 +160,7 @@ sec_counter_ret_status_t nsc_sec_counter_read(uint8_t counter_idx, uint16_t *out
     return sec_counter_read(counter_idx, out);
 }
 
-__attribute__((cmse_nonsecure_entry))
-__attribute__((used))
+__SPE_NSC
 sec_counter_ret_status_t nsc_sec_counter_incr(uint8_t counter_idx, uint16_t *out)
 {
     if (!mem_check_has_access(out, sizeof(uint16_t), true, true)) {
@@ -172,8 +169,7 @@ sec_counter_ret_status_t nsc_sec_counter_incr(uint8_t counter_idx, uint16_t *out
     return sec_counter_incr(counter_idx, out);
 }
 
-__attribute__((cmse_nonsecure_entry))
-__attribute__((used))
+__SPE_NSC
 sec_counter_ret_status_t nsc_sec_counter_set(uint8_t counter_idx,
     uint16_t value)
 {

@@ -1,10 +1,14 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 config ATM_SETTINGS
 	bool "Proprietary settings subsystem library"
-	depends on SETTINGS
+	select FLASH
+	select FLASH_MAP
+	select NVS
+	select SETTINGS
+	select ATM_NV_MEM_FLASH_PROT if DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
 
 if ATM_SETTINGS
 

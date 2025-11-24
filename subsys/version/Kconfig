@@ -5,3 +5,10 @@
 config ATM_VERSION
 	bool "Print Atmosic SDK Version"
 	default y
+
+config ATMWSTK_VERSION
+    string "Atmosic BLE stack version"
+    default "PD50" if ATMWSTK_PD50
+    default "FULL" if ATMWSTK_FULL
+    default "CPD200" if ATMWSTK_CPD200
+    default "NO_BLE"

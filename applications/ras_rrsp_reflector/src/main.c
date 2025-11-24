@@ -43,10 +43,15 @@ int main(void)
 
 	wdt_channel_id = wdt_install_timeout(wdog_dev, &wdt_config);
 	if (wdt_channel_id < 0) {
-		LOG_INF("Watchdog install error");
+		LOG_ERR("Watchdog install error: %d", wdt_channel_id);
 		return 1;
 	}
-	/* Watchdog already enable by CONFIG_WDOG_CMSDK_APB_START_AT_BOOT */
+
+	int ret = wdt_setup(wdog_dev, 0);
+	if (ret < 0) {
+		LOG_ERR("Watchdog setup error: %d", ret);
+		return 1;
+	}
 
 	if (!rrsp_buttons_init()) {
 #ifdef CONFIG_BTN_ON_OFF

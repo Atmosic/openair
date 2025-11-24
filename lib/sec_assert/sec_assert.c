@@ -24,8 +24,8 @@
 void sec_assert(const char *file, int line)
 {
 
-#ifdef CONFIG_SOC_FAMILY_ATM
-    sec_switch_console();
+#if defined(CONFIG_SOC_FAMILY_ATM) && defined(SECURE_PROC_ENV)
+	sec_switch_console();
 #endif
 
     PRINTF("Fatal security assert");
