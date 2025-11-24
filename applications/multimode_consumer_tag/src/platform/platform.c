@@ -10,6 +10,7 @@
  *******************************************************************************
  */
 
+#include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
@@ -111,6 +112,12 @@ void platform_factory_reset(void)
 #ifdef CONFIG_ATM_CS
 	atm_cs_rrsp_unpair();
 #endif
+	/* Unpair all bonds */
+	size_t count = 0;
+	bt_id_get(NULL, &count);
+	for (size_t i = 0; i < count; i++) {
+		bt_unpair(i, NULL);
+	}
 }
 
 void platform_gpio_init(void)

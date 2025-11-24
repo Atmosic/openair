@@ -92,7 +92,7 @@ int main(void)
 #endif
 		return 0;
 	}
-#endif
+#endif // CONFIG_TAG_BTN_OTA_MODE
 
 	tag_bt_ready();
 
