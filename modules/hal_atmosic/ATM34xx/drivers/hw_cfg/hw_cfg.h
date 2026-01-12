@@ -49,6 +49,11 @@ typedef enum {
 } scan_cfg_id_t;
 
 /**
+ * @brief Get backplane clock frequency for WFI
+ */
+uint32_t hw_cfg_get_wfi_freq(void);
+
+/**
  * @brief Initialize PMU registers
  */
 void hw_cfg_swreg_main_init(void);

@@ -91,6 +91,10 @@ enum atm_nvds_tag {
 #define CHIP_INFO__SPARE_ENABLE_RADIO_INIT__MASK 0x01U
 #define CHIP_INFO__SPARE_ENABLE_RADIO_INIT__READ(src) \
     (((uint8_t)(src) & 0x01U) >> 0)
+#define CHIP_INFO__SPARE_ENABLE_2MHZ_WFI__SHIFT 2
+#define CHIP_INFO__SPARE_ENABLE_2MHZ_WFI__MASK 0x04U
+#define CHIP_INFO__SPARE_ENABLE_2MHZ_WFI__READ(src) \
+    (((uint8_t)(src) & 0x04U) >> 2)
 
 #define CHIP_INFO_HARVESTING_DISABLED
 struct chip_info_s {
@@ -109,17 +113,16 @@ extern uint16_t chip_info_len;
 #define CUST_CAL__CUST_IGNORE_32KHZ_XTAL_CHECK__SHIFT	0
 #define CUST_CAL__CUST_IGNORE_32KHZ_XTAL_CHECK__MASK	0x01U
 #define CUST_CAL__CUST_IGNORE_32KHZ_XTAL_CHECK__READ(src) \
-		(((uint8_t)(src) & 0x01U) >> 0)
+    (((uint8_t)(src) & 0x01U) >> 0)
 
 #define CUST_CAL__CUST_NO_32KHZ_XTAL_ON_BOARD__SHIFT	1
 #define CUST_CAL__CUST_NO_32KHZ_XTAL_ON_BOARD__MASK	0x02U
 #define CUST_CAL__CUST_NO_32KHZ_XTAL_ON_BOARD__READ(src) \
-		(((uint8_t)(src) & 0x02U) >> 0)
+    (((uint8_t)(src) & 0x02U) >> 1)
 
 #define CUST_CAL__CUST_ENABLE_TCXO__SHIFT	2
 #define CUST_CAL__CUST_ENABLE_TCXO__MASK	0x04U
-#define CUST_CAL__CUST_ENABLE_TCXO__READ(src) \
-		(((uint8_t)(src) & 0x04U) >> 0)
+#define CUST_CAL__CUST_ENABLE_TCXO__READ(src) (((uint8_t)(src) & 0x04U) >> 2)
 
 /// Customer design-specific calibration for various registers
 struct cust_cfg_s {
