@@ -3,7 +3,7 @@
 
 @brief Secure Journal Managment
 
-Copyright (C) Atmosic 2024
+Copyright (C) Atmosic 2024-2025
 '''
 import struct
 
@@ -231,7 +231,7 @@ class TLV():
 
 
 class SecJrnl():
-    SEC_JRNL_TAIL_PAD_LEN = 4
+    SEC_JRNL_TAIL_PAD_LEN = 5
     SEC_JRNL_SECURE_ONLY_MASK = 0xfc
     SEC_JRNL_SECURE_ONLY_VAL = 0xec
 
@@ -329,7 +329,8 @@ class SecJrnl():
         if (self.ratchet_idx + new_tlv.total_size) > self.max_len:
             raise RuntimeError("Secure Journal can hold no more data")
         self.raw_bin = self.raw_bin[0:self.ratchet_idx] + new_tlv.bin + \
-            self.raw_bin[self.ratchet_idx + new_tlv.total_size:]
+            + b'\xFF' * (SecJrnl.SEC_JRNL_TAIL_PAD_LEN)
+            + self.raw_bin[self.ratchet_idx + new_tlv.total_size + SecJrnl.SEC_JRNL_TAIL_PAD_LEN :]
 
     @property
     def ratchet_idx(self):

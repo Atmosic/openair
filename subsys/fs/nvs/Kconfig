@@ -1,0 +1,14 @@
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config NVS_INIT_BAD_MEMORY_REGION
+	default y
+	help
+	  Enable automatic initialization of a NVS on a memory region that does
+	  not contain a valid NVS. A region containing an invalid NVS can be
+	  caused by corruption or by providing a non-empty region. This option
+	  ensures a new NVS can be created.
+	  In some cases, the RRAM default value is not empty (0xFF) but 0x55 or
+	  0xAA, which requires this option to be enabled to properly initialize
+	  the NVS region.
