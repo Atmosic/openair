@@ -207,8 +207,7 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 
 #ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
 #define PSEQ_USE_FSM
-#define BP_SLEEP_FREQ	1000000U
-#define BP_DOUBLER_FREQ	32000000U
+#define BP_DOUBLER_FREQ 32000000U
 
 static void pseq_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 {
@@ -607,8 +606,12 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 		__disable_irq();
 		SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 #ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+		static uint32_t bp_sleep_freq = 0;
+		if (!bp_sleep_freq) {
+			bp_sleep_freq = hw_cfg_get_wfi_freq();
+		}
 		uint32_t slow_freq = 0;
-		uint32_t bp_freq = pseq_scale_back_bp(BP_SLEEP_FREQ, &slow_freq);
+		uint32_t bp_freq = pseq_scale_back_bp(bp_sleep_freq, &slow_freq);
 		pseq_rram_nap_slow_wfi(bp_freq, slow_freq, false);
 #else
 		atm_power_rram_nap_wfi();

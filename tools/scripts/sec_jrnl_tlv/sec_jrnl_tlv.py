@@ -3,7 +3,7 @@
 
 @brief Secure Journal Managment
 
-Copyright (C) Atmosic 2024
+Copyright (C) Atmosic 2024-2025
 """
 
 import struct
@@ -229,7 +229,7 @@ class TLV:
 
 
 class SecJrnl:
-    SEC_JRNL_TAIL_PAD_LEN = 4
+    SEC_JRNL_TAIL_PAD_LEN = 5
     SEC_JRNL_SECURE_ONLY_MASK = 0xFC
     SEC_JRNL_SECURE_ONLY_VAL = 0xEC
 
@@ -329,7 +329,8 @@ class SecJrnl:
         self.raw_bin = (
             self.raw_bin[0 : self.ratchet_idx]
             + new_tlv.bin
-            + self.raw_bin[self.ratchet_idx + new_tlv.total_size :]
+            + b'\xFF' * (SecJrnl.SEC_JRNL_TAIL_PAD_LEN)
+            + self.raw_bin[self.ratchet_idx + new_tlv.total_size + SecJrnl.SEC_JRNL_TAIL_PAD_LEN :]
         )
 
     @property

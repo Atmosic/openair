@@ -11,8 +11,10 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/dfu/mcuboot.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
+#include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/bluetooth/bluetooth.h>
@@ -29,6 +31,9 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 /* OTA advertising device name */
 #define OTA_DEVICE_NAME     "Atmosic OTA"
 #define OTA_DEVICE_NAME_LEN (sizeof(OTA_DEVICE_NAME) - 1)
+
+/* Image confirmation delay in seconds */
+#define IMAGE_CONFIRM_DELAY_SEC 2
 
 /* OTA mode flag */
 static bool ota_mode_active = false;
@@ -66,7 +71,6 @@ BT_CONN_CB_DEFINE(ota_conn_callbacks) = {
 static int ota_settings_set(const char *name, size_t len, settings_read_cb read_cb, void *cb_arg)
 {
 	const char *next;
-	int rc;
 
 	if (settings_name_steq(name, "ota_mode", &next) && !next) {
 		if (len != sizeof(ota_mode_active)) {
@@ -74,7 +78,7 @@ static int ota_settings_set(const char *name, size_t len, settings_read_cb read_
 			return -EINVAL;
 		}
 
-		rc = read_cb(cb_arg, &ota_mode_active, sizeof(ota_mode_active));
+		int rc = read_cb(cb_arg, &ota_mode_active, sizeof(ota_mode_active));
 		if (rc < 0) {
 			LOG_ERR("Failed to read OTA mode flag: %d", rc);
 			return rc;
@@ -93,10 +97,8 @@ SETTINGS_STATIC_HANDLER_DEFINE(platform_ota, "platform", NULL, ota_settings_set,
 /* Start OTA advertising */
 static int ota_adv_start(void)
 {
-	int err;
-
 	/* Use legacy advertising with connectable and scannable */
-	err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ota_ad, ARRAY_SIZE(ota_ad), NULL, 0);
+	int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ota_ad, ARRAY_SIZE(ota_ad), NULL, 0);
 	if (err) {
 		LOG_ERR("OTA advertising failed to start (err %d)", err);
 		return err;
@@ -106,9 +108,48 @@ static int ota_adv_start(void)
 	return 0;
 }
 
+static enum mgmt_cb_return mgmt_event_cmd_callback(uint32_t event, enum mgmt_cb_return prev_status,
+						   int32_t *rc, uint16_t *group, bool *abort_more,
+						   void *data, size_t data_size)
+{
+	if (!ota_mode_active) {
+		LOG_ERR("OTA mode not active, rejecting command");
+		*rc = MGMT_ERR_EBADSTATE;
+		return MGMT_CB_ERROR_RC;
+	}
+
+	return MGMT_CB_OK;
+}
+
+static struct mgmt_callback mgmt_event_callback = {
+	.callback = mgmt_event_cmd_callback,
+	.event_id = MGMT_EVT_OP_CMD_RECV,
+};
+
+#ifndef CONFIG_MCUBOOT_BOOTLOADER_MODE_OVERWRITE_ONLY
+static void confirm_img_delay_work_cb(struct k_work *work)
+{
+	/* System stable for IMAGE_CONFIRM_DELAY_SEC seconds, confirm image to prevent revert */
+	int err = boot_write_img_confirmed();
+	if (err) {
+		LOG_ERR("Failed to confirm image: %d", err);
+	} else {
+		LOG_INF("Image confirmed successfully");
+	}
+}
+
+static K_WORK_DELAYABLE_DEFINE(confirm_img_delay_work, confirm_img_delay_work_cb);
+#endif
+
 bool platform_ctrl_ota_init(void)
 {
-	int err;
+#ifndef CONFIG_MCUBOOT_BOOTLOADER_MODE_OVERWRITE_ONLY
+	if (!boot_is_img_confirmed()) {
+		/* Schedule confirmation after IMAGE_CONFIRM_DELAY_SEC seconds */
+		k_work_schedule(&confirm_img_delay_work, K_SECONDS(IMAGE_CONFIRM_DELAY_SEC));
+	}
+#endif
+	mgmt_callback_register(&mgmt_event_callback);
 
 	/* Settings are already loaded by settings_load() in main() */
 	/* Just check if OTA mode is active and start advertising if needed */
@@ -120,7 +161,7 @@ bool platform_ctrl_ota_init(void)
 
 	/* Clear OTA mode flag for next boot */
 	bool ota_mode_setting = false;
-	err = settings_save_one(OTA_SETTINGS_KEY, &ota_mode_setting, sizeof(ota_mode_setting));
+	int err = settings_save_one(OTA_SETTINGS_KEY, &ota_mode_setting, sizeof(ota_mode_setting));
 	if (err) {
 		LOG_ERR("Failed to save OTA mode flag: %d", err);
 		/* Clear the flag on failure */
@@ -144,13 +185,11 @@ bool platform_ctrl_ota_init(void)
 
 void platform_ctrl_ota_enter(void)
 {
-	int err;
-
 	LOG_INF("Entering OTA mode");
 
 	/* Set OTA mode flag for next boot */
 	bool ota_mode_setting = true;
-	err = settings_save_one(OTA_SETTINGS_KEY, &ota_mode_setting, sizeof(ota_mode_setting));
+	int err = settings_save_one(OTA_SETTINGS_KEY, &ota_mode_setting, sizeof(ota_mode_setting));
 	if (err) {
 		LOG_ERR("Failed to save OTA mode flag: %d", err);
 		return;

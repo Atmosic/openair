@@ -208,6 +208,7 @@ tests:
       - EXTRA_CONF_FILE="basic_ota_bt.conf"
     extra_configs:
       - CONFIG_STF_TAG=n
+      - CONFIG_ATM_FMNA_LIB_DEBUG=n
     harness_config:
       type: multi_line
       regex:
@@ -225,6 +226,7 @@ tests:
       - EXTRA_CONF_FILE="basic_ota_bt.conf;stf_tag.conf"
     extra_configs:
       - CONFIG_FHN_TAG=n
+      - CONFIG_ATM_FMNA_LIB_DEBUG=n
     harness_config:
       type: multi_line
       regex:
