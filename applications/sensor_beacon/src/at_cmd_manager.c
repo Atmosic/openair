@@ -183,23 +183,8 @@ at_cmd_ext_err_t at_cmd_set_adv_interval(uint32_t interval)
 
 at_cmd_ext_err_t at_cmd_set_adv_data(const uint8_t *data, uint16_t len)
 {
-	/* Check unlock state first */
-	at_cmd_ext_err_t unlock_err = at_cmd_check_unlock_state();
-	if (unlock_err != AT_CMD_EXT_ERR_SUCCESS) {
-		return unlock_err;
-	}
-
-	/* Enhanced sensor beacon: support custom user data in TLV format while
-	 * maintaining backward compatibility with existing sensor data format.
-	 * NULL/0 data automatically clears user data. */
-	int ret = beacon_adv_set_user_data(data, len);
-	if (ret) {
-		LOG_ERR("Failed to set user data: %" PRId32, ret);
-		return AT_CMD_EXT_ERR_WRITE_FAILED;
-	}
-
-	LOG_INF("Custom user data set successfully in sensor beacon mode");
-	return AT_CMD_EXT_ERR_SUCCESS;
+	LOG_WRN("AT+ADVDATA command is not supported");
+	return AT_CMD_EXT_ERR_INVALID_PARAM;
 }
 
 at_cmd_ext_err_t at_cmd_reset_device(void)

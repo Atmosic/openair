@@ -42,19 +42,6 @@ int beacon_adv_set_interval(uint32_t interval);
  */
 int beacon_adv_set_device_name(const char *name);
 
-/**
- * @brief Set or clear user data with settings persistence
- *
- * Sets user data in TLV format in the advertising and saves it to persistent storage.
- * Pass NULL or 0 length to clear user data and revert to sensor-only advertising.
- * This function is used by AT command handlers.
- *
- * @param data User data in TLV format, or NULL to clear
- * @param len Length of user data, or 0 to clear
- * @return 0 on success, negative error code on failure
- */
-int beacon_adv_set_user_data(const uint8_t *data, uint16_t len);
-
 #ifdef __cplusplus
 }
 #endif
