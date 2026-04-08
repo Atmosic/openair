@@ -74,8 +74,6 @@ int fp_platform_ranging_capability_cb(rt_id_t tech_id, ranging_capability_t *cap
 			.size = sizeof(ranging_cap_de_cs_t),
 			.sec_type = CONFIG_FMDN_RANGING_CS_SECURITY_LEVEL,
 			.addr = {0},
-			.appearance = CONFIG_BT_DEVICE_APPEARANCE,
-			.flags = CS_LE_FLAG_GENERAL_DISCOVERY_MODE,
 		};
 		LOG_INF("Constructed CS capabilities");
 		return 0;

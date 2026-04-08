@@ -6,7 +6,7 @@
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN)
  *        Find Hub Precision Finding (FHPF) implementation
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -497,10 +497,8 @@ size_t fp_fhpf_gatt_bcna_ranging_cap_handle(const struct bt_conn *conn, uint8_t 
 				sys_memcpy_swap(cap_buffer.cs->addr, info.le.src->a.val,
 						BT_ADDR_SIZE);
 			}
-			LOG_INF("CS capabilities: id=0x%02x, size=0x%02x, sec_type=%d, "
-				"appearance=0x%04x, flags=0x%02x",
-				cap_buffer.cs->id, cap_buffer.cs->size, cap_buffer.cs->sec_type,
-				cap_buffer.cs->appearance, cap_buffer.cs->flags);
+			LOG_INF("CS capabilities: id=0x%02x, size=0x%02x, sec_type=%d",
+				cap_buffer.cs->id, cap_buffer.cs->size, cap_buffer.cs->sec_type);
 			LOG_HEXDUMP_INF(cap_buffer.cs->addr, BT_ADDR_SIZE, "CS capabilities: addr");
 		}
 #endif
