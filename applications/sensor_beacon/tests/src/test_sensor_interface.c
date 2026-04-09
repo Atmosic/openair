@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/ztest.h>
@@ -45,7 +45,8 @@ ZTEST(sensor_interface, test_sensor_interface_get_temp_humidity)
 
 		LOG_INF("Sensor data validation passed");
 	} else {
-		LOG_WRN("Failed to get temp/humidity: %" PRId32 " (expected without real sensors)", ret);
+		LOG_WRN("Failed to get temp/humidity: %" PRId32 " (expected without real sensors)",
+			ret);
 		/* Acceptable in test environment */
 	}
 }
@@ -60,13 +61,15 @@ ZTEST(sensor_interface, test_sensor_interface_get_accel)
 	ret = sensor_interface_get_accel(&accel_x, &accel_y, &accel_z);
 
 	if (!ret) {
-		LOG_INF("Accelerometer: X=%" PRIu16 ", Y=%" PRIu16 ", Z=%" PRIu16, accel_x, accel_y, accel_z);
+		LOG_INF("Accelerometer: X=%" PRIu16 ", Y=%" PRIu16 ", Z=%" PRIu16, accel_x, accel_y,
+			accel_z);
 
 		/* For a stationary device, Z-axis should show ~1g effect */
 
 		LOG_INF("Accelerometer data validation passed");
 	} else {
-		LOG_WRN("Failed to get accelerometer data: %" PRId32 " (expected without real sensors)",
+		LOG_WRN("Failed to get accelerometer data: %" PRId32
+			" (expected without real sensors)",
 			ret);
 		/* Acceptable in test environment */
 	}

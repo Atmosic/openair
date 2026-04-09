@@ -1,8 +1,9 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config ATM_LPC
 	bool "Atmosic Low Power Clock module"
-	default y if BT
+	default y if ATM_BLE_DRIVER_SLEEP
 	depends on !ATM_FORCE_LPC_RCOS

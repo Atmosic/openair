@@ -1,9 +1,11 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 add_subdirectory(app_batt)
 add_subdirectory(app_work_q)
+add_subdirectory(at_cmd)
+add_subdirectory(at_cmd_set)
 add_subdirectory(atm_asm)
 add_subdirectory(atm_bthci_utils)
 add_subdirectory(atm_cs)
@@ -13,6 +15,7 @@ add_subdirectory(atm_gfp)
 add_subdirectory(atm_hci_uart)
 add_subdirectory(atm_mcuboot_ext)
 add_subdirectory(atm_shell)
+add_subdirectory(atm_stf)
 add_subdirectory(atm_test_common)
 add_subdirectory(atm_utils_c)
 add_subdirectory(atm_utils_endian)

@@ -5,7 +5,7 @@
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN) extention
  * Internal definitions
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -26,28 +26,48 @@
 extern "C" {
 #endif
 
-/// Length of FMDN Beacon Action Randon nonce
+/// Length of FMDN Beacon Action Random nonce
 #define BCNA_RNDM_NONCE_LEN   8
-/// FMDN Beacon Action Major version
-#define BCNA_MJR_VER          0x01
+/* FMDN Beacon Action Major version
+ * 0x02 for FHN v2 support (when CONFIG_FAST_PAIR_FMDN_V2 enabled)
+ * 0x01 for legacy FMDN v1 (when CONFIG_FAST_PAIR_FMDN_V2 disabled)
+ */
+#ifdef CONFIG_FAST_PAIR_FMDN_V2
+#define BCNA_MJR_VER 0x02
+#else
+#define BCNA_MJR_VER 0x01
+#endif
 /// Length of FMDN Beacon Action Major version
 #define BCNA_MJR_VER_LEN      1
+
+/* FHN v2 Capabilities Bitmap
+ * Bit 0: Persistent Connection (0x01), Bit 1: Reverse Ringing (0x02)
+ */
+#ifdef CONFIG_FAST_PAIR_FMDN_V2
+#define FP_FMDN_V2_CAPABILITIES_BITMAP                                                             \
+	(0 | (IS_ENABLED(CONFIG_FMDN_PERSISTENT_CONNECTION) ? 0x01 : 0x00) |                       \
+	 (IS_ENABLED(CONFIG_FMDN_REVERSE_RINGING) ? 0x02 : 0x00))
+#else
+#define FP_FMDN_V2_CAPABILITIES_BITMAP 0x00
+#endif
 /// Length of FMDN Beacon Action read response
 #define BCNA_READ_RESP_LEN    (BCNA_MJR_VER_LEN + BCNA_RNDM_NONCE_LEN)
-/// Maximun Length of FMDN Beacon Action additional data
+/// Maximum Length of FMDN Beacon Action additional data
 #define BCNA_ADD_DATA_MAX_LEN 40
 /// Length of FMDN Beacon Action authentication data
 #define BCNA_AUTH_DATA_LEN    128
 /// Length of FMDN Beacon Action read parameter
 #define BCNA_READ_PARAM_LEN   16
-#define BCNA_AUTH_DATA_LEN    128
 /// Length of FMDN Beacon Action authentication key
 #define BCNA_AUTH_KEY_LEN     8
-/// Maximun Length of FMDN Beacon Action authentication key
+/// Maximum Length of FMDN Beacon Action authentication key
 #define BCNA_AUTH_KEY_MAX_LEN 16
 /// Length of FMDN EID key
 #define BCNA_EID_KEY_AUTH_LEN (FP_FMDN_EID_KEY_LEN + BCNA_RNDM_NONCE_LEN)
 
+/// Ring components bitmap for single component (e.g., consumer tag)
+#define BCNA_RING_COMPONENTS_SINGLE 0x01
+/// Ring components bitmap for TWS earbuds (Right bud + Left bud + Case)
 #define BCNA_RING_COMPONENTS_ALL 0x03
 /// 0x01: Ringing volume selection available. If set, the Provider must accept
 /// and handle 3 volume levels as indicated in Ring operation

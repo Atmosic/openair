@@ -4,12 +4,11 @@
 
 config ATM_CS
 	bool "Atmosic Reflector with Ranging Responder Library"
-	select BT_CHANNEL_SOUNDING
-	select BT_RAS
+	depends on BT_CHANNEL_SOUNDING
+	depends on BT_RAS
 	select ATM_LDO_MODE
 	select APP_WORK_Q
 	select ATM_SETTINGS if !ATM_CS_ADV_BT_ID_DEFAULT
-	depends on SOC_SERIES_ATM34
 	help
 	  Enable Atmosic Channel Sounding (CS) reflector functionality.
 	  This provides ranging capabilities using Bluetooth Channel Sounding

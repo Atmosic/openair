@@ -26,10 +26,10 @@
 
 #ifdef CONFIG_ATM_GFP_DIRECT_UECC_INTERFACE
 #include "uECC_vli.h"
-#else
+#elif CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 #include "mbedtls/ecdh.h"
-#include "mbedtls/ecdsa.h"
 #include "mbedtls/ecp.h"
+#include "mbedtls/aes.h"
 #endif
 
 #ifndef CONFIG_SOC_FAMILY_ATM
@@ -70,6 +70,7 @@ static bool gfp_crypto_do_aes_ecb(uint8_t *out, uint8_t const *in, uint16_t in_l
 				  uint8_t const *key, bool en, gfp_crypto_aes_ecb_type_t type)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 	mbedtls_aes_context aes;
 	mbedtls_aes_init(&aes);
 	int ret;
@@ -88,6 +89,51 @@ cleanup:
 	mbedtls_aes_free(&aes);
 	return ret ? false : true;
 #else
+
+	// Ensure PSA crypto is initialized
+	psa_status_t status = psa_crypto_init();
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_crypto_init failed: %d", status);
+		return false;
+	}
+
+	// Set up key attributes
+	psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+	psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT);
+	psa_set_key_algorithm(&attributes, PSA_ALG_ECB_NO_PADDING);
+	psa_set_key_type(&attributes, PSA_KEY_TYPE_AES);
+	psa_set_key_bits(&attributes, AES_KEY_BITS(type));
+
+	// Import the key
+	psa_key_id_t key_id = 0;
+	status = psa_import_key(&attributes, key, AES_KEY_BITS(type) / 8, &key_id);
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_import_key failed: %d", status);
+		return false;
+	}
+
+	// Perform encryption or decryption
+	size_t output_length;
+	if (en) {
+		status = psa_cipher_encrypt(key_id, PSA_ALG_ECB_NO_PADDING, in, in_len, out, in_len,
+					    &output_length);
+	} else {
+		status = psa_cipher_decrypt(key_id, PSA_ALG_ECB_NO_PADDING, in, in_len, out, in_len,
+					    &output_length);
+	}
+
+	// Clean up the key
+	psa_destroy_key(key_id);
+
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_cipher_%s failed: %d", en ? "encrypt" : "decrypt", status);
+		return false;
+	}
+
+	return true;
+#endif
+#else  // CONFIG_SOC_FAMILY_ATM
+       // Use ATM hardware acceleration
 	atm_aes_params_t const params = {
 		.mode = ATM_AES_MODE_ECB,
 		.key_len = AES_KEY_LEN(type),
@@ -105,7 +151,7 @@ cleanup:
 	}
 	atm_aes_disable();
 	return true;
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 }
 
 bool gfp_crypto_aes_ecb_enc(uint8_t *enc_data, uint8_t const *data, uint16_t data_len,
@@ -134,6 +180,7 @@ static void gfp_crypto_hmac_key(uint8_t *hmac_key, uint8_t const *key, uint16_t 
 bool gfp_crypto_sha256(uint8_t const *data_in, uint16_t data_len, uint8_t *data_out)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 	mbedtls_sha256_context ctx;
 	mbedtls_sha256_init(&ctx);
 	int ret;
@@ -147,6 +194,27 @@ cleanup:
 	mbedtls_sha256_free(&ctx);
 	return ret ? false : true;
 #else
+
+	// Ensure PSA crypto is initialized
+	psa_status_t status = psa_crypto_init();
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_crypto_init failed: %d", status);
+		return false;
+	}
+
+	// Compute SHA256 hash using one-shot API
+	size_t hash_length;
+	status = psa_hash_compute(PSA_ALG_SHA_256, data_in, data_len, data_out,
+				  PSA_HASH_LENGTH(PSA_ALG_SHA_256), &hash_length);
+
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_hash_compute failed: %d", status);
+		return false;
+	}
+
+	return true;
+#endif
+#else  // CONFIG_SOC_FAMILY_ATM
 	atm_sha256_params_t const sha256_params = {.mode = ATM_SHA256_SHA_MODE,
 						   .byte_endianess = ATM_SHA256_ENDIANESS_BIG,
 						   .digest_endianess = ATM_SHA256_ENDIANESS_BIG};
@@ -156,13 +224,14 @@ cleanup:
 		return false;
 	}
 	return true;
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 }
 
 bool gfp_crypto_hmac_sha256(uint8_t const *data_in, uint16_t data_len, uint8_t *data_out,
 			    uint8_t const *key, uint16_t key_len)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 	int res;
 	mbedtls_md_type_t const alg = MBEDTLS_MD_SHA256;
 	mbedtls_md_info_t const *info = mbedtls_md_info_from_type(alg);
@@ -180,6 +249,46 @@ cleanup:
 	mbedtls_md_free(&ctx);
 	return res ? false : true;
 #else
+
+	// Ensure PSA crypto is initialized
+	psa_status_t status = psa_crypto_init();
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_crypto_init failed: %d", status);
+		return false;
+	}
+
+	// Set up key attributes for HMAC
+	psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+	psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_SIGN_MESSAGE);
+	psa_set_key_algorithm(&attributes, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+	psa_set_key_type(&attributes, PSA_KEY_TYPE_HMAC);
+
+	// Import the HMAC key
+	psa_key_id_t key_id = 0;
+	status = psa_import_key(&attributes, key, key_len, &key_id);
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_import_key failed: %d", status);
+		return false;
+	}
+
+	// Compute HMAC-SHA256 using one-shot API
+	size_t mac_length;
+	status = psa_mac_compute(
+		key_id, PSA_ALG_HMAC(PSA_ALG_SHA_256), data_in, data_len, data_out,
+		PSA_MAC_LENGTH(PSA_KEY_TYPE_HMAC, 256, PSA_ALG_HMAC(PSA_ALG_SHA_256)), &mac_length);
+
+	// Clean up the key
+	psa_destroy_key(key_id);
+
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_mac_compute failed: %d", status);
+		return false;
+	}
+
+	return true;
+#endif
+#else  // CONFIG_SOC_FAMILY_ATM
+       // Use ATM hardware acceleration
 	uint8_t hmac_key[HMAC_KEY_LEN];
 	gfp_crypto_hmac_key(hmac_key, key, key_len);
 	atm_sha256_params_t const sha256_params = {.mode = ATM_SHA256_HMAC_MODE,
@@ -192,91 +301,89 @@ cleanup:
 		return false;
 	}
 	return true;
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 }
 
-#ifdef CONFIG_SOC_FAMILY_ATM
-void gfp_crypto_sha256_init(mbedtls_sha256_context *ctx)
-#else
-void gfp_crypto_sha256_init(void)
-#endif
+void gfp_crypto_sha256_init(gfp_crypto_sha256_ctx_t *ctx)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 	mbedtls_sha256_init(ctx);
 	mbedtls_sha256_starts(ctx, false);
 #else
+
+	// Ensure PSA crypto is initialized
+	psa_status_t status = psa_crypto_init();
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_crypto_init failed: %d", status);
+		return;
+	}
+
+	// Initialize hash operation
+	*ctx = psa_hash_operation_init();
+	status = psa_hash_setup(ctx, PSA_ALG_SHA_256);
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_hash_setup failed: %d", status);
+		return;
+	}
+#endif
+#else  // CONFIG_SOC_FAMILY_ATM
+	UNUSED(ctx);
 	atm_sha256_params_t const sha256_params = {.mode = ATM_SHA256_SHA_MODE,
 						   .byte_endianess = ATM_SHA256_ENDIANESS_BIG,
 						   .digest_endianess = ATM_SHA256_ENDIANESS_BIG};
 	atm_sha256_init(&sha256_params);
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 }
 
-#ifdef CONFIG_SOC_FAMILY_ATM
-bool gfp_crypto_hmac_sha256_init(mbedtls_md_context_t *ctx, uint8_t const *key, uint16_t key_len)
-#else
-void gfp_crypto_hmac_sha256_init(uint8_t const *key, uint16_t key_len)
-#endif
-{
-#if CONFIG_SOC_FAMILY_ATM
-	mbedtls_md_type_t const alg = MBEDTLS_MD_SHA256;
-	mbedtls_md_info_t const *info = mbedtls_md_info_from_type(alg);
-	mbedtls_md_init(ctx);
-	if (mbedtls_md_setup(ctx, info, true)) {
-		ATM_LOG(W, "mbedtls_md_setup FAILED");
-		return false;
-	}
-	if (mbedtls_md_hmac_starts(ctx, key, sizeof(key_len))) {
-		ATM_LOG(W, "mbedtls_md_hmac_starts FAILED");
-		return false;
-	}
-	return true;
-#else
-	uint8_t hmac_key[HMAC_KEY_LEN];
-	gfp_crypto_hmac_key(hmac_key, key, key_len);
-	atm_sha256_params_t const sha256_params = {.mode = ATM_SHA256_HMAC_MODE,
-						   .byte_endianess = ATM_SHA256_ENDIANESS_BIG,
-						   .digest_endianess = ATM_SHA256_ENDIANESS_BIG,
-						   .key = hmac_key};
-	atm_sha256_init(&sha256_params);
-#endif
-}
-
-#ifdef CONFIG_SOC_FAMILY_ATM
-bool gfp_crypto_sha256_update(mbedtls_sha256_context *ctx, uint8_t const *data, uint16_t data_len)
-#else
-bool gfp_crypto_sha256_update(uint8_t const *data, uint16_t data_len)
-#endif
+bool gfp_crypto_sha256_update(gfp_crypto_sha256_ctx_t *ctx, uint8_t const *data, uint16_t data_len)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 	if (mbedtls_sha256_update(ctx, data, data_len)) {
 		ATM_LOG(W, "sha256 update error");
 		return false;
 	}
 #else
+	psa_status_t status = psa_hash_update(ctx, data, data_len);
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_hash_update failed: %d", status);
+		return false;
+	}
+#endif
+#else  // CONFIG_SOC_FAMILY_ATM
+	UNUSED(ctx);
 	if (atm_sha256_update_pio(data, data_len) != ATM_SHA256_RES_SUCCESS) {
 		ATM_LOG(W, "atm_sha256_update_pio FAILED");
 		return false;
 	}
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 	return true;
 }
 
-#ifdef CONFIG_SOC_FAMILY_ATM
-void gfp_crypto_sha256_deinit(mbedtls_sha256_context *ctx, uint8_t *out)
-#else
-void gfp_crypto_sha256_deinit(uint8_t *out)
-#endif
+void gfp_crypto_sha256_deinit(gfp_crypto_sha256_ctx_t *ctx, uint8_t *out)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 	if (mbedtls_sha256_finish(ctx, out)) {
 		ATM_LOG(W, "sha256 finish error");
 	}
 	mbedtls_sha256_free(ctx);
 #else
+	size_t hash_length;
+	psa_status_t status =
+		psa_hash_finish(ctx, out, PSA_HASH_LENGTH(PSA_ALG_SHA_256), &hash_length);
+	if (status != PSA_SUCCESS) {
+		ATM_LOG(W, "psa_hash_finish failed: %d", status);
+		psa_hash_abort(ctx);
+		return;
+	}
+#endif
+#else  // CONFIG_SOC_FAMILY_ATM
+	UNUSED(ctx);
 	atm_sha256_final(out);
 	atm_sha256_disable();
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 }
 
 void gfp_crypto_reverse_array(uint8_t *array, size_t length)
@@ -377,7 +484,7 @@ static int gfp_crypto_uECC_curve_public_key_size_secp256r1(void)
 	return uECC_curve_public_key_size(CURVE_SECP256R1);
 }
 
-#else
+#elif CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 
 static int mbedtls_csrng(void *state, uint8_t *dest, unsigned size)
 {
@@ -493,8 +600,7 @@ cleanup:
 	mbedtls_mpi_free(&ecp_privkey);
 	return !rv ? 1 : 0;
 }
-
-#endif // CONFIG_ATM_GFP_DIRECT_UECC_INTERFACE
+#endif // CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 
 #ifdef CONFIG_ATM_GFP_DIRECT_UECC_INTERFACE
 void gfp_crypto_ecp_curve_intf_secp160r1(gfp_crypto_ecp_curve_intf_t *intf)
@@ -517,13 +623,15 @@ void gfp_crypto_ecp_curve_intf_secp256r1(gfp_crypto_ecp_curve_intf_t *intf)
 	intf->curve_public_key_size = gfp_crypto_uECC_curve_public_key_size_secp256r1;
 	intf->vli_mmod = gfp_crypto_uECC_vli_mmod_secp256r1;
 	intf->compute_public_key = gfp_crypto_uECC_compute_public_key_secp256r1;
-#else
+#elif CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 	intf->shared_secret = gfp_crypto_mbedtls_shared_secret_secp256r1;
 	intf->order_size = gfp_crypto_mbedtls_order_size_secp256r1;
 	intf->curve_private_key_size = gfp_crypto_mbedtls_private_key_size_secp256r1;
 	intf->curve_public_key_size = gfp_crypto_mbedtls_public_key_size_secp256r1;
 	intf->vli_mmod = gfp_crypto_mbedtls_vli_mmod_secp256r1;
 	intf->compute_public_key = gfp_crypto_mbedtls_compute_public_key_secp256r1;
+#else
+#error "No ECP 256r1 curve interface is defined"
 #endif
 }
 
@@ -592,8 +700,8 @@ bool gfp_crypto_aes_ctr(uint8_t *ct, uint16_t ct_len, gfp_crypto_aes_ctr_ctx_t c
 	uint8_t iv[ATM_AES_BLOCK_LEN_BYTES];
 	uint8_t const *plaintext = gac->pt;
 
-	STATIC_ASSERT(ATM_AES_BLOCK_LEN_BYTES <= GFP_CRYPTO_AES_BLOCK_LEN_BYTES,
-		      "Wrong AES block size");
+	_Static_assert(ATM_AES_BLOCK_LEN_BYTES <= GFP_CRYPTO_AES_BLOCK_LEN_BYTES,
+		       "Wrong AES block size");
 
 	memset(iv, 0x00, ATM_AES_BLOCK_LEN_BYTES);
 	memcpy(&iv[GFP_CRYPTO_HMAC_NONCE_LEN], gac->nonce, GFP_CRYPTO_HMAC_NONCE_LEN);
@@ -669,11 +777,20 @@ bool gfp_crypto_gfps_hmac_sha256(uint8_t *ct, uint16_t ct_len, gfp_crypto_ctx_t 
 	uint16_t offset = GFPS_HMAC_SHA256_K_SIZE;
 	memcpy(&buf[offset], gc->nonce, GFP_CRYPTO_HMAC_NONCE_LEN);
 	offset += GFP_CRYPTO_HMAC_NONCE_LEN;
-	mbedtls_sha256_context ctx;
+
+	gfp_crypto_sha256_ctx_t ctx;
 	gfp_crypto_sha256_init(&ctx);
-	gfp_crypto_sha256_update(&ctx, buf, offset);
-	gfp_crypto_sha256_update(&ctx, gc->pt, gc->pt_len);
+	if (!gfp_crypto_sha256_update(&ctx, buf, offset)) {
+		ATM_LOG(W, "gfp_crypto_sha256_update failed");
+		goto cleanup;
+	}
+
+	if (!gfp_crypto_sha256_update(&ctx, gc->pt, gc->pt_len)) {
+		ATM_LOG(W, "gfp_crypto_sha256_update failed");
+		goto cleanup;
+	}
 	gfp_crypto_sha256_deinit(&ctx, ct);
+
 #define GFPS_HMAC_SHA256_OPAD 0x5C
 
 	// K ^ opad
@@ -690,4 +807,15 @@ bool gfp_crypto_gfps_hmac_sha256(uint8_t *ct, uint16_t ct_len, gfp_crypto_ctx_t 
 	free(buf);
 
 	return true;
+cleanup:
+#ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+	mbedtls_sha256_free(&ctx);
+#else
+	psa_hash_abort(&ctx);
+#endif
+#endif // CONFIG_SOC_FAMILY_ATM
+	memset(buf, 0x00, tsize);
+	free(buf);
+	return false;
 }

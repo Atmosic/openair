@@ -5,7 +5,9 @@
  *
  * @brief Battery model
  *
- * Copyright (C) Atmosic 2022
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */

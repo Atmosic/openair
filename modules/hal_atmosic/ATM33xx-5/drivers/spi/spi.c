@@ -1,18 +1,22 @@
-/*****************************************************************************************
-*
-* @file spi.c
-*
-* @brief Sydney 1.0 SPI driver
-*
-* Copyright (C) Atmosic 2018-2023
-*
-*
-*****************************************************************************************/
+/**
+ *******************************************************************************
+ *
+ * @file spi.c
+ *
+ * @brief SPI driver
+ *
+ * Copyright (C) Atmosic 2018-2025
+ *
+ *******************************************************************************
+ */
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 #include <zephyr/kernel.h>
 #include <soc.h>
 #include <zephyr/init.h>
+#ifdef SPI_TRANS_WFI
+#error "Cannot use `SPI_TRANS_WFI` in RTOS Environment"
+#endif
 #endif
 
 #include "arch.h"

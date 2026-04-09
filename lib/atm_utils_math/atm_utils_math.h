@@ -5,7 +5,7 @@
  *
  * @brief ATM common math functions
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -21,13 +21,14 @@
  *
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdlib.h>
 #include "compiler.h"
+#include "ll.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /// Macro to return a value with a single bit set
 #define ATM_BIT(x) (1UL << (x))

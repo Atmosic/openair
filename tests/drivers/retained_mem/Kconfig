@@ -1,6 +1,6 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 # Test-specific configuration for retained memory driver tests
 
@@ -8,6 +8,7 @@ source "Kconfig.zephyr"
 
 config RETAINED_MEM_TEST_HIBERNATION_DURATION_MS
 	int "Hibernation duration for tests in milliseconds"
+	default 2 if ATM_IS_FOR_SIM
 	default 2000
 	help
 	  Duration in milliseconds for hibernation during tests.

@@ -26,20 +26,6 @@ Monitoring Sensor Data
 4. When your sensor beacon device appears, tap **MONITOR**
 5. The app will display real-time sensor data from the device
 
-Waking Up the Device
-====================
-
-When the device is in hibernation with WuRx enabled:
-
-1. Go to the scanning page in the app
-2. Tap the three-bar menu button (☰) in the top right corner
-3. Select **Wake Up**
-4. The device will wake from hibernation and resume advertising
-
-.. note::
-   To enable WuRx functionality, the application must be built with ``CONFIG_WURX=y``
-   and an appropriate wake-up pattern overlay. See the WURX Mode section below for details.
-
 Features
 ********
 
@@ -50,7 +36,6 @@ Features
 - **Fixed Configuration**: Compile-time configuration only, no runtime changes
 - **Periodic Updates**: Configurable interval for sensor data updates
 - **Power Management**: Supports Zephyr power management with optimized sleep
-- **WURX Support**: Optional Wake-Up Receiver for low-power operation
 - **Comprehensive Testing**: Full Ztest test suite for core functionality
 
 Architecture
@@ -131,6 +116,14 @@ Optimized for power consumption, performance, and minimal logging:
 
     west build -p always -b <BOARD> openair/applications/sensor_beacon --sysbuild -T applications.sensor_beacon.atm
 
+Production Build with MCUboot + Serial DFU
+==========================================
+Enables MCUboot and supports firmware upgrades over UART:
+
+.. code-block:: bash
+
+    west build -p always -b <BOARD>@mcuboot openair/applications/sensor_beacon --sysbuild -T applications.sensor_beacon.atm.mcuboot.dfu
+
 Debug Build
 ===========
 Enhanced logging and debugging aids for development:
@@ -160,13 +153,13 @@ To flash the built images:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load
+    west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load
 
 **Example:**
 
 .. code-block:: bash
 
-    west flash --skip-rebuild -d build --verify --device 000900066361 --jlink --fast_load
+    west flash --no-rebuild -d build --verify --device 000900066361 --jlink --fast_load
 
 Configuration Differences
 ==========================
@@ -210,14 +203,14 @@ To build and run the test suite:
 .. code-block:: bash
 
     west build -p always -b <BOARD> openair/applications/sensor_beacon/tests --sysbuild
-    west flash --skip-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load
+    west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load
 
 **Example:**
 
 .. code-block:: bash
 
     west build -p always -b ATMEVK-3430e-YQN-5 openair/applications/sensor_beacon/tests --sysbuild
-    west flash --skip-rebuild -d build --verify --device 000900066361 --jlink --fast_load
+    west flash --no-rebuild -d build --verify --device 000900066361 --jlink --fast_load
 
 The test suite includes:
 
@@ -236,55 +229,6 @@ The application supports Zephyr power management:
 - Periodic sensor readings with configurable intervals
 - Automatic sleep between operations
 - Watchdog integration for reliability
-
-WURX Mode
-=========
-
-To enable WuRx (Wake-Up Receive) functionality, build the application with ``CONFIG_WURX=y`` and specify a wake-up pattern overlay file.
-
-**WURX Mode Operation:**
-
-1. **Startup Phase**: Device powers on and advertises sensor data for a fixed period of time, which can be configured via ``CONFIG_SENSOR_BEACON_WURX_ACTIVE_ADV_TIME_MS``.
-2. **Hibernation**: Enters deep hibernation mode (low power consumption).
-3. **Wake-Up Detection**: WuRx hardware monitors for wake-up signals while in hibernation.
-4. **Wake-Up Response**: When a wake-up signal is detected, it goes back to **Startup Phase**.
-
-Wake-Up Signal Configuration
-----------------------------
-
-The WuRx hardware can be configured to detect different types of wake-up signals by specifying different overlay files in ``openair/doc/wurx/`` using ``-DEXTRA_DTC_OVERLAY_FILE`` to match your wake-up signal source.
-
-Bluetooth Inquiry
-^^^^^^^^^^^^^^^^^
-
-Configure WURX to detect Bluetooth inquiry scans (can be sent from an Android phone):
-
-.. code-block:: bash
-
-    -DCONFIG_WURX=y -DEXTRA_DTC_OVERLAY_FILE="<WEST_TOPDIR>/openair/doc/wurx/bt_inquiry.overlay"
-
-iBeacon
-^^^^^^^
-
-Configure WURX to detect iBeacon advertisements (can be sent from an iPhone):
-
-.. code-block:: bash
-
-    -DCONFIG_WURX=y -DEXTRA_DTC_OVERLAY_FILE="<WEST_TOPDIR>/openair/doc/wurx/ibeacon.overlay"
-
-High Duty Cycle Advertisements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Configure WURX to detect high duty cycle advertisements:
-
-.. code-block:: bash
-
-    -DCONFIG_WURX=y -DEXTRA_DTC_OVERLAY_FILE="<WEST_TOPDIR>/openair/doc/wurx/high_duty_adv.overlay"
-
-The ``openair/samples/bluetooth/high_duty_adv`` example can be used to issue high duty cycle advertisements as a wake-up signal source.
-
-.. note::
-   For detailed information about WuRx and these overlay configurations, see :ref:`wurx_documentation`.
 
 LED and Button Functionality
 *****************************

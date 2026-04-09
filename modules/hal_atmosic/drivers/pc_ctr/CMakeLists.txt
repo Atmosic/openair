@@ -1,6 +1,7 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 if(CONFIG_ATM_PC_CTR)
   zephyr_include_directories(.)
@@ -24,7 +25,7 @@ if(CONFIG_ATM_PC_CTR)
     PC_LOW_THD=CONFIG_ATM_PC_LOW_THD
   )
   zephyr_compile_definitions_ifdef(CONFIG_ATM_LL_HEAP_SIZE
-    LL_HEAP_SIZE_OVERRIDE=CONFIG_ATM_LL_HEAP_SIZE
+    LL_HEAP_SIZE=${CONFIG_ATM_LL_HEAP_SIZE}U
   )
   zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_DBG_PC_CTR_MEM_USAGE
     DBG_PC_CTR_MEM_USAGE
@@ -35,6 +36,9 @@ if(CONFIG_ATM_PC_CTR)
   zephyr_compile_definitions_ifdef(CONFIG_ATM_PC_FSU_CIS_IFS_MIN
     PC_FSU_CIS_IFS_MIN=CONFIG_ATM_PC_FSU_CIS_IFS_MIN
   )
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_DTM_PACKET_INTERVAL
+    DTM_PACKET_INTERVAL_OVERRIDE=CONFIG_ATM_DTM_PACKET_INTERVAL
+  )
   zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_BLE_CS_MANDATORY_TIMING_ONLY
     BLE_CS_MANDATORY_TIMING_ONLY
   )
@@ -44,6 +48,9 @@ if(CONFIG_ATM_PC_CTR)
   zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_BLE_CS_DBG_VECTOR
     BLE_CS_DBG_VECTOR
   )
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_BLE_CS_TEST_UNSYNC_MODE
+    BLE_CS_TEST_UNSYNC_MODE
+  )
   zephyr_compile_definitions_ifdef(CONFIG_ATM_MAX_ACL_TXBUF_SIZE
     MAX_ACL_TXBUF_SIZE=CONFIG_ATM_MAX_ACL_TXBUF_SIZE
   )
@@ -52,5 +59,11 @@ if(CONFIG_ATM_PC_CTR)
   )
   zephyr_compile_definitions_ifdef(CONFIG_ATM_BLE_CS_SYNC_PHY_2M_BT2_ENABLE
     ATM_BLE_CS_SYNC_PHY_2M_BT2_ENABLE
+  )
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_BLE_CS_NUM_CONFIG_SUP
+    ATM_BLE_CS_NUM_CONFIG_SUP=CONFIG_ATM_BLE_CS_NUM_CONFIG_SUP
+  )
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_LL_MAX_CONN
+    CFG_GAP_MAX_LINKS=CONFIG_ATM_LL_MAX_CONN
   )
 endif ()

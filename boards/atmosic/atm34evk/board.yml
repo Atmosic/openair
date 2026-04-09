@@ -47,6 +47,18 @@ boards:
   socs:
     - name: ATM34xx-5
 
+- name: ATMMOD-3405
+  vendor: atmosic
+  revision:
+    format: custom
+    default: normal
+    revisions:
+    - name: mcuboot
+    - name: mcuboot_bl
+    - name: normal
+  socs:
+    - name: ATM34xx-5
+
 - name: ATMEVK-3405-WQK-5
   vendor: atmosic
   revision:

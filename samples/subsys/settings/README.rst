@@ -42,7 +42,7 @@ Flash command:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild --verify --device <DEVICE_ID> [--jlink] --fast_load [--erase_flash]
+    west flash --no-rebuild --verify --device <DEVICE_ID> [--jlink] --fast_load [--erase_flash]
 
 .. note::
 

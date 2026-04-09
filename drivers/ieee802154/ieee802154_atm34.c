@@ -100,6 +100,9 @@ struct ieee802154_atm34_data {
 	 * Coordinate ed scan and completion callback
 	 */
 	energy_scan_done_cb_t energy_scan_done;
+	uint32_t ed_end_time;     // End time in FRC microseconds
+	int32_t ed_rssi_sum;      // Sum of RSSI samples (for averaging)
+	uint16_t ed_sample_count; // Number of samples collected
 
 	/*
 	 * Lookup tables for data pending.  FIXME: linear search for now.
@@ -684,14 +687,38 @@ static int ieee802154_atm34_radio_tx(const struct device *dev, enum ieee802154_t
 
 static void ieee802154_atm34_cb_ed_complete(atm_mac_status_t status, int8_t rssi)
 {
-	LOG_DBG("Rssi: %d", rssi);
+	LOG_DBG("Rssi: %d status: %d", rssi, status);
 
 	atomic_val_t radio_state = atomic_get(&data.state);
 
+	// Radio must be locked during ED
 	if (!(radio_state & IEEE802154_ATM34_RADIO_LOCKED)) {
-		// Radio must be locked during ED
 		LOG_ERR("ED complete: unknown state %ld", radio_state);
+		return;
 	}
+
+	int8_t avg_rssi = INT8_MIN;
+
+	if (data.energy_scan_done) {
+		// Accumulate valid samples
+		if (status == ATM_MAC_STATUS_SUCCESS) {
+			data.ed_rssi_sum += rssi;
+			data.ed_sample_count++;
+		}
+
+		// Check if we should continue sampling
+		if (atm_mac_frc_get_current_time() < data.ed_end_time) {
+			// Continue sampling - start another measurement (keep radio locked)
+			atm_req_154_energy_detect(atm_154_iface, data.priority);
+			return;
+		}
+
+		// Calculate average RSSI
+		if (data.ed_sample_count > 0) {
+			avg_rssi = (int8_t)(data.ed_rssi_sum / data.ed_sample_count);
+		}
+	}
+
 	atomic_val_t post_ed_radio_state = radio_state & ~IEEE802154_ATM34_RADIO_LOCKED;
 	if (post_ed_radio_state == IEEE802154_ATM34_RX_RUNNING) {
 		ieee802154_atm34_rx_enable();
@@ -708,9 +735,11 @@ static void ieee802154_atm34_cb_ed_complete(atm_mac_status_t status, int8_t rssi
 		return;
 	}
 
+	LOG_DBG("ED scan complete: %u samples, avg rssi: %d", data.ed_sample_count, avg_rssi);
+
 	energy_scan_done_cb_t callback = data.energy_scan_done;
 	data.energy_scan_done = NULL;
-	callback(net_if_get_device(data.iface), rssi);
+	callback(net_if_get_device(data.iface), avg_rssi);
 }
 
 static int ieee802154_atm34_radio_ed_scan(const struct device *dev, uint16_t duration,
@@ -751,9 +780,17 @@ static int ieee802154_atm34_radio_ed_scan(const struct device *dev, uint16_t dur
 		ieee802154_atm34_rx_stop();
 	}
 
+	// Initialize multi-sample averaging state
+	uint32_t duration_us = (uint32_t)duration * USEC_PER_MSEC;
 	data.energy_scan_done = done_cb;
-	atm_req_154_energy_detect(atm_154_iface, duration * USEC_PER_MSEC, data.priority);
-	LOG_DBG("Energy detect started (channel:%d)", atm_req_154_get_channel(atm_154_iface));
+	data.ed_end_time = atm_mac_frc_get_current_time() + duration_us;
+	data.ed_rssi_sum = 0;
+	data.ed_sample_count = 0;
+
+	// Start first energy detection measurement
+	atm_req_154_energy_detect(atm_154_iface, data.priority);
+	LOG_DBG("Energy detect started (channel:%d duration:%" PRIu32 " us)",
+		atm_req_154_get_channel(atm_154_iface), duration_us);
 	return 0;
 }
 

@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #pragma once
@@ -134,20 +134,12 @@ void atm_tput_set_tx_power(struct bt_conn *conn, int8_t tx_power);
  */
 int8_t atm_tput_get_tx_power(void);
 
-#ifdef CONFIG_AUTO_TEST
-/**
- * @brief Command value for automatic test termination
- *
- * This command is sent to signal the end of automated testing when
- * CONFIG_AUTO_TEST is enabled. Used in CI/CD and automated test environments.
- */
-#define ATM_TPUT_END_TEST_CMD 0xFF
-
+#ifdef CONFIG_ATM_TPUT_AUTO_TEST
 /**
  * @brief Signal test completion to connected device
  *
  * Sends an end-test command to the connected device to signal that
- * automated testing is complete. Only available when CONFIG_AUTO_TEST
+ * automated testing is complete. Only available when CONFIG_ATM_TPUT_AUTO_TEST
  * is enabled.
  *
  * @param conn Bluetooth connection handle

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -42,7 +42,19 @@ int periodic_adv(void)
 	}
 
 	/* Set periodic advertising parameters */
-	err = bt_le_per_adv_set_param(adv, BT_LE_PER_ADV_DEFAULT);
+#ifdef CONFIG_SOC_SERIES_ATM33
+	/*
+	 * ATM33 does not support ADI
+	 * could attempt a runtime check with BT_FEAT_LE_PER_ADV_ADI_SUPP()
+	 */
+	const struct bt_le_per_adv_param *per_adv_param = BT_LE_PER_ADV_DEFAULT;
+#else
+	const struct bt_le_per_adv_param *per_adv_param =
+		BT_LE_PER_ADV_PARAM(BT_GAP_PER_ADV_SLOW_INT_MIN, BT_GAP_PER_ADV_SLOW_INT_MAX,
+				    BT_LE_PER_ADV_OPT_INCLUDE_ADI);
+#endif
+	err = bt_le_per_adv_set_param(adv, per_adv_param);
+
 	if (err) {
 		LOG_ERR("Failed to set periodic advertising parameters"
 			" (err %d)\n",

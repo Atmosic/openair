@@ -8,7 +8,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (C) Atmosic 2026
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -169,6 +171,7 @@ typedef struct
   uint16_t  bisBigOffsDelayUsec;    /*!< Minimum BIG offset in microseconds. */
   /* DTM */
   uint16_t  dtmRxSyncMs;            /*!< DTM Rx synchronization window in milliseconds. */
+  uint8_t   dtmOptPktIntervalSlot;  /*!< Override packet interval in DTM mode (slots, 0=no override, 1 slot = 625us). */
   /* PHY */
   bool      phy2mSup;               /*!< 2M PHY supported. */
   bool      phyCodedSup;            /*!< Coded PHY supported. */
@@ -392,6 +395,7 @@ typedef enum
 #define LL_OP_MODE_FLAG_BIG_RM_SCH                  (UINT64_C(1) << 29)  /*!< Use reservation manager BOD scheduling for BIG. */
 #define LL_OP_MODE_FLAG_BYPASS_INSTANT_DISCON       (UINT64_C(1) << 30)  /*!< Bypass disconnect when instant is past. */
 /* diagnostics only */
+#define LL_OP_MODE_FLAG_ENA_CS_TEST_UNSYNC_MODE     (UINT64_C(1) << 55)  /*!< Enable CS test unsync mode. */
 #define LL_OP_MODE_FLAG_ENA_CS_DBG_VECTOR           (UINT64_C(1) << 56)  /*!< Enable CS debug vector. */
 #define LL_OP_MODE_FLAG_ENA_ADV_DLY                 (UINT64_C(1) << 57)  /*!< Enable advertising delay. */
 #define LL_OP_MODE_FLAG_ENA_SCAN_BACKOFF            (UINT64_C(1) << 58)  /*!< Enable scan backoff. */
@@ -3316,6 +3320,68 @@ uint8_t LlSetScanRespData(uint8_t len, const uint8_t *pData);
  */
 /*************************************************************************************************/
 void LlAdvEnable(uint8_t enable);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Advertising TX complete callback signature.
+ *
+ *  This callback is invoked in interrupt context immediately after the last advertising channel
+ *  transmission completes. It provides the lowest latency notification for advertising completion.
+ *
+ *  \param      status      Transmission status (BB_STATUS_SUCCESS or error).
+ *
+ *  \note       This callback is called from baseband ISR context. Keep processing minimal.
+ */
+/*************************************************************************************************/
+typedef void (*LlFastAdvTxCompCback_t)(uint8_t status);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Fast non-connectable legacy advertising parameters.
+ *
+ *  This structure contains parameters for fast non-connectable, non-scannable legacy advertising
+ *  configuration without HCI command/event overhead.
+ *
+ *  Fixed/restricted settings:
+ *  - Advertising type: LL_ADV_NONCONN_UNDIRECT (non-connectable, non-scannable)
+ *  - Own address type: LL_ADDR_RANDOM (static random address only)
+ *  - Filter policy: LL_ADV_FILTER_NONE only
+ */
+/*************************************************************************************************/
+typedef struct
+{
+  uint64_t      randAddr;               /*!< Static random device address as uint64_t (must be LL_RAND_ADDR_TYPE_STATIC). */
+  uint32_t      advIntervalMinUsec;     /*!< Minimum advertising interval in micro-sec units. */
+  uint32_t      advIntervalMaxUsec;     /*!< Maximum advertising interval in micro-sec units. */
+  uint8_t       advChanMap;             /*!< Advertising channel map (LL_ADV_CHAN_ALL, etc.). */
+  uint8_t       advDataLen;             /*!< Advertising data length (0-31). */
+  const uint8_t *pAdvData;              /*!< Pointer to advertising data. */
+  LlFastAdvTxCompCback_t advTxCompCback; /*!< Advertising TX complete callback (called in ISR context, may be NULL). */
+} LlFastAdvParam_t;
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Fast non-connectable legacy advertising enable.
+ *
+ *  \param      pParam      Pointer to fast advertising parameters.
+ *
+ *  \return     Status error code.
+ *
+ *  This function provides a fast path to configure and enable non-connectable, non-scannable
+ *  legacy advertising without the overhead of processing multiple HCI commands and completion
+ *  events. It performs the equivalent of: LE Set Random Address, LE Set Advertising Parameters,
+ *  LE Set Advertising Data, and LE Set Advertising Enable.
+ *
+ *  \note       This function should only be called when advertising is disabled.
+ *              The advertising enable confirmation event will be sent asynchronously.
+ *              Only static random addresses (LL_RAND_ADDR_TYPE_STATIC) are supported.
+ *              Only LL_ADV_FILTER_NONE filter policy is supported.
+ *              Returns LL_ERROR_CODE_INVALID_HCI_CMD_PARAMS for unsupported options.
+ *              If advTxCompCback is provided, it will be called in ISR context after the last
+ *              advertising channel transmission completes.
+ */
+/*************************************************************************************************/
+uint8_t LlFastLegacyAdvEnable(const LlFastAdvParam_t *pParam);
 
 /*************************************************************************************************/
 /*!

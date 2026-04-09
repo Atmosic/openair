@@ -8,8 +8,10 @@ set(OA_APP_DIR samples/bluetooth/hci_uart)
 # cross-platform compilation.
 cmake_path(CONVERT "$ENV{ZEPHYR_BASE}" TO_CMAKE_PATH_LIST OA_ZEPHYR_BASE)
 set(APPLICATION_CONFIG_DIR ${OA_ZEPHYR_BASE}/${OA_APP_DIR})
+set(EXTRA_CONF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/atm.conf")
 
-set(APPLICATION_BOARD_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+# Set the overlay file explicitly to use the app.overlay in the application directory
+set(EXTRA_DTC_OVERLAY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/app.overlay)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(hci_uart)

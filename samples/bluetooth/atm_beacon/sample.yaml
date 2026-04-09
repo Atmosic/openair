@@ -1,0 +1,166 @@
+sample:
+  description: Atmosic beacon adv sample
+  name: Atmosic beacon sample
+common:
+  tags:
+    - bluetooth
+    - role_peripheral
+    - role_broadcaster
+tests:
+  sample.bluetooth.atm_beacon:
+    tags:
+      - introduction
+  samples.bluetooth.atm_beacon.atm: &atm_base
+    sysbuild: true
+    harness: console
+    harness_config:  &harness_config_base
+      type: one_line
+      regex:
+        - Booting Zephyr OS
+  samples.bluetooth.atm_beacon.atm.socoff: &socoff_base
+    <<: *atm_base
+    extra_configs:
+      - CONFIG_REFBCN_SOCOFF_BEACON=y
+  samples.bluetooth.atm_beacon.atm.sbcn: &sbcn_base
+    <<: *atm_base
+    extra_configs:
+      - &sbcn_conf CONFIG_REFBCN_SIMPLE_BEACON=y
+  samples.bluetooth.atm_beacon.atm.sbcn_nobut:
+    <<: *sbcn_base
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=no_button.overlay
+  samples.bluetooth.atm_beacon.atm.sbcn_noled:
+    <<: *sbcn_base
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=no_led.overlay
+  samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled: &sbcn_nobut_noled_base
+    <<: *sbcn_base
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=no_button.overlay;no_led.overlay
+  samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled.short:
+    <<: *sbcn_nobut_noled_base
+    extra_configs:
+      - CONFIG_SOFT_OFF=n
+      - CONFIG_ADV_INTV=0x20
+      - CONFIG_ADV_MAX_EVT=20
+      - CONFIG_ADV_RSTRT_DUR_MS=0
+      - CONFIG_ATM_TEST_UTIL=y
+      - CONFIG_SOFT_OFF_SUBID=0
+  samples.bluetooth.atm_beacon.atm.wurx_bcn:
+    <<: *atm_base
+    tags:
+      - wurx
+    extra_configs:
+      - &wurx_bcn_conf CONFIG_REFBCN_WURX_BEACON=y
+  samples.bluetooth.atm_beacon.atm.shbcn: &shbcn_base
+    <<: *atm_base
+    extra_configs:
+      - &shbcn_conf CONFIG_REFBCN_SIMPLE_HARV_BEACON=y
+  samples.bluetooth.atm_beacon.atm.ext_scn:
+    <<: *atm_base
+    extra_configs:
+      - &ext_scn_conf CONFIG_REFBCN_EXTENDED_SCN=y
+  samples.bluetooth.atm_beacon.atm.ibeacon: &ibeacon_base
+    <<: *atm_base
+    extra_configs:
+      - &ibeacon_conf CONFIG_REFBCN_IBEACON=y
+  samples.bluetooth.atm_beacon.atm.ext_adv:
+    <<: *atm_base
+    extra_configs:
+      - &ext_adv_conf CONFIG_REFBCN_EXTENDED_ADV=y
+  samples.bluetooth.atm_beacon.atm.ext_con:
+    <<: *atm_base
+    extra_configs:
+      - &ext_con_conf CONFIG_REFBCN_EXTENDED_CON=y
+  samples.bluetooth.atm_beacon.atm.lr_coded: &lr_coded_base
+    <<: *atm_base
+    extra_configs:
+      - &lr_coded_conf CONFIG_REFBCN_LR_CODED=y
+  samples.bluetooth.atm_beacon.atm.2m_secondary: &2m_secondary_base
+    <<: *atm_base
+    extra_configs:
+      - &2m_secondary_conf CONFIG_REFBCN_2M_SECONDARY=y
+      - &2m_secondary_data_len CONFIG_ATM_MAX_ADV_DATA_LEN=990
+  samples.bluetooth.atm_beacon.atm.lr500_coded:
+    <<: *atm_base
+    extra_configs:
+      - &lr500_coded_conf CONFIG_REFBCN_LR500_CODED=y
+  samples.bluetooth.atm_beacon.atm.two_dev: &two_dev_base
+    <<: *atm_base
+    harness_config:
+      <<: *harness_config_base
+      regex:
+        - "Identity:"
+    tags:
+      - two_dev
+    # Expected log as <inf> bt_hci_core: Identity: for observer to parse BD ADDR
+    extra_configs:
+      - &log_conf CONFIG_LOG=y
+      - &hci_conf CONFIG_BT_HCI_CORE_LOG_LEVEL_INF=y
+  samples.bluetooth.atm_beacon.atm.two_dev.pp_bcn: # power profile
+    <<: *two_dev_base
+  samples.bluetooth.atm_beacon.atm.two_dev.sbcn: # simple beacon
+    <<: *two_dev_base
+    extra_configs:
+      - *sbcn_conf
+      - *log_conf
+      - *hci_conf
+  samples.bluetooth.atm_beacon.atm.two_dev.shbcn: # simple harvesting beacon
+    <<: *two_dev_base
+    extra_configs:
+      - *shbcn_conf
+      - *log_conf
+      - *hci_conf
+  samples.bluetooth.atm_beacon.atm.two_dev.ext_scn: # extended scannable beacon
+    <<: *two_dev_base
+    extra_configs:
+      - *ext_scn_conf
+      - *log_conf
+      - *hci_conf
+  samples.bluetooth.atm_beacon.atm.two_dev.ibeacon: # iBeacon
+    <<: *two_dev_base
+    extra_configs:
+      - *ibeacon_conf
+      - *log_conf
+      - *hci_conf
+  samples.bluetooth.atm_beacon.atm.two_dev.ext_adv: # extended advertising beacon
+    <<: *two_dev_base
+    extra_configs:
+      - *ext_adv_conf
+      - *log_conf
+      - *hci_conf
+  samples.bluetooth.atm_beacon.atm.two_dev.ext_con: # extended connectable beacon
+    <<: *two_dev_base
+    extra_configs:
+      - *ext_con_conf
+      - *log_conf
+      - *hci_conf
+  samples.bluetooth.atm_beacon.atm.two_dev.wurx_bcn: # WURX beacon
+    <<: *two_dev_base
+    tags:
+      - two_dev
+      - wurx
+    extra_configs:
+      - *wurx_bcn_conf
+      - *log_conf
+      - *hci_conf
+  samples.bluetooth.atm_beacon.atm.two_dev.lr_coded: # Long Range coded PHY
+    <<: *two_dev_base
+    extra_configs:
+      - *lr_coded_conf
+      - *log_conf
+      - *hci_conf
+  samples.bluetooth.atm_beacon.atm.two_dev.2m_secondary: # 2M secondary beacon
+    <<: *two_dev_base
+    extra_configs:
+      - *2m_secondary_conf
+      - *log_conf
+      - *hci_conf
+      - *2m_secondary_data_len
+      - CONFIG_ADV_MAX_EVT=60 # extend adv max evt to 60 for the test
+  samples.bluetooth.atm_beacon.atm.two_dev.lr500_coded: # Long Range 500kbps coded PHY
+    <<: *two_dev_base
+    extra_configs:
+      - *lr500_coded_conf
+      - *log_conf
+      - *hci_conf

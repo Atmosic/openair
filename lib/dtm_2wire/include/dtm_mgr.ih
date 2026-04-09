@@ -1,0 +1,37 @@
+/**
+ *******************************************************************************
+ *
+ * @file dtm_mgr.ih
+ *
+ * @brief DTM manager internal interface definitions
+ *
+ * Copyright (C) Atmosic 2025-2026
+ *
+ *******************************************************************************
+ */
+
+#pragma once
+
+#ifndef DTM_MGR_INTERNAL_GUARD
+#error "dtm_mgr.ih should only be included in DTM mgr source files"
+#endif
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <zephyr/bluetooth/hci.h>
+
+#define HCI_STATUS_LEN 1
+
+void dtm_test_end(uint8_t status, uint16_t recv_count);
+void dtm_reset_complete(uint8_t status);
+void dtm_test_start_complete(uint8_t status);
+void dtm_set_data_len_caps(uint16_t max_tx_octets, uint16_t max_tx_time, uint16_t max_rx_octets,
+			   uint16_t max_rx_time);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,5 +1,10 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+common:
+  tags:
+    - power_management
 tests:
   tests.subsys.pm.power_mgmt_soc.atm:
     sysbuild: true
-    tags:
-      - no_mcuboot

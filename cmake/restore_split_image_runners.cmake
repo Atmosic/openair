@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 # CMake script to restore split image file lists in runners.yaml
 # This script modifies the runners.yaml file to use comma-separated file lists
 # instead of single files for MCUboot signed binaries.

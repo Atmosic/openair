@@ -5,7 +5,7 @@
  *
  * @brief Atmosic RRAM Driver
  *
- * Copyright (C) Atmosic 2020-2025
+ * Copyright (C) Atmosic 2020-2026
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -106,6 +106,7 @@ static struct flash_parameters const *flash_atm_rram_get_parameters(struct devic
 	static struct flash_parameters const flash_atm_rram_parameters = {
 		.write_block_size = FLASH_WRITE_BLK_SZ,
 		.erase_value = 0xff,
+		.caps = {.no_explicit_erase = true},
 	};
 
 	return &flash_atm_rram_parameters;

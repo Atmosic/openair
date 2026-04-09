@@ -10,15 +10,10 @@ common:
     type: one_line
     regex:
       - "Hello from Secure World"
+  sysbuild: true
 tests:
-  sample.nsc_hello_world:
-    tags:
-      - introduction
+  sample.nsc_hello_world: {}
   samples.nsc_hello_world.atm:
-    sysbuild: true
-    tags:
-      - introduction
-      - no_mcuboot
     extra_args:
       - SB_CONFIG_SPE=y
       - spe_CONFIG_ATM_ENABLE_NSC_EXAMPLE=y

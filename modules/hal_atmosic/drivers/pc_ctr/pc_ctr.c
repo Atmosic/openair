@@ -5,20 +5,23 @@
  *
  * @brief Link layer controller
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
 
 #include "arch.h"
-#if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_AUTO_TEST)
-#include "atm_test_common.h"
+#ifdef CONFIG_SOC_FAMILY_ATM
+#include <zephyr/kernel.h>
 #endif
 #include <inttypes.h>
 #include "timer.h"
 #include "pc_ctr.h"
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_PC_CTR_SLEEP)
 #include "pc_ctr_sleep.h"
-#include "at_apb_pseq_regs_core_macro.h"
+#endif
 #include "at_lc_regs_core_macro.h"
 
 #include "ll_init_api.h"
@@ -27,6 +30,7 @@
 #include "hci_defs.h"
 #include "wsf_assert.h"
 #include "wsf_buf.h"
+#include "wsf_cs.h"
 #include "wsf_heap.h"
 #include "wsf_os.h"
 #include "wsf_timer.h"
@@ -47,7 +51,9 @@
 #include "eui.h"
 #include "radio_umac_154.h"
 #endif
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_AES)
 #include "atm_aes.h"
+#endif
 #include "atm_utils_math.h"
 
 #ifdef CONFIG_BT_BUF_ACL_TX_COUNT
@@ -67,10 +73,8 @@
 	    CONFIG_BT_BUF_ACL_RX_COUNT_EXTRA)
 // See Zephyr's 4.1 migration guide for an explanation of ACL RX buffer
 // allocation. We need to allocate enough buffers in the LL to match what
-// the host expects. Also see the deprecation warning in buf.h:
-// "When CONFIG_BT_BUF_ACL_RX_COUNT is removed, remove the MAX"
-#define BLE_MIN_NUM_RXBUF \
-    (ATM_MAX(CONFIG_BT_BUF_ACL_RX_COUNT, 1) + BT_BUF_ACL_RX_COUNT_EXTRA)
+// the host expects.
+#define BLE_MIN_NUM_RXBUF (1 + BT_BUF_ACL_RX_COUNT_EXTRA)
 #endif
 #ifdef CONFIG_BT_ISO_TX_BUF_COUNT
 #define BLE_NUM_ISO_TXBUF CONFIG_BT_ISO_TX_BUF_COUNT
@@ -151,9 +155,9 @@ static void pc_ctr_load_config(void)
 #endif // BLE_ADV_DATA_SCAN_LEN_MAX
 #endif // INIT_OBSERVER
 #ifdef CFG_GAP_MAX_LINKS
-    if (CFG_GAP_MAX_LINKS > pc_ctr_ll_rt_cfg.maxConn) {
-	pc_ctr_ll_rt_cfg.maxConn = CFG_GAP_MAX_LINKS;
-    }
+    pc_ctr_ll_rt_cfg.maxConn = CFG_GAP_MAX_LINKS ?
+	((CFG_GAP_MAX_LINKS > LL_MAX_CONN) ? LL_MAX_CONN : CFG_GAP_MAX_LINKS) :
+	0;
 #endif
     PalCfgLoadData(PAL_CFG_ID_BLE_PHY, &pc_ctr_ll_rt_cfg.phy2mSup,
 	(sizeof(LlRtCfg_t) - offsetof(LlRtCfg_t, maxAdvSets)));
@@ -181,6 +185,9 @@ static void pc_ctr_load_config(void)
     pc_ctr_ll_rt_cfg.csOptTFcsTimesSup = 0;
     pc_ctr_ll_rt_cfg.csTSwTimeSup = 10;
 #endif
+#ifdef DTM_PACKET_INTERVAL_OVERRIDE
+    pc_ctr_ll_rt_cfg.dtmOptPktIntervalSlot = DTM_PACKET_INTERVAL_OVERRIDE;
+#endif
 #ifdef CONFIG_ATM_BLE_CS_NUM_ANTENNAS
     pc_ctr_ll_rt_cfg.csNumAntSup = CONFIG_ATM_BLE_CS_NUM_ANTENNAS;
 #endif
@@ -199,56 +206,115 @@ static void pc_ctr_load_config(void)
 	| (1 << 2) // Enable 2M BT 2.0 PHY
 #endif
 	;
+#ifdef ATM_BLE_CS_NUM_CONFIG_SUP
+    pc_ctr_ll_rt_cfg.csNumConfigSup = ATM_BLE_CS_NUM_CONFIG_SUP;
+#endif
 #ifdef DIS_SCAN_RANDOM_BACKOFF
     pc_ctr_ll_rt_cfg.defaultOpModeFlags &= ~LL_OP_MODE_FLAG_ENA_SCAN_BACKOFF;
 #endif
 #ifdef BLE_CS_DBG_VECTOR
     pc_ctr_ll_rt_cfg.defaultOpModeFlags |= LL_OP_MODE_FLAG_ENA_CS_DBG_VECTOR;
 #endif
+#ifdef BLE_CS_TEST_UNSYNC_MODE
+    pc_ctr_ll_rt_cfg.defaultOpModeFlags |=
+	LL_OP_MODE_FLAG_ENA_CS_TEST_UNSYNC_MODE;
+#endif
 }
+
+#if !defined(CONFIG_ATM_ENA_LL_FEAT_PERIPHERAL) && \
+    !defined(CONFIG_ATM_ENA_LL_FEAT_CENTRAL) && \
+    defined(CONFIG_BT_BUF_EVT_RX_SIZE) && defined(CONFIG_BT_BUF_CMD_TX_SIZE)
+// tune the buffer sizes when the application is minimized to advertiser or
+// observer
+#define HCI_CMD_EVT_BUF_SIZE \
+    ATM_MAX(CONFIG_BT_BUF_EVT_RX_SIZE, CONFIG_BT_BUF_CMD_TX_SIZE)
+// clamp the ADV scan report to the configured EVT buffer size
+#define ADV_RPT_BUF_SIZE CONFIG_BT_BUF_EVT_RX_SIZE
+#else
+// set the default of the max HCI EVENT size
+#define HCI_CMD_EVT_BUF_SIZE 255
+// set default to the max adv report size
+#define ADV_RPT_BUF_SIZE 255
+#endif
+
+#if defined(CONFIG_SOC_FAMILY_ATM)
+#if defined(CONFIG_ATM_ENA_LL_FEAT_PERIPHERAL) || \
+    defined(CONFIG_ATM_ENA_LL_FEAT_CENTRAL)
+// allocate data buffers for roles that actually use them
+#define ALLOC_DATA_BUF
+#endif
+#ifdef CONFIG_ATM_ENA_LL_FEAT_OBSERVER
+// adv reports are only required by scanning
+#define ALLOC_ADV_REPORTS
+#endif
+#else
+#define ALLOC_DATA_BUF
+#define ALLOC_ADV_REPORTS
+#endif // CONFIG_SOC_FAMILY_ATM
+
+#ifdef DBG_PC_CTR_MEM_USAGE
+static void dump_pool_info(wsfBufPoolDesc_t const *desc, size_t count)
+{
+    for (size_t i = 0; i < count; i++, desc++) {
+	DEBUG_TRACE("Pool idx:%" PRIu32 " len:%" PRIu32 " num:%" PRIu32,
+	    (uint32_t)i, desc->len, desc->num);
+    }
+}
+#endif
 
 static void pc_ctr_wsf_init(void)
 {
 #ifndef WSF_MSG_HDR_SIZE
 #define WSF_MSG_HDR_SIZE 8
 #endif
-    uint16_t const max_rpt_buf_size = WSF_MSG_HDR_SIZE + 2 + 255;
+#ifdef ALLOC_ADV_REPORTS
+    uint16_t const max_rpt_buf_size = WSF_MSG_HDR_SIZE + 2 + ADV_RPT_BUF_SIZE;
+#endif
+#ifdef ALLOC_DATA_BUF
     uint16_t const data_buf_size = WSF_MSG_HDR_SIZE +
 #if LL_FEAT_ISO && defined(ENA_LL_FEAT_ISO)
 	HCI_ISO_DL_MAX_LEN +
 #endif
 	pc_ctr_ll_rt_cfg.maxAclLen + 4 + BB_DATA_PDU_TAILROOM + HCI_ACL_HDR_LEN;
-
 #if LL_FEAT_ISO && defined(ENA_LL_FEAT_ISO)
     // Use single pool for data buffers
-    WSF_ASSERT(pc_ctr_ll_rt_cfg.maxAclLen == pc_ctr_ll_rt_cfg.maxIsoSduLen);
+    ASSERT_INFO(pc_ctr_ll_rt_cfg.maxAclLen == pc_ctr_ll_rt_cfg.maxIsoSduLen,
+	pc_ctr_ll_rt_cfg.maxAclLen, pc_ctr_ll_rt_cfg.maxIsoSduLen);
 #else
     pc_ctr_ll_rt_cfg.numIsoTxBuf = 0;
     pc_ctr_ll_rt_cfg.numIsoRxBuf = 0;
 #endif
-
+#ifdef ALLOC_ADV_REPORTS
     // Ensure pool buffers are ordered correctly
-    WSF_ASSERT(max_rpt_buf_size < data_buf_size);
+    ASSERT_INFO(max_rpt_buf_size < data_buf_size, max_rpt_buf_size,
+	data_buf_size);
+#endif
+#endif // ALLOC_DATA_BUF
 
-    uint16_t report_15_4_pkt_pool_cnt = 0;
-#ifdef INIT_OBSERVER
-    report_15_4_pkt_pool_cnt += pc_ctr_ll_rt_cfg.maxAdvReports;
+    wsfBufPoolDesc_t pool_desc[] =
+    { {16, 8},
+	{32, 4},
+#ifdef ALLOC_ADV_REPORTS
+	{max_rpt_buf_size,
+	    pc_ctr_ll_rt_cfg.maxAdvReports +
+		pc_ctr_ll_rt_cfg.numIqReports}, // Extended reports
 #endif
-    wsfBufPoolDesc_t pool_desc[] = {
-	{ 16, 8 },
-	{ 32, 4 },
-	{ 128, report_15_4_pkt_pool_cnt },
-	{ max_rpt_buf_size, pc_ctr_ll_rt_cfg.maxAdvReports +
-	    pc_ctr_ll_rt_cfg.numIqReports },       // Extended reports
 #if BLE_NUM_HCI_BUFS > 0
-	{ WSF_MSG_HDR_SIZE + 258, BLE_NUM_HCI_BUFS },
+	{WSF_MSG_HDR_SIZE + (HCI_CMD_EVT_BUF_SIZE + HCI_CMD_HDR_LEN),
+	    BLE_NUM_HCI_BUFS},
 #endif
-	{ data_buf_size,   pc_ctr_ll_rt_cfg.numTxBufs +
-	    pc_ctr_ll_rt_cfg.numRxBufs + pc_ctr_ll_rt_cfg.numIsoTxBuf +
-	    pc_ctr_ll_rt_cfg.numIsoRxBuf },
+#ifdef ALLOC_DATA_BUF
+	{data_buf_size,
+	    pc_ctr_ll_rt_cfg.numTxBufs + pc_ctr_ll_rt_cfg.numRxBufs +
+		pc_ctr_ll_rt_cfg.numIsoTxBuf + pc_ctr_ll_rt_cfg.numIsoRxBuf},
+#endif
     };
 
     uint8_t const num_pools = sizeof(pool_desc) / sizeof(pool_desc[0]);
+
+#ifdef DBG_PC_CTR_MEM_USAGE
+    dump_pool_info(pool_desc, num_pools);
+#endif
 
     /* Initialize heap. */
     WsfHeapInit();
@@ -331,17 +397,37 @@ static void pc_ctr_assert_fail_crit(uint32_t assert_addr)
 #endif
 }
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+static __noinit uint8_t __aligned(4) ll_heap[LL_HEAP_SIZE];
+#else
+static uint8_t *ll_heap;
+#endif
+
+uint8_t *pc_ctr_ll_heap_alloc(void)
+{
+#ifndef CONFIG_SOC_FAMILY_ATM
+    if (!ll_heap) {
+	ll_heap = malloc(LL_HEAP_SIZE);
+    }
+#endif
+    return ll_heap;
+}
+
 void pc_ctr_main(void)
 {
     if (PalSysRegisterAssertFailCb) {
 	PalSysRegisterAssertFailCb(pc_ctr_assert_fail_crit);
     }
-#ifdef LL_HEAP_SIZE_OVERRIDE
-    PalSysInitExt(LL_HEAP_SIZE_OVERRIDE);
+#ifdef CONFIG_ATM_LCROM_IFACE
+    // TODO: Once LCROM respin, we can remove legacy usage.
+    PalSysInitExt(LL_HEAP_SIZE);
 #else
-    PalSysInit();
+    PalSysInitExt(LL_HEAP_SIZE, pc_ctr_ll_heap_alloc());
 #endif
+#if !defined(CONFIG_SOC_FAMILY_ATM) || \
+    (defined(CONFIG_ATM_AES) && defined(CONFIG_ATM_ENA_LL_FEAT_ENC_PRIV))
     PalCryptoAesEcbCbackInit(atm_aes_ecb);
+#endif
 
     pc_ctr_load_config();
     pc_ctr_wsf_init();
@@ -392,6 +478,9 @@ void pc_ctr_main(void)
 #ifdef CONFIG_ATM_ENA_LL_FEAT_MONADV
 	    | LL_FEATURE_INIT_MONADV
 #endif
+#if defined(CONFIG_ATM_ENA_LL_FEAT_FSU) && !defined(CONFIG_ATM_LCROM_IFACE)
+	    | LL_FEATURE_INIT_FSU
+#endif
 #else // CONFIG_SOC_FAMILY_ATM
 	.featureEn = LL_FEATURE_INIT_ALL
 #endif // CONFIG_SOC_FAMILY_ATM
@@ -421,15 +510,20 @@ void pc_ctr_main(void)
 #endif
 
 #ifdef DBG_PC_CTR_MEM_USAGE
-    DEBUG_TRACE("pc_ctr final avail:%" PRIu32, WsfHeapCountAvailable());
+    DEBUG_TRACE("pc_ctr allocated:%" PRIu32 "final avail:%" PRIu32,
+	(uint32_t)LL_HEAP_SIZE, WsfHeapCountAvailable());
 #endif
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_PC_CTR_SLEEP)
     pc_ctr_sleep_init();
+#endif
 #ifdef LINK_LL_VS_LIB
     LhciVsInit();
 #endif
 
+#if WSF_CI_ENABLE
     PalSysCiSetPriority(IRQ_PRI_MID);
+#endif
     /* Setup BLE delay table with custom values (delays in microseconds) */
     static uint16_t bleSetupDelaysUs[BB_BLE_OP_NUM] = {
         [BB_BLE_OP_TEST_TX] = 500,
@@ -464,15 +558,3 @@ bool pc_ctr_schedule(void)
 
     return (WsfOsWork());
 }
-
-#if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_AUTO_TEST)
-void pc_ctr_test_passed(void)
-{
-    ATM_TEST_PASSED();
-}
-
-void pc_ctr_test_failed(void)
-{
-    ATM_TEST_FAILED();
-}
-#endif

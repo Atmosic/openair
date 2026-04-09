@@ -5,7 +5,7 @@
  *
  * @brief Brownout Driver APIs
  *
- * Copyright (C) Atmosic 2022
+ * Copyright (C) Atmosic 2022-2026
  *
  ******************************************************************************
  */
@@ -44,6 +44,14 @@ extern bool brwnout_status(void);
  * @brief Force to soc off
  */
 extern void brwnout_force_socoff(void);
+
+/**
+ * @brief Brownout PMU interrupt handler
+ *
+ * Called by central PMU_Handler() when brownout interrupt fires.
+ */
+void brwnout_pmu_handler(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -12,29 +12,13 @@
 #include <inttypes.h>
 #include "atm_bt_tput.h"
 #include "atm_bt_tput_internal.h"
-#ifdef CONFIG_AUTO_TEST
-#include "atm_test_common.h"
-#endif
 #ifdef CONFIG_VND_API_SET_CON_TX_POWER
 #include "atm_vendor_api.h"
 #endif
 
 LOG_MODULE_REGISTER(bt_throughput, CONFIG_ATM_BT_TPUTP_LOG_LEVEL);
 
-#define TAG_TRIGGER_S2C_TEST 0xFA
-#define TAG_NOTIFY_COUNT     0XFB
-#define TAG_SET_TX_POWER     0xFC
 #define NOTIFY_PRELOAD_COUNT 3
-
-struct s2c_test_params {
-	uint16_t packet_count;
-	uint8_t payload_size;
-	uint8_t use_ack_mode;
-} __packed;
-
-struct tx_power_config {
-	int8_t tx_power;
-} __packed;
 
 /* Default total data size for test - uses default packet size for consistency */
 #define TOTAL_DATA_SIZE CONFIG_ATM_TPUT_TEST_DATA_LEN_PER_PACKET *CONFIG_ATM_TPUT_TEST_PACKET_COUNT
@@ -136,7 +120,9 @@ static uint8_t payload_data[MAX_PAYLOAD_SIZE];
 
 static void fill_payload(uint8_t *data, uint32_t notify_count, size_t total_len)
 {
-	sys_put_be32(notify_count, &data[2]);
+	struct atm_tput_data *tlv = (struct atm_tput_data *)data;
+
+	sys_put_be32(notify_count, (uint8_t *)&tlv->data_value.notify_count.count);
 }
 
 static void bt_throughput_send_next_indication(struct bt_conn *conn)
@@ -189,14 +175,24 @@ static void bt_throughput_server_to_client(struct bt_conn *conn)
 	__ASSERT(tput_ctx.config.notify_enabled, "Notify disabled %d",
 		 tput_ctx.config.notify_enabled);
 
-	const size_t tlv_len = 10;
-	const char *message = use_ack_mode ? "ATM Throughput test indication. "
-					   : "ATM Throughput test notification. ";
+	struct atm_tput_data *tlv = (struct atm_tput_data *)payload_data;
 
 	tput_ctx.stats.total_bytes_sent = 0;
 	tput_ctx.stats.notify_count = 0;
 
+	/* Initialize TLV header and payload first */
+	tlv->type = TAG_NOTIFY_COUNT;
+	tlv->data_len = sizeof(struct notify_count_payload);
+	const size_t tlv_len = ATM_TPUT_TLV_SIZE(tlv->data_len);
+
+	struct notify_count_payload *payload = &tlv->data_value.notify_count;
+	sys_put_be32(tput_ctx.stats.notify_count, (uint8_t *)&payload->count);
+	memset(payload->reserved, 0, sizeof(payload->reserved));
+
+	/* Fill remaining space with message pattern */
 	if (tput_ctx.config.data_len_per_notify > tlv_len) {
+		const char *message = use_ack_mode ? "ATM Throughput test indication. "
+						   : "ATM Throughput test notification. ";
 		size_t fill_len = tput_ctx.config.data_len_per_notify - tlv_len;
 		size_t msg_len = strlen(message);
 
@@ -204,12 +200,6 @@ static void bt_throughput_server_to_client(struct bt_conn *conn)
 			payload_data[tlv_len + i] = message[i % msg_len];
 		}
 	}
-
-	payload_data[0] = TAG_NOTIFY_COUNT;
-	payload_data[1] = sizeof(tput_ctx.stats.notify_count);
-	sys_put_be32(tput_ctx.stats.notify_count, &payload_data[2]);
-
-	memset(&payload_data[6], 0, 4);
 
 	if (use_ack_mode) {
 		tput_ctx.gatt.ind_params.attr = tput_ctx.gatt.notify_crch;
@@ -245,21 +235,21 @@ static ssize_t write_callback(struct bt_conn *conn, const struct bt_gatt_attr *a
 	/* TODO define a protocol to enable control and data messages */
 
 	/* Check if this could be a control message (TLV format) */
-	if (len < 2) {
+	if (len < ATM_TPUT_TLV_HEADER_SIZE) {
 		/* Not enough data for TLV header */
 		LOG_WRN("Received data too short: %" PRIu16 " bytes", len);
 		return len;
 	}
 
-	const uint8_t *data = buf;
-	uint8_t type = data[0];
-	uint8_t value_len = data[1];
+	const struct atm_tput_data *tlv = (const struct atm_tput_data *)buf;
+	uint8_t type = tlv->type;
+	uint8_t value_len = tlv->data_len;
 
 	/* Early return if length mismatch */
-	if (len < 2 + value_len) {
+	if (len < ATM_TPUT_TLV_SIZE(value_len)) {
 		LOG_WRN("Received control message length mismatch: expected %" PRIu16
 			", got %" PRIu16,
-			2 + value_len, len);
+			ATM_TPUT_TLV_SIZE(value_len), len);
 		return len;
 	}
 
@@ -268,11 +258,10 @@ static ssize_t write_callback(struct bt_conn *conn, const struct bt_gatt_attr *a
 	case TAG_TRIGGER_S2C_TEST: {
 		if (value_len == sizeof(use_ack_mode)) {
 			/* Legacy format: just ack mode */
-			use_ack_mode = data[2] ? true : false;
+			use_ack_mode = tlv->data_value.cmd_or_mode ? true : false;
 		} else if (value_len == sizeof(struct s2c_test_params)) {
 			/* New format: packet count, payload size, and ack mode */
-			const struct s2c_test_params *params =
-				(const struct s2c_test_params *)&data[2];
+			const struct s2c_test_params *params = &tlv->data_value.s2c_params;
 
 			tput_ctx.config.packet_count = params->packet_count;
 			tput_ctx.config.data_len_per_notify = params->payload_size;
@@ -299,46 +288,47 @@ static ssize_t write_callback(struct bt_conn *conn, const struct bt_gatt_attr *a
 		}
 
 		/* TX Power configuration message */
-		const struct tx_power_config *config = (const struct tx_power_config *)&data[2];
-
-		tput_ctx.config.tx_power = config->tx_power;
+		int8_t tx_pwr = tlv->data_value.tx_power.tx_power;
+		tput_ctx.config.tx_power = tx_pwr;
 
 #ifdef CONFIG_VND_API_SET_CON_TX_POWER
 		/* Apply TX power setting using vendor API */
 		uint16_t conn_hdl;
 		if (bt_hci_get_conn_handle(conn, &conn_hdl) == 0) {
-			uint8_t result = atm_vendor_set_con_tx_power(conn_hdl, config->tx_power);
+			uint8_t result = atm_vendor_set_con_tx_power(conn_hdl, tx_pwr);
 			if (result == 0) {
-				LOG_INF("Peripheral TX power set to %" PRId8 " dBm",
-					config->tx_power);
+				LOG_INF("Peripheral TX power set to %" PRId8 " dBm", tx_pwr);
 			} else {
 				LOG_WRN("Failed to set peripheral TX power to %" PRId8
 					" dBm (err %" PRIu8 ")",
-					config->tx_power, result);
+					tx_pwr, result);
 			}
 		} else {
 			LOG_WRN("Failed to get connection handle for TX power setting");
 		}
 #else
 		LOG_INF("TX power config received: %" PRId8 " dBm (vendor API not enabled)",
-			config->tx_power);
+			tx_pwr);
 #endif
 	} break;
 
-#ifdef CONFIG_AUTO_TEST
+#ifdef CONFIG_ATM_TPUT_AUTO_TEST
 	case ATM_TPUT_END_TEST_CMD: {
 		if (value_len != sizeof(uint8_t)) {
 			LOG_WRN("Invalid end test command length: %" PRIu8, value_len);
 			break;
 		}
 
-		uint8_t cmd = data[2];
+		uint8_t cmd = tlv->data_value.cmd_or_mode;
 		if (cmd == ATM_TPUT_END_TEST_CMD) {
 			LOG_INF("Received test end command");
-			ATM_TEST_PASSED();
+			bt_conn_disconnect(conn, BT_HCI_ERR_LOCALHOST_TERM_CONN);
 			break;
 		}
 		LOG_WRN("Invalid end test command value: %" PRIu8, cmd);
+	} break;
+	case ATM_C2S_DATA: {
+		// Do nothing
 	} break;
 #endif
 
@@ -586,6 +576,11 @@ void atm_tput_measure_c2s(struct bt_conn *conn, atm_tput_measurement_cb cb)
 
 	k_sleep(K_MSEC(500));
 	reset_test_params();
+#ifdef CONFIG_ATM_TPUT_AUTO_TEST
+	struct atm_tput_data *tlv = (struct atm_tput_data *)data;
+	tlv->type = ATM_C2S_DATA;
+	tlv->data_len = tput_ctx.config.data_len_per_write - ATM_TPUT_TLV_HEADER_SIZE;
+#endif
 
 	tput_ctx.callback_measure = cb;
 	tput_ctx.stats.start_time = k_uptime_get();
@@ -645,45 +640,48 @@ void atm_tput_measure_s2c(struct bt_conn *conn, atm_tput_measurement_cb cb)
 		LOG_INF("Subscribed to %s", use_ack_mode ? "Indication" : "Notification");
 	}
 
-	uint8_t data[2 + sizeof(struct s2c_test_params)];
-	data[0] = TAG_TRIGGER_S2C_TEST;
-	data[1] = sizeof(struct s2c_test_params);
+	uint8_t data[sizeof(struct atm_tput_data)];
+	struct atm_tput_data *tlv = (struct atm_tput_data *)data;
+	tlv->type = TAG_TRIGGER_S2C_TEST;
+	tlv->data_len = sizeof(struct s2c_test_params);
 
-	struct s2c_test_params *params = (struct s2c_test_params *)&data[2];
+	struct s2c_test_params *params = &tlv->data_value.s2c_params;
 	params->packet_count = tput_ctx.config.packet_count;
 	params->payload_size = tput_ctx.config.data_len_per_notify;
 	params->use_ack_mode = use_ack_mode;
 
+	size_t actual_size = ATM_TPUT_TLV_SIZE(tlv->data_len);
 	err = bt_gatt_write_without_response(conn, tput_ctx.gatt.write_characteristic_handle, data,
-					     sizeof(data), false);
+					     actual_size, false);
 	if (err) {
 		LOG_ERR("Write without response failed (err %d)", err);
 	} else {
-		LOG_DBG("Data written: %zu bytes", sizeof(data));
+		LOG_DBG("Data written: %zu bytes", actual_size);
 	}
 
 	tput_ctx.stats.start_time = k_uptime_get();
 }
 
-#ifdef CONFIG_AUTO_TEST
+#ifdef CONFIG_ATM_TPUT_AUTO_TEST
 void atm_tput_client_done(struct bt_conn *conn)
 {
 	__ASSERT(tput_ctx.gatt.write_characteristic_handle, "Invalid write handle %d",
 		 tput_ctx.gatt.write_characteristic_handle);
 
-	uint8_t data[] = {ATM_TPUT_END_TEST_CMD, sizeof(uint8_t), ATM_TPUT_END_TEST_CMD};
+	uint8_t data[sizeof(struct atm_tput_data)];
+	struct atm_tput_data *tlv = (struct atm_tput_data *)data;
+	tlv->type = ATM_TPUT_END_TEST_CMD;
+	tlv->data_len = sizeof(uint8_t);
+	tlv->data_value.cmd_or_mode = ATM_TPUT_END_TEST_CMD;
 
+	size_t actual_size = ATM_TPUT_TLV_SIZE(tlv->data_len);
 	int err = bt_gatt_write_without_response(conn, tput_ctx.gatt.write_characteristic_handle,
-						 data, sizeof(data), false);
+						 data, actual_size, false);
 	if (err) {
 		LOG_ERR("Failed to issue end test command (err %d)", err);
-		ATM_TEST_FAILED();
-	} else {
-		/* we are done on the client side */
-		ATM_TEST_PASSED();
 	}
 }
-#endif /* CONFIG_AUTO_TEST */
+#endif /* CONFIG_ATM_TPUT_AUTO_TEST */
 
 void atm_tput_set_payload_size(uint32_t payload_size)
 {
@@ -751,10 +749,11 @@ void atm_tput_set_tx_power(struct bt_conn *conn, int8_t tx_power)
 	/* Store the TX power setting */
 	tput_ctx.config.tx_power = tx_power;
 
+	int err;
 #ifdef CONFIG_VND_API_SET_CON_TX_POWER
 	/* Set TX power on central device */
 	uint16_t conn_hdl;
-	int err = bt_hci_get_conn_handle(conn, &conn_hdl);
+	err = bt_hci_get_conn_handle(conn, &conn_hdl);
 	if (err) {
 		LOG_ERR("Failed to get connection handle for central TX power (err %d)", err);
 	} else {
@@ -769,15 +768,16 @@ void atm_tput_set_tx_power(struct bt_conn *conn, int8_t tx_power)
 #endif
 
 	/* Send TX power configuration to peripheral */
-	uint8_t data[2 + sizeof(struct tx_power_config)];
-	data[0] = TAG_SET_TX_POWER;
-	data[1] = sizeof(struct tx_power_config);
+	uint8_t data[sizeof(struct atm_tput_data)];
+	struct atm_tput_data *tlv = (struct atm_tput_data *)data;
+	tlv->type = TAG_SET_TX_POWER;
+	tlv->data_len = sizeof(struct tx_power_config);
 
-	struct tx_power_config *config = (struct tx_power_config *)&data[2];
-	config->tx_power = tx_power;
+	tlv->data_value.tx_power.tx_power = tx_power;
 
+	size_t actual_size = ATM_TPUT_TLV_SIZE(tlv->data_len);
 	err = bt_gatt_write_without_response(conn, tput_ctx.gatt.write_characteristic_handle, data,
-					     sizeof(data), false);
+					     actual_size, false);
 	if (err) {
 		LOG_ERR("Failed to send TX power config to peripheral (err %d)", err);
 	} else {

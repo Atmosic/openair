@@ -1,6 +1,6 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 # Include the atm_arch helper functions
 include(${CMAKE_CURRENT_LIST_DIR}/../cmake/atm_arch.cmake)
@@ -41,7 +41,7 @@ if(SB_CONFIG_BOOTLOADER_MCUBOOT)
 endif()
 
 # Add spe dependency if enabled and not overridden
-if(SB_CONFIG_SPE AND NOT SB_CONFIG_OVERRIDE_NO_SPE)
+if(SB_CONFIG_SPE)
   list(APPEND ATM_ARCH_IMAGE_DEPS spe)
 endif()
 

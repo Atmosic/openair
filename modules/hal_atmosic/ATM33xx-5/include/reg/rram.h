@@ -5,17 +5,22 @@
  *
  * @brief RRAM register access
  *
- * Copyright (C) Atmosic 2020-2023
+ * Copyright (C) Atmosic 2020-2025
  *
  ******************************************************************************
  */
 
 #pragma once
 
-#include <stdbool.h>
 #include <stdint.h>
+#include "cmsis_compiler.h"
+#include "base_addr.h"
 #include "at_ahb_prrf_regs_core_macro.h"
 #include "at_apb_wrpr_pins_regs_core_macro.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum {
     RRAM_R_TEST		= 0x00,
@@ -128,3 +133,7 @@ rram_disable_cache(void)
 	AT_PRRF_RRAM_CACHE_CONFIG__CACHE_MODE__MASK;
     // don't worry about invalidate; that's done by rram_enale_cache
 }
+
+#ifdef __cplusplus
+}
+#endif

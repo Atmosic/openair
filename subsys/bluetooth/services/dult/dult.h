@@ -5,7 +5,7 @@
  *
  * @brief Detecting Unwanted Location Trackers Service
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -35,8 +35,8 @@ extern "C" {
 #define DULT_CATEGORY_LEN       8
 /// DULT accessory info version length
 #define DULT_VER_LEN            4
-/// DULT play sound interval in seconds
-#define DULT_PLAY_SOUND_INT_SEC 12
+/// DULT play sound total duration in seconds
+#define DULT_PLAY_SOUND_DUR_SEC 12
 /// DULT read id interval in minutes
 #define DULT_READ_ID_INT_MIN    5
 

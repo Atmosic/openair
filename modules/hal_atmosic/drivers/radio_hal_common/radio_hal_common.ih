@@ -1,0 +1,29 @@
+/**
+ ******************************************************************************
+ *
+ * @file radio_hal_common.ih
+ *
+ * @brief ATLC Driver Common Interface
+ *
+ * Copyright (C) Atmosic 2025-2026
+ *
+ ******************************************************************************
+ */
+
+#pragma once
+
+#ifndef RADIO_HAL_COMMON_INTERNAL_GUARD
+#error "radio_hal_common.ih should only be included in radio_hal_common source files"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void atm_mac_handler(void);
+void atm_mac_rev_hash_check(void);
+void atm_mac_core_init(uint16_t tff0_size, uint16_t rff0_size);
+
+#ifdef __cplusplus
+}
+#endif

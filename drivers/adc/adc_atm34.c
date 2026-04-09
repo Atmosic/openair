@@ -1,6 +1,6 @@
 
 /*
- * Copyright (c) 2023-2025 Atmosic
+ * Copyright (c) 2023-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -38,6 +38,8 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 #include "pmu_gadc_regs_core_macro.h"
 #include "timer.h"
 #include "sec_jrnl.h"
+
+#define Z_CMSDK_GADC ((CMSDK_AT_APB_GADC_TypeDef *)DT_REG_ADDR(DT_NODELABEL(adc)))
 
 /* GADC internal reference voltage (Unit:mV) */
 #define ATM_GADC_VREF_VOL 600
@@ -193,7 +195,7 @@ static void adc_context_update_buffer_pointer(struct adc_context *ctx, bool repe
 /* Read GADC FIFO  and return channel measurement data */
 static struct gadc_fifo_s gadc_read_ch_data(void)
 {
-	uint32_t data_output = CMSDK_GADC->DATAPATH_OUTPUT;
+	uint32_t data_output = Z_CMSDK_GADC->DATAPATH_OUTPUT;
 	struct gadc_fifo_s gadc_data = {
 		.value = DGADC_DATAPATH_OUTPUT__DATA__READ(data_output),
 	};
@@ -210,7 +212,7 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 		if (enable) {
 			/* Turn on GADC analog side */
 			CMSDK_PSEQ->GADC_CONFIG = PSEQ_GADC_CONFIG__WRITE;
-			//This delay was suggested by analog
+			// This delay was suggested by analog
 			atm_timer_lpc_delay(2);
 		} else {
 			/* Turn off GADC analog side */
@@ -221,7 +223,8 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 
 #ifdef GADC_GADC_CTRL__EXT_VDD1_SEL__SET
 	if (enable) {
-		WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE) {
+		WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
+		{
 			uint32_t gadc_ctrl = PMU_GADC_READ(GADC_CTRL_REG_ADDR);
 			if (ch == PORT2_SINGLE_ENDED) {
 				GADC_GADC_CTRL__EXT_VDD1_SEL__SET(gadc_ctrl);
@@ -231,7 +234,8 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 				GADC_GADC_CTRL__EXT_VBAT_SEL__SET(gadc_ctrl);
 			}
 			PMU_GADC_WRITE(GADC_CTRL_REG_ADDR, gadc_ctrl);
-		} WRPR_CTRL_POP();
+		}
+		WRPR_CTRL_POP();
 	}
 #endif
 }
@@ -239,102 +243,105 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 static void gadc_apply_calibration(void)
 {
 	if (CAL_PRESENT(gcal, offset_comp3)) {
-		CMSDK_GADC->CTRL1 = gcal.ctrl1;
-		CMSDK_GADC->GAIN_COMP2 = gcal.gain_comp2;
-		CMSDK_GADC->GAIN_COMP3 = gcal.gain_comp3;
-		CMSDK_GADC->OFFSET_COMP0 = gcal.offset_comp0;
-		CMSDK_GADC->OFFSET_COMP1 = gcal.offset_comp1;
-		CMSDK_GADC->OFFSET_COMP2 = gcal.offset_comp2;
-		CMSDK_GADC->OFFSET_COMP3 = gcal.offset_comp3;
+		Z_CMSDK_GADC->CTRL1 = gcal.ctrl1;
+		Z_CMSDK_GADC->GAIN_COMP2 = gcal.gain_comp2;
+		Z_CMSDK_GADC->GAIN_COMP3 = gcal.gain_comp3;
+		Z_CMSDK_GADC->OFFSET_COMP0 = gcal.offset_comp0;
+		Z_CMSDK_GADC->OFFSET_COMP1 = gcal.offset_comp1;
+		Z_CMSDK_GADC->OFFSET_COMP2 = gcal.offset_comp2;
+		Z_CMSDK_GADC->OFFSET_COMP3 = gcal.offset_comp3;
 	}
 }
 
 static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 {
-	WRPR_CTRL_SET(CMSDK_GADC, WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL);
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL);
 	gadc_apply_calibration();
 
 	gadc_analog_control(true, ch);
 
 	NVIC_EnableIRQ(DT_INST_IRQN(0));
 
-	CMSDK_GADC->INTERRUPT_MASK = 0;
-	CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
-	CMSDK_GADC->INTERRUPT_CLEAR = 0;
+	Z_CMSDK_GADC->INTERRUPT_MASK = 0;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = 0;
 
 	// Set the gain and watch channel for the specified channel
 	GADC_WATCH_CHANNEL watch_ch;
+	uint8_t clkdiv = DT_PROP(DT_NODELABEL(adc), clock_freq);
 	switch (ch) {
 	case VBATT: {
 		watch_ch = WATCH_CH_VBATT;
-		DGADC_GAIN_CONFIG0__CH1_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH1_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
 	case VSTORE: {
 		watch_ch = WATCH_CH_VSTORE;
-		DGADC_GAIN_CONFIG0__CH2_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH2_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
 	case CORE: {
 		watch_ch = WATCH_CH_CORE;
-		DGADC_GAIN_CONFIG0__CH3_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH3_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
 	case TEMP: {
+#define GADC_CLK_1MHZ 3
+		clkdiv = GADC_CLK_1MHZ;
 		watch_ch = WATCH_CH_TEMP;
-		DGADC_GAIN_CONFIG0__CH4_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH4_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
 	case PORT1_DIFFERENTIAL: {
 		watch_ch = WATCH_CH_PORT1_DIFF;
 #ifdef DGADC_GAIN_CONFIG1__CH5_GAIN_SEL__MODIFY
-		DGADC_GAIN_CONFIG1__CH5_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
+		DGADC_GAIN_CONFIG1__CH5_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
 #else
-		DGADC_GAIN_CONFIG0__CH5_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH5_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 #endif
 	} break;
 	case PORT0_DIFFERENTIAL: {
 		watch_ch = WATCH_CH_PORT0_DIFF;
 #ifdef DGADC_GAIN_CONFIG1__CH6_GAIN_SEL__MODIFY
-		DGADC_GAIN_CONFIG1__CH6_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
+		DGADC_GAIN_CONFIG1__CH6_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
 #else
-		DGADC_GAIN_CONFIG0__CH6_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH6_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 #endif
 	} break;
 	case PORT1_SINGLE_ENDED_0: {
 		watch_ch = WATCH_CH_PORT1_SINGLE_POS;
 #ifdef DGADC_GAIN_CONFIG1__CH7_GAIN_SEL__MODIFY
-		DGADC_GAIN_CONFIG1__CH7_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
+		DGADC_GAIN_CONFIG1__CH7_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
 #else
-		DGADC_GAIN_CONFIG0__CH7_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH7_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 #endif
 	} break;
 	case PORT1_SINGLE_ENDED_1: {
 		watch_ch = WATCH_CH_PORT1_SINGLE_NEG;
 #ifdef DGADC_GAIN_CONFIG1__CH8_GAIN_SEL__MODIFY
-		DGADC_GAIN_CONFIG1__CH8_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
+		DGADC_GAIN_CONFIG1__CH8_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
 #else
-		DGADC_GAIN_CONFIG0__CH8_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH8_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 #endif
 	} break;
 	case PORT0_SINGLE_ENDED_0: {
 		watch_ch = WATCH_CH_PORT0_SINGLE_POS;
 #ifdef DGADC_GAIN_CONFIG2__CH9_GAIN_SEL__MODIFY
-		DGADC_GAIN_CONFIG2__CH9_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG2, gext[ch]);
+		DGADC_GAIN_CONFIG2__CH9_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG2, gext[ch]);
 #else
-		DGADC_GAIN_CONFIG0__CH9_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH9_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 #endif
 	} break;
 	case PORT0_SINGLE_ENDED_1: {
 		watch_ch = WATCH_CH_PORT0_SINGLE_NEG;
 #ifdef DGADC_GAIN_CONFIG2__CH10_GAIN_SEL__MODIFY
-		DGADC_GAIN_CONFIG2__CH10_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG2, gext[ch]);
+		DGADC_GAIN_CONFIG2__CH10_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG2, gext[ch]);
 #else
-		DGADC_GAIN_CONFIG0__CH10_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH10_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 #endif
 	} break;
 	case LI_ION_BATT: {
 		watch_ch = WATCH_CH_LI_ION_BATT;
 #ifdef DGADC_GAIN_CONFIG2__CH11_GAIN_SEL__MODIFY
-		DGADC_GAIN_CONFIG2__CH11_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG2, gext[ch]);
+		DGADC_GAIN_CONFIG2__CH11_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG2, gext[ch]);
 #else
-		DGADC_GAIN_CONFIG1__CH11_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
+		DGADC_GAIN_CONFIG1__CH11_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
 #endif
 		WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
 		{
@@ -347,23 +354,23 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 	case CALIBRATION: {
 		watch_ch = WATCH_CH_CALIBRATION;
 #ifdef DGADC_GAIN_CONFIG2__CH12_GAIN_SEL__MODIFY
-		DGADC_GAIN_CONFIG2__CH12_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG2, gext[ch]);
+		DGADC_GAIN_CONFIG2__CH12_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG2, gext[ch]);
 #else
-		DGADC_GAIN_CONFIG1__CH12_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
+		DGADC_GAIN_CONFIG1__CH12_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG1, gext[ch]);
 #endif
 	} break;
 #ifdef GADC_GADC_CTRL__EXT_VDD1_SEL__SET
 	case PORT2_SINGLE_ENDED: {
 		watch_ch = WATCH_CH_CORE;
-		DGADC_GAIN_CONFIG0__CH3_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH3_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
 	case PORT3_SINGLE_ENDED: {
 		watch_ch = WATCH_CH_VSTORE;
-		DGADC_GAIN_CONFIG0__CH2_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH2_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
 	case PORT4_SINGLE_ENDED: {
 		watch_ch = WATCH_CH_VBATT;
-		DGADC_GAIN_CONFIG0__CH1_GAIN_SEL__MODIFY(CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
+		DGADC_GAIN_CONFIG0__CH1_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
 #endif
 	case UNUSED:
@@ -375,28 +382,27 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 	} break;
 	}
 
-	uint8_t clkdiv = DT_PROP(DT_NODELABEL(adc), clock_freq);
 	uint8_t savg = DT_PROP(DT_NODELABEL(adc), sample_avg);
-	CMSDK_GADC->CTRL = DGADC_CTRL__WATCH_CHANNELS__WRITE(1 << watch_ch) |
-			   DGADC_CTRL__AVERAGING_AMOUNT__WRITE(savg) |
-			   DGADC_CTRL__WAIT_AMOUNT__WRITE(GADC_WAIT_AMOUNT) |
-			   DGADC_CTRL__CLKDIV__WRITE(clkdiv) |
-			   DGADC_CTRL__WARMUP__WRITE(GADC_WARMUP_CYCLES) |
-			   DGADC_CTRL__MODE__WRITE(1); // One Shot Mode
+	Z_CMSDK_GADC->CTRL = DGADC_CTRL__WATCH_CHANNELS__WRITE(1 << watch_ch) |
+			     DGADC_CTRL__AVERAGING_AMOUNT__WRITE(savg) |
+			     DGADC_CTRL__WAIT_AMOUNT__WRITE(GADC_WAIT_AMOUNT) |
+			     DGADC_CTRL__CLKDIV__WRITE(clkdiv) |
+			     DGADC_CTRL__WARMUP__WRITE(GADC_WARMUP_CYCLES) |
+			     DGADC_CTRL__MODE__WRITE(1); // One Shot Mode
 
 	uint8_t osrsel = DT_PROP(DT_NODELABEL(adc), osr_select);
-	DGADC_CTRL1__OSR_SEL__MODIFY(CMSDK_GADC->CTRL1, osrsel);
-	DGADC_CTRL1__MOD_SEL__MODIFY(CMSDK_GADC->CTRL1, GADC_MOD_SELECT);
+	DGADC_CTRL1__OSR_SEL__MODIFY(Z_CMSDK_GADC->CTRL1, osrsel);
+	DGADC_CTRL1__MOD_SEL__MODIFY(Z_CMSDK_GADC->CTRL1, GADC_MOD_SELECT);
 
 	// Flush old FIFO values
-	while (!(CMSDK_GADC->DATAPATH_OUTPUT & DGADC_DATAPATH_OUTPUT__EMPTY__MASK)) {
+	while (!(Z_CMSDK_GADC->DATAPATH_OUTPUT & DGADC_DATAPATH_OUTPUT__EMPTY__MASK)) {
 		YIELD();
 	}
 
-	DGADC_CTRL__ENABLE_DP__SET(CMSDK_GADC->CTRL);
+	DGADC_CTRL__ENABLE_DP__SET(Z_CMSDK_GADC->CTRL);
 
 	// Interrupt when complete (fifo overrun)
-	CMSDK_GADC->INTERRUPT_MASK = DGADC_INTERRUPT_MASK__MASK_INTRPT2__MASK;
+	Z_CMSDK_GADC->INTERRUPT_MASK = DGADC_INTERRUPT_MASK__MASK_INTRPT2__MASK;
 }
 
 static void gadc_calibrate_offset(gadc_gain_ext_t gainext, int32_t sample)
@@ -469,6 +475,12 @@ static int gadc_atm_read_async(struct device const *dev, struct adc_sequence con
 		return -EINVAL;
 	}
 
+	if (async) {
+		adc_context_lock(&data->ctx, true, async);
+	} else {
+		adc_context_lock(&data->ctx, false, async);
+	}
+
 	data->active_channels = 0;
 	for (int i = 0; i < CHANNEL_NUM_MAX_USER; ++i) {
 		if (sequence->channels & BIT(i)) {
@@ -484,16 +496,12 @@ static int gadc_atm_read_async(struct device const *dev, struct adc_sequence con
 	if (sequence->buffer_size < exp_size) {
 		LOG_ERR("Required buffer size is %u. Received: %u", exp_size,
 			sequence->buffer_size);
+		adc_context_release(&data->ctx, -ENOMEM);
 		return -ENOMEM;
 	}
 
 	data->buffer = sequence->buffer;
 
-	if (async) {
-		adc_context_lock(&data->ctx, true, async);
-	} else {
-		adc_context_lock(&data->ctx, false, async);
-	}
 	adc_context_start_read(&data->ctx, sequence);
 	int ret = adc_context_wait_for_completion(&data->ctx);
 	adc_context_release(&data->ctx, ret);
@@ -580,13 +588,13 @@ static struct adc_driver_api const api_atm_driver_api = {
 static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch)
 {
 	ASSERT_ERR(ch && (ch < CHANNEL_NUM_MAX));
-	CMSDK_GADC->CTRL = 0;
+	Z_CMSDK_GADC->CTRL = 0;
 
 	struct gadc_fifo_s raw_fifo = gadc_read_ch_data();
 
 	// Disable clocks between samples
 	gadc_analog_control(false, UNUSED);
-	WRPR_CTRL_SET(CMSDK_GADC, WRPR_CTRL__SRESET);
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__SRESET);
 
 	// raw_fifo:  4 bit channel + 16 bit data = 20 bits
 	int32_t sample_signed = raw_fifo.sample;
@@ -602,26 +610,28 @@ static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 		sample_signed *= 6;
 	} else if ((ch == PORT0_SINGLE_ENDED_1) || (ch == PORT1_SINGLE_ENDED_1)
 #ifdef GADC_GADC_CTRL__EXT_VDD1_SEL__SET
-	|| (ch == PORT2_SINGLE_ENDED) || (ch == PORT3_SINGLE_ENDED) || (ch == PORT4_SINGLE_ENDED)
+		   || (ch == PORT2_SINGLE_ENDED) || (ch == PORT3_SINGLE_ENDED) ||
+		   (ch == PORT4_SINGLE_ENDED)
 #endif
 	) {
 		// need to invert sign
 		sample_signed *= -1;
 	} else if (ch == TEMP) {
-#define DEF_REF_TEMP 25.0f
-#define TMP117_LSB 0.0078125f
-#define CELSIUS_PER_VOLT 1000.0f
-#define DEF_REF_VOLT 0.350f
-		float sample_scaling = (32767.0f / 0.6f) / (1 << gext[ch]);
-		float result = sample_signed / sample_scaling;
-		float reference_temp = DEF_REF_TEMP;
-		if (CAL_PRESENT(chipinfo, test_temperature) &&
-			(chipinfo.version > 15)) {
-			reference_temp = chipinfo.test_temperature * TMP117_LSB;
+#define DEF_REF_TEMP     25.0f
+#define TMP117_LSB       0.0078125f
+#define CELSIUS_PER_VOLT 925.93f
+#define DEF_REF_FIFO     19114 // nominal FIFO value at DEF_REF_TEMP
+		float ref_temp = DEF_REF_TEMP;
+		if (CAL_PRESENT(chipinfo, test_temperature) && (chipinfo.version > 17)) {
+			ref_temp = chipinfo.test_temperature * TMP117_LSB;
 		}
-		result = reference_temp + CELSIUS_PER_VOLT * (result - DEF_REF_VOLT);
-		LOG_DBG("channel: %d, raw: %#x, result: %f C", ch, raw_fifo.value,
-			(double)result);
+		int32_t ref_sample = DEF_REF_FIFO;
+		if (CAL_PRESENT(gcal, temp_fifo) && (chipinfo.version > 17)) {
+			ref_sample = gcal.temp_fifo;
+		}
+		float volt_delta = (sample_signed - ref_sample) * 0.6f / 32767.0f;
+		float result = ref_temp + CELSIUS_PER_VOLT * volt_delta;
+		LOG_DBG("channel: %d, raw: %#x, result: %f C", ch, raw_fifo.value, (double)result);
 		// return value in 0.01°C units
 		return (int32_t)(result * 100.0f);
 	}
@@ -637,8 +647,8 @@ static void gadc_atm_isr(void const *arg)
 	struct device *dev = (struct device *)arg;
 	struct gadc_atm_data *data = DEV_DATA(dev);
 
-	CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
-	CMSDK_GADC->INTERRUPT_CLEAR = 0;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = 0;
 
 	NVIC_DisableIRQ(DT_INST_IRQN(0));
 
@@ -669,7 +679,7 @@ static int gadc_atm_init(struct device const *dev)
 	struct gadc_atm_data *data = DEV_DATA(dev);
 	data->dev = dev;
 
-	WRPR_CTRL_SET(CMSDK_GADC, WRPR_CTRL__SRESET);
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__SRESET);
 	IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority), gadc_atm_isr, DEVICE_DT_INST_GET(0),
 		    0);
 

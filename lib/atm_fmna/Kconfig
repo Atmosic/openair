@@ -1,9 +1,17 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 config ATM_FMNA
 	bool "Atmosic Apple FindMy Network service"
+
+config HEAP_MEM_POOL_ADD_SIZE_ATM_FMNA
+	int "Heap memory pool size for FMNA service"
+	default 2048
+	depends on ATM_FMNA
+	help
+	  Additional heap memory pool size required by Apple FindMy Network service.
+	  This includes scheduler work items, GATT indications, and UARP buffers.
 
 config ATM_FMNA_LIB
 	bool "Atmosic FMNA static library"
@@ -11,6 +19,11 @@ config ATM_FMNA_LIB
 	depends on ATM_FMNA
 	select APP_WORK_Q
 	select ATM_UECC
+	select ATM_UECC_VLI_API
+	select ATM_UECC_SUPPORT_POINT_ADD
+	select ATM_UECC_SUPPORTS_SECP224R1
+	select ATM_UECC_SUPPORTS_SECP256R1
+	select DIRECT_UECC_INTERFACE
 	select ENTROPY_ATM_TRNG
 	select ENTROPY_GENERATOR
 	select MBEDTLS
@@ -19,7 +32,9 @@ config ATM_FMNA_LIB
 	select MBEDTLS_CIPHER_GCM_ENABLED
 	select MBEDTLS_ECDH_C
 	select MBEDTLS_ECDSA_C
+	# MBEDTLS_ECDH_C requires MBEDTLS_ECP_C
 	select MBEDTLS_ECP_C
+	# MBEDTLS_ECP_C requires at lease one of ECP enabled
 	select MBEDTLS_ECP_DP_SECP224R1_ENABLED
 	select MBEDTLS_ECP_DP_SECP256R1_ENABLED
 	select MBEDTLS_MD

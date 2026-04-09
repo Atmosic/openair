@@ -155,7 +155,7 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
 
 The test will automatically:
 1. Run basic functionality tests

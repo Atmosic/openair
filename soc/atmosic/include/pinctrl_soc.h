@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2024-2025 Atmosic
+ * Copyright (c) 2024-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #ifndef ZEPHYR_SOC_ARM_ATMOSIC_ATM_PINCTRL_SOC_H

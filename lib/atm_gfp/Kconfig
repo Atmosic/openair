@@ -6,7 +6,6 @@ config ATM_GFP
 	bool "Atmosic Google Fast Pair Library"
 	select ATM_SETTINGS
 	select ATM_GFPS
-	select ATM_GFP_DIRECT_UECC_INTERFACE
 
 if ATM_GFP
 module = ATM_GFP

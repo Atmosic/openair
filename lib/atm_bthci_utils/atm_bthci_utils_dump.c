@@ -5,7 +5,7 @@
  *
  * @brief HCI dump utilities
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -187,7 +187,9 @@ void atm_bthci_dump_hci_pkt(uint8_t type, uint8_t const *buf, uint32_t len)
     if ((type == ATM_HCI_DUMP_EVT) && is_hci_adv_report_evt(buf, len)) {
 	// drop ADV reports that flood in, they can be quite large.
 	PRINTF("ADV!\n");
+#ifndef CONFIG_ATM_BLE_DUMP_HCI_ALL
 	return;
+#endif
     }
 
     ASSERT_INFO(type < ATM_HCI_DUMP_MAX, type, 0);

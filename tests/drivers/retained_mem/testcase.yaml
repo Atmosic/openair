@@ -1,8 +1,12 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 tests:
   tests.drivers.retained_mem.atm:
     sysbuild: true
     tags:
-      - no_mcuboot
+      - retained_mem
     extra_configs:
       - CONFIG_RETAINED_MEM=y
       - CONFIG_RETAINED_MEM_ATM_HIB=y

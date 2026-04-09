@@ -14,6 +14,7 @@ Supported Boards
 WuRx is supported on the following boards:
 
 * **ATMEVK-3430e-YQN-5** (ATM34)
+* **ATMEVK-3330e-QN-7** (ATM33)
 * **ATMEVK-3330e-QN-6** (ATM33)
 * **ATMEVK-3330-QN-6** (ATM33)
 

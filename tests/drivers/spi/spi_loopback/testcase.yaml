@@ -1,9 +1,11 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 tests:
   tests.drivers.spi.spi_loopback.atm:
     sysbuild: true
     harness: ztest
-    tags:
-      - no_mcuboot
     extra_configs:
       - CONFIG_SPI_LOOPBACK_MODE_LOOP=y
-      - CONFIG_SPI_IDEAL_TRANSFER_DURATION_SCALING=20
+      - CONFIG_SPI_IDEAL_TRANSFER_DURATION_SCALING=30

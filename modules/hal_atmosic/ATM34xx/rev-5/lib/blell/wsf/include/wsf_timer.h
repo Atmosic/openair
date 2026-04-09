@@ -36,7 +36,7 @@ extern "C" {
 
 #ifndef WSF_MS_PER_TICK
 /*! \brief Default milliseconds per tick rate */
-#define WSF_MS_PER_TICK   10
+#define WSF_MS_PER_TICK   5
 #endif
 
 /**************************************************************************************************

@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2021-2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  */
 
 #pragma once

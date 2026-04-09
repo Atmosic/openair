@@ -5,7 +5,7 @@
  *
  * @brief Peripheral protection controller driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -81,8 +81,8 @@ extern "C" {
 #define ALT_PPC_PERIPHERALS \
     ALT_PERIPHERAL(GPIO0, CMSDK_GPIO0, AHB, PPCEXP1) \
     ALT_PERIPHERAL(GPIO1, CMSDK_GPIO1, AHB, PPCEXP1) \
-    ALT_PERIPHERAL(BLE52, ((void *)BLE_NONSECURE_BASE), AHB, PPCEXP1) \
-    ALT_PERIPHERAL(BLE52, ((void *)BLE_SECURE_BASE), AHB, PPCEXP1) \
+    ALT_PERIPHERAL(BLE52, BLE_NONSECURE, AHB, PPCEXP1) \
+    ALT_PERIPHERAL(BLE52, BLE_SECURE, AHB, PPCEXP1) \
     ALT_PERIPHERAL(WRPR, CMSDK_WRPR0_SECURE, APB, PPCEXP0) \
     ALT_PERIPHERAL(WRPR, CMSDK_WRPR0_NONSECURE, APB, PPCEXP0) \
     ALT_PERIPHERAL(WRPR, CMSDK_WRPR1_SECURE, APB, PPCEXP1) \
@@ -140,22 +140,22 @@ __STATIC_INLINE void at_tz_ppc_configure(void const *peripheral,
     atm_ppc_sec_attr_t secure)
 {
 #define PERIPHERAL(PERI, EXT, BUS, BANK) \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_NONSECURE): \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_SECURE): \
+    case (CMSDK_##EXT##PERI##_NONSECURE_BASE): \
+    case (CMSDK_##EXT##PERI##_SECURE_BASE): \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS##NS##BANK, \
-	    SEC_PRIV_CTRL_##BUS##NS##BANK##_##PERI##_Pos, secure);\
+	    SEC_PRIV_CTRL_##BUS##NS##BANK##_##PERI##_Pos, secure); \
 	break;
 // Alt peripherals follow a diff address naming vs reg peripherals
 #define ALT_PERIPHERAL(PERI, ADDR, BUS, BANK) \
-    case ((uintptr_t) ADDR): \
+    case (ADDR##_BASE): \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS##NS##BANK, \
 	    SEC_PRIV_CTRL_##BUS##NS##BANK##_##PERI##_Pos, secure); \
 	break;
 // Dual periphals are peripherals that require setting two controllers.
 // register file on APB and fifo on AHB
 #define DUAL_PERIPHERAL(PERI, EXT, BUS1, BANK1, BUS2, BANK2) \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_NONSECURE): \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_SECURE): \
+    case (CMSDK_##EXT##PERI##_NONSECURE_BASE): \
+    case (CMSDK_##EXT##PERI##_SECURE_BASE): \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS1##NS##BANK1, \
 	    SEC_PRIV_CTRL_##BUS1##NS##BANK1##_##PERI##_Pos, secure); \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS2##NS##BANK2, \
@@ -163,7 +163,7 @@ __STATIC_INLINE void at_tz_ppc_configure(void const *peripheral,
 	break;
 // Base peripherals follow a diff address naming vs reg peripherals
 #define BASE_PERIPHERAL(PERI, ADDR, BUS, BANK) \
-    case ((uintptr_t) ADDR): \
+    case (ADDR##_BASE): \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS##NS##BANK, \
 	    SEC_PRIV_CTRL_##BUS##NS##BANK##_NS_##PERI##_Pos, secure); \
 	break;
@@ -197,22 +197,22 @@ __STATIC_INLINE void at_tz_ppc_configure_sec_priv(void const *peripheral,
     atm_ppc_priv_attr_t priv)
 {
 #define PERIPHERAL(PERI, EXT, BUS, BANK) \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_SECURE): \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_NONSECURE): \
+    case (CMSDK_##EXT##PERI##_SECURE_BASE): \
+    case (CMSDK_##EXT##PERI##_NONSECURE_BASE): \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS##SP##BANK, \
-	    SEC_PRIV_CTRL_##BUS##SP##BANK##_##PERI##_Pos, priv);\
+	    SEC_PRIV_CTRL_##BUS##SP##BANK##_##PERI##_Pos, priv); \
 	break;
 // Alt peripherals follow a diff address naming vs reg peripherals
 #define ALT_PERIPHERAL(PERI, ADDR, BUS, BANK) \
-    case ((uintptr_t) ADDR): \
+    case (ADDR##_BASE): \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS##SP##BANK, \
 	    SEC_PRIV_CTRL_##BUS##SP##BANK##_##PERI##_Pos, priv); \
 	break;
 // Dual periphals are peripherals that require setting two controllers.
 // register file on APB and fifo on AHB
 #define DUAL_PERIPHERAL(PERI, EXT, BUS1, BANK1, BUS2, BANK2) \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_SECURE): \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_NONSECURE): \
+    case (CMSDK_##EXT##PERI##_SECURE_BASE): \
+    case (CMSDK_##EXT##PERI##_NONSECURE_BASE): \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS1##SP##BANK1, \
 	    SEC_PRIV_CTRL_##BUS1##SP##BANK1##_##PERI##_Pos, priv); \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS2##SP##BANK2, \
@@ -220,7 +220,7 @@ __STATIC_INLINE void at_tz_ppc_configure_sec_priv(void const *peripheral,
 	break;
 // Base peripherals follow a diff address naming vs reg peripherals
 #define BASE_PERIPHERAL(PERI, ADDR, BUS, BANK) \
-    case ((uintptr_t) ADDR): \
+    case (ADDR##_BASE): \
 	PPC_BANK_MODIFY_BIT(SEC_CTRL_REG->BUS##SP##BANK, \
 	    SEC_PRIV_CTRL_##BUS##SP##BANK##_SP_##PERI##_Pos, priv); \
 	break;
@@ -434,20 +434,20 @@ __STATIC_INLINE void at_tz_ppc_configure_nonsec_priv(void const *peripheral,
     atm_ppc_priv_attr_t priv)
 {
 #define PERIPHERAL(PERI, EXT, BUS, BANK) \
-    case ((uintptr_t) CMSDK_##EXT##PERI##_NONSECURE): \
+    case (CMSDK_##EXT##PERI##_NONSECURE_BASE): \
 	PPC_BANK_MODIFY_BIT(NONSEC_CTRL_REG->BUS##NSP##BANK, \
-	    NONSEC_PRIV_CTRL_##BUS##NSP##BANK##_##PERI##_Pos, priv);\
+	    NONSEC_PRIV_CTRL_##BUS##NSP##BANK##_##PERI##_Pos, priv); \
 	break;
 // Alt peripherals follow a diff address naming vs reg peripherals
 #define ALT_PERIPHERAL(PERI, ADDR, BUS, BANK) \
-    case ((uintptr_t) ADDR): \
+    case (ADDR##_BASE): \
 	PPC_BANK_MODIFY_BIT(NONSEC_CTRL_REG->BUS##NSP##BANK, \
 	    NONSEC_PRIV_CTRL_##BUS##NSP##BANK##_##PERI##_Pos, priv); \
 	break;
 // Dual periphals are peripherals that require setting two controllers.
 // register file on APB and fifo on AHB
 #define DUAL_PERIPHERAL(PERI, EXT, BUS1, BANK1, BUS2, BANK2) \
-    case ((uintptr_t)CMSDK_##EXT##PERI##_NONSECURE): \
+    case (CMSDK_##EXT##PERI##_NONSECURE_BASE): \
 	PPC_BANK_MODIFY_BIT(NONSEC_CTRL_REG->BUS1##NSP##BANK1, \
 	    NONSEC_PRIV_CTRL_##BUS1##NSP##BANK1##_##PERI##_Pos, priv); \
 	PPC_BANK_MODIFY_BIT(NONSEC_CTRL_REG->BUS2##NSP##BANK2, \
@@ -455,7 +455,7 @@ __STATIC_INLINE void at_tz_ppc_configure_nonsec_priv(void const *peripheral,
 	break;
 // Base peripherals follow a diff address naming vs reg peripherals
 #define BASE_PERIPHERAL(PERI, ADDR, BUS, BANK) \
-    case ((uintptr_t) ADDR): \
+    case (ADDR##_BASE): \
 	PPC_BANK_MODIFY_BIT(NONSEC_CTRL_REG->BUS##NSP##BANK, \
 	    NONSEC_PRIV_CTRL_##BUS##NSP##BANK##_NSP_##PERI##_Pos, priv); \
 	break;

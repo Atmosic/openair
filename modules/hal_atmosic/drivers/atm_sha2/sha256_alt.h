@@ -5,7 +5,9 @@
  *
  * @brief mbedtls glue for Atmosic SHA256 driver
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */

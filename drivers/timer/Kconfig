@@ -1,0 +1,8 @@
+# Copyright (c) 2026 Atmosic Technologies, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+if SYS_CLOCK_EXISTS
+
+rsource "Kconfig.cmsdk_timer"
+
+endif # SYS_CLOCK_EXISTS

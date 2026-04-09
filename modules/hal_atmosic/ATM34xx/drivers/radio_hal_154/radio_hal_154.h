@@ -14,7 +14,9 @@
 
 #include "arch.h"
 #include "at_lc.h"
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 #include "radio_status.h"
+#endif
 
 /**
  * @defgroup RADIO_HAL_154 RADIO_HAL_154
@@ -442,6 +444,7 @@ typedef enum {
  */
 typedef void (*atm_mac_154_energy_detection_complete_handler_t)(int8_t rssi);
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 /**
  * @brief Signature of callback function issued at receive transaction
  * completion.
@@ -462,6 +465,7 @@ typedef void (*atm_mac_154_energy_detection_complete_handler_t)(int8_t rssi);
  */
 typedef void (*atm_mac_154_rx_complete_handler_t)(atm_mac_status_t status,
     atm_mac_154_rx_complete_info_t const *info);
+#endif
 
 /**
  * @brief Signature of callback function for long address received event.
@@ -493,6 +497,7 @@ typedef bool (*atm_mac_154_rx_long_addr_pend_handler_t)(uint64_t address);
  */
 typedef bool (*atm_mac_154_rx_short_addr_pend_handler_t)(uint16_t address);
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 /**
  * @brief Signature of callback function issued at transmit transaction
  * completion.
@@ -508,6 +513,7 @@ typedef bool (*atm_mac_154_rx_short_addr_pend_handler_t)(uint16_t address);
  */
 typedef void (*atm_mac_154_tx_complete_handler_t)(atm_mac_status_t status,
     atm_mac_154_tx_complete_info_t const *info);
+#endif
 /**@}*/
 
 /** @name General functions
@@ -562,6 +568,7 @@ void atm_mac_154_set_version(atm_mac_154_version_t version);
  */
 atm_mac_154_state_t atm_mac_154_get_state(void);
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 /**
  * @brief Register callback function for receive completion events.
  * @par
@@ -578,6 +585,7 @@ atm_mac_154_state_t atm_mac_154_get_state(void);
 __NONNULL(1)
 void atm_mac_154_register_rx_complete_callback(
     atm_mac_154_rx_complete_handler_t handler);
+#endif
 
 /**
  * @brief Register callback function for long address received event.
@@ -611,6 +619,7 @@ __NONNULL(1)
 void atm_mac_154_register_rx_short_addr_callback(
     atm_mac_154_rx_short_addr_pend_handler_t handler);
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 /**
  * @brief Register callback function for transmit completion events.
  * @note This function is used to register a callback function.
@@ -626,6 +635,7 @@ void atm_mac_154_register_rx_short_addr_callback(
 __NONNULL(1)
 void atm_mac_154_register_tx_complete_callback(
     atm_mac_154_tx_complete_handler_t handler);
+#endif
 
 /**
  * @brief Register callback function for energy detection completion events.
@@ -873,16 +883,6 @@ uint8_t atm_mac_154_map_rssi_to_lqi(int8_t rssi);
  * @note This function is called from interrupt context.
  */
 void atm_mac_154_perform_energy_detection(void);
-
-/**
- * @brief Performs an energy detection reading on the current channel.
- *
- * Same as atm_mac_154_perform_energy_detection() but with the sampling
- * duration specified by the caller.
- * @note This function is called from interrupt context.
- * @param[in] window_us Duration in microseconds.  Must not be 0.
- */
-void atm_mac_154_perform_energy_detection_timed(uint32_t window_us);
 
 /**
  * @brief Receives a packet using the current radio configuration.

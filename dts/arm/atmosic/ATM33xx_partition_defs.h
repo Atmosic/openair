@@ -5,9 +5,9 @@
  *
  * @brief Atmosic ATM33 image partition definitions
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */

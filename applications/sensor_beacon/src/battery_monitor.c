@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/drivers/adc.h>
@@ -95,12 +95,20 @@ int battery_monitor_get_voltages(float *vstore, float *vbatt)
 	atm_adc_raw_to_millivolts(ref, channel_cfg[ADC_CHANNEL_VBATT_INDEX].gain, ADC_RESOLUTION,
 		&mv);
 	*vbatt = mv / 1000.0f;
+	/* Clamp to 0V if negative (due to ADC offset/noise near 0V) */
+	if (*vbatt < 0.0f) {
+		*vbatt = 0.0f;
+	}
 
 	/* Convert VStore */
 	mv = sample_buffer[ADC_CHANNEL_VSTORE_INDEX];
 	atm_adc_raw_to_millivolts(ref, channel_cfg[ADC_CHANNEL_VSTORE_INDEX].gain, ADC_RESOLUTION,
 		&mv);
 	*vstore = mv / 1000.0f;
+	/* Clamp to 0V if negative (due to ADC offset/noise near 0V) */
+	if (*vstore < 0.0f) {
+		*vstore = 0.0f;
+	}
 
 	LOG_DBG("VStore: %.4f V, VBatt: %.4f V", (double)*vstore, (double)*vbatt);
 

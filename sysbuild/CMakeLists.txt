@@ -1,12 +1,12 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 # Include sysbuild module.
 sysbuild_add_subdirectory(module)
 
 # Include SPE if enabled.
-if(SB_CONFIG_SPE AND NOT SB_CONFIG_OVERRIDE_NO_SPE)
+if(SB_CONFIG_SPE)
   sysbuild_add_subdirectory(spe)
 endif()
 

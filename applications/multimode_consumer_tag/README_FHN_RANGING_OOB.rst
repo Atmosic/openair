@@ -217,7 +217,8 @@ For custom hardware integration, modify the TODO sections in the platform callba
 Step 2: Handler Registration
 ----------------------------
 
-Register your ranging handlers with the middleware:
+Register your ranging handlers with the middleware. The handlers are automatically registered
+during ``atm_gfp_init()`` if provided in the handlers structure:
 
 .. code-block:: c
 
@@ -236,15 +237,16 @@ Register your ranging handlers with the middleware:
 
    int main(void)
    {
-       // Method 1: Initialize with ranging handlers
+       // Recommended: Initialize with ranging handlers (automatic registration)
        atm_gfp_hdlrs_t gfp_handlers = {
            .ranging_handlers = &ranging_handlers,
            // ... other handlers (battery, ring, etc.)
        };
        atm_gfp_init(&gfp_handlers);
+       // Ranging handlers are automatically registered during init
 
-       // Method 2: Register ranging handlers separately (after init)
-       atm_gfp_ranging_handler_register(&ranging_handlers);
+       // Alternative: Register ranging handlers separately (for dynamic replacement)
+       // atm_gfp_ranging_handler_register(&ranging_handlers);
 
        return 0;
    }
@@ -280,7 +282,7 @@ Enable debug logging for ranging operations:
 .. code-block:: kconfig
 
    CONFIG_LOG=y
-   CONFIG_LOG_IMODE_IMMEDIATE=y
+   CONFIG_LOG_MODE_IMMEDIATE=y
    CONFIG_ATM_GFP_LOG_LEVEL_DBG=y
    CONFIG_FP_FMDN_GATT_LOG_LEVEL_DBG=y
 
@@ -328,7 +330,7 @@ The ``sample.yaml`` file defines several test configurations:
 
    # Build with BLE CS ranging OOB support
    west build -p always -b <BOARD>//ns openair/applications/multimode_consumer_tag -T applications.multimode_consumer_tag.atm.fhn_only.oob_de
-   west flash --skip-rebuild --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+   west flash --no-rebuild --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
 
 This test item configuration automatically enables:
 
@@ -416,6 +418,8 @@ Common Issues
 - Check Bluetooth connection security level
 - Verify platform callbacks are properly implemented
 - Enable debug logging for detailed diagnostics
+- Ensure ranging handlers are registered via ``atm_gfp_init()`` with ``ranging_handlers`` field populated
+- Verify handler structure remains valid for the application lifetime
 
 **Performance Issues:**
 - Monitor stack usage in platform callbacks
@@ -431,4 +435,4 @@ For additional support and documentation:
 * Review the Kconfig options in ``subsys/bluetooth/services/gfp/fmdn/Kconfig``
 * Enable debug logging for detailed operation traces
 
-Copyright (C) Atmosic 2025
+Copyright (C) Atmosic 2025-2026

@@ -49,7 +49,7 @@ Building and Running
 
        west build -p always -b ATMBTCSTAG-3405 openair/applications/multimode_consumer_tag --sysbuild -T applications.multimode_consumer_tag.atm
 
-       west flash --skip-rebuild --verify --dl --device <DEVICE_ID> --fast_load --erase_all
+       west flash --no-rebuild --verify --dl --device <DEVICE_ID> --fast_load --erase_all
 
  * Expected result:
 

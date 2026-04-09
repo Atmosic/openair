@@ -5,7 +5,7 @@
  *
  * @brief Library For Goole Fast Pair
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -27,7 +27,10 @@
 #ifdef CONFIG_FMDN_PRECISION_FINDING
 #include "fp_fmdn_gatt.h"
 #endif
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+#include "fp_fmdn_reverse_ringing.h"
 #endif
+#endif // CONFIG_FAST_PAIR_FMDN
 #include "fp_storage.h"
 
 LOG_MODULE_REGISTER(atm_gfp, CONFIG_ATM_GFP_LOG_LEVEL);
@@ -35,8 +38,55 @@ LOG_MODULE_REGISTER(atm_gfp, CONFIG_ATM_GFP_LOG_LEVEL);
 static atm_gfp_hdlrs_t const *atm_gfp_hdlrs;
 
 #ifdef CONFIG_FMDN_PRECISION_FINDING
-/// Stored ranging handlers for direct registration
+/* Ranging handlers registered via atm_gfp_ranging_handler_register().
+ * This allows dynamic registration separate from atm_gfp_init().
+ */
 static atm_gfp_ranging_handler_t const *atm_gfp_ranging_hdlrs;
+#endif
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+/*
+ * @brief Adapter for reverse ringing events
+ *
+ * Converts detailed module-level events to simplified application-level events.
+ * Per FHN v2 spec line 263, application only needs to know:
+ * - Request sent successfully (indication confirmed) → Show LED/beep
+ * - Ringing stopped (any reason) → Turn off LED/beep
+ *
+ * @param event Module-level event
+ */
+static void atm_gfp_reverse_ringing_event_adapter(fp_fmdn_reverse_ringing_event_t event)
+{
+	if (!atm_gfp_hdlrs || !atm_gfp_hdlrs->reverse_ringing_event_cb) {
+		return;
+	}
+
+	/* Convert detailed module events to simple application events */
+	atm_gfp_reverse_ringing_event_t lib_event;
+	switch (event) {
+	case RR_EVENT_REQUEST_SENT:
+		/* Indication confirmed - show feedback to user */
+		lib_event = ATM_GFP_RR_EVENT_STARTED;
+		break;
+
+	case RR_EVENT_PHONE_STARTED:
+	case RR_EVENT_PHONE_FAILED:
+	case RR_EVENT_PHONE_STOPPED_TIMEOUT:
+	case RR_EVENT_PHONE_STOPPED_USER:
+	case RR_EVENT_PHONE_STOPPED_PROVIDER:
+	case RR_EVENT_TIMEOUT_LOCAL:
+		/* Any stop event - turn off feedback */
+		lib_event = ATM_GFP_RR_EVENT_STOPPED;
+		break;
+
+	default:
+		LOG_WRN("Unknown reverse ringing event: %d", event);
+		return;
+	}
+
+	/* Call application callback with simplified event */
+	atm_gfp_hdlrs->reverse_ringing_event_cb(lib_event);
+}
 #endif
 
 /**
@@ -62,16 +112,6 @@ static void atm_gfp_convert_handlers(atm_gfp_hdlrs_t const *atm_hdlrs, gfps_hdlr
 	gfps_hdlrs->ring_action_cb = atm_hdlrs->sound_action_cb;
 
 	gfps_hdlrs->mode_switch_cb = atm_hdlrs->mode_state_cb;
-
-#ifdef CONFIG_FMDN_PRECISION_FINDING
-	// Use stored ranging handlers if available, otherwise use handlers from structure
-	if (atm_gfp_ranging_hdlrs) {
-		gfps_hdlrs->ranging_handlers = (fp_fmdn_ranging_handler_t *)atm_gfp_ranging_hdlrs;
-	} else if (atm_hdlrs->ranging_handlers) {
-		gfps_hdlrs->ranging_handlers =
-			(fp_fmdn_ranging_handler_t *)atm_hdlrs->ranging_handlers;
-	}
-#endif
 }
 
 static uint8_t atm_gfp_battery_status(void)
@@ -153,9 +193,9 @@ static uint8_t fp_tag_dult_get_id(uint8_t *id)
 
 static void fp_tag_dult_user_info(dult_user_info_t *user_info)
 {
-	uint8_t const model_id[] = {FP_APP_MODEL_ID};
-	memcpy(user_info->model_id, model_id, sizeof(model_id));
-	user_info->model_id_len = sizeof(model_id);
+	const uint8_t *model_id = fp_gatt_get_model_id();
+	memcpy(user_info->model_id, model_id, FP_APP_MODEL_ID_LEN);
+	user_info->model_id_len = FP_APP_MODEL_ID_LEN;
 }
 
 static void atm_gfp_dult_sound_action(bool action)
@@ -163,7 +203,7 @@ static void atm_gfp_dult_sound_action(bool action)
 	if (atm_gfp_hdlrs && atm_gfp_hdlrs->sound_action_cb) {
 		// DULT does not define ring_op and ring_vol
 		return atm_gfp_hdlrs->sound_action_cb(action, ATM_GFP_RING_OP_ALL,
-						      ATM_GFP_RING_VOL_DEFAULT);
+						      ATM_GFP_RING_VOL_HIGH);
 	}
 }
 
@@ -229,7 +269,9 @@ static void atm_gfp_mode_switch(fp_mode_t mode)
 
 static void atm_gfp_service_init(void)
 {
-	gfps_init();
+	/* Initialize GFPS with application-provided firmware version string */
+	gfps_init(atm_gfp_hdlrs->fw_version_cb());
+
 	fp_mode_t mode = fp_mode_get();
 #if defined(CONFIG_FAST_PAIR_FMDN) && defined(CONFIG_FAST_PAIR_FMDN_DULT)
 	fp_tag_dult_init();
@@ -306,6 +348,22 @@ void atm_gfp_init(atm_gfp_hdlrs_t const *hdlrs)
 	// Register handlers with GFPS
 	gfps_handlers_register(&gfps_hdlrs);
 
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	/* Register ranging handlers if provided */
+	if (hdlrs->ranging_handlers) {
+		atm_gfp_ranging_handler_register(hdlrs->ranging_handlers);
+	}
+#endif
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+	/* Register reverse ringing event handler if provided
+	 * Use adapter function to convert between library and module event types
+	 */
+	if (hdlrs->reverse_ringing_event_cb) {
+		fp_fmdn_reverse_ringing_event_reg(atm_gfp_reverse_ringing_event_adapter);
+	}
+#endif
+
 	fp_mode_switch_reg(atm_gfp_mode_switch);
 	atm_gfp_service_init();
 }
@@ -318,7 +376,15 @@ void atm_gfp_reset(void)
 	k_work_cancel_delayable(&fp_tag_utp_owner_disconn_timer_id);
 	dult_reset();
 #endif
-	atm_gfp_service_init();
+	/* Skip service re-init if handlers are not registered yet.
+	 * This happens when atm_gfp_reset() is triggered during early boot
+	 * (e.g. button factory reset via platform_reset_detect()) before
+	 * atm_gfp_init() has run. The storage/clock cleanup above is sufficient;
+	 * atm_gfp_init() will perform the full service init shortly after.
+	 */
+	if (atm_gfp_hdlrs) {
+		atm_gfp_service_init();
+	}
 	atm_gfp_bt_unpair();
 }
 
@@ -327,8 +393,15 @@ void atm_gfp_button_notify(void)
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	dult_read_id_enable();
 #endif
-	gfps_button_notify();
+	gfps_button_notify(FP_SINGLE_TAP);
 }
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+void atm_gfp_button_double_notify(void)
+{
+	gfps_button_notify(FP_DOUBLE_TAP);
+}
+#endif
 
 void atm_gfp_stop(void)
 {
@@ -393,22 +466,95 @@ fp_mode_t atm_gfp_fp_mode_get(void)
 }
 
 #ifdef CONFIG_FMDN_PRECISION_FINDING
+/* Wrapper callbacks to forward FMDN ranging handler calls to ATM GFP handlers.
+ * These wrappers provide validation and error handling while forwarding to registered callbacks.
+ * The tech_id parameter determines which union member is valid.
+ */
+
+static int atm_gfp_ranging_capability_wrapper(rt_id_t tech_id, ranging_capability_t *capability)
+{
+	if (!capability) {
+		LOG_ERR("Invalid capability pointer");
+		return -EINVAL;
+	}
+
+	if (!atm_gfp_ranging_hdlrs->capability_cb) {
+		LOG_DBG("Capability callback not available for tech_id: 0x%02x", tech_id);
+		return -ENODEV;
+	}
+
+	return atm_gfp_ranging_hdlrs->capability_cb(tech_id, capability);
+}
+
+static int atm_gfp_ranging_config_wrapper(rt_id_t tech_id, ranging_config_t *config,
+					  bool start_immediately)
+{
+	if (!config) {
+		LOG_ERR("Invalid config pointer");
+		return -EINVAL;
+	}
+
+	if (!atm_gfp_ranging_hdlrs->config_cb) {
+		LOG_DBG("Config callback not available for tech_id: 0x%02x", tech_id);
+		return -ENODEV;
+	}
+
+	return atm_gfp_ranging_hdlrs->config_cb(tech_id, config, start_immediately);
+}
+
+static int atm_gfp_ranging_start_wrapper(rt_id_t tech_id)
+{
+	if (!atm_gfp_ranging_hdlrs->start_cb) {
+		LOG_DBG("Start callback not available for tech_id: 0x%02x", tech_id);
+		return -ENODEV;
+	}
+
+	return atm_gfp_ranging_hdlrs->start_cb(tech_id);
+}
+
+static int atm_gfp_ranging_stop_wrapper(rt_id_t tech_id)
+{
+	if (!atm_gfp_ranging_hdlrs->stop_cb) {
+		LOG_DBG("Stop callback not available for tech_id: 0x%02x", tech_id);
+		return -ENODEV;
+	}
+
+	return atm_gfp_ranging_hdlrs->stop_cb(tech_id);
+}
+
 void atm_gfp_ranging_handler_register(atm_gfp_ranging_handler_t const *handler)
 {
-	LOG_DBG("Registering FMDN ranging handler");
-
-	// Store the handler for later use
-	atm_gfp_ranging_hdlrs = handler;
-
-	LOG_DBG("FMDN ranging handler registered - capability: %s, config: %s, start: %s, stop: %s",
+	LOG_DBG("Registering FMDN ranging handler - capability: %s, config: %s, start: %s, "
+		"stop: %s",
 		handler->capability_cb ? "yes" : "no", handler->config_cb ? "yes" : "no",
 		handler->start_cb ? "yes" : "no", handler->stop_cb ? "yes" : "no");
 
-	// Convert and register with FMDN layer
-	fp_fmdn_ranging_handler_t fmdn_handler = {.capability_cb = handler->capability_cb,
-						  .config_cb = handler->config_cb,
-						  .start_cb = handler->start_cb,
-						  .stop_cb = handler->stop_cb};
+	/* Store the handler for use by wrapper functions */
+	atm_gfp_ranging_hdlrs = handler;
+
+	/* Create FMDN handler with wrapper callbacks.
+	 * Wrappers provide validation and error handling before forwarding to registered callbacks.
+	 * Wrappers will return -ENODEV if specific callbacks are not available.
+	 */
+	static fp_fmdn_ranging_handler_t fmdn_handler = {
+		.capability_cb = atm_gfp_ranging_capability_wrapper,
+		.config_cb = atm_gfp_ranging_config_wrapper,
+		.start_cb = atm_gfp_ranging_start_wrapper,
+		.stop_cb = atm_gfp_ranging_stop_wrapper,
+	};
+
 	fp_fmdn_ranging_handler_register(&fmdn_handler);
+}
+#endif
+
+#ifdef CONFIG_FAST_PAIR_FMDN
+int atm_gfp_fmdn_clock_save(void)
+{
+	return fp_fmdn_clock_save();
+}
+
+void atm_gfp_fmdn_clock_reset(void)
+{
+	fp_fmdn_clock_reset();
 }
 #endif

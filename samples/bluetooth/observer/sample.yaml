@@ -1,5 +1,9 @@
 sample:
   name: observer
+common:
+  tags:
+    - bluetooth
+    - role_observer
 tests:
   samples.bluetooth.observer.atm:
     sysbuild: true
@@ -8,8 +12,52 @@ tests:
       type: one_line
       regex:
         - Starting Observer Demo
-    tags:
-      - bluetooth
-      - no_mcuboot
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.observer.atm.two_dev.beacon: &two_dev_config
+    sysbuild: true
+    tags:
+      - two_dev
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_BT_EXT_ADV=y
+      - CONFIG_ATM_BLE_DUMP_HCI_ALL=y
+    timeout: 90
+    harness: pytest
+    harness_config: &two_dev_harness_config
+      pytest_root:
+        - "pytest/test_observer.py"
+      pytest_args:
+        - '--expected-adv=1c 02 01 04 03 03 aa fe 14 16 aa fe 10 00 00 7a 65 70 68 79 72 70 72 6f 6a 65 63 74 08'
+        - '--expected-rsp=0d 0c 09 54 65 73 74 20 62 65 61 63 6f 6e'
+        - "--expected-adv-phy=Pri PHY: LE 1M, Sec PHY: No packets"
+        - "--expected-rsp-phy=Pri PHY: LE 1M, Sec PHY: No packets"
+  samples.bluetooth.observer.atm.two_dev.atm_beacon:
+    <<: *two_dev_config
+    harness_config:
+      <<: *two_dev_harness_config
+      pytest_args:
+        - '--expected-adv=1f 02 01 06 03 03 aa fe 0e 16 aa fe 10 00 01 61 74 6d 6f 73 69 63 07 08 08 41 30 30 30 30 63 39'
+        - '--expected-rsp=18 17 09 41 54 4d 78 78 78 78 20 4c 6f 77 65 73 74 20 2d 20 50 6f 77 65 72'
+        - "--expected-adv-phy=Pri PHY: LE 1M, Sec PHY: No packets"
+        - "--expected-rsp-phy=Pri PHY: LE 1M, Sec PHY: No packets"
+  samples.bluetooth.observer.atm.two_dev.beacon.spe.flash_xip:
+    <<: *two_dev_config
+    tags:
+      - two_dev
+      - flash_xip
+      - atm_test_with_spe
+    extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+      - SB_CONFIG_SPE=y
+  samples.bluetooth.observer.atm.two_dev.atm_beacon.sbcn:
+    <<: *two_dev_config
+    harness_config:
+      <<: *two_dev_harness_config
+      pytest_args:
+        - '--expected-adv=1f 02 01 06 03 03 aa fe 0e 16 aa fe 10 00 01 61 74 6d 6f 73 69 63 07 08 08 41 74 6d 6f 73 69 63'
+        - '--expected-rsp=10 0f 09 41 74 6d 6f 73 69 63 20 42 65 61 63 6f 6e'
+        - "--expected-adv-phy=Pri PHY: LE 1M, Sec PHY: No packets"
+        - "--expected-rsp-phy=Pri PHY: LE 1M, Sec PHY: No packets"

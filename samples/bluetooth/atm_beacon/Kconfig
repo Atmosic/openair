@@ -1,0 +1,338 @@
+# Copyright (c) 2024-2026 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+module = ATM_BEACON
+module-str = atm_beacon
+source "subsys/logging/Kconfig.template.log_config"
+
+choice
+	prompt "Select beacon"
+	default REFBCN_POWER_PROFILE
+
+#
+# power_profile
+#
+# Send one scannable legacy Eddystone beacon each second until 30 are sent.
+# Between beacons, use the retain w/ voltage drop power mode.
+# Then hibernate for 30 seconds, and repeat.
+#
+# This is a good example for measuring the device's low power performance.
+#
+config REFBCN_POWER_PROFILE
+	bool "hibernate beacon demo"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	help
+	  Select this option to enable power profile.
+
+#
+# socoff_beacon_demo
+#
+# Sends scannable beacon for 30s and goes to soc_off.
+# Then socoff for 30 seconds, and repeat.
+#
+config REFBCN_SOCOFF_BEACON
+	bool "socoff beacon demo"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
+	select SOFT_OFF
+	help
+	  Select this option to see the 30s beacon and 30s soc off.
+
+#
+# Wakeup receiver beacon
+#
+# Sends scannable beacon for configurable time and goes to hibernation.
+# Wakes up on WURX signal detection and repeats.
+#
+config REFBCN_WURX_BEACON
+	bool "WURX beacon demo"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	select ATM_SETTINGS
+	select WURX if DT_HAS_ATMOSIC_WURX_ENABLED
+	select SOFT_OFF
+	select ATM_RESET
+	help
+	  Select this option to enable WURX beacon mode. The device will
+	  advertise for a configurable time period, then enter hibernation
+	  and wait for WURX wake-up signals.
+
+	  On platforms without WURX hardware, the beacon payload is still
+	  emitted but without WURX wake-up capability after hibernation.
+
+	  For information on enabling WURX support, see openair/doc/wurx/wurx.rst
+
+#
+# simple_harv_beacon
+#
+# Beacon example when using Harvesting.
+#
+# Sends scannable beacon forever without hibernation.
+# Uses 1 second advertising interval for energy harvesting optimization.
+# This will allow mobile applications on iOS and Android to always see
+# the device when scanning.
+#
+config REFBCN_SIMPLE_HARV_BEACON
+	bool "simple harvesting beacon"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
+	help
+	  Select this option to enable simple harvesting beacon mode.
+	  The device will advertise with 1 second interval indefinitely,
+	  optimized for energy harvesting applications.
+
+#
+# extended_scn
+#
+# Send one extended scannable advertisement each half second.
+# The extended scan response will contain an Eddystone beacon.
+# Between beacons, use the retain w/ voltage drop power mode.
+#
+config REFBCN_EXTENDED_SCN
+	bool "extended scannable beacon"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
+	select ADV_OPTS_EXT_ADV
+	select ADV_OPTS_NO_2M
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	help
+	  Select this option to enable extended scannable beacon mode.
+	  The device will send extended scannable advertisements every 500ms
+	  with an Eddystone beacon in the scan response.
+
+#
+# iBeacon
+#
+# Apple iBeacon format beacon.
+# Sends non-connectable iBeacon advertisements with UUID, Major, Minor.
+#
+config REFBCN_IBEACON
+	bool "iBeacon demo"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	help
+	  Select this option to enable iBeacon mode.
+	  The device will advertise using Apple iBeacon format with
+	  manufacturer-specific data containing UUID, Major, Minor values.
+
+#
+# extended_adv
+#
+# Send one extended Eddystone beacon each half second.
+# Between beacons, use the retain w/ voltage drop power mode.
+#
+config REFBCN_EXTENDED_ADV
+	bool "extended advertising beacon"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_EXT_ADV
+	select ADV_OPTS_NO_2M
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	help
+	  Select this option to enable extended advertising beacon mode.
+	  The device will send extended non-connectable non-scannable
+	  advertisements every 500ms with a large Eddystone URL beacon.
+
+#
+# extended_con
+#
+# Send one extended connectable Eddystone beacon each half second.
+# Between beacons, use the retain w/ voltage drop power mode.
+#
+config REFBCN_EXTENDED_CON
+	bool "extended connectable beacon"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_CONNECTABLE
+	select ADV_OPTS_EXT_ADV
+	select ADV_OPTS_NO_2M
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	help
+	  Select this option to enable extended connectable beacon mode.
+	  The device will send extended connectable non-scannable
+	  advertisements every 500ms with a large Eddystone URL beacon.
+
+# LR_coded
+#
+# Long Range coded PHY beacon.
+# Sends extended advertisements on LE Coded PHY for increased range.
+#
+config REFBCN_LR_CODED
+	bool "Long Range coded PHY beacon demo"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
+	select ADV_OPTS_EXT_ADV
+	select ADV_OPTS_CODED
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	help
+	  Select this option to enable Long Range coded PHY beacon mode.
+	  The device will advertise on LE Coded PHY for extended range
+	  with the trade-off of lower data rate and higher power consumption.
+
+# 2M_secondary
+#
+# Send one extended Eddystone beacon each second via the 2M phy.
+# Between beacons, use the hibernate power mode.
+#
+config REFBCN_2M_SECONDARY
+	bool "2M PHY secondary advertising beacon"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_EXT_ADV
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	help
+	  Select this option to enable 2M PHY secondary advertising.
+	  Sends extended Eddystone beacon each second using 2M PHY,
+	  then hibernates for 1 second and repeats.
+
+# LR500_coded
+#
+# Long Range 500kbps coded PHY beacon.
+# Sends extended advertisements on LE Coded PHY with S=2 coding (500kbps).
+#
+config REFBCN_LR500_CODED
+	bool "Long Range 500kbps coded PHY beacon demo"
+	select ADV_OPTS_USE_IDENTITY
+	select ADV_OPTS_SCANNABLE
+	select ADV_OPTS_EXT_ADV
+	select ADV_OPTS_CODED
+	select ADV_OPTS_REQUIRE_S2_CODING
+	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	help
+	  Select this option to enable Long Range 500kbps coded PHY beacon mode.
+	  The device will advertise on LE Coded PHY with S=2 coding for
+	  500kbps data rate, offering higher throughput than S=8 (125kbps)
+	  with a trade-off of reduced range.
+
+endchoice
+
+config REFBCN_IBEACON_RSSI
+	hex "iBeacon calibrated RSSI at 1m"
+	default 0xff
+	depends on REFBCN_IBEACON
+	help
+	  Calibrated RSSI value at 1 meter distance.
+	  This is a signed 8-bit value (0xff = -1 dBm).
+	  Used by receiving devices to estimate distance from the beacon.
+
+config BT_DEVICE_NAME
+	default "ATMxxxx Lowest - Power" if REFBCN_POWER_PROFILE || REFBCN_EXTENDED_SCN || \
+					    REFBCN_EXTENDED_ADV  || REFBCN_EXTENDED_CON || \
+					    REFBCN_LR_CODED || REFBCN_2M_SECONDARY || \
+					    REFBCN_LR500_CODED
+	default "Atmosic Beacon" if REFBCN_SOCOFF_BEACON || REFBCN_WURX_BEACON
+	default "Atmosic Harvesting" if REFBCN_SIMPLE_HARV_BEACON
+	default "Atmosic iBeacon" if REFBCN_IBEACON
+
+config REFBCN_SHORT_NAME
+	string "Beacon shortened name"
+	default "A0000c9" if REFBCN_POWER_PROFILE
+	default "Atmosic" if REFBCN_SOCOFF_BEACON || REFBCN_WURX_BEACON
+	default ""
+	help
+	  Shortened name advertised in advertising data.
+	  Leave empty if not using shortened name.
+
+#
+# Add the simple beacon profile if Button 1 is not present or not pressed at
+# boot; otherwise, use the other enabled profile. The simple beacon sends
+# scannable beacon forever without hibernation.
+#
+
+config REFBCN_SIMPLE_BEACON
+	bool "simple beacon"
+	select ATM_RESET
+	help
+	  Add simple beacon profile if Button 1 is not present or not pressed
+	  at boot; otherwise, use the other enabled profile.
+
+config REFBCN_SIMPLE_BEACON_NAME
+	string "Simple beacon complete name"
+	default "Atmosic Beacon"
+	depends on REFBCN_SOCOFF_BEACON || REFBCN_SIMPLE_BEACON || REFBCN_WURX_BEACON
+
+config REFBCN_SIMPLE_BEACON_SHORT_NAME
+	string "Simple beacon shortened name"
+	default "Atmosic"
+	depends on REFBCN_SOCOFF_BEACON || REFBCN_SIMPLE_BEACON || REFBCN_WURX_BEACON || REFBCN_SIMPLE_HARV_BEACON
+
+config REFBCN_SIMPLE_BEACON_INTV
+	hex "Simple beacon advertising interval"
+	range 0x14 0x2710
+	default 0x64 # 100 ms
+	depends on REFBCN_SIMPLE_BEACON
+	help
+	  This parameter is specified in units of 1 ms, rather than 0.625 ms.
+	  However, the final value will be rounded to the nearest multiple of 0.625 ms.
+
+# for Create
+config ADV_INTV
+	hex "Advertising interval in 0.625ms units"
+	range 0x20 0x640
+	default 0x320 if REFBCN_EXTENDED_SCN || REFBCN_EXTENDED_ADV || REFBCN_EXTENDED_CON # 500ms
+	default 0x640 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON || REFBCN_WURX_BEACON || \
+			 REFBCN_SIMPLE_HARV_BEACON || REFBCN_2M_SECONDARY # 1s
+	default 0x20
+	help
+	  Configures the advertising interval in units of 0.625ms.
+	  Range: 0x20 (32ms) to 0x640 (1600ms).
+
+config ADV_MAX_EVT
+	int "Maximum number of advertising events"
+	default 1 if REFBCN_2M_SECONDARY
+	default 30 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON || REFBCN_WURX_BEACON # 30s_adv (30 * 1s)
+	default 0
+	help
+	  Specifies the maximum number of advertising events to send before stopping.
+	  0 means unlimited advertising.
+
+config ADV_RSTRT_DUR_MS
+	int "Advertising restart duration (milliseconds)"
+	default 1000 if REFBCN_2M_SECONDARY # 1s
+	default 30000 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON # 30s
+	default 0
+	help
+	  Specifies the duration in milliseconds to wait before restarting advertising.
+	  0 means no restart delay.
+
+# for Low power
+config SOFT_OFF
+	bool "Enable soft-off low power mode"
+	depends on PM
+	select EXT_WAKEUP_ENABLE_INDEFINITE
+	default y if REFBCN_POWER_PROFILE || REFBCN_2M_SECONDARY
+	help
+	  Enables the soft-off low power mode for the beacon application.
+	  When enabled, the device will enter a low power state between advertising cycles.
+
+# for hibernation
+config SOFT_OFF_SUBID
+	int "Soft-off substate ID"
+	depends on SOFT_OFF
+	default 0 if REFBCN_POWER_PROFILE || REFBCN_WURX_BEACON || REFBCN_2M_SECONDARY
+	default 1
+	help
+	  Specifies the substate ID to use in low power state
+	  1:soc-off 0:hibernation
+
+#
+# Invisible Kconfig symbols
+#
+
+rsource "Kconfig.adv_opts"
+rsource "Kconfig.adv_flags"
+
+config ADV_FLAGS
+	hex
+	default 0x4 if ADV_FLAGS_LE_ONLY_NON_DISC
+	default 0x5 if ADV_FLAGS_LE_ONLY_LIMITED_DISC
+	default 0x6 if ADV_FLAGS_LE_ONLY_GENERAL_DISC
+	default 0
+
+# for Start
+config ADV_TOUT
+	int
+	default 0
+
+source "Kconfig.zephyr"

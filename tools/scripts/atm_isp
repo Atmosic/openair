@@ -1,4 +1,8 @@
 #! /usr/bin/env python3
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 
 # The Atmosic In-System Programming Tool (ISP) is for bundling all
 # three types of binaries -- OTP NVDS, flash NVDS, and flash -- into a
@@ -381,7 +385,7 @@ class Tools:
         Tools.platform_family = platform_family
         Tools.revision = revision
     @staticmethod
-    def set_zephry(zephyr):
+    def set_zephyr(zephyr):
         Tools.zephyr = zephyr
     @staticmethod
     def openocd_dir():
@@ -395,11 +399,11 @@ class Tools:
         if Tools.zephyr:
             openocd_pkg_root = Tools.openocd_pkg_root
             if Tools.platform_family == 'atm3':
-                # bare metal atm3/ATM32xx-x1x to zephry ATMx2xx-x1x
-                platform_name = Tools.platform_name.replace('ATM32','ATMx2')
+                # bare metal atm3/ATM32xx-x1x to zephyr ATMx2xx-x1x
+                platform_name = Tools.platform_name.replace('ATM32', 'ATMx2')
             elif Tools.platform_family == 'atm34' and \
                     '-' in Tools.platform_name:
-                # bare metal atm34/ATM34xx-2 to zephry ATM34xx
+                # bare metal atm34/ATM34xx-2 to zephyr ATM34xx
                 platform_name = Tools.platform_name.split('-')[0]
             else:
                 platform_name = Tools.platform_name
@@ -407,12 +411,12 @@ class Tools:
         else:
             openocd_pkg_root = Tools.openocd_pkg_root
             if Tools.platform_family == 'atmx2':
-                # zephry ATMx2xx-x1x to bare metal atm2/ATM22xx-x1x
+                # zephyr ATMx2xx-x1x to bare metal atm2/ATM22xx-x1x
                 platform_family = 'atm2'
                 platform_name = 'ATM22xx-x1x'
             elif Tools.platform_family == 'atm34':
                 platform_family = Tools.platform_family
-                # zephry ATM34xx to bare metal atm34/ATM34xx-2
+                # zephyr ATM34xx to bare metal atm34/ATM34xx-2
                 if '-' not in Tools.platform_name:
                     platform_name = f"{Tools.platform_name}-2"
                 else:
@@ -436,8 +440,7 @@ class Tools:
     @staticmethod
     def openocd_flags():
         platform_family = Tools.platform_family
-        # family name of sydney on bare metal is atm2 or atm3 and atmx2 on
-        # zehpyr
+        # family name of sydney on bare metal is atm2 or atm3 and atmx2 on zephyr
         if "atm2" == Tools.platform_family or "atm3" == Tools.platform_family \
                 or "atmx2" == Tools.platform_family:
             platform_family = "atm2x_openocd.cfg"
@@ -868,8 +871,7 @@ def burn_archive(archive, openocd_opts, verbose=False, check_image=False, tcl_sc
     fl_bin_path = None
     platform = archive.meta.platform
     if hasattr(platform, 'family') and hasattr(platform, 'name'):
-        # family name of sydney on bare metal is atm2 or atm3 and atmx2 on
-        # zehpyr
+        # family name of sydney on bare metal is atm2 or atm3 and atmx2 on zephyr
         if platform.family == 'atm2' or platform.family == 'atm3' or \
                 platform.family == 'atmx2':
             atmx2_family = True
@@ -884,7 +886,7 @@ def burn_archive(archive, openocd_opts, verbose=False, check_image=False, tcl_sc
             print("Zephyr requilred --openocd_pkg_root arguments")
             return
         else:
-            Tools.set_zephry(openocd_opts.zephyr)
+            Tools.set_zephyr(openocd_opts.zephyr)
     should_exec_oocd_script_and_cleanup = not (openocd_opts.openocd_script_only or tcl_script or dst_dir)
     d = dst_dir if dst_dir else tempfile.mkdtemp(None, 'burn_arch_', Tools.openocd_pkg_root)
     w = WriteOpenOcdScript(d, should_exec_oocd_script_and_cleanup, verbose, check_image, tcl_script, program_only, atmx2_family, basename_subst, fast_load, fl_bin_path)

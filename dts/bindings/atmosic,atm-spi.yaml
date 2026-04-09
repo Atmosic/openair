@@ -2,7 +2,7 @@ description: Atmosic SPI
 
 compatible: "atmosic,atm-spi"
 
-include: spi-controller.yaml
+include: [spi-controller.yaml, pinctrl-device.yaml]
 
 properties:
     reg:
@@ -22,22 +22,8 @@ properties:
       default: 0
       description: Number of extra shift cycles to help with the turn-around
 
-    cs-pin:
-      type: int
+    pinctrl-0:
       required: true
-      description: CS pin to use
 
-    clk-pin:
-      type: int
+    pinctrl-names:
       required: true
-      description: CLK pin to use
-
-    mosi-pin:
-      type: int
-      required: false
-      description: MOSI pin to use
-
-    miso-pin:
-      type: int
-      required: false
-      description: MISO pin to use

@@ -5,7 +5,7 @@
  *
  * @brief Power Management Unit APIs
  *
- * Copyright (C) Atmosic 2021-2025
+ * Copyright (C) Atmosic 2021-2026
  *
  *
  ******************************************************************************
@@ -21,6 +21,10 @@
  * @brief Power Management driver
  * @{
  */
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "compiler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -360,6 +364,23 @@ __NORETURN void pmu_reset(void);
  * @param[in] enable  Flag to enable/disable
  */
 void pmu_disable_vddio_reset(bool enable);
+
+/**
+ * @brief PMU watchdog warning interrupt handler
+ *
+ * Called by central PMU_Handler() when PMU watchdog warning fires.
+ * Defined in wdt_atmosic_unified.c when CONFIG_ATM_PMU_WDT_ENABLE is enabled.
+ */
+void wdt_pmu_handler(void);
+
+/**
+ * @brief Reads the PMU status register and returns flags indicating which
+ * interrupt sources are active.
+ *
+ * @param[out] brownout  Set true if brownout interrupt pending
+ * @param[out] wdog_warn Set true if PMU watchdog warning pending
+ */
+void pmu_isr_source(bool *brownout, bool *wdog_warn);
 
 #ifdef __cplusplus
 }

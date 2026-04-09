@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -45,9 +45,16 @@ LOG_MODULE_REGISTER(atm_antenna, CONFIG_ATM_ANTENNA_SWITCH_LOG_LEVEL);
 #endif
 #if DT_NODE_HAS_PROP(DT_NODELABEL(atm_antenna), power_source_gpios)
 #define HAS_POWER_GPIO
-static const struct gpio_dt_spec power_source_gpio =
+static struct gpio_dt_spec power_source_gpio =
 	GPIO_DT_SPEC_GET(DT_NODELABEL(atm_antenna), power_source_gpios);
+
+#if CONFIG_ATM_ANTENNA_RAM_ONLY_FOR_PM
+// Copy data needed in PM path to RAM
+struct device power_source_port;
+int (*set_bits_raw)(const struct device *port, gpio_port_pins_t pins);
+int (*clear_bits_raw)(const struct device *port, gpio_port_pins_t pins);
 #endif
+#endif // HAS_POWER_GPIO
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(atm_antenna), mdm_ant_rx_3to0)
 #define MDM_ANTRX3TO0_TABLE DT_PROP(DT_NODELABEL(atm_antenna), mdm_ant_rx_3to0)
@@ -66,17 +73,25 @@ static const struct gpio_dt_spec power_source_gpio =
 #endif
 
 #if defined(HAS_POWER_GPIO) && defined(CONFIG_PM)
-static void atm_antenna_pm_notify_entry(enum pm_state state)
+__ramfunc static void atm_antenna_pm_notify_entry(enum pm_state state)
 {
 	if (state >= PM_STATE_SUSPEND_TO_RAM) {
+#if CONFIG_ATM_ANTENNA_RAM_ONLY_FOR_PM
+		clear_bits_raw(&power_source_port, BIT(power_source_gpio.pin));
+#else
 		gpio_pin_set_dt(&power_source_gpio, 0);
+#endif
 	}
 }
 
-static void atm_antenna_pm_notify_exit(enum pm_state state)
+__ramfunc static void atm_antenna_pm_notify_exit(enum pm_state state)
 {
 	if (state >= PM_STATE_SUSPEND_TO_RAM) {
+#if CONFIG_ATM_ANTENNA_RAM_ONLY_FOR_PM
+		set_bits_raw(&power_source_port, BIT(power_source_gpio.pin));
+#else
 		gpio_pin_set_dt(&power_source_gpio, 1);
+#endif
 	}
 }
 
@@ -84,7 +99,7 @@ static struct pm_notifier atm_antenna_pm_notifier = {
 	.state_entry = atm_antenna_pm_notify_entry,
 	.state_exit = atm_antenna_pm_notify_exit,
 };
-#endif
+#endif // defined(HAS_POWER_GPIO) && defined(CONFIG_PM)
 
 static int atm_antenna_init(const struct device *dev)
 {
@@ -114,6 +129,14 @@ static int atm_antenna_init(const struct device *dev)
 	PIN_SELECT(ANT_OUT7_PIN, ANT_OUT7);
 #endif
 #if defined(HAS_POWER_GPIO)
+#if CONFIG_ATM_ANTENNA_RAM_ONLY_FOR_PM
+	// Copy data used in PM path to RAM
+	power_source_port = *power_source_gpio.port;
+	const struct gpio_driver_api *api = (const struct gpio_driver_api *)power_source_port.api;
+	set_bits_raw = api->port_set_bits_raw;
+	clear_bits_raw = api->port_clear_bits_raw;
+#endif
+
 	if (!gpio_is_ready_dt(&power_source_gpio)) {
 		LOG_ERR("Power source GPIO device not ready");
 		return -ENODEV;
@@ -125,7 +148,7 @@ static int atm_antenna_init(const struct device *dev)
 		LOG_ERR("Failed to configure power source GPIO: %d", ret);
 		return ret;
 	}
-#endif
+#endif // HAS_POWER_GPIO
 
 	WRPR_CTRL_PUSH(CMSDK_MDM, WRPR_CTRL__CLK_ENABLE)
 	{

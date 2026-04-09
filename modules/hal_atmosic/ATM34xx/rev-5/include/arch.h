@@ -55,6 +55,7 @@
 
 #include <stdint.h>        // standard integer definition
 #include <stdbool.h>       // standard boolean definition
+#include <inttypes.h>      // for PRI format specifiers
 #include "compiler.h"      // inline functions
 #include "ll.h"
 #include "ARMv8MBL.h"
@@ -63,6 +64,14 @@
 #undef printf
 
 #include "rep_vec.h"
+
+/* Macros for 64-bit integer printing */
+#define PRI_UINT64_FMT(value) ((uint32_t)((value) >> 32)), ((uint32_t)(value))
+#define PRI_INT64_FMT(value) ((uint32_t)((uint64_t)(value) >> 32)), ((uint32_t)(value))
+
+/* Format strings for 64-bit integers (prints as two 32-bit hex values) */
+#define PRI_UINT64 "0x%08" PRIx32 "%08" PRIx32
+#define PRI_INT64  "0x%08" PRIx32 "%08" PRIx32
 
 #ifdef __cplusplus
 extern "C" {

@@ -29,24 +29,6 @@ static int default_RNG(uint8_t *dest, unsigned size)
 
 #define uECC_OPTIMIZATION_LEVEL 4
 
-#ifndef uECC_SUPPORTS_secp160r1
-#define uECC_SUPPORTS_secp160r1 0
-#endif
-
-#ifndef MBEDTLS_ECP_DP_SECP192R1_ENABLED
-#define uECC_SUPPORTS_secp192r1 0
-#endif
-#ifndef MBEDTLS_ECP_DP_SECP224R1_ENABLED
-#define uECC_SUPPORTS_secp224r1 0
-#endif
-#ifndef MBEDTLS_ECP_DP_SECP256R1_ENABLED
-#define uECC_SUPPORTS_secp256r1 0
-#endif
-#ifndef MBEDTLS_ECP_DP_SECP256K1_ENABLED
-#define uECC_SUPPORTS_secp256k1 0
-#endif
-#define uECC_SUPPORT_COMPRESSED_POINT 0
-
 #ifdef CONCAT
 #undef CONCAT
 #endif

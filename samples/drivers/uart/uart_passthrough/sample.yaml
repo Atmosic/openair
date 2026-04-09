@@ -1,9 +1,12 @@
 sample:
   description: UART0 to UART1 Passthrough
   name: UART Passthrough sample
+common:
+  sysbuild: true
+  harness: pytest
+  timeout: 180
+  tags:
+    - drivers
+    - uart
 tests:
-  samples.drivers.uart.uart_passthrough:
-    sysbuild: true
-    tags:
-      - introduction
-      - no_mcuboot
+  samples.drivers.uart.uart_passthrough.atm: {}

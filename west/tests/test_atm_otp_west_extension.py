@@ -1,9 +1,11 @@
+# Copyright (c) Atmosic 2024-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file test_atm_otp_west_extension.py
 
 @brief Unit test for atmotp west extension
-
-Copyright (c) Atmosic 2024
 """
 
 import os

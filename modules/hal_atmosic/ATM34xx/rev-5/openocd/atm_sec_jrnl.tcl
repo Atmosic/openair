@@ -106,7 +106,12 @@ proc atm_erase_sec_jrnl_nvds { } {
     set ratchet_val [atm_sec_jrnl_get_ratchet]
     set erase_start [expr { $::CMSDK_SEC_JOURNAL_BASE + $ratchet_val }]
     set erase_size [expr { $::CMSDK_SEC_JOURNAL_SIZE - $ratchet_val }]
-    atm_erase_rram_byte $erase_start $erase_size
+    set erase_start_align_size [expr { 4 - ($erase_start % 4) }]
+    atm_erase_rram_byte $erase_start $erase_start_align_size
+
+    set erase_start_bulk [expr { $erase_start + $erase_start_align_size }]
+    set erase_size_bulk [expr { $erase_size - $erase_start_align_size }]
+    atm_erase_rram $erase_start_bulk $erase_size_bulk
     puts "Erasing Secure Journal @$erase_start size: $erase_size"
 }
 

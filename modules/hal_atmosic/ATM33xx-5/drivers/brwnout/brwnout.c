@@ -5,7 +5,7 @@
  *
  * @brief Brownout Driver
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  ******************************************************************************
  */
@@ -44,7 +44,7 @@ LOG_MODULE_REGISTER(brownout, LOG_LEVEL_INF);
 #endif
 
 #define BROWNOUT_INTERNAL_GUARD
-#include "brwnout_internal.h"
+#include "brwnout.ih"
 
 #ifdef CONFIG_BROWNOUT_THR_VBAT
 #define BRWNOUT_THR_VBAT CONFIG_BROWNOUT_THR_VBAT
@@ -121,7 +121,7 @@ static void brwnout_plf_off(void)
     pmu_set_socoff_energy_wakeup(true);
 
     // Any non-zero duration should be fine since all we need is for the
-    // timer to wake up the chip from the SOC off state. Since it is in
+    // timer to wake up the chip from the hibernation state. Since it is in
     // response to a brownout event, that gate should already be in place
     // to ensure that the chip will wake up only once enough energy has
     // been accumulated.

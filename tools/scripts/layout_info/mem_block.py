@@ -4,7 +4,7 @@
 
 @brief Memory Blocks for layout_info
 
-Copyright (C) Atmosic 2023-2025
+Copyright (C) Atmosic 2023-2026
 """
 from typing import List
 import textwrap
@@ -13,7 +13,9 @@ import os
 
 def human_readable(x):
     """return a human readable format of a value"""
-    return f"{int(x/1024)}K"
+    if x % 1024 == 0:
+        return f"{x // 1024}K"
+    return f"{x}B"
 
 
 class MemBlock:
@@ -103,16 +105,32 @@ class MemBlock:
 
     def fill_reserved(self):
         """Automatically inserts reserved blocks between empty memory spaces."""
+        # First, recursively fill reserved in all sub_blocks
+        for block in self.sub_blocks:
+            block.fill_reserved()
+
         sorted_blocks = sorted(self.sub_blocks)
-        prev_l_bound = -1
-        prev_u_bound = -1
         reserved_blocks = []
+
+        # Fill gap at the beginning (between self.l_bound and first sub_block)
+        if sorted_blocks and sorted_blocks[0].l_bound > self.l_bound:
+            reserved_blocks.append(
+                ReservedBlock([self.l_bound, sorted_blocks[0].l_bound])
+            )
+
+        # Fill gaps between sub_blocks
+        prev_u_bound = -1
         for block in sorted_blocks:
-            if prev_l_bound != -1:
-                if prev_u_bound != block.l_bound:
-                    reserved_blocks.append(ReservedBlock([prev_u_bound, block.l_bound]))
-            prev_l_bound = block.l_bound
+            if prev_u_bound not in (-1, block.l_bound):
+                reserved_blocks.append(ReservedBlock([prev_u_bound, block.l_bound]))
             prev_u_bound = block.u_bound
+
+        # Fill gap at the end (between last sub_block and self.u_bound)
+        if sorted_blocks and sorted_blocks[-1].u_bound < self.u_bound:
+            reserved_blocks.append(
+                ReservedBlock([sorted_blocks[-1].u_bound, self.u_bound])
+            )
+
         self.sub_blocks += reserved_blocks
 
     def promote_to_mem_region(self):

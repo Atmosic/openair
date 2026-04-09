@@ -5,7 +5,7 @@
  *
  * @brief Generated header file for atmwstk integrity checking
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2026
  *
  *******************************************************************************
  */

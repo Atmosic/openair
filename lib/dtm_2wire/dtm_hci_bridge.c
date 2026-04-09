@@ -5,7 +5,7 @@
  *
  * @brief DTM HCI bridge implementation for Zephyr
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -16,6 +16,15 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/net_buf.h>
 #include <zephyr/sys/byteorder.h>
+
+#ifdef CONFIG_DTM_2WIRE_E2E
+#define DTM_WEAK
+#define DTM_STATIC static
+#else
+/* APIs are public and overrideable */
+#define DTM_WEAK __weak
+#define DTM_STATIC
+#endif
 
 #include "dtm_hci_bridge.h"
 
@@ -46,6 +55,17 @@ void dtm_hci_bridge_set_cmd_complete_cb(dtm_hci_cmd_cmpl_cb cb)
 	cmd_cmpl_cb = cb;
 }
 
+DTM_STATIC struct net_buf *DTM_WEAK dtm_hci_bridge_hci_cmd_alloc()
+{
+	return bt_hci_cmd_alloc(K_FOREVER);
+}
+
+DTM_STATIC int DTM_WEAK dtm_hci_bridge_hci_cmd_send_sync(uint16_t opcode, struct net_buf *buf,
+							 struct net_buf **rsp)
+{
+	return bt_hci_cmd_send_sync(opcode, buf, rsp);
+}
+
 uint8_t dtm_hci_bridge_send_cmd(uint16_t opcode, uint8_t *param_buf, uint8_t param_len)
 {
 	struct net_buf *buf;
@@ -58,7 +78,7 @@ uint8_t dtm_hci_bridge_send_cmd(uint16_t opcode, uint8_t *param_buf, uint8_t par
 		DTM_HCI_DUMP("HCI CMD PARAMS", param_buf, param_len);
 	}
 
-	buf = bt_hci_cmd_alloc(K_FOREVER);
+	buf = dtm_hci_bridge_hci_cmd_alloc();
 	if (!buf) {
 		LOG_ERR("Failed to allocate HCI command buffer");
 		return BT_HCI_ERR_UNSUPP_REMOTE_FEATURE;
@@ -68,7 +88,7 @@ uint8_t dtm_hci_bridge_send_cmd(uint16_t opcode, uint8_t *param_buf, uint8_t par
 		net_buf_add_mem(buf, param_buf, param_len);
 	}
 
-	err = bt_hci_cmd_send_sync(opcode, buf, &rsp);
+	err = dtm_hci_bridge_hci_cmd_send_sync(opcode, buf, &rsp);
 	if (err) {
 		LOG_ERR("Failed to send HCI command: %d", err);
 		return BT_HCI_ERR_UNSUPP_REMOTE_FEATURE;

@@ -1,0 +1,16 @@
+# Copyright (c) 2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  Atmosic ATLC TCM
+
+  The ATLC TCM provides dedicated memory regions for radio operations including
+  BLE and IEEE 802.15.4. It contains separate sections for TX/RX FIFOs and
+  data buffers that are directly accessed by the radio hardware.
+
+compatible: "atmosic,atlc-tcm"
+
+include: base.yaml
+
+child-binding:
+  description: TCM memory region.

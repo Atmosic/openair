@@ -95,4 +95,4 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]

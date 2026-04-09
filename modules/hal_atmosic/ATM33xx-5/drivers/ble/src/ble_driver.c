@@ -5,7 +5,7 @@
  *
  * @brief Atmosic BLE link layer - HCI driver
  *
- * Copyright (C) Atmosic 2018-2025
+ * Copyright (C) Atmosic 2018-2026
  *
  *******************************************************************************
  */
@@ -31,6 +31,7 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/drivers/bluetooth.h>
+#include "atm_bthci_utils.h"
 #ifdef CONFIG_BT_SMP
 #define BLE_THREAD_STACK_SIZE MAX(CONFIG_BT_RX_STACK_SIZE, 1600)
 #else
@@ -150,12 +151,11 @@ ble_write(uint8_t *bufptr, uint32_t size, void (*callback) (void *, uint8_t),
 	    bool discardable = is_hci_event_discardable(buf);
 	    nbuf = bt_buf_get_evt(evt, discardable,
 		discardable ? K_NO_WAIT : K_FOREVER);
+	    ATM_BTHCI_DUMP_HCI_PKT(ATM_HCI_DUMP_EVT, buf, len);
 	} break;
 	case H4_ACL: {
+	    ATM_BTHCI_DUMP_HCI_PKT(ATM_HCI_DUMP_ACL_IN, buf, len);
 	    nbuf = bt_buf_get_rx(BT_BUF_ACL_IN, K_FOREVER);
-	} break;
-	case H4_ISO: {
-	    nbuf = bt_buf_get_rx(BT_BUF_ISO_IN, K_MSEC(250));
 	} break;
 	default: {
 	    __ASSERT(0, "Unknown Type = %d with Len = %d", type, len);
@@ -240,6 +240,16 @@ ble_isr(void *arg)
 
 static int32_t plf_sleep_min = 0xa0;
 
+static unsigned int ble_key;
+
+static int ble_sem_take(k_timeout_t timeout)
+{
+    unsigned int key = ble_key;
+    ble_key = 0;
+    irq_unlock(key);
+    return k_sem_take(&ble_sem, timeout);
+}
+
 static void
 ble_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
     int32_t ble_sleep_duration)
@@ -282,7 +292,7 @@ ble_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
 #ifdef CONFIG_PM
     pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 #endif
-    k_sem_take(&ble_sem, K_TICKS(ticks));
+    ble_sem_take(K_TICKS(ticks));
 #ifdef CONFIG_PM
     pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 #endif
@@ -306,7 +316,7 @@ ble_thread(void *p1, void *p2, void *p3)
 
 	rep_vec_invoke(rv_plf_schedule, NULL);
 
-	unsigned int key = irq_lock();
+	ble_key = irq_lock();
 
 	bool ble_asleep = false;
 	int32_t ble_sleep_duration = -1;
@@ -317,7 +327,7 @@ ble_thread(void *p1, void *p2, void *p3)
 		    rv_plf_to_deep_sleep, ble_to_deep_sleep, &pseq_sleep, NULL,
 		    ble_asleep, ble_sleep_duration);
 		if (!pseq_sleep) {
-		    k_sem_take(&ble_sem, K_FOREVER);
+		    ble_sem_take(K_FOREVER);
 
 		    // Release WREQ signal
 		    WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
@@ -328,15 +338,14 @@ ble_thread(void *p1, void *p2, void *p3)
 	    } break;
 
 	    case RWIP_IDLE:
-		k_sem_take(&ble_sem, K_FOREVER);
+		ble_sem_take(K_FOREVER);
 		break;
 
 	    case RWIP_ACTIVE:
 	    default:
+		irq_unlock(ble_key);
 		break;
 	}
-
-	irq_unlock(key);
     }
 }
 
@@ -368,6 +377,7 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 		LOG_ERR("Bogus HCI CMD len");
 		return -E2BIG;
 	    }
+	    ATM_BTHCI_DUMP_HCI_PKT(ATM_HCI_DUMP_CMD, buf->data, buf->len);
 	    rwtl_rx_client_t const *p_client =
 		rwtl_rx_client_get(H4_MSG_LC_HCI_CMD);
 	    if (!p_client) {
@@ -388,6 +398,7 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
 		LOG_ERR("Bogus HCI ACL len");
 		return -E2BIG;
 	    }
+	    ATM_BTHCI_DUMP_HCI_PKT(ATM_HCI_DUMP_ACL_OUT, buf->data, buf->len);
 	    rwtl_rx_client_t const *p_client = rwtl_rx_client_get(H4_MSG_LC_HCI_ACL);
 	    if (!p_client) {
 		LOG_ERR("Missing HCI ACL client");

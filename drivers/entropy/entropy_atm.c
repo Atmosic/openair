@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Atmosic
+ * Copyright (c) 2023-2025 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,7 +20,7 @@ LOG_MODULE_REGISTER(entropy_atm, CONFIG_ENTROPY_LOG_LEVEL);
 #include "rif_regs_core_macro.h"
 
 #define TRNG_INTERNAL_DIRECT_INCLUDE_GUARD
-#include "trng_internal.h"
+#include "trng.ih"
 
 static uint32_t volatile trng_ring[CONFIG_ENTROPY_ATM_RING_ENTRIES];
 static uint32_t volatile trng_ring_head;

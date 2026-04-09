@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Common Definitions
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -49,8 +49,15 @@ enum {
 	FP_ADV_BT_ID_MAX,
 };
 
-/// TX power of FP app
-#define FP_APP_TX_PWR        0xEF
+/// Calibrated RSSI at 1m when CONFIG_MAX_TX_PWR = 0 dBm
+#define FP_CALIBRATED_TX_PWR_1M ((int8_t)CONFIG_FAST_PAIR_TX_PWR_CALIBRATION_1M)
+/// RSSI at 1m adjusted for actual CONFIG_MAX_TX_PWR
+#define FP_APP_TX_PWR_1M        ((int8_t)(FP_CALIBRATED_TX_PWR_1M + (int8_t)CONFIG_MAX_TX_PWR))
+/// Path loss at 1m (dBm), per Fast Pair specification
+#define FP_PATHLOSS_AT_1M_DBM   41
+/// Fast Pair Advertising TX Power (RSSI@1m + FP_PATHLOSS_AT_1M_DBM)
+#define FP_APP_TX_PWR_ADV       ((uint8_t)(FP_APP_TX_PWR_1M + FP_PATHLOSS_AT_1M_DBM))
+
 /// Length of FP app model ID
 #define FP_APP_MODEL_ID_LEN  3
 /// Length of FP anti-spoofing key of AES encrypted
@@ -118,6 +125,11 @@ typedef enum {
 
 // Fast Pair specification requires at least 64 bytes for personalized name storage
 #define FP_PERSONALIZED_NAME_MAX_LEN 64
+
+typedef enum {
+	FP_SINGLE_TAP = 0,
+	FP_DOUBLE_TAP = 1,
+} fp_tap_type_t;
 
 #ifdef __cplusplus
 }

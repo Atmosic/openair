@@ -2,19 +2,15 @@ sample:
   name: BME280 Sensor sample
 common:
   tags:
-    - shield
     - sensor
   sysbuild: true
   harness: console
   harness_config:
     type: one_line
     regex:
-      - '[Dd]evice "BME280_.*"'
-  platform_allow: ATMBTCSTAG-3405/ATM34xx-5
+      - 'Found device "bme280@.*"'
 tests:
-  samples.sensor.bme280.atm:
-    extra_args:
-      - bme280_SHIELD=mikroe_weather_click_i2c
+  samples.sensor.bme280.atm: {}
   samples.sensor.bme280.atm.spi:
     extra_args:
-      - bme280_SHIELD=mikroe_weather_click_spi
+      - SHIELD=mikroe_weather_click_spi

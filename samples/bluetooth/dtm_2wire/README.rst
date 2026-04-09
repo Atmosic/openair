@@ -43,11 +43,19 @@ Build command:
 
    west build -p always -b <BOARD> openair/samples/bluetooth/dtm_2wire --sysbuild -T samples.bluetooth.dtm_2wire.atm
 
+If UART1 is configured for 2-wire you can modify app.overlay described in the next section on configuration.  Then build the image with console logging disabled.
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/samples/bluetooth/dtm_2wire --sysbuild -T samples.bluetooth.dtm_2wire.atm -- -DCONFIG_LOG=n
+
+IMPORTANT: If using uart1 for DTM 2-wire, disable console logging to avoid interference.
+
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]
 
 
 Configuration

@@ -7,6 +7,7 @@ menuconfig SPI_ATM
 	bool "Atmosic SPI driver"
 	default y
 	depends on DT_HAS_ATMOSIC_ATM_SPI_ENABLED
+	select PINCTRL
 	help
 	  Enables the ATM SPI driver
 

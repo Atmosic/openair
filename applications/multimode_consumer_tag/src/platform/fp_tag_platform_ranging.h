@@ -5,7 +5,9 @@
  *
  * @brief Fast Pair tag ranging platform implementation
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -14,7 +16,7 @@
 
 #ifdef CONFIG_FMDN_PRECISION_FINDING
 
-#include "compiler.h" // __NONNULL inline functions
+#include "compiler.h"
 #include "ranging_oob_de.h"
 
 #ifdef __cplusplus
@@ -24,21 +26,22 @@ extern "C" {
 /**
  * @brief Handle ranging capability requests
  * @param tech_id Technology ID (UWB/CS)
- * @param capability Capability structure to populate
+ * @param capability Discriminated union containing capability structure to populate
  * @return 0 on success, negative on error
  */
 __NONNULL(2)
-int fp_platform_ranging_capability_cb(rt_id_t tech_id, void *capability);
+int fp_platform_ranging_capability_cb(rt_id_t tech_id, ranging_capability_t *capability);
 
 /**
  * @brief Handle ranging configuration requests
  * @param tech_id Technology ID being configured
- * @param config Configuration data
+ * @param config Discriminated union containing configuration data
  * @param start_immediately Whether to start immediately
  * @return 0 on success, negative on error
  */
 __NONNULL(2)
-int fp_platform_ranging_config_cb(rt_id_t tech_id, void *config, bool start_immediately);
+int fp_platform_ranging_config_cb(rt_id_t tech_id, ranging_config_t *config,
+				  bool start_immediately);
 
 /**
  * @brief Handle ranging start requests

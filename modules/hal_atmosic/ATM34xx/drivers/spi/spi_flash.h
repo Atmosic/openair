@@ -5,7 +5,7 @@
  *
  * @brief SPI flash driver
  *
- * Copyright (C) Atmosic 2019-2022
+ * Copyright (C) Atmosic 2019-2025
  *
  *******************************************************************************
  */
@@ -20,6 +20,7 @@
  * @{
  */
 
+#include <stdint.h>
 #include "spi.h"
 
 #ifdef __cplusplus

@@ -3,6 +3,7 @@ sample:
     application
   name: hello world
 common:
+  sysbuild: true
   tags:
     - introduction
   integration_platforms:
@@ -13,8 +14,4 @@ common:
     regex:
       - "Hello World! (.*)"
 tests:
-  samples.hello_world.atm:
-    sysbuild: true
-    tags:
-      - introduction
-      - no_mcuboot
+  samples.hello_world.atm: {}

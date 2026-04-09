@@ -8,24 +8,45 @@ common:
     type: one_line
     regex:
       - "adv_entry"
+  tags:
+    - atm_test_with_spe
+    - bluetooth
+    - channel_sounding
 tests:
-  applications.ras_rrsp_reflector.atm:
-    tags:
-      - no_mcuboot
+  applications.ras_rrsp_reflector.atm: {}
   applications.ras_rrsp_reflector.atm.mcuboot:
     tags:
       - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+  applications.ras_rrsp_reflector.atm.mcuboot.legacy_scratch:
+    tags:
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
   applications.ras_rrsp_reflector.atm.mcuboot.ota:
     tags:
       - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - EXTRA_CONF_FILE=basic_ota_bt.conf
+  applications.ras_rrsp_reflector.atm.mcuboot.ota.legacy_scratch:
+    tags:
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - EXTRA_CONF_FILE=basic_ota_bt.conf
   applications.ras_rrsp_reflector.atm.mcuboot.flash_xip:
     tags:
@@ -34,8 +55,19 @@ tests:
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+  applications.ras_rrsp_reflector.atm.mcuboot.flash_xip.legacy_scratch:
+    tags:
+      - mcuboot
+      - flash_xip
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
   applications.ras_rrsp_reflector.atm.mcuboot.flash_xip.overwrite:
     tags:
@@ -49,3 +81,14 @@ tests:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SCRATCH_SIZE=0"
       - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
       - mcuboot_CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS=n
+  applications.ras_rrsp_reflector.atm.two_dev:
+    tags:
+      - two_dev
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=no_button.overlay
+    extra_configs:
+      - CONFIG_BT_LOG_SNIFFER_INFO=y
+    harness_config:
+      type: one_line
+      regex:
+        - "CS procedure50 done:0x0"

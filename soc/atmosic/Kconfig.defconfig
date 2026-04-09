@@ -1,6 +1,9 @@
-# Copyright (c) 2021-2025 Atmosic
+# Copyright (c) 2021-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+# Source MCUmgr DFU defconfig early to provide automatic OTA/DFU defaults
+source "$(ZEPHYR_OPENAIR_MODULE_DIR)/subsys/mcumgr_dfu/Kconfig.defconfig"
 
 if SOC_FAMILY_ATM
 
@@ -18,12 +21,22 @@ config PM
 	bool "Enable Power Management"
 	default y
 
+# Suspend-to-RAM is implemented by PSEQ retention mode
+config PM_S2RAM
+	default n
+
 # Set the discardable HCI event buffer size to 255 bytes by default when both
 # Extended Advertising and Observer role are enabled. This value matches the HCI
 # Event packet with up to 255 bytes of data defined in the BLE specification for
 # Extended Advertising Report events, which are received in Observer role.
 config BT_BUF_EVT_DISCARDABLE_SIZE
 	default 255 if BT_EXT_ADV && BT_OBSERVER
+
+config BT_BUF_ACL_RX_SIZE
+	default 255 if BT_HCI_RAW
+
+config BT_BUF_CMD_TX_SIZE
+	default 255 if BT_HCI_RAW
 
 if ENTROPY_ATM_TRNG
 
@@ -61,7 +74,7 @@ config MAIN_STACK_SIZE
 	default 1792 if MBEDTLS
 
 config BT_LONG_WQ_STACK_SIZE
-	default 2048
+	default 2304
 
 config ZTEST_STACK_SIZE
 	int
@@ -81,5 +94,31 @@ config OMIT_FRAME_POINTER
 	default y if COVERAGE_GCOV
 
 endif # ENTROPY_ATM_TRNG
+
+if BOOTLOADER_MCUBOOT
+
+choice MCUBOOT_BOOTLOADER_MODE
+	default MCUBOOT_BOOTLOADER_MODE_SWAP_USING_OFFSET
+endchoice
+
+endif # BOOTLOADER_MCUBOOT
+
+if MCUBOOT
+
+config BOOT_ECDSA_MICRO_ECC
+	bool "Use Micro ECC to accelerate mbedtls ecdsa"
+	default y if BOOT_ECDSA_MBEDTLS
+	select ATM_UECC
+	select ATM_UECC_VLI_API
+	select OVERRIDE_FRAME_POINTER_DEFAULT
+	select OMIT_FRAME_POINTER
+
+config BOOT_SHA2_ATM
+	bool "Use Atmosic SHA acceleration"
+	depends on MBEDTLS_SHA256
+	depends on !USERSPACE
+	select ATM_SHA2_HW
+
+endif # MCUBOOT
 
 endif # SOC_FAMILY_ATM

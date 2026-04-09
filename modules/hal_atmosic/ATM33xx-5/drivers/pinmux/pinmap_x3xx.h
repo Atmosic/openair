@@ -5,7 +5,7 @@
  *
  * @brief Pin mappings that are identical across all the boards for a given chip
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -207,6 +207,41 @@ extern "C" {
 #define GPIO_28_BASE CMSDK_GPIO1
 #define GPIO_29_BASE CMSDK_GPIO1
 #define GPIO_30_BASE CMSDK_GPIO1
+
+/*
+ * GPIO IRQ mapping
+ */
+#define GPIO_0_IRQ PORT0_0_IRQn
+#define GPIO_1_IRQ PORT0_1_IRQn
+#define GPIO_2_IRQ PORT0_2_IRQn
+#define GPIO_3_IRQ PORT0_3_IRQn
+#define GPIO_4_IRQ PORT0_4_IRQn
+#define GPIO_5_IRQ PORT0_5_IRQn
+#define GPIO_6_IRQ PORT0_6_IRQn
+#define GPIO_7_IRQ PORT0_7_IRQn
+#define GPIO_8_IRQ PORT0_8_IRQn
+#define GPIO_9_IRQ PORT0_9_IRQn
+#define GPIO_10_IRQ PORT0_10_IRQn
+#define GPIO_11_IRQ PORT0_11_IRQn
+#define GPIO_12_IRQ PORT0_12_IRQn
+#define GPIO_13_IRQ PORT0_13_IRQn
+#define GPIO_14_IRQ PORT0_14_IRQn
+#define GPIO_15_IRQ PORT0_15_IRQn
+#define GPIO_16_IRQ PORT1_0_IRQn
+#define GPIO_17_IRQ PORT1_1_IRQn
+#define GPIO_18_IRQ PORT1_2_IRQn
+#define GPIO_19_IRQ PORT1_3_IRQn
+#define GPIO_20_IRQ PORT1_4_IRQn
+#define GPIO_21_IRQ PORT1_5_IRQn
+#define GPIO_22_IRQ PORT1_6_IRQn
+#define GPIO_23_IRQ PORT1_7_IRQn
+#define GPIO_24_IRQ PORT1_8_IRQn
+#define GPIO_25_IRQ PORT1_9_IRQn
+#define GPIO_26_IRQ PORT1_10_IRQn
+#define GPIO_27_IRQ PORT1_11_IRQn
+#define GPIO_28_IRQ PORT1_12_IRQn
+#define GPIO_29_IRQ PORT1_13_IRQn
+#define GPIO_30_IRQ PORT1_14_IRQn
 
 #ifdef __cplusplus
 }

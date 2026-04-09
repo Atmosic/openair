@@ -1,9 +1,11 @@
+# Copyright (c) Atmosic 2024-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file test_sec_jrnl_west_extension.py
 
 @brief Unit test for secjrnl west extension
-
-Copyright (c) Atmosic 2024
 """
 
 import os

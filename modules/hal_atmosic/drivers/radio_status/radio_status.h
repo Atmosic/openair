@@ -5,7 +5,9 @@
  *
  * @brief Unified header for all Atmosic radio statuses
  *
- * Copyright (C) Atmosic 2024-2025
+ * Copyright (C) Atmosic 2024-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */

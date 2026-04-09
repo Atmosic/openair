@@ -6,11 +6,11 @@ common:
   harness: console
   tags:
     - bluetooth
+    - role_peripheral
+    - role_broadcaster
 tests:
   samples.bluetooth.high_duty_adv.atm:
     harness_config:
       type: one_line
       regex:
         - "High duty cycle directed advertising started successfully"
-    tags:
-      - no_mcuboot

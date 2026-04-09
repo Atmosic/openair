@@ -5,7 +5,7 @@
  *
  * @brief Radio related api
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  *******************************************************************************
  */
@@ -68,10 +68,10 @@ atm_txpwr_ovr_key rf_set_txpwr_override(int8_t txpwr_dbm);
 /**
  *******************************************************************************
  * @brief Restore tx_power override settings
- * @param[in] value opaque value obtained from rf_set_txpwr_override API
+ * @param[in] key opaque value obtained from rf_set_txpwr_override API
  *******************************************************************************
  */
-void rf_restore_txpwr_override(atm_txpwr_ovr_key value);
+void rf_restore_txpwr_override(atm_txpwr_ovr_key key);
 
 /**
  *******************************************************************************

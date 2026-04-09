@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 /dts-v1/;
@@ -62,7 +62,8 @@
 		pwm_buzzer0: pwm_buzzer_0 {
 			compatible = "atmosic,atm3x-pwm-buzzer";
 			pwms = <&pwm1 1 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
-			pulse = <PWM_USEC(500)>;
+			min-frequency = <123>;
+			max-frequency = <10000>;
 		};
 	};
 
@@ -81,6 +82,7 @@
 		led0 = &led0;
 		led1 = &led1;
 		pwm-0 = &pwm3;
+		pwm-test = &pwm3;
 		pwm-led0 = &pwm_led0;
 		sw0 = &button0;
 	};
@@ -109,6 +111,10 @@
 							/* GND */
 	};
 #endif
+
+	zephyr,user {
+		pin-arrangement = "5X5";
+	};
 };
 
 &uart1 {
@@ -135,6 +141,23 @@
 
 	i2c0_scl_default: i2c0_scl_default {
 		pinmux = <12 PINMUX_I2C0_SCL>;
+	};
+
+	/* SPI0 */
+	spi0_clk_default: spi0_clk_default {
+		pinmux = <17 PINMUX_SPI0_CLK>;
+	};
+
+	spi0_mosi_default: spi0_mosi_default {
+		pinmux = <18 PINMUX_SPI0_MOSI>;
+	};
+
+	spi0_miso_default: spi0_miso_default {
+		pinmux = <19 PINMUX_SPI0_MISO>;
+	};
+
+	spi0_cs_default: spi0_cs_default {
+		pinmux = <20 PINMUX_SPI0_CS>;
 	};
 };
 
@@ -181,10 +204,8 @@
 };
 
 &spi0 {
-	clk-pin = <17>;
-	cs-pin = <20>;
-	mosi-pin = <18>;
-	miso-pin = <19>;
+	pinctrl-0 = <&spi0_clk_default &spi0_cs_default &spi0_mosi_default &spi0_miso_default>;
+	pinctrl-names = "default";
 };
 
 &atm_antenna {

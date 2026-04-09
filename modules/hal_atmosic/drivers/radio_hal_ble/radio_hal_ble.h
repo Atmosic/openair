@@ -5,7 +5,9 @@
  *
  * @brief Radio init, config, medium access.
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  ******************************************************************************
  */
@@ -180,6 +182,7 @@ void atm_mac_ble_sched_tx_at_offset_from_prior_end_time(uint16_t offset);
 void atm_mac_ble_sched_tx_at_offset_from_prior_absolute_time(uint32_t offset);
 __NONNULL(1)
 void atm_mac_ble_tx_scheduled_packet(uint8_t const *packet, uint16_t length);
+void atm_mac_ble_tx_prev_scheduled_packet(void);
 
 // Data Transfer - rx
 void atm_mac_ble_sched_rx_at_absolute_time(uint32_t time, uint32_t timeout);

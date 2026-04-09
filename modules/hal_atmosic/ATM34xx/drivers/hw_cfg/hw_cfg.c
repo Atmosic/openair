@@ -21,13 +21,20 @@
 #include "calibration.h"
 #include "hw_cfg.h"
 #define HW_CFG_INTERNAL_GUARD
-#include "hw_cfg_internal.h"
+#include "hw_cfg.ih"
 
 #include "sec_jrnl.h"
 #include "pmu_cfg.h"
 #include "pmu.h"
 
 #define ASSERT_ON_CAL_FAIL false
+#ifndef CONFIG_ATM_HW_CFG_ALLOW_INVALID_ATE
+#ifdef IS_FOR_SIM
+#define CONFIG_ATM_HW_CFG_ALLOW_INVALID_ATE true
+#else
+#define CONFIG_ATM_HW_CFG_ALLOW_INVALID_ATE false
+#endif
+#endif
 
 struct chip_info_s chip_info;
 uint16_t chip_info_len;
@@ -35,8 +42,6 @@ struct cust_cfg_s cust_cfg;
 uint16_t cust_cfg_len;
 struct gadc_cal_s gadc_cal;
 uint16_t gadc_cal_len;
-struct cs_cal_s cs_cal;
-uint16_t cs_cal_len;
 
 static void hw_cfg_cal(void)
 {
@@ -47,7 +52,8 @@ static void hw_cfg_cal(void)
     status = nsc_sec_jrnl_get(ATM_TAG_CHIP_INFO, &chip_info_len,
 	(uint8_t *)&chip_info);
     if (status != SEC_JRNL_OK) {
-	DEBUG_TRACE("CHIP_INFO tag not found: %#x", status);
+	DEBUG_TRACE("Invalid CHIP_INFO tag: %#x", status);
+	ASSERT_ERR(CONFIG_ATM_HW_CFG_ALLOW_INVALID_ATE);
 	chip_info_len = 0;
     }
 
@@ -55,7 +61,7 @@ static void hw_cfg_cal(void)
     status = nsc_sec_jrnl_get(ATM_TAG_CUST_CFG, &cust_cfg_len,
 	(uint8_t *)&cust_cfg);
     if (status != SEC_JRNL_OK) {
-	DEBUG_TRACE("CUST_CFG tag not found: %#x", status);
+	DEBUG_TRACE("Invalid CUST_CFG tag: %#x", status);
 	cust_cfg_len = 0;
     }
 
@@ -64,19 +70,12 @@ static void hw_cfg_cal(void)
     status = nsc_sec_jrnl_get(ATM_TAG_GADC_CAL, &gadc_cal_len,
 	(uint8_t *)&gadc_cal);
     if (status != SEC_JRNL_OK) {
-	DEBUG_TRACE("GADC_CAL tag not found: %#x", status);
+	DEBUG_TRACE("Invalid GADC_CAL tag: %#x", status);
+	ASSERT_ERR(CONFIG_ATM_HW_CFG_ALLOW_INVALID_ATE);
 	gadc_cal_len = 0;
     }
 
-    // Channel sounding calibration data
-    cs_cal_len = sizeof(cs_cal);
-    status = nsc_sec_jrnl_get(ATM_TAG_CS_CAL, &cs_cal_len, (uint8_t *)&cs_cal);
-    if (status != SEC_JRNL_OK) {
-	DEBUG_TRACE("CS_CAL tag not found: %#x", status);
-	cs_cal_len = 0;
-    }
-
-    hw_cfg_core_cal();
+    hw_cfg_core_cal(!CONFIG_ATM_HW_CFG_ALLOW_INVALID_ATE);
 }
 
 static rep_vec_err_t hw_cfg_rf_wake(void)

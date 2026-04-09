@@ -8,5 +8,3 @@ tests:
       type: one_line
       regex:
         - PWM FIFO sample finished successfully
-    tags:
-      - no_mcuboot

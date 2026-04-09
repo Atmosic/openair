@@ -1,17 +1,31 @@
 sample:
-  description: Atmosic beacon adv sample
-  name: Atmosic beacon sample
+  name: Bluetooth Beacon
+common:
+  tags:
+    - bluetooth
+    - role_peripheral
+    - role_broadcaster
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Identity:"
+  # Expected log as <inf> bt_hci_core: Identity: for observer to parse BD ADDR
+  extra_configs:
+    - CONFIG_LOG=y
+    - CONFIG_BT_HCI_CORE_LOG_LEVEL_INF=y
 tests:
-  sample.bluetooth.beacon:
+  # Uses common extra_args from above
+  samples.bluetooth.beacon.atm: {}
+  samples.bluetooth.beacon.atm.two_dev:
     tags:
-      - introduction
-  samples.bluetooth.beacon.atm:
-    sysbuild: true
-    harness: console
-    harness_config:
-      type: one_line
-      regex:
-        - Booting Zephyr OS
+      - two_dev
+  samples.bluetooth.beacon.atm.two_dev.spe.flash_xip:
     tags:
-      - bluetooth
-      - no_mcuboot
+      - two_dev
+      - flash_xip
+      - atm_test_with_spe
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"

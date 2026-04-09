@@ -1,7 +1,23 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 config ATM_SEC_HW_CFG
 	bool "Atmosic Secure Hardware Config module"
 	default y if TRUSTED_EXECUTION_SECURE && !BOOTLOADER_MCUBOOT
+
+if ATM_SEC_HW_CFG
+
+config ATM_VOLT_CHECK_THR
+        int "Initial voltage check threshold"
+        default 20
+        help
+            Controls the VBAT/VBATLI threshold to allow SW boot
+            For VBAT level <= 1.8V,
+                VBAT threshold = 0.9 + 0.025X, where 0 <= X <= 31
+            For VBAT level > 1.8V,
+                VBAT threshold = 1.4 + 0.05X, where 0 <= X <= 31
+	    For VBATLI,
+		VBATLI threshold = 2.4V + 0.050X, where 2 <= X <= 31
+
+endif

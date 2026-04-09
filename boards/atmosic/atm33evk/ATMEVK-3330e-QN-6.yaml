@@ -4,4 +4,18 @@ type: mcu
 arch: arm
 toolchain:
   - zephyr
+supported:
+  - adc
+  - bluetooth
+  - energy_harvesting
+  - entropy
+  - gpio
+  - hid_kb
+  - i2c
+  - pwm
+  - rram
+  - spi
+  - uart
+  - watchdog
+  - wurx
 vendor: atmosic

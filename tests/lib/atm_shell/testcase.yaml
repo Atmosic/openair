@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 tests:
   tests.lib.atm_shell.atm:
     sysbuild: true
@@ -6,5 +10,6 @@ tests:
       type: one_line
       regex:
         - "atm shell test! (.*)"
-    tags:
-      - no_mcuboot
+    extra_configs:
+      - CONFIG_LOG_BACKEND_UART=y
+      - CONFIG_SHELL_LOG_BACKEND=n

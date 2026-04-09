@@ -1,13 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 
 config ATM_BT_TPUTP
 	bool "Support for BLE throughput service"
-
-config ATM_BT_TPUTP_LOG_LEVEL
-	int "BLE TPUT log level"
-	default 3  # LOG_LEVEL_INF
-	range 0 4
 
 config ATM_TPUT_TEST_DATA_LEN_PER_PACKET
 	int "Data length per packet in ble throughput test"
@@ -16,6 +11,15 @@ config ATM_TPUT_TEST_DATA_LEN_PER_PACKET
 config ATM_TPUT_TEST_PACKET_COUNT
 	int "Numer of packets in ble throughput test"
 	default 1000
+
+config ATM_TPUT_AUTO_TEST
+	bool "Enable auto test for ble throughput test"
+	default y if ZTEST
+	help
+	  Enable automatic test mode for BLE throughput testing.
+	  Central device automatically sends end test command to peripheral
+	  after completing the test, allowing both devices to coordinate
+	  test completion without manual intervention.
 
 if ATM_BT_TPUTP
 

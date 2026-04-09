@@ -1,0 +1,15 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
+ */
+
+&wdog_unified {
+	status = "okay";
+};
+
+/* Update alias to point to unified watchdog for PMU watchdog support */
+/ {
+	aliases {
+		watchdog0 = &wdog_unified;
+	};
+};

@@ -5,10 +5,13 @@
  *
  * @brief Secure cache driver implementation
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
+
 #ifdef CFG_NO_SPE
 // for no-SPE the base for the ICACHE control registers must be a secure address
 #ifndef SECURE_MODE

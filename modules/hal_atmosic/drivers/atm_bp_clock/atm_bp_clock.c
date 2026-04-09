@@ -5,7 +5,9 @@
  *
  * @brief Wrapper for atm_bp_clock related functions
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */

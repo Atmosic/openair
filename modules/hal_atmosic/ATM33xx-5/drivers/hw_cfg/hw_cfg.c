@@ -5,7 +5,7 @@
  *
  * @brief Hardware Configuration
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  ******************************************************************************
  */
@@ -25,7 +25,7 @@
 #include "reset.h"
 #include "hw_cfg.h"
 #define HW_CFG_INTERNAL_GUARD
-#include "hw_cfg_internal.h"
+#include "hw_cfg.ih"
 
 #include "at_wrpr.h"
 #include "pmu_cfg.h"

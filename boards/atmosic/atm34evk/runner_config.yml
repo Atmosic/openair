@@ -1,0 +1,1 @@
+openocd_config: "ZEPHYR_BASE/../openair/modules/hal_atmosic/ATM34xx/rev-5/openocd/atmx3_openocd.cfg"

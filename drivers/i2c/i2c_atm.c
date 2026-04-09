@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Atmosic 2021-2025
+ * Copyright (C) Atmosic 2021-2026
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -44,8 +44,8 @@ LOG_MODULE_REGISTER(i2c_atm, CONFIG_I2C_LOG_LEVEL);
 
 #ifdef CONFIG_SOC_ATM34XX_2
 #define I2C_CLK_STRETCH_CHECK_REQUIRED 1
-#define I2C_MAX_WAIT_MS	5
-#define I2C_ATM_RETRY_COUNT 3
+#define I2C_MAX_WAIT_MS                5
+#define I2C_ATM_RETRY_COUNT            3
 #endif
 
 #ifdef I2C_CLOCK_CONTROL__CLK_STRETCH_EN__MASK
@@ -209,8 +209,8 @@ static int i2c_out_sync(struct device const *dev, i2c_head_t head, uint8_t val, 
 	}
 
 	/* ACK is active low */
-	ret = (config->base->TRANSACTION_STATUS & I2C(TRANSACTION_STATUS__ACK_VALUE__MASK)) ?
-	    -EIO : 0;
+	ret = (config->base->TRANSACTION_STATUS & I2C(TRANSACTION_STATUS__ACK_VALUE__MASK)) ? -EIO
+											    : 0;
 
 	/* Deassert GO */
 	config->base->TRANSACTION_SETUP =
@@ -330,8 +330,9 @@ static int i2c_atm_write_msg(struct device const *dev, uint16_t addr, struct i2c
 
 	/* Last write */
 	// In the absence of STOP, tail = RESTART or STALL based on the subsequent transaction
-	i2c_tail_t tail = (msg.flags & I2C_MSG_STOP) ? I2C_TAIL_STOP : (restart ? I2C_TAIL_RESTART :
-	    I2C_TAIL_STALL);
+	i2c_tail_t tail = (msg.flags & I2C_MSG_STOP)
+				  ? I2C_TAIL_STOP
+				  : (restart ? I2C_TAIL_RESTART : I2C_TAIL_STALL);
 	return i2c_out_sync(dev, I2C_HEAD_STALL, msg.buf[msg.len - 1], tail);
 }
 
@@ -364,31 +365,32 @@ static int i2c_atm_transfer(struct device const *dev, struct i2c_msg *msgs, uint
 	int ret = 0;
 	uint8_t retry = 0;
 	do {
-	    for (uint8_t i = 0; i < num_msgs; i++) {
-		if ((msgs[i].flags & I2C_MSG_RW_MASK) == I2C_MSG_WRITE) {
-			// Peak into the next message
-			bool restart = false;
-			if (i < (num_msgs - 1)) {
-			    restart = msgs[i+1].flags & I2C_MSG_RESTART;
+		for (uint8_t i = 0; i < num_msgs; i++) {
+			if ((msgs[i].flags & I2C_MSG_RW_MASK) == I2C_MSG_WRITE) {
+				// Peak into the next message
+				bool restart = false;
+				if (i < (num_msgs - 1)) {
+					restart = msgs[i + 1].flags & I2C_MSG_RESTART;
+				}
+				ret = i2c_atm_write_msg(dev, addr, msgs[i], i, restart);
+			} else {
+				ret = i2c_atm_read_msg(dev, addr, msgs[i]);
 			}
-			ret = i2c_atm_write_msg(dev, addr, msgs[i], i, restart);
-		} else {
-			ret = i2c_atm_read_msg(dev, addr, msgs[i]);
-		}
 
-		if (ret < 0) {
-			LOG_ERR("Transaction failed with status: %d", ret);
+			if (ret < 0) {
+				LOG_ERR("Transaction failed with status: %d", ret);
 #ifdef I2C_CLK_STRETCH_CHECK_REQUIRED
-			if (config->clk_stretch_enabled) {
-				WRPR_CTRL_SET(config->base, WRPR_CTRL__SRESET);
-				WRPR_CTRL_SET(config->base, WRPR_CTRL__CLK_ENABLE);
-				uint32_t speed = I2C_SPEED_GET(i2c_map_dt_bitrate(config->bitrate));
-				i2c_atm_set_speed(dev, speed);
-			}
+				if (config->clk_stretch_enabled) {
+					WRPR_CTRL_SET(config->base, WRPR_CTRL__SRESET);
+					WRPR_CTRL_SET(config->base, WRPR_CTRL__CLK_ENABLE);
+					uint32_t speed =
+						I2C_SPEED_GET(i2c_map_dt_bitrate(config->bitrate));
+					i2c_atm_set_speed(dev, speed);
+				}
 #endif
-			break;
+				break;
+			}
 		}
-	    }
 	} while ((ret < 0) && (++retry < attempts));
 
 	i2c_atm_exit_transfer_session(dev);
@@ -408,7 +410,6 @@ static void i2c_atm_pseq_latch_close(void)
 #endif
 
 #ifdef CONFIG_PM
-#ifdef I2C_GPIO_REQUIRED
 static void suspend_i2c_device(const struct device *dev)
 {
 	if (!device_is_ready(dev)) {
@@ -417,7 +418,11 @@ static void suspend_i2c_device(const struct device *dev)
 	}
 
 	struct i2c_atm_config const *config = dev->config;
+#ifdef I2C_GPIO_REQUIRED
 	config->suspend_device();
+#else
+	I2C_TRANSACTION_SETUP__MSTR__CLR(config->base->TRANSACTION_SETUP);
+#endif
 }
 
 static void resume_i2c_device(const struct device *dev)
@@ -428,10 +433,14 @@ static void resume_i2c_device(const struct device *dev)
 	}
 
 	struct i2c_atm_config const *config = dev->config;
+#ifdef I2C_GPIO_REQUIRED
 	int ret = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_DEFAULT);
 	if (ret) {
 		LOG_ERR("Unable to configure I2C pins");
 	}
+#else
+	I2C_TRANSACTION_SETUP__MSTR__SET(config->base->TRANSACTION_SETUP);
+#endif
 }
 
 static void notify_pm_state_entry(enum pm_state state)
@@ -440,11 +449,10 @@ static void notify_pm_state_entry(enum pm_state state)
 		return;
 	}
 
-#define SUSPEND_I2C(inst) suspend_i2c_device(DEVICE_DT_GET(DT_DRV_INST(inst)))
-	DT_INST_FOREACH_STATUS_OKAY(SUSPEND_I2C);
+#define SUSPEND_I2C(inst) suspend_i2c_device(DEVICE_DT_GET(DT_DRV_INST(inst)));
+	DT_INST_FOREACH_STATUS_OKAY(SUSPEND_I2C)
 #undef SUSPEND_I2C
 }
-#endif // I2C_GPIO_REQUIRED
 
 static void notify_pm_state_exit(enum pm_state state)
 {
@@ -452,11 +460,9 @@ static void notify_pm_state_exit(enum pm_state state)
 		return;
 	}
 
-#ifdef I2C_GPIO_REQUIRED
-#define RESUME_I2C(inst) resume_i2c_device(DEVICE_DT_GET(DT_DRV_INST(inst)))
-	DT_INST_FOREACH_STATUS_OKAY(RESUME_I2C);
+#define RESUME_I2C(inst) resume_i2c_device(DEVICE_DT_GET(DT_DRV_INST(inst)));
+	DT_INST_FOREACH_STATUS_OKAY(RESUME_I2C)
 #undef RESUME_I2C
-#endif
 
 #ifdef PSEQ_CTRL0__I2C_LATCH_OPEN__MASK
 	i2c_atm_pseq_latch_close();
@@ -464,9 +470,7 @@ static void notify_pm_state_exit(enum pm_state state)
 }
 
 static struct pm_notifier notifier = {
-#ifdef I2C_GPIO_REQUIRED
 	.state_entry = notify_pm_state_entry,
-#endif
 	.state_exit = notify_pm_state_exit,
 };
 #endif // CONFIG_PM
@@ -488,6 +492,20 @@ static int i2c_atm_configure(struct device const *dev, uint32_t cfg)
 		LOG_ERR("Unable to configure I2C pins");
 		return err;
 	}
+
+#ifdef I2C_TRANSACTION_STATUS__DONE__MASK
+	/* Power up KSMQDEC domain so I2C0 registers remain accessible during retention
+	 * entry/exit for SDA glitch prevention.
+	 */
+	if (!config->instance) {
+		WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+		{
+			PSEQ_KSMQDEC_CONTROL__KSMQDEC_VDDCUT__CLR(CMSDK_PSEQ->KSMQDEC_CONTROL);
+			PSEQ_KSMQDEC_CONTROL__KSMQDEC_ISO__CLR(CMSDK_PSEQ->KSMQDEC_CONTROL);
+		}
+		WRPR_CTRL_POP();
+	}
+#endif
 
 #ifdef PSEQ_CTRL0__I2C_LATCH_OPEN__MASK
 	i2c_atm_pseq_latch_close();
@@ -523,11 +541,11 @@ static int i2c_atm_init(struct device const *dev)
 	return i2c_atm_configure(dev, config->mode | cfgspeed);
 }
 
-#define I2C_SCK(n)  CONCAT(CONCAT(I2C, DT_INST_PROP(n, instance)), _SCK)
-#define I2C_SDA(n)  CONCAT(CONCAT(I2C, DT_INST_PROP(n, instance)), _SDA)
-#define I2C_BASE(n) CONCAT(CMSDK_I2C, DT_INST_PROP(n, instance))
-#define I2C_IRQ(n) DT_INST_IRQN(n)
-#define I2C_IRQ_PRI(n) DT_INST_IRQ(n, priority)
+#define I2C_SCK(n)           CONCAT(CONCAT(I2C, DT_INST_PROP(n, instance)), _SCK)
+#define I2C_SDA(n)           CONCAT(CONCAT(I2C, DT_INST_PROP(n, instance)), _SDA)
+#define I2C_BASE(n)          ((CMSDK_AT_APB_I2C_TypeDef *)DT_INST_REG_ADDR(n))
+#define I2C_IRQ(n)           DT_INST_IRQN(n)
+#define I2C_IRQ_PRI(n)       DT_INST_IRQ(n, priority)
 /*
  * Expects SDA to be index 0 and SCL to be index 1 in the DTS config
  *
@@ -537,16 +555,16 @@ static int i2c_atm_init(struct device const *dev)
  *         ...
  * };
  */
-#define SDA_PINCTRL_IDX 0
-#define SCL_PINCTRL_IDX 1
+#define SDA_PINCTRL_IDX      0
+#define SCL_PINCTRL_IDX      1
 #define I2C_GET_PULL(n, idx) DT_PROP_OR(DT_INST_PINCTRL_0(n, idx), bias_pull_up, 0)
-#define I2C_GET_PIN(n, idx) DT_PROP_BY_IDX(DT_INST_PINCTRL_0(n, idx), pinmux, 0)
-#define I2C_DEVICE_INIT(n)                                                                         \
-	PINCTRL_DT_INST_DEFINE(n);                                                                 \
-	static void i2c_atm_enable_clocks_##n(void)                                                \
-	{                                                                                          \
-		WRPR_CTRL_SET(I2C_BASE(n), WRPR_CTRL__CLK_ENABLE);                                 \
-	}                                                                                          \
+#define I2C_GET_PIN(n, idx)  DT_PROP_BY_IDX(DT_INST_PINCTRL_0(n, idx), pinmux, 0)
+#define I2C_DEVICE_INIT(n)                                                                           \
+	PINCTRL_DT_INST_DEFINE(n);                                                                   \
+	static void i2c_atm_enable_clocks_##n(void)                                                  \
+	{                                                                                            \
+		WRPR_CTRL_SET(I2C_BASE(n), WRPR_CTRL__CLK_ENABLE);                                   \
+	}                                                                                            \
 	IF_ENABLED(I2C_GPIO_REQUIRED, (                                                            \
 	IF_ENABLED(CONFIG_PM, (                                                                    \
 	static void i2c_atm_suspend_device_##n(void)                                               \
@@ -557,7 +575,7 @@ static int i2c_atm_init(struct device const *dev)
 		PIN_SELECT(I2C_GET_PIN(n, SDA_PINCTRL_IDX), GPIO);                                 \
 	}                                                                                          \
 	)) /* CONFIG_PM */                                                                         \
-	)) /* I2C_GPIO_REQUIRED */                                                                 \
+	)) /* I2C_GPIO_REQUIRED */ \
 	IF_ENABLED(I2C_CLK_STRETCH_CHECK_REQUIRED, (                                               \
 	static bool i2c_atm_check_clk_stretch_##n(void)                                            \
 	{                                                                                          \
@@ -573,18 +591,18 @@ static int i2c_atm_init(struct device const *dev)
 		PIN_SELECT(I2C_GET_PIN(n, SCL_PINCTRL_IDX), I2C_SCK(n));                           \
 		return true;                                                                       \
 	}                                                                                          \
-	))                                                                                         \
-	ISR_DIRECT_DECLARE(i2c_atm_isr##n)                                                         \
-	{                                                                                          \
-		struct device const *dev = DEVICE_DT_INST_GET(n);                                  \
-		i2c_atm_isr(dev);                                                                  \
-		return 1;                                                                          \
-	}                                                                                          \
-	static void i2c_atm_config_irq_##n(void)						   \
-	{ 											   \
-		IRQ_DIRECT_CONNECT(I2C_IRQ(n), I2C_IRQ_PRI(n), i2c_atm_isr##n, 0);                 \
-		irq_enable(I2C_IRQ(n)); 							   \
-	} 											   \
+	)) \
+	ISR_DIRECT_DECLARE(i2c_atm_isr##n)                                                           \
+	{                                                                                            \
+		struct device const *dev = DEVICE_DT_INST_GET(n);                                    \
+		i2c_atm_isr(dev);                                                                    \
+		return 1;                                                                            \
+	}                                                                                            \
+	static void i2c_atm_config_irq_##n(void)                                                     \
+	{                                                                                            \
+		IRQ_DIRECT_CONNECT(I2C_IRQ(n), I2C_IRQ_PRI(n), i2c_atm_isr##n, 0);                   \
+		irq_enable(I2C_IRQ(n));                                                              \
+	}                                                                                            \
 	static struct i2c_atm_config const i2c_atm_config_##n = {                                  \
 		.instance = n,                                                                     \
 		.base = I2C_BASE(n),                                                               \
@@ -605,10 +623,10 @@ static int i2c_atm_init(struct device const *dev)
 		.check_clk_stretch = i2c_atm_check_clk_stretch_##n,                                \
 		))                                                                                 \
 		.irq_connect = i2c_atm_config_irq_##n,						   \
-	};                                                                                         \
-	static struct i2c_atm_data i2c_atm_data_##n;                                               \
-	DEVICE_DT_INST_DEFINE(n, &i2c_atm_init, NULL, &i2c_atm_data_##n, &i2c_atm_config_##n,      \
-			      POST_KERNEL, CONFIG_I2C_INIT_PRIORITY, &i2c_atm_driver_api);         \
+	}; \
+	static struct i2c_atm_data i2c_atm_data_##n;                                                 \
+	DEVICE_DT_INST_DEFINE(n, &i2c_atm_init, NULL, &i2c_atm_data_##n, &i2c_atm_config_##n,        \
+			      POST_KERNEL, CONFIG_I2C_INIT_PRIORITY, &i2c_atm_driver_api);           \
 	IF_DISABLED(I2C_CLK_STRETCH_SUPPORTED, (                                                   \
 	BUILD_ASSERT(!DT_INST_PROP(n, clk_stretch));                                               \
 	));

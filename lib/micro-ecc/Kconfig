@@ -4,4 +4,51 @@
 
 config ATM_UECC
 	bool "Optimized ECC library"
-	depends on MBEDTLS_ECDSA_C
+
+if ATM_UECC
+
+config ATM_UECC_VLI_API
+	bool "Enable uECC VLI API"
+	help
+	  This option enables the uECC VLI API .
+
+if ATM_UECC_VLI_API
+
+config ATM_UECC_SUPPORTS_SECP160R1
+	bool "Support secp160r1"
+	help
+	  To enable support secp160r1 curve
+
+config ATM_UECC_SUPPORTS_SECP192R1
+	bool "Support secp192r1"
+	help
+	  To enable support secp192r1 curve
+
+config ATM_UECC_SUPPORTS_SECP224R1
+	bool "Support secp224r1"
+	help
+	  To enable support secp224r1 curve
+
+config ATM_UECC_SUPPORTS_SECP256R1
+	bool "Support secp256r1"
+	help
+	  To enable support secp256r1 curve
+
+config ATM_UECC_SUPPORTS_SECP256K1
+	bool "Support secp256k1"
+	help
+	  To enable support secp256k1 curve
+
+config ATM_UECC_SUPPORT_COMPRESSED_POINT
+	bool "Support compressed point"
+	help
+	  To enable support compressed point
+
+config ATM_UECC_SUPPORT_POINT_ADD
+	bool "Support point addition"
+	help
+	  To enable support point addition
+
+endif # ATM_UECC_VLI_API
+
+endif # ATM_UECC

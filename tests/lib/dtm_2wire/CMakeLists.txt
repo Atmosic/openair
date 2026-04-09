@@ -1,6 +1,6 @@
-# Copyright (c) 2025 Atmosic
-# 
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 cmake_minimum_required(VERSION 3.20.0)
 

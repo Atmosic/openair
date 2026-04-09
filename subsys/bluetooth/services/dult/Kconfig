@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -11,6 +11,13 @@ menuconfig ATM_DULT
 	See https://www.ietf.org/archive/id/draft-detecting-unwanted-location-trackers-01.html#name-applicability.
 
 if ATM_DULT
+
+config HEAP_MEM_POOL_ADD_SIZE_ATM_DULT
+	int "Heap memory pool size for DULT service"
+	default 256
+	help
+	  Additional heap memory pool size required by DULT Service.
+	  This includes responses and sound indication work items.
 
 module = ATM_DULT
 module-str = dult

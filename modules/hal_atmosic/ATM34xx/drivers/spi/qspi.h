@@ -5,7 +5,7 @@
  *
  * @brief QSPI driver
  *
- * Copyright (C) Atmosic 2018-2022
+ * Copyright (C) Atmosic 2018-2025
  *
  *******************************************************************************
  */
@@ -21,7 +21,7 @@
  */
 
 #include <stdint.h>
-
+#include "arch.h"
 #include "at_apb_qspi_regs_core_macro.h"
 
 #ifdef __cplusplus

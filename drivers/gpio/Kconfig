@@ -2,6 +2,7 @@
 
 if GPIO
 
+rsource "Kconfig.atm"
 rsource "Kconfig.kts162x"
 
 endif # GPIO

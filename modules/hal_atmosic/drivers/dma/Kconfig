@@ -1,6 +1,7 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config ATM_DMA
 	bool "Atmosic DMA module"
@@ -22,5 +23,19 @@ config ATM_DMA_RELOC_SRAM
 	help
 	  Relocate performance and power critical functions to SRAM, while
 	  still satisfying early init requirements.
+
+config ATM_DMA_USE_FOR_MEMCPY
+	bool
+	default y
+	depends on !USERSPACE
+	help
+	  Use DMA engine for libc memcpy().
+
+config ATM_DMA_USE_FOR_MEMSET
+	bool
+	default y
+	depends on !USERSPACE
+	help
+	  Use DMA engine for libc memset().
 
 endif # ATM_DMA

@@ -1,6 +1,10 @@
 sample:
   name: Bluetooth Peripheral
   description: Demonstrates the BLE Peripheral role
+common:
+  tags:
+    - bluetooth
+    - role_peripheral
 tests:
   samples.bluetooth.peripheral.atm:
     sysbuild: true
@@ -9,9 +13,6 @@ tests:
       type: one_line
       regex:
         - "Indicate VND attr"
-    tags:
-      - bluetooth
-      - no_mcuboot
   samples.bluetooth.peripheral.atm.mcuboot:
     sysbuild: true
     harness: console
@@ -20,9 +21,23 @@ tests:
       regex:
         - "Indicate VND attr"
     tags:
-      - bluetooth
       - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+  samples.bluetooth.peripheral.atm.mcuboot.legacy_scratch:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Indicate VND attr"
+    tags:
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"

@@ -426,6 +426,9 @@ enum
 
 #define LL_DEF_RES_ADDR_TO_SEC        900     /*!< Default resolvable address timeout in seconds. */
 
+#define LL_RES_ADDR_TO_MIN            1       /*!< Minimum resolvable address timeout in seconds. */
+#define LL_RES_ADDR_TO_MAX            3600    /*!< Maximum resolvable address timeout in seconds. */
+
 #define LL_RAND_LEN                   8       /*!< Length of random number */
 #define LL_KEY_LEN                    16      /*!< Encryption key length. */
 #define LL_SKD_LEN                    LL_KEY_LEN      /*!< Session key diversifier length. */
@@ -934,6 +937,7 @@ enum
 #define LL_CS_MAX_STEPS_PER_SUBEVENT      160   /*!< Maximum number of CS steps within any CS subevent. */
 #define LL_CS_STEPS_MAX                   256   /*!< Maximum number of CS steps within any CS procedure. */
 #define LL_CS_MAX_MODE0_STEPS_PER_SUBEVT  3     /*!< Maximum number of mode-0 steps per subevent. */
+#define LL_CS_N_PROCEDURE_LOST            2     /*!< Number of lost procedures before triggering CS termination. */
 
 #define LL_CS_NUM_CHAN                    79    /*!< Total number of CS channels. */
 #define LL_CS_NUM_ALLOWED_CHAN            72    /*!< Total number of allowed CS channels. */

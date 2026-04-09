@@ -19,11 +19,15 @@
  * @{
  */
 
-#ifdef __cplusplus
-extern "C" {
+#ifdef CONFIG_SOC_FAMILY_ATM
+#include <zephyr/devicetree.h>
 #endif
 
 #include "pinmux.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 #if DT_NODE_HAS_PROP(DT_NODELABEL(pmu), batt_type)

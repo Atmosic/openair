@@ -1,5 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 tests:
   tests.drivers.batt_model.batt_model_dry.atm:
     sysbuild: true
-    tags:
-      - no_mcuboot

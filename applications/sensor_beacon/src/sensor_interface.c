@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/drivers/sensor.h>
@@ -36,11 +36,9 @@ int sensor_interface_init(void)
 	}
 
 	/* Set output data rate to 100Hz for responsive motion detection */
-	struct sensor_value odr;
-	odr.val1 = 100;
-	odr.val2 = 0;
+	struct sensor_value odr = {.val1 = 100, .val2 = 0};
 	int ret = sensor_attr_set(lis_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY,
-		&odr);
+				  &odr);
 	if (ret) {
 		LOG_WRN("Failed to set LIS2DH ODR to 100Hz: %" PRId32, ret);
 	} else {
@@ -48,9 +46,7 @@ int sensor_interface_init(void)
 	}
 
 	/* Set full scale range to ±16g for higher sensitivity and larger values */
-	struct sensor_value range;
-	range.val1 = 16;
-	range.val2 = 0;
+	struct sensor_value range = {.val1 = 16, .val2 = 0};
 	ret = sensor_attr_set(lis_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &range);
 	if (ret) {
 		LOG_WRN("Failed to set LIS2DH range to ±16g: %" PRId32, ret);
@@ -76,7 +72,7 @@ int sensor_interface_get_temp_humidity(uint16_t *temp, uint16_t *humidity)
 			LOG_WRN("Failed to fetch ENS210 sample (attempt %d/%d): %" PRId32,
 				retry_count + 1, max_retries, ret);
 			if (retry_count < max_retries - 1) {
-				k_sleep(K_MSEC(20));  /* Wait before retry */
+				k_sleep(K_MSEC(20)); /* Wait before retry */
 				retry_count++;
 				continue;
 			}
@@ -101,9 +97,8 @@ int sensor_interface_get_temp_humidity(uint16_t *temp, uint16_t *humidity)
 
 	} while (retry_count < max_retries);
 
-	LOG_DBG("Raw temp: %" PRId32 ".%06d C, humidity: %" PRId32 ".%06d%%",
-		temperature.val1, temperature.val2,
-		humidity_val.val1, humidity_val.val2);
+	LOG_DBG("Raw temp: %" PRId32 ".%06d C, humidity: %" PRId32 ".%06d%%", temperature.val1,
+		temperature.val2, humidity_val.val1, humidity_val.val2);
 
 	/*
 	 * Zephyr: val1 + val2/1000000 (floating point)
@@ -111,8 +106,8 @@ int sensor_interface_get_temp_humidity(uint16_t *temp, uint16_t *humidity)
 	float temp_celsius = temperature.val1 + (temperature.val2 / 1000000.0f);
 	float humidity_percent = humidity_val.val1 + (humidity_val.val2 / 1000000.0f);
 	*temp = (uint16_t)roundf(temp_celsius * CONFIG_SENSOR_BEACON_TEMP_SCALING_FACTOR);
-	*humidity = (uint16_t)roundf(humidity_percent *
-		CONFIG_SENSOR_BEACON_HUMIDITY_SCALING_FACTOR);
+	*humidity =
+		(uint16_t)roundf(humidity_percent * CONFIG_SENSOR_BEACON_HUMIDITY_SCALING_FACTOR);
 
 	LOG_INF("Scaled temp: %" PRIu16 ", humidity: %" PRIu16, *temp, *humidity);
 
@@ -135,10 +130,10 @@ int sensor_interface_get_accel(uint16_t *accel_x, uint16_t *accel_y, uint16_t *a
 		return ret;
 	}
 
-	LOG_DBG("Raw accel X: %" PRId32 ".%06" PRId32 ", Y: %" PRId32 ".%06" PRId32 ", Z: %" PRId32 ".%06" PRId32 " m/s²",
-		accel[0].val1, accel[0].val2,
-		accel[1].val1, accel[1].val2,
-		accel[2].val1, accel[2].val2);
+	LOG_DBG("Raw accel X: %" PRId32 ".%06" PRId32 ", Y: %" PRId32 ".%06" PRId32 ", Z: %" PRId32
+		".%06" PRId32 " m/s²",
+		accel[0].val1, accel[0].val2, accel[1].val1, accel[1].val2, accel[2].val1,
+		accel[2].val2);
 
 	int32_t mg_x = sensor_ms2_to_mg(&accel[0]);
 	int32_t mg_y = sensor_ms2_to_mg(&accel[1]);
@@ -161,8 +156,8 @@ int sensor_interface_get_accel(uint16_t *accel_x, uint16_t *accel_y, uint16_t *a
 	*accel_y = (uint16_t)scaled_y;
 	*accel_z = (uint16_t)scaled_z;
 
-	LOG_INF("Scaled accel X: %" PRId16 ", Y: %" PRId16 ", Z: %" PRId16, (int16_t)*accel_x, (int16_t)*accel_y,
-		(int16_t)*accel_z);
+	LOG_INF("Scaled accel X: %" PRId16 ", Y: %" PRId16 ", Z: %" PRId16, (int16_t)*accel_x,
+		(int16_t)*accel_y, (int16_t)*accel_z);
 
 	return 0;
 }

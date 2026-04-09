@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/*
+ * Test overlay to disable button1 for testing ras_rrsp_reflector application
+ * without button hardware
+ */
+
+&button1 {
+	status = "disabled";
+};

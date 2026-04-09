@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/ztest.h>
@@ -32,7 +32,8 @@ ZTEST(sensor_data, test_sensor_data_collect_and_update)
 	if (!ret) {
 		LOG_INF("Sensor data collection completed successfully");
 	} else {
-		LOG_WRN("Sensor data collection failed: %" PRId32 " (expected without sensors)", ret);
+		LOG_WRN("Sensor data collection failed: %" PRId32 " (expected without sensors)",
+			ret);
 		/* May fail in test environment without real sensors */
 	}
 }
@@ -58,8 +59,7 @@ ZTEST(sensor_data, test_sensor_data_start_stop)
 ZTEST(sensor_data, test_sensor_data_timer_interval)
 {
 	/* Test that timer interval configuration is correct */
-	zassert_true(CONFIG_SENSOR_BEACON_UPDATE_INTERVAL,
-		     "Update interval should be positive");
+	zassert_true(CONFIG_SENSOR_BEACON_UPDATE_INTERVAL, "Update interval should be positive");
 	zassert_true(CONFIG_SENSOR_BEACON_UPDATE_INTERVAL <= 60000,
 		     "Update interval should be reasonable (<=10 minutes)");
 

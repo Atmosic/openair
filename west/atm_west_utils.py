@@ -1,9 +1,11 @@
+# Copyright (c) Atmosic 2024-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file atm_west_utils.py
 
 @brief Common utility functions for Atmosic west extensions
-
-Copyright (c) Atmosic 2024
 """
 
 from enum import Enum

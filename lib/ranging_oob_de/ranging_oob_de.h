@@ -269,6 +269,44 @@ typedef struct {
 } __PACKED ranging_common_resp_de_t;
 
 /* ========================================================================
+ * Callback API Union Types
+ * ======================================================================== */
+
+/**
+ * @brief Discriminated union for ranging capability data
+ *
+ * Used by callback APIs to pass technology-specific capability structures.
+ * Type is determined by the tech_id parameter passed to the callback.
+ * - RT_TECH_ID_UWB: use uwb
+ * - RT_TECH_ID_CS: use cs
+ */
+typedef union {
+#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
+	ranging_cap_de_uwb_t *uwb;
+#endif
+#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
+	ranging_cap_de_cs_t *cs;
+#endif
+} ranging_capability_t;
+
+/**
+ * @brief Discriminated union for ranging configuration data
+ *
+ * Used by callback APIs to pass technology-specific configuration structures.
+ * Type is determined by the tech_id parameter passed to the callback.
+ * - RT_TECH_ID_UWB: use uwb
+ * - RT_TECH_ID_CS: use cs
+ */
+typedef union {
+#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
+	ranging_conf_de_uwb_t *uwb;
+#endif
+#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
+	ranging_conf_de_cs_t *cs;
+#endif
+} ranging_config_t;
+
+/* ========================================================================
  * Protocol Constants
  * ======================================================================== */
 

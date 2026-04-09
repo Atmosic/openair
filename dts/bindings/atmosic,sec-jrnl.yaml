@@ -1,5 +1,5 @@
-# Copyright 2025 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright 2025-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 description: Atmosic secure journal
 
@@ -9,10 +9,34 @@ include: base.yaml
 
 properties:
   reg:
-    required: true
+    required: false
 
-properties:
-  otp-starts-journal:
+  flash-journal-size:
+    type: int
+    description: |
+      Size in bytes of the mapped NVM (Flash) region used as the
+      secondary journal source.  When present, the driver falls back
+      to this region after the primary source is exhausted.  The base
+      address of the region is supplied by the board via the
+      SEC_JOURNAL_BASE define.
+
+  has-status-field:
     type: boolean
     description: |
-      Indicates that OTP contains part of the secure journal.
+      Indicates that each TLV tag header contains a status byte
+      between the tag byte and the length field, giving a 4-byte
+      header {tag, status, length[2]}.  When absent the header is
+      the compact 3-byte form {tag, length[2]}.
+
+  otp-journal-offset:
+    type: int
+    default: 0
+    description: |
+      Byte offset within the OTP address space where the secure
+      journal region begins.
+
+  otp-journal-size:
+    type: int
+    description: |
+      Size in bytes of the OTP region reserved for the secure
+      journal.

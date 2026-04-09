@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: Apache-2.0
-# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+# Copyright (c) 2025-2026 Atmosic
 
 source "Kconfig.zephyr"
 
@@ -58,16 +58,18 @@ config SENSOR_BEACON_BUTTON_POWER_CONTROL
 	  - No device ON/OFF functionality via button
 	  - Only beacon status LED indication is active
 
-config SENSOR_BEACON_WURX_ACTIVE_ADV_TIME_MS
-	int "WURX active advertising time in milliseconds"
-	depends on WURX
-	default 60000
+config SENSOR_BEACON_AT_CMD_SUPPORT
+	bool "Enable AT command support for sensor beacon"
+	depends on ATM_AT_CMD
 	help
-	  Duration in milliseconds for active advertising period before entering
-	  hibernation when WURX mode is enabled. During this time, the device
-	  advertises normally to allow discovery. After this period expires,
-	  the device enters hibernation and waits for WURX wake-up signals.
-	  Default is 60000 ms (60 seconds).
+	  Enable AT command interface for sensor beacon configuration.
+
+	  When enabled, the sensor beacon will support:
+	  - Device name configuration via AT commands
+	  - Advertising interval configuration
+	  - Custom advertising data configuration
+	  - System reset commands
+	  - Device unlock/lock functionality
 
 # Logging configuration for sensor beacon application modules
 module = SENSOR_BEACON

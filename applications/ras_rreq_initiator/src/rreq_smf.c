@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -33,8 +33,7 @@
 LOG_MODULE_REGISTER(rreq_smf, CONFIG_RREQ_SMF_LOG_LEVEL);
 // create config
 #define CREATE_CONFIG_ID              0
-#define CREATE_MAIN_MODE_TYPE         BT_CONN_LE_CS_MAIN_MODE_2
-#define CREATE_SUB_MODE_TYPE          BT_CONN_LE_CS_SUB_MODE_UNUSED
+#define CREATE_MODE                   BT_CONN_LE_CS_MAIN_MODE_2_NO_SUB_MODE
 #define CREATE_MIN_MAIN_MODE_STEPS    0
 #define CREATE_MAX_MAIN_MODE_STEPS    0
 #define CREATE_MAIN_MODE_REPETITION   2
@@ -119,6 +118,9 @@ enum rreq_smf_action {
 #ifdef CONFIG_BT_TRANSMIT_POWER_CONTROL
 	RREQ_SMF_ENABLE_POWER_REPORTING,
 #endif
+#ifdef CONFIG_ATM_BT_PHY_UPDATE
+	RREQ_SMF_BT_PHY_UPDATE,
+#endif
 	RREQ_SMF_BT_SET_SEC,
 	RREQ_SMF_GATT_EXCH_MTU,
 	RREQ_SMF_RAS_DISCOVER,
@@ -158,7 +160,7 @@ typedef struct rreq_smf_ctrl {
 	uint16_t action_mask;
 	enum rreq_smf_evt evt;
 	uint8_t n_ap;
-#ifdef CONFIG_ATM_BT_PHY_1M
+#ifdef CONFIG_ATM_BT_PHY_UPDATE
 	uint8_t retry_count;
 #endif
 } rreq_smf_ctrl_t;
@@ -186,6 +188,10 @@ static struct k_work rreq_button_work;
 static struct k_work rreq_smf_work;
 static rreq_smf_ctrl_t rreq_smf_ctl;
 static uint8_t cs_preferred_peer_antenna;
+#ifdef CONFIG_AUTO_ENABLE_CS_FOR_UNSPECIFIED_ABORT
+static struct k_work_delayable rreq_restart_cs_work;
+#define RREQ_RESTART_CS_DELAY_SECS 5
+#endif
 
 NET_BUF_SIMPLE_DEFINE_STATIC(latest_local_steps, LOCAL_PROC_SIZE);
 NET_BUF_SIMPLE_DEFINE_STATIC(latest_peer_steps, PEER_PROC_SIZE);
@@ -372,7 +378,7 @@ static void rreq_disconnected(struct bt_conn *conn, uint8_t reason)
 	bt_conn_unref(rreq_smf_ctl.curr_conn);
 	rreq_smf_ctl.curr_conn = NULL;
 	rreq_smf_ctl.action_mask = 0;
-#ifdef CONFIG_ATM_BT_PHY_1M
+#ifdef CONFIG_ATM_BT_PHY_UPDATE
 	rreq_smf_ctl.retry_count = 0;
 #endif
 	rreq_run_event(RREQ_SMF_EVT_BT_DISCONNECTED);
@@ -520,6 +526,15 @@ static void rreq_cs_subevent_result(struct bt_conn *conn,
 		rreq_dump_log_end_work_info.ranging_counter = result->header.procedure_counter;
 		k_work_submit_to_queue(&log_dump_work_q, &rreq_dump_log_end_work_info.work);
 		subevt_idx = 0;
+#ifdef CONFIG_AUTO_ENABLE_CS_FOR_UNSPECIFIED_ABORT
+		LOG_WRN("CS procedure abort:%u %u", result->header.procedure_counter,
+			result->header.procedure_abort_reason);
+		if (result->header.procedure_abort_reason ==
+		    BT_CONN_LE_CS_PROCEDURE_ABORT_UNSPECIFIED) {
+			atm_work_reschedule_for_app_work_q(&rreq_restart_cs_work,
+							   K_SECONDS(RREQ_RESTART_CS_DELAY_SECS));
+		}
+#endif
 	}
 }
 
@@ -582,41 +597,76 @@ static void rreq_tx_power_report(struct bt_conn *conn,
 }
 #endif
 
+#ifdef CONFIG_ATM_BT_PHY_UPDATE
+static void rreq_le_update_phy(void)
+{
+	if (!rreq_smf_ctl.curr_conn) {
+		LOG_WRN("Update PHY: no conn");
+		return;
+	}
+	struct bt_conn_info info;
+	int info_err = bt_conn_get_info(rreq_smf_ctl.curr_conn, &info);
+	uint8_t current_tx_phy = BT_GAP_LE_PHY_1M;
+	if (!info_err && info.type == BT_CONN_TYPE_LE) {
+		current_tx_phy = info.le.phy->tx_phy;
+	} else {
+		LOG_WRN("Failed to get conn info:%d", info_err);
+	}
+
+	uint8_t preferred_phy = BIT(CONFIG_ATM_BT_PHY);
+
+	if (current_tx_phy == preferred_phy) {
+		LOG_INF("PHY is already preferred %u", current_tx_phy);
+		rreq_smf_ctl.retry_count = 0;
+		return;
+	}
+
+	/* Check if TX or RX PHY is not preferred and force update to preferred PHY */
+	LOG_INF("Different PHY:%u detected, update to preferred PHY:%u", current_tx_phy,
+		preferred_phy);
+#ifndef UPDATE_RETRY_TIMES
+#define UPDATE_RETRY_TIMES 3
+#endif
+	if (rreq_smf_ctl.retry_count >= UPDATE_RETRY_TIMES) {
+		LOG_ERR("Update PHY %u retries", rreq_smf_ctl.retry_count);
+		return;
+	}
+	rreq_smf_ctl.retry_count++;
+	/* PHY parameter mapping for different PHY modes (CONFIG_ATM_BT_PHY: 0=1M, 1=2M,
+	 * 2=Coded) */
+	const struct bt_conn_le_phy_param *phy_params[] = {
+		[0] = BT_CONN_LE_PHY_PARAM_1M,    /* 1M PHY */
+		[1] = BT_CONN_LE_PHY_PARAM_2M,    /* 2M PHY */
+		[2] = BT_CONN_LE_PHY_PARAM_CODED, /* Coded PHY */
+	};
+	int err = bt_conn_le_phy_update(rreq_smf_ctl.curr_conn, phy_params[CONFIG_ATM_BT_PHY]);
+
+	if (err) {
+		LOG_ERR("Failed to update PHY: %d", err);
+	} else {
+		LOG_INF("PHY update to %u initiated", preferred_phy);
+	}
+}
+#endif /* CONFIG_ATM_BT_PHY_UPDATE */
+
+#ifdef CONFIG_BT_USER_PHY_UPDATE
 static void rreq_le_phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info *param)
 {
 	LOG_INF("PHY updated: TX PHY %u, RX PHY %u", param->tx_phy, param->rx_phy);
 
-#ifdef CONFIG_ATM_BT_PHY_1M
-	/* Check if TX or RX PHY is not 1M and force update to 1M PHY */
-	if ((param->tx_phy != BT_GAP_LE_PHY_1M) || (param->rx_phy != BT_GAP_LE_PHY_1M)) {
-		LOG_WRN("Non-1M PHY detected (TX:%u RX:%u), update to 1M PHY", param->tx_phy,
-			param->rx_phy);
-#ifndef UPDATE_RETRY_TIMES
-#define UPDATE_RETRY_TIMES 3
-#endif
-		if (rreq_smf_ctl.retry_count >= UPDATE_RETRY_TIMES) {
-			LOG_ERR("Update PHY 1M %u retries", rreq_smf_ctl.retry_count);
-			return;
-		}
-		rreq_smf_ctl.retry_count++;
-		int err = bt_conn_le_phy_update(conn, BT_CONN_LE_PHY_PARAM_1M);
-		if (err) {
-			LOG_ERR("Failed to update PHY to 1M: %d", err);
-		} else {
-			LOG_INF("PHY update to 1M initiated");
-		}
-	} else {
-		LOG_INF("PHY is already 1M (TX:%u RX:%u)", param->tx_phy, param->rx_phy);
-		rreq_smf_ctl.retry_count = 0;
-	}
-#endif /* CONFIG_ATM_BT_PHY_1M */
+#ifdef CONFIG_ATM_BT_PHY_UPDATE
+	rreq_le_update_phy();
+#endif /* CONFIG_ATM_BT_PHY_UPDATE */
 }
+#endif
 
 BT_CONN_CB_DEFINE(conn_cb) = {
 	.connected = rreq_connected,
 	.disconnected = rreq_disconnected,
 	.security_changed = rreq_security_changed,
+#ifdef CONFIG_BT_USER_PHY_UPDATE
 	.le_phy_updated = rreq_le_phy_updated,
+#endif
 #ifdef CONFIG_BT_TRANSMIT_POWER_CONTROL
 	.tx_power_report = rreq_tx_power_report,
 #endif
@@ -897,6 +947,14 @@ static void rreq_smf_work_handler(struct k_work *work)
 		atm_work_submit_to_app_work_q(&rreq_smf_work);
 	} break;
 #endif
+#ifdef CONFIG_ATM_BT_PHY_UPDATE
+	case RREQ_SMF_BT_PHY_UPDATE: {
+		/* Update PHY with preferred PHY */
+		rreq_le_update_phy();
+		rreq_smf_ctl.action_mask |= BIT(RREQ_SMF_BT_PHY_UPDATE);
+		atm_work_submit_to_app_work_q(&rreq_smf_work);
+	} break;
+#endif
 	case RREQ_SMF_BT_SET_SEC: {
 		err = bt_conn_set_security(rreq_smf_ctl.curr_conn, BT_SECURITY_L2);
 		if (err) {
@@ -996,8 +1054,7 @@ static void rreq_smf_work_handler(struct k_work *work)
 	case RREQ_SMF_CS_SETUP_CREATE_CONFIG: {
 		struct bt_le_cs_create_config_params params = {
 			.id = CREATE_CONFIG_ID,
-			.main_mode_type = CREATE_MAIN_MODE_TYPE,
-			.sub_mode_type = CREATE_SUB_MODE_TYPE,
+			.mode = CREATE_MODE,
 			.min_main_mode_steps = CREATE_MIN_MAIN_MODE_STEPS,
 			.max_main_mode_steps = CREATE_MAX_MAIN_MODE_STEPS,
 			.main_mode_repetition = CREATE_MAIN_MODE_REPETITION,
@@ -1018,15 +1075,17 @@ static void rreq_smf_work_handler(struct k_work *work)
 		err = bt_le_cs_security_enable(rreq_smf_ctl.curr_conn);
 	} break;
 	case RREQ_SMF_CS_START_SET_PROC_PARAM: {
-		struct bt_conn_info info;
 		uint8_t current_tx_phy = BT_GAP_LE_PHY_1M;
 
+#ifdef CONFIG_BT_USER_PHY_UPDATE
+		struct bt_conn_info info;
 		int info_err = bt_conn_get_info(rreq_smf_ctl.curr_conn, &info);
 		if (!info_err && info.type == BT_CONN_TYPE_LE) {
 			current_tx_phy = info.le.phy->tx_phy;
 		} else {
 			LOG_WRN("Failed to get conn info:%d", info_err);
 		}
+#endif
 #ifdef CONFIG_TX_PHY_CS_REF
 		uint8_t cs_phy = gap_phy_to_cs_phy(current_tx_phy);
 		LOG_INF("Using CS PHY %u, delta PWR %d", cs_phy, CONFIG_TX_POWER_DELTA);
@@ -1162,6 +1221,27 @@ static void rreq_discovery_done(const struct bt_conn *conn, int err)
 	atm_work_submit_to_app_work_q(&rreq_smf_work);
 }
 
+#ifdef CONFIG_AUTO_ENABLE_CS_FOR_UNSPECIFIED_ABORT
+static void restart_cs_work_handler(struct k_work *work)
+{
+	if ((SMF_CTX(&rreq_smf_ctx)->current) != &rreq_smf_states[RREQ_SMF_STATE_CS_PROC]) {
+		LOG_ERR("CS procedure can not be enabled, current state:%u",
+			(SMF_CTX(&rreq_smf_ctx)->current) - rreq_smf_states);
+		return;
+	}
+
+	if (rreq_smf_ctl.action_mask & BIT(RREQ_SMF_CS_START_PROC_ENABLE)) {
+		LOG_ERR("CS procedure already enabled");
+		return;
+	}
+
+	int err = cs_proc_enable(BT_CONN_LE_CS_PROCEDURES_ENABLED);
+	if (err) {
+		LOG_ERR("enable CS proc err:%d", err);
+	}
+}
+#endif
+
 static void rreq_bt_ready(int err)
 {
 	if (err) {
@@ -1177,9 +1257,16 @@ static void rreq_bt_ready(int err)
 	k_work_init(&rreq_smf_work, rreq_smf_work_handler);
 	k_work_init(&rreq_dump_log_init_work_info.work, rreq_dump_log_init_work_handler);
 	k_work_init(&rreq_dump_log_end_work_info.work, rreq_dump_log_work_end_handler);
+#ifdef CONFIG_AUTO_ENABLE_CS_FOR_UNSPECIFIED_ABORT
+	k_work_init_delayable(&rreq_restart_cs_work, restart_cs_work_handler);
+#endif
 	// button init
 #define SW0_NODE DT_ALIAS(sw1)
+#if DT_NODE_HAS_STATUS_OKAY(SW0_NODE)
 	static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios, {0});
+#else
+	static const struct gpio_dt_spec button0 = {0};
+#endif
 	configure_button_irq(button0);
 
 	for (uint8_t i = 0; i < RREQ_SMF_RC_TYPE_NUM; i++) {

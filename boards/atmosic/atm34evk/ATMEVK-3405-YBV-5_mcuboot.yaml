@@ -4,4 +4,26 @@ type: mcu
 arch: arm
 toolchain:
   - zephyr
+supported:
+  - adc
+  - atlc
+  - bluetooth
+  - ccbm
+  - channel_sounding
+  - entropy
+  - esl
+  - flash
+  - gpio
+  - i2c
+  - i2c_clock_stretching
+  - ieee802154
+  - mikrobus
+  - pwm
+  - rram
+  - smart_label
+  - spi
+  - uart
+  - watchdog
+  - wdt
+  - xip
 vendor: atmosic

@@ -5,7 +5,9 @@
  *
  * @brief Reset driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  ******************************************************************************
  */
@@ -89,6 +91,12 @@ typedef enum {
     HIB_BROWNOUT,
     /// Boot from hibernation which is triggered by WURX.
     HIB_WURX,
+    /// Boot from hibernation which is triggered by PMU watchdog warning.
+    HIB_PMU_WDOG_WARN,
+    /// Boot from hibernation by BROWNOUT rising edge (brownout asserted).
+    HIB_BROWNOUT_RISING,
+    /// Boot from hibernation by BROWNOUT falling edge (brownout cleared).
+    HIB_BROWNOUT_FALLING,
 } boot_hib_reason_t;
 
 /// SOC off wakeup reason
@@ -187,6 +195,15 @@ typedef enum {
 	BOOT_MASK(HIB_BROWNOUT)),
     /// Boot from hibernation which is triggered by WURX
     BOOT_STATUS_HIB_WKUP_WURX = BOOT_STATUS(TYPE_HIB, BOOT_MASK(HIB_WURX)),
+    /// Boot from hibernation which is triggered by PMU watchdog warning
+    BOOT_STATUS_HIB_WKUP_PMU_WDOG_WARN =
+	BOOT_STATUS(TYPE_HIB, BOOT_MASK(HIB_PMU_WDOG_WARN)),
+    /// Boot from hibernation by BROWNOUT rising edge (brownout asserted)
+    BOOT_STATUS_HIB_WKUP_BROWNOUT_RISING = BOOT_STATUS(TYPE_HIB,
+	BOOT_MASK(HIB_BROWNOUT_RISING)),
+    /// Boot from hibernation by BROWNOUT falling edge (brownout cleared)
+    BOOT_STATUS_HIB_WKUP_BROWNOUT_FALLING = BOOT_STATUS(TYPE_HIB,
+	BOOT_MASK(HIB_BROWNOUT_FALLING)),
 } boot_status_t;
 
 /**
@@ -227,7 +244,7 @@ __STATIC_FORCEINLINE bool is_boot_reason(boot_status_t sts)
 __STATIC_FORCEINLINE bool is_boot_uninit(void)
 {
     return (is_boot_type(TYPE_POWER_ON) || is_boot_type(TYPE_SOCOFF) ||
-	is_boot_type(TYPE_HIB));
+	is_boot_type(TYPE_SOC_RESET) || is_boot_type(TYPE_HIB));
 }
 
 #ifdef __cplusplus

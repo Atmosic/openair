@@ -8,6 +8,15 @@ Overview
 
 This sample is used to test the led-pwm driver.
 
+.. note::
+
+   The PWM device supports a frequency range of 123 Hz to 8 MHz. The minimum
+   frequency of 123 Hz is significantly higher than the flicker fusion threshold
+   (typically 50-60 Hz for human vision), which means the PWM output will not
+   blink slow enough for the human eye to discern individual on/off cycles. The
+   LED will appear to be continuously lit at varying brightness levels rather
+   than visibly blinking.
+
 Requirements
 ************
 
@@ -28,4 +37,4 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]

@@ -5,16 +5,9 @@
  *
  * @brief Radio FRC Driver Interface
  *
- * The confidential and proprietary information contained in this file may
- * only be used by a person authorised under and to the extent permitted
- * by a subsisting licensing agreement from Atmosic.
+ * Copyright (C) Atmosic 2022-2026
  *
- * Copyright (C) Atmosic 2022-2025
- *
- * This entire notice must be reproduced on all copies of this file
- * and copies of this file may only be made by a person if such person is
- * permitted to do so under the terms of a subsisting license agreement
- * from Atmosic.
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  ******************************************************************************
  */
@@ -213,10 +206,12 @@ __attribute__((constructor))
 static void atm_mac_frc_init(void)
 {
     // Setup ATLC FRC IRQ
+#ifdef NVIC
     NVIC_DisableIRQ(ATLC_FRC_IRQn);
     NVIC_ClearPendingIRQ(ATLC_FRC_IRQn);
     NVIC_SetPriority(ATLC_FRC_IRQn, IRQ_PRI_HIGH);
     NVIC_EnableIRQ(ATLC_FRC_IRQn);
+#endif
 }
 
 #ifdef CONFIG_SOC_FAMILY_ATM

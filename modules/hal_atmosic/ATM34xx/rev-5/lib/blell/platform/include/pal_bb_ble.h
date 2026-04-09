@@ -8,7 +8,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (C) Atmosic 2026
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -344,6 +346,18 @@ void PalBbBleSetAbsIfs(uint32_t ifsTime, PalBbBleChan_t *pIfsChan);
  */
 /*************************************************************************************************/
 void PalBbBleTxData(PalBbBleTxBufDesc_t descs[], uint8_t cnt);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Transmit the previously scheduled packet data.
+ *
+ *  \return     None.
+ *
+ *  Transmit the previously scheduled packet data without providing new data. This function
+ *  reuses the packet data from the most recent call to PalBbBleTxData().
+ */
+/*************************************************************************************************/
+void PalBbBleTxPrevData(void);
 
 /*************************************************************************************************/
 /*!

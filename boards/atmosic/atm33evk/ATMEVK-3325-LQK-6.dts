@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2023-2025 Atmosic
+ * Copyright (c) 2023-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 /dts-v1/;
@@ -41,11 +41,11 @@
 			label = "Red LED1";
 		};
 		led1: led_1 {
-			gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
 			label = "Yellow LED2";
 		};
 		led2: led_2 {
-			gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
 			label = "Blue LED3";
 		};
 	};
@@ -77,10 +77,15 @@
 		i2c-0 = &i2c0;
 		led0 = &led0;
 		pwm-0 = &pwm3;
+		pwm-test = &pwm3;
 		pwm-led0 = &pwm_led0;
 		sw0 = &button0;
 	};
 #endif
+
+	zephyr,user {
+		pin-arrangement = "STACKED_FLASH_5X5";
+	};
 };
 
 &uart1 {
@@ -107,21 +112,18 @@
 };
 
 &spi0 {
-        clk-pin = <17>;
-        cs-pin = <20>;
-        mosi-pin = <18>;
-        miso-pin = <19>;
+	pinctrl-0 = <&spi0_clk_default &spi0_cs_default &spi0_mosi_default &spi0_miso_default>;
+	pinctrl-names = "default";
 };
 
 &spi1 {
-        clk-pin = <5>;
-        cs-pin = <4>;
-        mosi-pin = <22>;
-        miso-pin = <7>;
+	pinctrl-0 = <&spi1_clk_default &spi1_cs_default &spi1_mosi_default &spi1_miso_default>;
+	pinctrl-names = "default";
 };
 
 &adc {
 	ch-cell = <1>;
+	ch-store = <2>;
 	ch-p1single1 = <8>;
 	ch-batt = <11>;
 

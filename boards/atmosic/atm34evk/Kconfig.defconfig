@@ -1,6 +1,6 @@
-# Copyright (c) 2021-2025 Atmosic
+# Copyright (c) 2021-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if SOC_ATM34XX_5
 
@@ -45,6 +45,9 @@ config TRUSTED_EXECUTION_NONSECURE
 	default y
 	depends on $(dt_nodelabel_bool_prop,sec_tz,ns_app)
 
+config ARM_SECURE_BUSFAULT_HARDFAULT_NMI
+	default y if TRUSTED_EXECUTION_SECURE
+
 # enable uart driver
 config SERIAL
 	bool
@@ -62,7 +65,7 @@ config UART_CONSOLE
 # GPIOs
 config GPIO
 	bool
-	default y
+	default y if !MCUBOOT
 
 # Watchdog
 config WATCHDOG
@@ -84,6 +87,7 @@ if PM
 
 config IDLE_STACK_SIZE
 	int
+	default 2048 if COVERAGE_GCOV
 	default 1024
 
 endif # PM
@@ -208,6 +212,15 @@ endif # ATM_APP_FLASH_XIP
 # The default value results in:
 #  -) slot2/slot3 (FLASH/FLASH) can have up to a 2MB slot size
 #  -) slot0/slot1 (RRAM/FLASH) can be up to 512KB slot sizes
+#
+# Disable BOOT_MAX_IMG_SECTORS_AUTO since it only calculates sectors for the
+# first image (slot0/slot1) and doesn't account for multi-image configurations
+# where slot2/slot3 may require more sectors.
+
+config BOOT_MAX_IMG_SECTORS_AUTO
+	bool
+	default n
+	depends on MCUBOOT
 
 config BOOT_MAX_IMG_SECTORS
 	int
@@ -259,22 +272,15 @@ config ATM_PAD_SIGNED_IMAGE
 # This override however is not required when the NSPE is in flash as image 1.
 # In a NO SPE build, signing the fast-code partition is handled
 # in the in-tree MCUBOOT signing flow.  The override is not required.
-if !ATM_NO_SPE && !ATM_SPLIT_IMG
-ATM_EXTRA_IMGTOOL_ARGS_IMG0 := --header-size=$(MCUBOOT_IMG_HDR_SZ)
-endif
-
-if ATM_PAD_SIGNED_IMAGE
-ATM_EXTRA_IMGTOOL_ARGS_IMG0 := $(ATM_EXTRA_IMGTOOL_ARGS_IMG0) --pad
-ATM_EXTRA_IMGTOOL_ARGS_IMG1 := --pad
-endif
-
 config MCUBOOT_EXTRA_IMGTOOL_ARGS
-	default "$(ATM_EXTRA_IMGTOOL_ARGS_IMG0)" if MERGE_SPE_NSPE || ATM_PAD_SIGNED_IMAGE
+	default "--header-size=$(MCUBOOT_IMG_HDR_SZ) --pad" if MERGE_SPE_NSPE && !ATM_SPLIT_IMG && ATM_PAD_SIGNED_IMAGE
+	default "--header-size=$(MCUBOOT_IMG_HDR_SZ)" if MERGE_SPE_NSPE && !ATM_SPLIT_IMG
+	default "--pad" if ATM_PAD_SIGNED_IMAGE
 	depends on BOOTLOADER_MCUBOOT
 
 config ATM_MCUBOOT_EXTRA_IMGTOOL_ARGS_IMG1
 	string "Extra IMGTOOL signing args for image 1"
-	default "$(ATM_EXTRA_IMGTOOL_ARGS_IMG1)"
+	default "--pad" if ATM_PAD_SIGNED_IMAGE
 	depends on BOOTLOADER_MCUBOOT && ATM_SPLIT_IMG
 	help
 	   A split image configuration uses different arguments when signing
@@ -290,6 +296,14 @@ config ATM_MCUBOOT_IMGTOOL_SIGN_VERSION_IMG1
 
 endif # TRUSTED_EXECUTION_NONSECURE || ATM_NO_SPE
 
+config HEAP_MEM_POOL_ADD_SIZE_BOARD
+	int "Board-level heap memory pool size"
+	default 512
+	help
+	  Base heap memory pool size required by the board for general operations.
+	  This is combined with subsystem-specific heap requirements to form the
+	  final HEAP_MEM_POOL_SIZE.
+
 if BT
 
 # Controller provides random numbers via HCI_LE_RAND; host-side PRNG not needed.
@@ -297,14 +311,14 @@ if BT
 config BT_HOST_CRYPTO_PRNG
 	default n
 
-config HEAP_MEM_POOL_SIZE
-	default 32768
-
 config ENTROPY_GENERATOR
 	default y
 
 config BT_HCI_ACL_FLOW_CONTROL
 	default n
+
+config BT_ISO_TX_BUF_COUNT
+	default 4 if ATMWSTK_FULL || BT_ISO
 
 endif # BT
 

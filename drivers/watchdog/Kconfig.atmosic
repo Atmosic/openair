@@ -1,0 +1,99 @@
+# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+if WATCHDOG
+
+config WDT_ATM_UNIFIED
+	bool "ATM Unified Watchdog Wrapper"
+	depends on WDOG_CMSDK_APB || WDOG_ATMOSIC_CMSDK
+	select ATM_PMU
+	default y
+	depends on DT_HAS_ATMOSIC_UNIFIED_WATCHDOG_ENABLED
+	help
+	  Unified watchdog driver that wraps the upstream ARM CMSDK APB
+	  watchdog driver and adds ATM PMU watchdog management.
+
+	  This driver presents a single watchdog interface to applications
+	  while internally managing both ARM and PMU watchdogs. The ARM
+	  watchdog operations are delegated to the upstream Zephyr driver,
+	  ensuring automatic upstream bug fixes and enhancements.
+
+	  The PMU watchdog provides additional protection during power state
+	  transitions (retention, hibernation, SOC_OFF) and operates
+	  independently of the ARM watchdog.
+
+endif
+
+config ATM_PMU_WDT_ENABLE
+	bool "Enable PMU Watchdog"
+	default y
+	help
+	  Enable ATM PMU watchdog alongside ARM watchdog. When enabled,
+	  both watchdogs are configured with the same timeout and fed
+	  simultaneously through the unified API.
+
+	  The PMU watchdog provides additional protection during power state
+	  transitions and can operate independently of the ARM watchdog.
+
+	  In active state, both watchdogs are fed together. In low power
+	  states (retention, hibernation, SOC_OFF), the PMU watchdog uses
+	  warning timers to wake the device and maintain operation.
+
+if ATM_PMU_WDT_ENABLE
+
+config ATM_WDT_PMU_WARN_OFFSET_SEC
+	int "PMU watchdog warning timer offset (seconds) [ATM34xx only]"
+	default 1
+	range -3600 3600
+	help
+	  Time offset applied to the PMU watchdog warning timer relative to the
+	  maximum sleep duration (CONFIG_PM_MAX_SLEEP_DURATION_SEC) for all low-power
+	  states (retention, hibernation, and SOC-off).
+
+	  The PMU warning timer is set to: max_duration + offset
+
+	  A POSITIVE value (default: 1 second) provides a safety margin - the PMU
+	  watchdog warning interrupt will fire AFTER the maximum duration if the
+	  system fails to wake up normally. This acts as a backup mechanism to
+	  recover from failed wakeups.
+
+	  A NEGATIVE value causes the PMU watchdog warning interrupt to fire BEFORE
+	  the maximum duration is reached. This is useful for testing PMU watchdog
+	  warning interrupt handling but should not be used in production.
+
+	  A value of 0 means the PMU watchdog warning timer will be set to exactly
+	  match the maximum sleep duration and should not be used in production.
+
+	  This option applies to ATM34xx only.
+
+	  Default: 1 second (positive safety margin)
+	  Range: -3600 to 3600 seconds (-1 hour to +1 hour)
+
+endif # ATM_PMU_WDT_ENABLE
+
+if WDT_ATM_UNIFIED
+
+config ATM_WDT_UNIFIED_INIT_PRIORITY
+	int "ATM Unified Watchdog initialization priority"
+	default 8
+	range 6 9
+	help
+	  Initialization priority for the ATM unified watchdog driver at PRE_KERNEL_2.
+	  Must be > 5 (after hw_cfg) and < 10 (before pmu) for proper PMU register
+	  access and to clear pending interrupts before PMU operations.
+
+config ATM_WDT_UNIFIED_LOG_LEVEL
+	int "ATM Unified Watchdog Log Level"
+	depends on LOG
+	default 3
+	range 0 4
+	help
+	  Sets log level for the ATM unified watchdog wrapper.
+	  Levels are:
+	  0 = OFF
+	  1 = ERROR
+	  2 = WARNING
+	  3 = INFO
+	  4 = DEBUG
+
+endif # WDT_ATM_UNIFIED

@@ -1,6 +1,7 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config ATM_RADIO_HAL_LOG
 	bool "Atmosic radio_hal_log module"

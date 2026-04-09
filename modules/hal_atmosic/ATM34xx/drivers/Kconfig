@@ -3,6 +3,3 @@
 # SPDX-License-Identifier: Apache-2.0
 
 rsource "*/Kconfig"
-
-config PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY
-	default y

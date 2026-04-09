@@ -7,7 +7,7 @@
  ******************************************************************************/
 /*
  * Copyright (c) 2009-2019 Arm Limited. All rights reserved.
- * Copyright (c) 2024 Atmosic Technologies. All rights reserved.
+ * Copyright (c) 2024-2025 Atmosic Technologies. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -26,6 +26,8 @@
 
 #ifndef SYSTEM_ARMv8MBL_H
 #define SYSTEM_ARMv8MBL_H
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

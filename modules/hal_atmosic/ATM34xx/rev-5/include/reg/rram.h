@@ -5,7 +5,7 @@
  *
  * @brief RRAM register access
  *
- * Copyright (C) Atmosic 2020-2024
+ * Copyright (C) Atmosic 2020-2025
  *
  ******************************************************************************
  */
@@ -14,6 +14,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "cmsis_compiler.h"
+#include "base_addr.h"
 #include "at_ahb_prrf_regs_core_macro.h"
 #include "at_apb_wrpr_pins_regs_core_macro.h"
 

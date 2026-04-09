@@ -5,7 +5,7 @@
  *
  * @brief Secure Jornal driver
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  ******************************************************************************
  */
@@ -18,6 +18,9 @@
  * @brief Secure Journal driver
  * @{
  */
+
+#include <stdint.h>
+#include "compiler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,6 +58,10 @@ typedef enum {
 } sec_jrnl_ret_status_t;
 
 typedef uint16_t sec_jrnl_tag_len_t;
+
+#ifdef CONFIG_ATM_SECURE_JOURNAL_TEST
+extern uint8_t const sec_jrnl_nvds[];
+#endif
 
 #if (defined(SECURE_MODE) || defined(CFG_NO_SPE))
 

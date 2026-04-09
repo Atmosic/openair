@@ -13,6 +13,10 @@ For more information about MCUmgr and SMP, please see `Device Management <https:
 This sample allows for testing of DFU over serial and BLE.
 For serial DFU it uses ``zephyr,uart-mcumgr`` in the DTS which is ``uart0`` by default.
 
+To build with support OTA over BLE, add ``-DEXTRA_CONF_FILE="bt.conf"`` to the build command.
+To build with support for DFU over Serial add ``-DEXTRA_CONF_FILE="serial.conf;shell-mgmt.conf"`` to the build command.
+To build with support for both transports ``bt.conf`` can be added to the end of the serial options using a ``;`` to seperate the entry.
+
 For additional information please see `SMP server <https://docs.zephyrproject.org/latest/samples/subsys/mgmt/mcumgr/smp_svr/README.html>`_.
 
 Requirements
@@ -39,4 +43,4 @@ Flash command:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild --device <DEVICE_ID> --jlink [--fast_load] [--erase_flash]
+    west flash --no-rebuild --device <DEVICE_ID> --jlink [--fast_load] [--erase_flash]

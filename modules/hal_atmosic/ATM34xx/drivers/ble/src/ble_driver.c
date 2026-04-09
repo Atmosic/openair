@@ -5,7 +5,7 @@
  *
  * @brief Atmosic BLE link layer - HCI driver
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
  *
  *******************************************************************************
  */
@@ -71,14 +71,6 @@ static K_KERNEL_STACK_DEFINE(ble_thread_stack, BLE_THREAD_STACK_SIZE);
 struct hci_data {
     bt_hci_recv_t recv;
 };
-
-#ifndef CONFIG_NEWLIB_LIBC
-// FIXME: temporarily needed by pal_crypto.c
-int rand(void)
-{
-    return (sys_rand32_get());
-}
-#endif
 
 void ChciTrInit(uint16_t maxAclLen, uint16_t maxIsoSduLen)
 {
@@ -164,6 +156,16 @@ done:
 static int32_t plf_sleep_min = 0xa0;
 #endif
 
+static unsigned int ble_key;
+
+static int ble_sem_take(k_timeout_t timeout)
+{
+    unsigned int key = ble_key;
+    ble_key = 0;
+    irq_unlock(key);
+    return k_sem_take(&ble_sem, timeout);
+}
+
 static void
 ble_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
     int32_t ble_sleep_duration)
@@ -186,7 +188,7 @@ ble_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
     }
 
     pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-    k_sem_take(&ble_sem, K_TICKS(ticks));
+    ble_sem_take(K_TICKS(ticks));
     pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
     *pseq_sleep = true;
 #endif
@@ -231,14 +233,16 @@ ble_thread(void *p1, void *p2, void *p3)
 	}
 #endif
 
-	unsigned int key = irq_lock();
+	ble_key = irq_lock();
 
 	bool atlc_asleep = false;
 	bool disable_deep_sleep = !IS_ENABLED(CONFIG_ATLC_DEEP_SLEEP);
 	int32_t atlc_sleep_duration = 0;
+	uint32_t next_timer_ms = 0;
 	enum pc_ctr_sleep_e sleep_status;
 	GLOBAL_INT_DISABLE();
-	sleep_status = pc_ctr_sleep(&atlc_sleep_duration, disable_deep_sleep);
+	sleep_status = pc_ctr_sleep(&atlc_sleep_duration, disable_deep_sleep,
+	    &next_timer_ms);
 	GLOBAL_INT_RESTORE();
 	switch (sleep_status) {
 	    case PC_CTR_ATLC_WAS_ASLEEP:
@@ -250,25 +254,24 @@ ble_thread(void *p1, void *p2, void *p3)
 		    rv_plf_to_deep_sleep, ble_to_deep_sleep, &pseq_sleep, NULL,
 		    atlc_asleep, atlc_sleep_duration);
 		if (!pseq_sleep) {
-		    k_sem_take(&ble_sem, K_FOREVER);
+		    ble_sem_take(next_timer_ms ? K_MSEC(next_timer_ms) : K_FOREVER);
 		}
 	    } break;
 	    case PC_CTR_ATLC_WAKING:
 	    case PC_CTR_ATLC_WAKING_SOON:
 	    case PC_CTR_CPU_SLEEP:
-		k_sem_take(&ble_sem, K_FOREVER);
+		ble_sem_take(next_timer_ms ? K_MSEC(next_timer_ms) : K_FOREVER);
 		break;
 	    case PC_CTR_CPU_REST:
-		k_sem_take(&ble_sem, K_USEC(DT_PROP(DT_NODELABEL(sleep),
-		    min_residency_us) / 2));
+		ble_sem_take(
+		    K_USEC(DT_PROP(DT_NODELABEL(sleep), min_residency_us) / 2));
 		break;
 	    case PC_CTR_ACTIVE:
 	    default:
 		// nothing to do.
+		irq_unlock(ble_key);
 		break;
 	}
-
-	irq_unlock(key);
     }
 }
 
@@ -421,13 +424,6 @@ ISR_DIRECT_DECLARE(ble_driver_SW_1_Handler)
     return 0;
 }
 
-ISR_DIRECT_DECLARE(ble_driver_PSEQ_CNTDWN_TIMER_1_Handler)
-{
-    pc_ctr_awake();
-    k_sem_give(&ble_sem);
-    return 1;
-}
-
 static int ble_driver_close(struct device const *dev)
 {
     LOG_DBG("ble close enter");
@@ -436,11 +432,19 @@ static int ble_driver_close(struct device const *dev)
     return 0;
 }
 
+static void ble_driver_init_part2(void);
+
 static int
 ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
 {
     LOG_DBG("enter");
-
+#ifdef CONFIG_ATM_BLE_DRIVER_SPLIT_INIT
+    static bool init_once;
+    if (!init_once) {
+	ble_driver_init_part2();
+	init_once = true;
+    }
+#endif
     struct hci_data *hci = dev->data;
     hci->recv = recv;
     is_open = true;
@@ -456,10 +460,12 @@ static struct bt_hci_driver_api const drv = {
 
 static struct hci_data hci_data;
 
-#if !defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
+#if defined(CONFIG_ATM_ENA_LL_FEAT_ENC_PRIV) && \
+    !defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
 #error CTR_DRBG must be enabled for controller
 #endif
 
+#ifdef CONFIG_CTR_DRBG_CSPRNG_GENERATOR
 static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
 {
     int ret = sys_csrand_get(value, sizeof(*value));
@@ -470,32 +476,13 @@ static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
     }
     return (RV_DONE);
 }
-
+#endif // CONFIG_CTR_DRBG_CSPRNG_GENERATOR
 #endif // CONFIG_ATM_BLE
 
-static int ble_driver_init(struct device const *dev)
+static void ble_driver_init_part2(void)
 {
-    ARG_UNUSED(dev);
-
-    LOG_DBG("enter");
-
-    __unused uint32_t bp_freq = at_clkrstgen_get_bp();
-    // pc_ctr requires 32MHz minimum
-    ASSERT_INFO(bp_freq >= 32000000, bp_freq, 32000000);
-#ifdef CONFIG_ATM_BLE
-    RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
-#endif
-    RV_RF_WAKE_ADD(ble_driver_rf_wake);
-
-    // FIXME: secure SysTick needs same adjustment
-    NVIC_SetPriority(SysTick_IRQn, IRQ_PRI_NORMAL);
-    BUILD_ASSERT(IRQ_PRI_HIGH >= _IRQ_PRIO_OFFSET, "ZLL too big");
-    Z_ISR_DECLARE(ATLC_FRC_IRQn, ISR_FLAG_DIRECT, ble_driver_ATLC_FRC_Handler,
-	NULL);
 #ifdef CONFIG_ATM_BLE
     Z_ISR_DECLARE(SW_1_IRQn, ISR_FLAG_DIRECT, ble_driver_SW_1_Handler, NULL);
-    Z_ISR_DECLARE(PSEQ_CNTDWN_TIMER_1_IRQn, ISR_FLAG_DIRECT,
-	ble_driver_PSEQ_CNTDWN_TIMER_1_Handler, NULL);
     pc_ctr_main();
 #else
     pc_ctr_sleep_init();
@@ -507,11 +494,35 @@ static int ble_driver_init(struct device const *dev)
     irq_enable(BLE_GIVE_MAC_IRQn);
 
     k_thread_create(&ble_thread_data, ble_thread_stack,
-		    K_KERNEL_STACK_SIZEOF(ble_thread_stack),
-		    ble_thread, NULL, NULL, NULL,
-		    K_PRIO_COOP(CONFIG_ATM_BLE_HIGH_PRIO), 0, K_NO_WAIT);
+	K_KERNEL_STACK_SIZEOF(ble_thread_stack), ble_thread, NULL, NULL, NULL,
+	K_PRIO_COOP(CONFIG_ATM_BLE_HIGH_PRIO), 0, K_NO_WAIT);
 
     k_thread_name_set(&ble_thread_data, "Atmosic ATLC");
+}
+
+static int ble_driver_init(struct device const *dev)
+{
+    ARG_UNUSED(dev);
+
+    LOG_DBG("enter");
+
+    __unused uint32_t bp_freq = at_clkrstgen_get_bp();
+    // pc_ctr requires 32MHz minimum
+    ASSERT_INFO(bp_freq >= 32000000, bp_freq, 32000000);
+#if defined(CONFIG_ATM_BLE) && defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
+    RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
+#endif
+    RV_RF_WAKE_ADD(ble_driver_rf_wake);
+
+    // FIXME: secure SysTick needs same adjustment
+    NVIC_SetPriority(SysTick_IRQn, IRQ_PRI_NORMAL);
+    BUILD_ASSERT(IRQ_PRI_HIGH >= _IRQ_PRIO_OFFSET, "ZLL too big");
+    Z_ISR_DECLARE(ATLC_FRC_IRQn, ISR_FLAG_DIRECT, ble_driver_ATLC_FRC_Handler,
+	NULL);
+
+#ifndef CONFIG_ATM_BLE_DRIVER_SPLIT_INIT
+    ble_driver_init_part2();
+#endif
 
     LOG_DBG("exit");
     return 0;

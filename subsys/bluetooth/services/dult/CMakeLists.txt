@@ -1,11 +1,10 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 if(CONFIG_ATM_DULT)
+  zephyr_library()
   zephyr_include_directories(.)
-  zephyr_sources(dult.c)
-  if(CONFIG_DULT_ADV_SUPPORT)
-    zephyr_sources(dult_adv.c)
-  endif()
+  zephyr_library_sources(dult.c)
+  zephyr_library_sources_ifdef(CONFIG_DULT_ADV_SUPPORT dult_adv.c)
 endif()

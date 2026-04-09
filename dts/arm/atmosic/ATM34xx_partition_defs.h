@@ -5,29 +5,20 @@
  *
  * @brief Atmosic ATM34 partition definitions
  *
- * Copyright (C) Atmosic 2024-2025
+ * Copyright (C) Atmosic 2024-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
 
 #ifndef _ATMOSIC_ATM_ATM34XX_PARTITION_DEFS_H_
 #define _ATMOSIC_ATM_ATM34XX_PARTITION_DEFS_H_
+#include <arm/atmosic/ATM34xx_defs.h>
 
 #ifdef ATM_NO_TZ
 #undef ATM_SPE_SIZE
 #define ATM_SPE_SIZE 0
-#endif
-
-#define RUN_APP_NORMAL 0
-#define RUN_APP_IN_FLASH 1
-#define RUN_APP_IN_FLASH_SPLIT 2
-
-#ifdef ATM_APP_FLASH_XIP
-// if user application is to run in flash XIP, select the split image option
-// ONLY
-#define RUN_IN_FLASH RUN_APP_IN_FLASH_SPLIT
 #endif
 
 // Size of memory held-back in reserve at the end of flash for a flash_xip

@@ -5,7 +5,7 @@
  *
  * @brief Radio SPI definitions
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  *****************************************************************************
  */

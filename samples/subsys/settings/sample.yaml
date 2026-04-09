@@ -15,8 +15,8 @@ common:
       - "load SETTINGS/TEST_KEY key: 0x5aa50ff0"
       - "save SETTINGS/TEST_KEY key: 0xa55af00f"
       - "load SETTINGS/TEST_KEY key: 0xa55af00f"
+  tags:
+    - atm_test_with_spe
+    - introduction
 tests:
-  samples.subsys.settings.atm:
-    tags:
-      - introduction
-      - no_mcuboot
+  samples.subsys.settings.atm: {}

@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/init.h>
@@ -18,8 +18,7 @@ LOG_MODULE_REGISTER(rrsp_buzzer, CONFIG_RRSP_BUZZER_LOG_LEVEL);
 #include <zephyr/pm/policy.h>
 #include "atm_buzzer.h"
 
-#define BUZZER_NODE     DT_NODELABEL(pwm_buzzer0)
-#define BUZZER_PWM_NODE DT_PHANDLE(BUZZER_NODE, pwms)
+#define BUZZER_NODE DT_NODELABEL(pwm_buzzer0)
 BUILD_ASSERT(DT_NODE_EXISTS(BUZZER_NODE), "BUZZER_NODE does not exist in the Device Tree!");
 
 static bool buzzer_lock;
@@ -40,29 +39,27 @@ static void rrsp_buzzer_lock_sleep(bool lock)
 	buzzer_lock = lock;
 }
 
-static void rrsp_buzzer_beep_end(struct atm_buzzer_s *buzz_cfg)
+static void rrsp_buzzer_beep_end(const struct device *dev)
 {
 	LOG_DBG("buzzer end");
 	rrsp_buzzer_lock_sleep(false);
 }
 
-static atm_buzzer_t buzzer_cfg = {
-	.pwm_dt = PWM_DT_SPEC_GET(BUZZER_NODE),
-	.pulse = DT_PROP(BUZZER_NODE, pulse),
-	.min_frequency = DT_PROP(BUZZER_PWM_NODE, min_frequency),
-	.max_frequency = DT_PROP(BUZZER_PWM_NODE, max_frequency),
-	.stop_cb = rrsp_buzzer_beep_end,
-};
-
 static int rrsp_buzzer_init(void)
 {
-	LOG_DBG("buzzer init:period:%u, pulse:%u", buzzer_cfg.pwm_dt.period, buzzer_cfg.pulse);
+	const struct device *buzzer = DEVICE_DT_GET(BUZZER_NODE);
 
-	atm_buzzer_cb_reg(&buzzer_cfg);
+	if (!device_is_ready(buzzer)) {
+		LOG_ERR("Buzzer device not ready");
+		return -ENODEV;
+	}
 
+	/* Set stop callback */
+	atm_buzzer_set_stop_callback(buzzer, rrsp_buzzer_beep_end);
+
+	LOG_DBG("buzzer initialized");
 	return 0;
 }
-
 SYS_INIT(rrsp_buzzer_init, POST_KERNEL, CONFIG_APPLICATION_INIT_PRIORITY);
 #endif
 
@@ -75,7 +72,11 @@ void rrsp_buzzer_beep(uint32_t duration_ms)
 #ifdef CONFIG_ATM_BUZZER
 #define RRSP_BUZZER_FREQ_HZ    1000
 #define RRSP_BUZZER_DUTY_CYCLE 50
-	if (atm_buzzer_beep_time(&buzzer_cfg, RRSP_BUZZER_FREQ_HZ, RRSP_BUZZER_DUTY_CYCLE, duration_ms)) {
+
+	const struct device *buzzer = DEVICE_DT_GET(BUZZER_NODE);
+
+	if (atm_buzzer_beep_time(buzzer, RRSP_BUZZER_FREQ_HZ, RRSP_BUZZER_DUTY_CYCLE,
+				 duration_ms)) {
 		LOG_ERR("Set buzzer failed");
 		return;
 	}

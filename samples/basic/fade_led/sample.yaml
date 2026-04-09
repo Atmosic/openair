@@ -9,5 +9,3 @@ tests:
       ordered: true
       regex:
         - "Using pulse width \\d+%"
-    tags:
-      - no_mcuboot

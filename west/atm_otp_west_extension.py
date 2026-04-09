@@ -1,9 +1,11 @@
+# Copyright (c) Atmosic 2024-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file atm_otp_west_extension.py
 
 @brief West extension for managing OTP
-
-Copyright (c) Atmosic 2024-2025
 """
 
 import binascii
@@ -200,11 +202,10 @@ class AtmOtpCommand(WestCommand):
 
     def do_run(self, args, unknown_args):
         self.board = args.board
-        soc = atm_openocd.get_soc_from_board(self.board)
 
-        if soc == "ATM33xx-5":
+        if "33" in self.board:
             self.OTParray = Atmx3_OTPArray
-        elif soc.startswith("ATM34xx"):
+        elif "34" in self.board:
             self.OTParray = Atm34_OTPArray
         else:
             raise RuntimeError("Unsupported platform")

@@ -1,0 +1,7 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+#include <arm/atmosic/ATM34xx_mcuboot_partitions.dtsi>

@@ -1,6 +1,6 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 function(string_contains result main_string substring)
   string(FIND "${main_string}" "${substring}" index)
@@ -17,7 +17,7 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_image_cmake)
   string_contains(is_ns_brd "${BOARD_QUALIFIERS}" "ns")
   set(cur_img ${PRE_IMAGE_CMAKE_IMAGE})
   set(dts_extra_cppflags ${DTS_EXTRA_CPPFLAGS})
-  if (SB_CONFIG_SPE AND NOT SB_CONFIG_OVERRIDE_NO_SPE)
+  if (SB_CONFIG_SPE)
     # this is a SPE+NSPE configuration
     if(NOT "${cur_img}" STREQUAL "spe" AND NOT "${cur_img}" STREQUAL "mcuboot" AND NOT is_ns_brd)
       # building the NS app in a SPE enabled configuration
@@ -33,6 +33,10 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_image_cmake)
       # Indicate this is an mcuboot build to prevent user resources
       # from being applied. Mcuboot resources should use overlays.
       list(APPEND dts_extra_cppflags "-DATM_DTS_MCUBOOT")
+    elseif(SB_CONFIG_ATM_MPC_NULL_POINTER_DETECTION)
+      # Use MPC for NULL pointer detection instead of MPU
+      list(APPEND dts_extra_cppflags "-DATM_MPC_NULL_POINTER_DETECTION")
+      set_config_bool(${cur_img} CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC "y")
     endif()
   endif()
   zephyr_get(SB_ATM_DTS_EXTRA_CPPFLAGS SYSBUILD LOCAL MERGE REVERSE)
@@ -60,7 +64,7 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_image_cmake)
     elseif(SB_CONFIG_ATMWSTK_CPD200)
       set_config_bool(${cur_img} CONFIG_ATMWSTK_CPD200 "y")
     endif()
-    if(SB_CONFIG_SPE AND NOT SB_CONFIG_OVERRIDE_NO_SPE)
+    if(SB_CONFIG_SPE)
       set(sysbuild_spe_path "${CMAKE_BINARY_DIR}/spe")
       set_property(TARGET ${cur_img} APPEND_STRING PROPERTY CONFIG "CONFIG_SPE_PATH=\"${sysbuild_spe_path}\"\n")
     endif()

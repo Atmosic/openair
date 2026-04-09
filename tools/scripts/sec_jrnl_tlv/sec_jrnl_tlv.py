@@ -3,7 +3,7 @@
 
 @brief Secure Journal Managment
 
-Copyright (C) Atmosic 2024
+Copyright (C) Atmosic 2024-2026
 """
 
 import struct
@@ -20,16 +20,14 @@ SEC_JRNL_WALK_DONE = 1
 class BadMagicException(Exception):
     """Magic is not the correct value"""
 
-    pass
-
 
 class InvalidTLVException(Exception):
     """TLV tag value is invalid"""
 
-    pass
-
 
 class TLVStatus:
+    """Status byte from TLV data"""
+
     SEC_JRNL_STATUS_VALID_IDX = 0x01
     SEC_JRNL_STATUS_VALID_MASK = 0x01
     SEC_JRNL_STATUS_LOCKED_IDX = 0x02
@@ -41,30 +39,37 @@ class TLVStatus:
         self.status = status
 
     def set_status_bit(self, idx, val):
+        """Set a bit in the status byte"""
         self.status = (self.status & (~(1 << (idx - 1)))) | (val << (idx - 1))
 
     @property
     def valid(self):
-        return not (self.status & TLVStatus.SEC_JRNL_STATUS_VALID_MASK)
+        """Get the valid bit"""
+        return not self.status & TLVStatus.SEC_JRNL_STATUS_VALID_MASK
 
     @valid.setter
     def valid(self, value):
+        """Set the valid bit"""
         self.set_status_bit(TLVStatus.SEC_JRNL_STATUS_VALID_IDX, not bool(value))
 
     @property
     def locked(self):
-        return not (self.status & TLVStatus.SEC_JRNL_STATUS_LOCKED_MASK)
+        """Get the locked bit"""
+        return not self.status & TLVStatus.SEC_JRNL_STATUS_LOCKED_MASK
 
     @locked.setter
     def locked(self, value):
+        """Set the locked bit"""
         self.set_status_bit(TLVStatus.SEC_JRNL_STATUS_LOCKED_IDX, not bool(value))
 
     @property
     def erased(self):
-        return not (self.status & TLVStatus.SEC_JRNL_STATUS_ERASED_MASK)
+        """Get the erased bit"""
+        return not self.status & TLVStatus.SEC_JRNL_STATUS_ERASED_MASK
 
     @erased.setter
     def erased(self, value):
+        """Set the erased bit"""
         self.set_status_bit(TLVStatus.SEC_JRNL_STATUS_ERASED_IDX, not bool(value))
 
     def __str__(self) -> str:
@@ -75,15 +80,166 @@ class TLVStatus:
 
 
 class TLV:
+    """Secure Journal data item containing type, length, and value information"""
+
     PTAG_LJUST_SIZE = 10
+    # Tag definitions from calibration.h
     TAG_NAMES = {
-        0xB8: "ATE",
-        0xB9: "CHIP_INFO",
+        0x01: "BD_ADDR",
         0xB0: "RIF_CAL",
         0xB1: "MDM_CAL",
+        0xB8: "ATE",
+        0xB9: "CHIP_INFO",
         0xBC: "MISC_CAL",
+        0xC2: "XTAL_CAL",
     }
 
+    # Reverse mapping: name -> tag number
+    NAME_TO_TAG = {v: k for k, v in TAG_NAMES.items()}
+
+    # Struct schemas mapping tag numbers to field definitions
+    # Each schema is a list of tuples: (field_name, struct_format, array_size or None)
+    # struct_format uses Python struct module format characters:
+    # I = uint32_t, H = uint16_t, B = uint8_t, b = int8_t
+    TAG_SCHEMAS = {
+        0x01: [  # bd_addr_s
+            ("bd_addr", "B", 6),
+        ],
+        0xB0: [  # rif_cal_s
+            ("bias", "I", None),
+            ("rxbbf", "I", None),
+            ("rxbbf_1m", "I", None),
+            ("rxbbf_2m", "I", None),
+            ("syntx_modgain", "I", None),
+            ("syntx_vcocap", "I", None),
+            ("lna", "I", None),
+        ],
+        0xB1: [  # mdm_cal_s
+            ("agcmeas", "I", None),
+            ("dcoff", "I", None),
+            ("pga_force_dccalresults", "I", None),
+            ("iqcorr", "I", None),
+            ("iqcorr2", "I", None),
+        ],
+        0xB8: [  # ate_s
+            ("rsvd", "I", 7),
+        ],
+        0xB9: [  # chip_info_s
+            ("version", "H", None),
+            ("package", "B", None),
+            ("test_day", "B", None),
+            ("test_month", "B", None),
+            ("test_year", "B", None),
+            ("test_temperature", "H", None),
+            ("otp_version", "B", None),
+        ],
+        0xC2: [  # xtal_cal_s
+            ("xtal_bits1", "I", None),
+            ("xtal_bits0", "I", None),
+        ],
+    }
+
+    @staticmethod
+    def tag_name_to_number(name):
+        """Convert a tag name to its numeric value.
+
+        Args:
+            name (str): Tag name (e.g., 'ATE', 'CHIP_INFO')
+
+        Returns:
+            int: Tag number, or None if not found
+        """
+        return TLV.NAME_TO_TAG.get(name.upper())
+
+    @staticmethod
+    def json_to_binary(tag, json_data):
+        """Convert JSON data to binary according to tag's struct schema.
+
+        Args:
+            tag (int): Tag number
+            json_data (dict): JSON data with field names and values
+
+        Returns:
+            bytes: Binary representation of the data
+
+        Raises:
+            ValueError: If tag has no schema or field is unknown
+        """
+        if tag not in TLV.TAG_SCHEMAS:
+            raise ValueError(f"No schema defined for tag 0x{tag:02X}")
+
+        schema = TLV.TAG_SCHEMAS[tag]
+        result = b""
+
+        for field_name, fmt, array_size in schema:
+            if field_name not in json_data:
+                raise ValueError(f"Missing field '{field_name}' for tag 0x{tag:02X}")
+
+            value = json_data[field_name]
+
+            if array_size is not None:
+                # Handle array fields
+                if not isinstance(value, list):
+                    raise ValueError(
+                        f"Field '{field_name}' must be a list of {array_size} elements"
+                    )
+                if len(value) != array_size:
+                    raise ValueError(
+                        f"Field '{field_name}' must have {array_size} elements, "
+                        f"got {len(value)}"
+                    )
+                for item in value:
+                    result += struct.pack("<" + fmt, item)
+            else:
+                # Handle scalar fields
+                result += struct.pack("<" + fmt, value)
+
+        return result
+
+    @staticmethod
+    def binary_to_json(tag, data):
+        """Convert binary data to JSON according to tag's struct schema.
+
+        Args:
+            tag (int): Tag number
+            data (bytes): Binary data
+
+        Returns:
+            dict: JSON representation of the data, or None if no schema
+        """
+        if tag not in TLV.TAG_SCHEMAS:
+            return None
+
+        schema = TLV.TAG_SCHEMAS[tag]
+        result = {}
+        offset = 0
+
+        for field_name, fmt, array_size in schema:
+            fmt_size = struct.calcsize(fmt)
+
+            if array_size is not None:
+                # Handle array fields
+                values = []
+                for _ in range(array_size):
+                    if offset + fmt_size <= len(data):
+                        (value,) = struct.unpack(
+                            "<" + fmt, data[offset : offset + fmt_size]
+                        )
+                        values.append(value)
+                        offset += fmt_size
+                result[field_name] = values
+            else:
+                # Handle scalar fields
+                if offset + fmt_size <= len(data):
+                    (value,) = struct.unpack(
+                        "<" + fmt, data[offset : offset + fmt_size]
+                    )
+                    result[field_name] = value
+                    offset += fmt_size
+
+        return result
+
+    # pylint: disable=too-many-arguments
     def __init__(self, tag, status, raw_len, data, idx=-1) -> None:
         if tag == 0xFF:
             raise InvalidTLVException("Bad tag")
@@ -229,12 +385,15 @@ class TLV:
 
 
 class SecJrnl:
-    SEC_JRNL_TAIL_PAD_LEN = 4
+    """Secure Journal"""
+
+    SEC_JRNL_TAIL_PAD_LEN = 5
     SEC_JRNL_SECURE_ONLY_MASK = 0xFC
     SEC_JRNL_SECURE_ONLY_VAL = 0xEC
 
     @classmethod
     def is_secure_tag(cls, tag):
+        """Checks if given tag is SECURE_ONLY"""
         return (tag & cls.SEC_JRNL_SECURE_ONLY_MASK) == cls.SEC_JRNL_SECURE_ONLY_VAL
 
     def __init__(self, bin=None, max_len=1776) -> None:
@@ -256,10 +415,12 @@ class SecJrnl:
 
     @property
     def len(self):
+        """Length of secure journal, including padding"""
         return self.walk_bin(self.raw_bin) + SecJrnl.SEC_JRNL_TAIL_PAD_LEN
 
     @property
     def bin(self):
+        """Binary representation of secure journal data"""
         return self.raw_bin[0 : self.len]
 
     def walk_bin(self, bin=None, func=lambda tlv: SEC_JRNL_WALK_CONT):
@@ -281,7 +442,7 @@ class SecJrnl:
         while tlv_off < self.max_len:
             try:
                 tlv = TLV.from_bin(bin, tlv_off)
-            except InvalidTLVException as e:
+            except InvalidTLVException:
                 return tlv_off
             if func(tlv) == SEC_JRNL_WALK_DONE:
                 return tlv_off
@@ -297,10 +458,11 @@ class SecJrnl:
             tlv = TLV.from_bin(self.bin, self.iter_tlv_off)
             self.iter_tlv_off += tlv.total_size
             return tlv
-        except InvalidTLVException as e:
-            raise StopIteration
+        except InvalidTLVException as exc:
+            raise StopIteration from exc
 
     def get(self, tag_val):
+        """Get TLV matching tag"""
         ret = None
         for tlv in iter(self):
             if tag_val == tlv.tag:
@@ -329,7 +491,10 @@ class SecJrnl:
         self.raw_bin = (
             self.raw_bin[0 : self.ratchet_idx]
             + new_tlv.bin
-            + self.raw_bin[self.ratchet_idx + new_tlv.total_size :]
+            + b"\xff" * (SecJrnl.SEC_JRNL_TAIL_PAD_LEN)
+            + self.raw_bin[
+                self.ratchet_idx + new_tlv.total_size + SecJrnl.SEC_JRNL_TAIL_PAD_LEN :
+            ]
         )
 
     @property

@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Detecting Unwanted Location Trackers (DULT) Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -194,40 +194,35 @@ static void dult_gatt_sound_play_complete_ind_send(struct k_work *work)
 }
 K_WORK_DEFINE(dult_gatt_sound_play_complete_ind, dult_gatt_sound_play_complete_ind_send);
 
-uint8_t dult_play_cnt;
-#define DULT_PLAY_COUNT_MAX 10
 static void dult_sound_play_timer_handler(struct k_work *work)
 {
-	bool sound_play = (!k_work_delayable_busy_get(&dult_sound_play_timer));
-	if (sound_play && dult_play_cnt < DULT_PLAY_COUNT_MAX) {
-		LOG_DBG("Play sound count (%u)", dult_play_cnt);
-		atm_work_reschedule_for_app_work_q(&dult_sound_play_timer,
-						   K_SECONDS(DULT_PLAY_SOUND_INT_SEC));
-		dult_play_cnt++;
-	} else {
-		if (sound_play) {
-			LOG_INF("Play sound exceed max count %d, stop play", DULT_PLAY_COUNT_MAX);
-		}
-		k_work_cancel_delayable(&dult_sound_play_timer);
-		dult_play_cnt = 0;
-		atm_work_submit_to_app_work_q(&dult_gatt_sound_play_complete_ind);
+	LOG_INF("DULT sound play timeout after %d seconds, stopping sound",
+		DULT_PLAY_SOUND_DUR_SEC);
+	k_work_cancel_delayable(&dult_sound_play_timer);
+
+	/* Queue GATT indication first to avoid callback latency delaying the response */
+	atm_work_submit_to_app_work_q(&dult_gatt_sound_play_complete_ind);
+
+	/* Stop the sound by calling the callback with false */
+	if (dult_hdlrs->sound_action_cb) {
+		dult_hdlrs->sound_action_cb(false);
 	}
 }
 
 static void dult_sound_play_invoke_update(struct k_work *work)
 {
 	bool sound_play;
-	dult_play_cnt = 0;
 	if (k_work_delayable_busy_get(&dult_sound_play_timer)) {
-		LOG_INF("Disable sound play");
+		LOG_INF("Disable sound play (manual stop)");
 		k_work_cancel_delayable(&dult_sound_play_timer);
 		LOG_DBG("To Send sound play complete indicate");
 		atm_work_submit_to_app_work_q(&dult_gatt_sound_play_complete_ind);
 		sound_play = false;
 	} else {
-		LOG_INF("Enable sound play");
+		LOG_INF("Enable sound play for %d seconds", DULT_PLAY_SOUND_DUR_SEC);
+		/* Schedule timer to stop sound after DULT_PLAY_SOUND_DUR_SEC seconds */
 		atm_work_reschedule_for_app_work_q(&dult_sound_play_timer,
-						   K_SECONDS(DULT_PLAY_SOUND_INT_SEC));
+						   K_SECONDS(DULT_PLAY_SOUND_DUR_SEC));
 		sound_play = true;
 	}
 	if (dult_hdlrs->sound_action_cb) {

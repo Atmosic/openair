@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -33,7 +33,11 @@
 LOG_MODULE_REGISTER(rrsp_btn, CONFIG_RRSP_BTN_LOG_LEVEL);
 
 #define SW0_NODE DT_ALIAS(sw0)
+#if DT_NODE_HAS_STATUS_OKAY(SW0_NODE)
 static const struct gpio_dt_spec rrsp_btn0 = GPIO_DT_SPEC_GET(SW0_NODE, gpios);
+#else
+static const struct gpio_dt_spec rrsp_btn0 = {0};
+#endif
 static struct gpio_callback rrsp_button_cb;
 static struct k_work rrsp_button_work;
 

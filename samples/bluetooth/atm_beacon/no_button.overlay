@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Test overlay to disable button0 for testing beacon sample
+ * without button hardware
+ */
+
+&button0 {
+	status = "disabled";
+};

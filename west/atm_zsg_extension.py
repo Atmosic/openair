@@ -1,11 +1,13 @@
 #!/usr/bin/env python
+# Copyright (C) Atmosic 2025-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file atm_zsg_extension.py
 
 Handles generation, reading, display, and dumping of binary flash images
 for the Zephyr Settings Subsystem using the NVS backend.
-
-Copyright (C) Atmosic 2025
 """
 
 import os
@@ -351,12 +353,34 @@ class AtmZsgCommand(WestCommand):
 
         # Convert .bin file to .hex file
         if args.hex:
-            if not args.objcopy_file or not os.path.exists(args.objcopy_file):
-                print(f"{args.objcopy_file} not exist")
+            # Determine objcopy path
+            objcopy_file = args.objcopy_file
+
+            # If not provided, try to use ZEPHYR_SDK_INSTALL_DIR
+            if not objcopy_file:
+                zephyr_sdk_dir = os.environ.get("ZEPHYR_SDK_INSTALL_DIR")
+                if zephyr_sdk_dir and os.path.exists(zephyr_sdk_dir):
+                    objcopy_name = (
+                        "objcopy.exe" if sys.platform == "win32" else "objcopy"
+                    )
+                    objcopy_file = os.path.join(
+                        zephyr_sdk_dir,
+                        "arm-zephyr-eabi",
+                        "arm-zephyr-eabi",
+                        "bin",
+                        objcopy_name,
+                    )
+
+            # Verify objcopy_file exists
+            print(f"objcopy file path = {objcopy_file}")
+            if not objcopy_file or not os.path.exists(objcopy_file):
+                print(f"objcopy not found at: {objcopy_file}")
+                print("Please provide --objcopy_file or set " "ZEPHYR_SDK_INSTALL_DIR")
                 sys.exit(1)
+
             hex_path = os.path.splitext(args.output_file)[0] + ".hex"
             cmd = (
-                f"{args.objcopy_file} --change-addresses {self.part_start} "
+                f"{objcopy_file} --change-addresses {self.part_start} "
                 f"-I binary -O ihex {args.output_file} {hex_path}"
             )
             try:
@@ -437,7 +461,7 @@ class AtmZsgCommand(WestCommand):
                 args.dl,
                 openocd_cfg=args.openocd_config,
             )
-        except Exception as exc:
+        except Exception:  # pylint: disable=broad-exception-caught
             print("Invalid configuration. Please use supported device")
             sys.exit(1)
         self.pull_subsystem_data(args)

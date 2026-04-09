@@ -5,7 +5,7 @@
  *
  * @brief Calibration data
  *
- * Copyright (C) Atmosic 2021-2024
+ * Copyright (C) Atmosic 2021-2026
  *
  *******************************************************************************
  */
@@ -27,7 +27,11 @@ extern "C" {
 #endif
 
 /// Duration for an RCOS measurement to remain valid in 32KHz cycles
+#ifdef CONFIG_ATM_LPC_RCOS_VALID_SECONDS
+#define LPC_RCOS_VALID (CONFIG_ATM_LPC_RCOS_VALID_SECONDS * 32768U)
+#else
 #define LPC_RCOS_VALID	(5U * 32768U)	// 5 seconds
+#endif
 
 /// Platform NVDS tags
 /// @note the range should within PARAM_ID_CAL1_MIN and PARAM_ID_CAL1_MAX or

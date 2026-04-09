@@ -5,7 +5,9 @@
  *
  * @brief Atmosic AES driver
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -57,6 +59,12 @@ atm_aes_res_t atm_aes_init(atm_aes_params_t const *params)
 #ifdef REV_HASH_CHECK
     REV_HASH_CHECK(CMSDK_AES, AES);
 #endif
+
+    // clear sideload valid
+    CMSDK_AES->SIDELOAD_CTRL = AES_SIDELOAD_CTRL__RESET_VALUE;
+    // reset shadow (must be written twice)
+    CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__RESET_VALUE;
+    CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__RESET_VALUE;
 
     uint32_t ctrl = 0;
     // Note: mode and key_len are 1-hot encoded
@@ -209,8 +217,9 @@ atm_aes_res_t atm_aes_update(uint8_t *dest, uint8_t const *src,
 
 void atm_aes_disable(void)
 {
-    CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__MANUAL_OPERATION__MASK;
-    CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__MANUAL_OPERATION__MASK;
+    CMSDK_AES->SIDELOAD_CTRL = AES_SIDELOAD_CTRL__RESET_VALUE;
+    CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__RESET_VALUE;
+    CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__RESET_VALUE;
     CMSDK_AES->TRIGGER = AES_TRIGGER__KEY_IV_DATA_IN_CLEAR__MASK |
 	AES_TRIGGER__DATA_OUT_CLEAR__MASK;
 

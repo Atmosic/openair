@@ -7,15 +7,16 @@
 Copyright (C) Atmosic 2023-2025
 """
 
-import serial
 import argparse
 import base64
 import sys
+
+import serial
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.hashes import SHA256
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+from cryptography.hazmat.primitives.hashes import SHA256
 
 MAX_RETRIES = 5
 TIMEOUT = 1
@@ -28,17 +29,17 @@ DEVICE_COMMAND_REQUEST = b"DBG REQUEST\n"
 DEVICE_COMMAND_RESPONSE = b"DBG RESPONSE"
 DEVICE_COMMAND_STATIC_RESPONSE = b"DBG STATIC_RESPONSE"
 
-verbose = False
+VERBOSE = False
 
 
-# helper functions
-def verbose_print(*args, **kwargs):
-    global verbose
-    if verbose:
-        print(*args, **kwargs)
+def verbose_print(*print_args, **kwargs):
+    """Print message if verbose mode is enabled."""
+    if VERBOSE:
+        print(*print_args, **kwargs)
 
 
 def send(ser, command):
+    """Send a command to the device and return the response."""
     tries = 0
     ser.reset_input_buffer()
     ser.reset_output_buffer()
@@ -55,6 +56,7 @@ def send(ser, command):
 
 
 def load_key(keyfile, passwd):
+    """Load a private key from a PEM file."""
     raw_key = keyfile.read()
     key = serialization.load_pem_private_key(
         raw_key, password=passwd, backend=default_backend()
@@ -68,16 +70,17 @@ def load_key(keyfile, passwd):
 
 
 def sign(key, challenge):
+    """Sign a challenge with the given key."""
     sig = key.sign(data=challenge, signature_algorithm=ec.ECDSA(SHA256()))
-    r, s = decode_dss_signature(sig)
-    signature = r.to_bytes(int(key.key_size / 8), "big") + s.to_bytes(
+    sig_r, sig_s = decode_dss_signature(sig)
+    signature = sig_r.to_bytes(int(key.key_size / 8), "big") + sig_s.to_bytes(
         int(key.key_size / 8), "big"
     )
     return signature
 
 
-# Device interfacing functions
 def unlock(ser, key, response, static=False):
+    """Unlock the device using the given key and response."""
     challenge = base64.b64decode(response.strip().split()[-1])
     signature = sign(key, challenge)
     if static:
@@ -88,23 +91,26 @@ def unlock(ser, key, response, static=False):
     return status.strip() == DEVICE_STRING_UNLOCKED
 
 
-def command_unlock(args):
-    with serial.Serial(args.port, args.baud, timeout=TIMEOUT) as ser:
-        key = load_key(args.key, args.passwd)
+def command_unlock(cmd_args):
+    """Execute the unlock command with the given arguments."""
+    global VERBOSE  # pylint: disable=global-statement
+    if hasattr(cmd_args, "verbose") and cmd_args.verbose:
+        VERBOSE = True
+    with serial.Serial(cmd_args.port, cmd_args.baud, timeout=TIMEOUT) as ser:
+        key = load_key(cmd_args.key, cmd_args.passwd)
         # request a challenge
         response = send(ser, DEVICE_COMMAND_REQUEST)
         if response[0 : len(DEVICE_STRING_CHALLENGE)] == DEVICE_STRING_CHALLENGE:
             print("Unlock Challenge")
             return unlock(ser, key, response)
-        elif (
+        if (
             response[0 : len(DEVICE_STRING_STATIC_CHALLENGE)]
             == DEVICE_STRING_STATIC_CHALLENGE
         ):
             print("Unlock Static Challenge")
             return unlock(ser, key, response, True)
-        else:
-            print("Unknow Unlock Type")
-            return False
+        print("Unknown Unlock Type")
+        return False
 
 
 if __name__ == "__main__":
@@ -136,7 +142,5 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = parser.parse_args()
-    if hasattr(args, "verbose") and args.verbose:
-        verbose = True
     if not command_unlock(args):
         sys.exit(1)

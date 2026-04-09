@@ -5,7 +5,9 @@
  *
  * @brief Memory Protection Controller (MPC) driver
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -13,6 +15,11 @@
 #include "arch.h"
 #include <inttypes.h>
 #include "at_tz_mpc.h"
+#ifdef CONFIG_SOC_FAMILY_ATM
+#include <zephyr/kernel.h>
+#include <zephyr/init.h>
+#include <zephyr/devicetree.h>
+#endif
 
 // Strip off IDAU bit to get physical address
 #define GET_PHYS_ADDR(addr) ((addr) & ~0x10000000)
@@ -22,7 +29,7 @@
 #define PHYS_SRAM_BASE GET_PHYS_ADDR(CMSDK_SRAM_BASE)
 // Base address for external flash
 #define PHYS_EXT_FLASH_BASE CMSDK_EXT_FLASH_NONSECURE_BASE
-// MPC only covers lower 128K of ext flash
+// MPC only covers lower portion of ext flash up to MPC limit (HW dependent)
 #define AT_TZ_MPC_EXT_FLASH_LIMIT (PHYS_EXT_FLASH_BASE + AT_TZ_MPC_EXT_FLASH_MPC_SIZE)
 
 // Normalize address to an offset from base (by type)
@@ -47,11 +54,11 @@
 static at_tz_mpc_id_t at_tz_mpc_dev_from_addr(uint32_t phys_address)
 {
     if (((phys_address >= PHYS_FLASH_BASE) &&
-	(phys_address < PHYS_FLASH_BASE + ROM_RRAM_SIZE +
-	    at_tz_mpc_get_block_size(AT_TZ_MPC_DEV_FLASH))) ||
+	    (phys_address < PHYS_FLASH_BASE + ROM_RRAM_SIZE +
+		    at_tz_mpc_get_block_size(AT_TZ_MPC_DEV_FLASH))) ||
 	((phys_address >= PHYS_EXT_FLASH_BASE -
-	    at_tz_mpc_get_block_size(AT_TZ_MPC_DEV_FLASH)) &&
-	(phys_address < AT_TZ_MPC_EXT_FLASH_LIMIT))) {
+		 at_tz_mpc_get_block_size(AT_TZ_MPC_DEV_FLASH)) &&
+	    (phys_address < PHYS_EXT_FLASH_BASE + QSPI_SIZE))) {
 	return AT_TZ_MPC_DEV_FLASH;
     } else if ((phys_address >= PHYS_SRAM_BASE) &&
 	(phys_address < PHYS_SRAM_BASE + RAM_SIZE)) {
@@ -102,7 +109,7 @@ static at_tz_mpc_ret_t at_tz_mpc_check_bound(uint32_t limit_word,
     at_tz_mpc_id_t mpc_start_type)
 {
     if (mpc_start_type == AT_TZ_MPC_DEV_FLASH) {
-	if (limit_word < MAX_MPC_FLS_LUT_IDX) {
+	if (limit_word <= MAX_MPC_FLS_LUT_IDX) {
 	    return AT_TZ_MPC_RET_OK;
 	}
 	return AT_TZ_MPC_RET_BLK_IDX_TOO_HIGH;
@@ -120,6 +127,7 @@ static at_tz_mpc_ret_t at_tz_mpc_check_bound(uint32_t limit_word,
 at_tz_mpc_ret_t at_tz_mpc_config_region(uint32_t base, uint32_t limit,
     at_tz_mpc_attr_t attr)
 {
+    static bool rest_of_flash_ns;
     uint32_t phys_base = GET_PHYS_ADDR(base);
     uint32_t phys_limit = GET_PHYS_ADDR(limit);
 
@@ -159,6 +167,31 @@ at_tz_mpc_ret_t at_tz_mpc_config_region(uint32_t base, uint32_t limit,
     uint32_t block_start_word = block_start_idx / 32;
     uint32_t block_end_idx = norm_limit / block_size;
     uint32_t block_end_word = block_end_idx / 32;
+
+    // Check if configuring external flash past MPC limit, if so fix end bounds
+    if (mpc_start_type == AT_TZ_MPC_DEV_FLASH &&
+	phys_limit >= AT_TZ_MPC_EXT_FLASH_LIMIT) {
+	// Do not allow setting region as secure
+	if (attr == AT_TZ_MPC_ATTR_SECURE) {
+	    return AT_TZ_MPC_RET_ATTR_UNAVAIL;
+	}
+
+	// If marking only end of flash and already marked, return early
+	if (phys_base >= AT_TZ_MPC_EXT_FLASH_LIMIT && rest_of_flash_ns) {
+	    return AT_TZ_MPC_RET_OK;
+	}
+
+	if (phys_base <= AT_TZ_MPC_EXT_FLASH_LIMIT) {
+	    block_end_word = MAX_MPC_FLS_LUT_IDX;
+	    block_end_idx = MAX_MPC_FLS_LUT_IDX * 32;
+	    rest_of_flash_ns = true;
+	} else {
+	    // Do not have granularity to set partial region past MPC limit
+	    // fail if we have not already marked end of flash as NS
+	    return AT_TZ_MPC_RET_BAD_BOUNDS;
+	}
+    }
+
     // Sanity check that word limit fits in bounds covered by MPC
     if (at_tz_mpc_check_bound(block_end_word, mpc_start_type)) {
 	return AT_TZ_MPC_RET_BLK_IDX_TOO_HIGH;
@@ -246,3 +279,71 @@ at_tz_mpc_config_done:
 
     return AT_TZ_MPC_RET_OK;
 }
+
+#ifdef CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+#define NULL_PAGE_SIZE DT_REG_SIZE(DT_NODELABEL(rom_null_page))
+#else
+#define NULL_PAGE_SIZE 4096
+#endif
+
+STATIC_ASSERT((NULL_PAGE_SIZE % AT_TZ_MPC_FLS_BLK_SIZE) == 0,
+    "NULL page size must be aligned to MPC Flash block size");
+
+STATIC_ASSERT(NULL_PAGE_SIZE >= AT_TZ_MPC_FLS_BLK_SIZE,
+    "NULL page size must be at least one MPC Flash block");
+
+#ifndef CONFIG_SOC_FAMILY_ATM
+__attribute__((constructor))
+#endif
+static void
+mpc_null_detect_init(void)
+{
+    // Calculate number of MPC blocks to configure
+    // NULL_PAGE_SIZE is guaranteed to be aligned to AT_TZ_MPC_FLS_BLK_SIZE
+    uint32_t num_blocks = NULL_PAGE_SIZE / AT_TZ_MPC_FLS_BLK_SIZE;
+
+    // All blocks start at index 0 and fit in LUT word 0
+    // Create bit mask: for 2 blocks (typical 4KB / 2KB), mask = 0x3
+    uint32_t block_mask = (1U << num_blocks) - 1;
+
+    // Ensure all previous transactions complete before changing MPC config
+    __DMB();
+
+    // Save and configure CTRL register (disable auto-increment)
+    uint32_t ctrl_bkup = MPC_FLS->CTRL;
+    MPC_FLS->CTRL &= ~MPC_CTRL_AUTO_INCREMENT_Msk;
+
+    // Configure MPC Flash to mark NULL page blocks as non-secure
+    // BLK_IDX selects which LUT word to access (word 0 for blocks 0-31)
+    MPC_FLS->BLK_IDX = 0;
+
+    // BLK_LUT bits: 1 = non-secure, 0 = secure
+    // Set the bits corresponding to NULL page blocks
+    MPC_FLS->BLK_LUT |= block_mask;
+
+    // Restore CTRL register
+    MPC_FLS->CTRL = ctrl_bkup;
+
+    // Commit configuration changes
+    __DSB();
+    __ISB();
+
+    // Enable bus fault generation on MPC violations
+    __UNUSED at_tz_mpc_ret_t ret =
+	at_tz_mpc_enable_bus_fault(AT_TZ_MPC_DEV_FLASH);
+    ASSERT_ERR(ret == AT_TZ_MPC_RET_OK);
+}
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+static int mpc_null_detect_sys_init(void)
+{
+    mpc_null_detect_init();
+    return 0;
+}
+
+SYS_INIT(mpc_null_detect_sys_init, PRE_KERNEL_1, 1);
+#endif
+
+#endif /* CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC */

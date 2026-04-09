@@ -1,10 +1,11 @@
-# Copyright (c) Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 if(CONFIG_ATM_VERSION)
+  zephyr_library()
   zephyr_include_directories(.)
-  zephyr_sources(atm_version.c)
+  zephyr_library_sources(atm_version.c)
 
   file(READ "${CMAKE_CURRENT_LIST_DIR}/../../SDK_VERSION" ATMOSIC_SDK_VERSION_RAW)
   string(STRIP "${ATMOSIC_SDK_VERSION_RAW}" ATMOSIC_SDK_VERSION)

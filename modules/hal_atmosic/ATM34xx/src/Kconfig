@@ -7,33 +7,53 @@ config POWER_OFF_SBRK
 	default y if NEWLIB_LIBC
 	depends on PM
 
-config ATM_SOCOFF_MAX_DURATION_SEC
-	int "Maximum SOC off duration in seconds"
+config PM_MAX_SLEEP_DURATION_SEC
+	int "Maximum sleep duration for all low-power states (seconds)"
 	depends on PM
+	default 900 if ATM_PMU_WDT_ENABLE
 	default 0
 	help
-	  Maximum duration to remain in SOC off state, in seconds. When set to a non-zero
-	  value, this acts as a cap on the SOC off duration regardless of the requested
-	  idle time. This is useful for periodically waking up to service the PMU watchdog
-	  when using non-timer based wakeup sources (LPCOMP, GPIO). When set to 0 (default),
-	  no maximum duration limit is applied.
+	  Maximum duration to remain in any low-power state (retention, hibernation,
+	  or SOC-off), in seconds. When set to a non-zero value, this acts as a cap
+	  on the sleep duration regardless of the requested idle time.
+
+	  This option is closely tied to PMU watchdog functionality:
+
+	  When CONFIG_ATM_PMU_WDT_ENABLE is enabled (default 900 seconds):
+	  - The PMU watchdog warning timer is configured relative to this duration
+	  - The system will periodically wake from low-power states to service the
+	    PMU watchdog, preventing unexpected resets
+	  - The PMU warning fires at: sleep_duration + CONFIG_ATM_WDT_PMU_WARN_OFFSET_SEC
+	  - A non-zero value is REQUIRED for PMU watchdog to function correctly in
+	    low-power states
+
+	  When CONFIG_ATM_PMU_WDT_ENABLE is disabled (default 0):
+	  - No PMU watchdog protection is active during low-power states
+	  - The system can sleep indefinitely (infinite sleep allowed)
+	  - Wakeup depends solely on configured wakeup sources (timer, GPIO, LPCOMP, etc.)
+
+	  This is also useful for periodically waking up from low-power states when
+	  using non-timer based wakeup sources (LPCOMP, GPIO) to perform housekeeping
+	  tasks.
+
+	  When set to 0, no maximum duration limit is applied.
 
 config DETECT_PULSE_IN_RETENTION
 	bool "Enable GPIO pulse detection in retention mode"
 	depends on PM
 	depends on GPIO
 	help
-	Enable GPIO pulse detection feature that addresses the problem of missing
-	short GPIO pulses during power mode transitions. The system captures GPIO
-	state before entering retention mode and restores GPIO interrupt status
-	after waking up, ensuring that brief pulses are not lost.
+	  Enable GPIO pulse detection feature that addresses the problem of missing
+	  short GPIO pulses during power mode transitions. The system captures GPIO
+	  state before entering retention mode and restores GPIO interrupt status
+	  after waking up, ensuring that brief pulses are not lost.
 
-	The feature works by:
-	- Capturing GPIO data values before retention entry
-	- Comparing wake events with GPIO state changes after retention exit
-	- Restoring interrupt status for pins that caused wake events but show
-	  no state change (indicating a pulse occurred during transition)
-	- Using polarity manipulation to artificially regenerate missed interrupts
+	  The feature works by:
+	  - Capturing GPIO data values before retention entry
+	  - Comparing wake events with GPIO state changes after retention exit
+	  - Restoring interrupt status for pins that caused wake events but show
+	    no state change (indicating a pulse occurred during transition)
+	  - Using polarity manipulation to artificially regenerate missed interrupts
 
-	This is particularly useful for edge-triggered GPIO interrupts that might
-	be missed during the retention entry/exit process.
+	  This is particularly useful for edge-triggered GPIO interrupts that might
+	  be missed during the retention entry/exit process.

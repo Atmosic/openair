@@ -16,6 +16,23 @@ This sample is useful for testing WURX (Wake-up receive) functionality with EVK
 to EVK communication. See the ``openair/samples/bluetooth/sensor_beacon``
 application.
 
+Building and Running
+********************
+
+This sample is built from ``openair/samples/bluetooth/high_duty_adv``.
+
+Build command:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/samples/bluetooth/high_duty_adv --sysbuild -T samples.bluetooth.high_duty_adv.atm
+
+Flash command:
+
+.. code-block:: bash
+
+   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+
 Sample Output
 =============
 

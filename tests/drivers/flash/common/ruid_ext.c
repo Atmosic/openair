@@ -1,14 +1,14 @@
 /*
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
- #include <zephyr/kernel.h>
- #include <zephyr/ztest.h>
- #include <zephyr/drivers/flash.h>
- #include <zephyr/devicetree.h>
- #include <zephyr/storage/flash_map.h>
+#include <zephyr/kernel.h>
+#include <zephyr/ztest.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/storage/flash_map.h>
 
 #ifdef CONFIG_FLASH_ATM_RUID
 #define TEST_AREA_DEVICE	FIXED_PARTITION_DEVICE(storage_partition)

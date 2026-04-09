@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Atmosic
+# Copyright (c) 2026 Atmosic
+
+common:
+  sysbuild: true
+  tags:
+    - drivers
+    - pwm
+    - buzzer
+    - atm_buzzer
+
+tests:
+  tests.drivers.buzzer.atm: {}

@@ -11,7 +11,7 @@
  * the 15.4 Request Driver, all calls should go here, and no calls should go
  * directly to the 15.4 LMAC directly.
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2025
  *
  *******************************************************************************
  */
@@ -33,8 +33,12 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_HAL_154)
 #include "radio_hal_154.h"
+#endif
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 #include "radio_status.h"
+#endif
 
 #ifndef RADIO_HAL_MGR_OMIT
 #define RADIO_HAL_MGR_OMIT 1
@@ -46,6 +50,7 @@ typedef uint32_t atm_mac_mgr_priority_t;
 #include "radio_hal_mgr.h"
 #endif
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 /**
  * @brief Signature of callback function issued when receive completes.
  *
@@ -88,6 +93,7 @@ typedef void (*atm_req_154_tx_request_callback_t)(atm_mac_status_t status,
  */
 typedef void (*atm_req_154_ed_request_callback_t)(atm_mac_status_t status,
     int8_t rssi);
+#endif
 
 // This struct is opaque to callers, with members only used in the
 // radio_req_154.c implementation file
@@ -108,6 +114,7 @@ extern atm_req_154_interface_t atm_154_iface;
  */
 void atm_req_154_init(atm_req_154_interface_t interface);
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 /**
  * @brief Register callback function for receive completion events.
  *
@@ -149,6 +156,7 @@ __NONNULL(2)
 void atm_req_154_register_ed_complete_callback(
     atm_req_154_interface_t interface,
     atm_req_154_ed_request_callback_t handler);
+#endif
 
 /**
  * @brief Receives a packet using the current radio configuration.
@@ -182,6 +190,7 @@ void atm_req_154_receive_packet(atm_req_154_interface_t interface,
     uint8_t *packet, uint32_t start_time, uint32_t duration,
     atm_mac_mgr_priority_t priority);
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_HAL_154)
 /**
  * @brief Transmits a packet using the current radio configuration.
  *
@@ -230,6 +239,7 @@ void atm_req_154_transmit_packet_with_len(atm_req_154_interface_t interface,
     uint8_t packet_len, uint8_t const *packet,
     atm_mac_154_tx_csma_mode_t csma_mode, bool delay, uint32_t start_time,
     atm_mac_mgr_priority_t priority);
+#endif
 
 /**
  * @brief Performs an energy detection reading on the current channel.
@@ -245,12 +255,14 @@ void atm_req_154_transmit_packet_with_len(atm_req_154_interface_t interface,
  * will report status by calling ed_data's callback function unless interface
  * is stopped by a call to @ref atm_req_154_stop.
  *
+ * For longer energy scans, the caller should invoke this function multiple
+ * times and average the results.
+ *
  * @param[in] interface The request interface to use.
- * @param[in] window_us Duration in microseconds.  Must not be 0.
  * @param[in] priority Priority to use for radio management
  */
 void atm_req_154_energy_detect(atm_req_154_interface_t interface,
-    uint32_t window_us, atm_mac_mgr_priority_t priority);
+    atm_mac_mgr_priority_t priority);
 
 /**
  * @brief Stops current radio activity.
@@ -265,6 +277,7 @@ void atm_req_154_energy_detect(atm_req_154_interface_t interface,
  */
 void atm_req_154_stop(__UNUSED atm_req_154_interface_t interface);
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_STATUS)
 /**
  * @brief Get 15.4 Request Handler state
  *
@@ -278,6 +291,7 @@ void atm_req_154_stop(__UNUSED atm_req_154_interface_t interface);
  */
 atm_mac_154_state_t atm_req_154_get_state(
     __UNUSED atm_req_154_interface_t interface);
+#endif
 
 /******************************************************************************
  For all functions which do not need 15.4 to be active, provide an API layer
@@ -287,6 +301,7 @@ atm_mac_154_state_t atm_req_154_get_state(
  as a few examples for now.
  *****************************************************************************/
 
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_RADIO_HAL_154)
 /**
  * @brief Set 15.4 protocol version
  * This function will perform configure the driver to operate as a specific
@@ -989,6 +1004,7 @@ void atm_req_154_set_csl_ie_rx_time(__UNUSED atm_req_154_interface_t interface,
     atm_mac_154_set_csl_ie_rx_time(csl_rx_time_us);
 }
 /**@}*/
+#endif // CONFIG_ATM_RADIO_HAL_154
 
 #ifdef __cplusplus
 }

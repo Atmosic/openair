@@ -54,6 +54,13 @@ config SOC_FLASH_ATM_USE_BREAK_IN
 	  Break-in reduces the impact of long running flash operations such as erase
 	  from impacting system responsiveness.
 
+config SOC_FLASH_ATM_USE_WRITE_BREAK_IN
+	bool "Allow the use of Atmosic flash break-in HW support on writes if available"
+	default y
+	depends on SOC_FLASH_ATM_USE_BREAK_IN
+	help
+	  Write break-in reduces the impact of flash writes on system responsiveness.
+
 config SOC_FLASH_ATM_RRAM
 	bool "Atmosic RRAM driver"
 	depends on DT_HAS_ATMOSIC_RRAM_CONTROLLER_ENABLED
@@ -166,6 +173,7 @@ endif # SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
 config SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_WRITE
 	bool "Reduce Radio Transmit Power during flash write"
 	default y if BT
+	depends on ATM_RF
 	help
 	  Reduces peak current consumption by lowering radio
 	  transmit power (set lowest gain index) during flash
@@ -174,6 +182,7 @@ config SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_WRITE
 config SOC_FLASH_ATM_LOWER_RADIO_PWR_DURING_ERASE
 	bool "Reduce Radio Transmit Power during flash erase"
 	default y if BT
+	depends on ATM_RF
 	help
 	  Reduces peak current consumption by lowering radio
 	  transmit power (set lowest gain index) during flash

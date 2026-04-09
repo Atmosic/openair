@@ -1,14 +1,15 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 / {
 	buzzer: buzzer {
 		compatible = "atmosic,atm3x-pwm-buzzer";
 		pwms = <&mikrobus_pwm 6 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
-		pulse = <PWM_USEC(500)>;
+		min-frequency = <123>;
+		max-frequency = <10000>;
 	};
 };
 

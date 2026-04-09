@@ -5,7 +5,9 @@
  *
  * @brief Platform For Multimode Consumer Tag
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -16,6 +18,9 @@
 #include <zephyr/kernel.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
+#ifdef CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS
+#include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
+#endif
 #include "app_work_q.h"
 #ifdef CONFIG_ATM_CS
 #include "atm_cs.h"
@@ -162,7 +167,24 @@ static void pairing_shutdown_timeout_cb(struct k_work *work)
 }
 
 static K_WORK_DELAYABLE_DEFINE(pairing_shutdown_timeout_work, pairing_shutdown_timeout_cb);
-#endif
+
+#ifdef CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS
+static enum mgmt_cb_return mcumgr_dfu_callback(uint32_t event, enum mgmt_cb_return prev_status,
+					       int32_t *rc, uint16_t *group, bool *abort_more,
+					       void *data, size_t data_size)
+{
+	/* Cancel shutdown timeout when DFU is in progress */
+	k_work_cancel_delayable(&pairing_shutdown_timeout_work);
+	LOG_INF("DFU started, shutdown timeout cancelled");
+	return MGMT_CB_OK;
+}
+
+static struct mgmt_callback mcumgr_dfu_mgmt_callback = {
+	.callback = mcumgr_dfu_callback,
+	.event_id = MGMT_EVT_OP_IMG_MGMT_DFU_STARTED,
+};
+#endif /* CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS */
+#endif /* CONFIG_TAG_SOC_OFF_TIMEOUT > 0 */
 
 static void platform_mode_notify(tag_state_t st, uint8_t type)
 {
@@ -215,6 +237,11 @@ static void platform_mode_notify(tag_state_t st, uint8_t type)
 
 void platform_init(void)
 {
+#if (CONFIG_TAG_SOC_OFF_TIMEOUT > 0) && defined(CONFIG_MCUMGR_GRP_IMG_STATUS_HOOKS)
+	/* Register MCUmgr callback to prevent SOC OFF during DFU */
+	mgmt_callback_register(&mcumgr_dfu_mgmt_callback);
+	LOG_INF("MCUmgr DFU callback registered");
+#endif
 	memset(&tag_hdlrs, 0, sizeof(tag_hdlrs_t) * TAG_TYPE_MAX);
 #ifdef CONFIG_FMNA_TAG
 	fmna_tag_platform_hdlrs_get(&tag_hdlrs[TAG_TYPE_FMNA]);

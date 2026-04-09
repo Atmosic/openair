@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 tests:
   tests.lib.dtm_2wire.atm:
     sysbuild: true
@@ -5,5 +9,4 @@ tests:
     tags:
       - bluetooth
       - dtm
-      - no_mcuboot
     timeout: 60

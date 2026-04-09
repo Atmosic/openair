@@ -1,0 +1,28 @@
+# Copyright (c) 2026 Atmosic Technologies, Inc.
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  ARM CMSDK Timer used as Zephyr system clock.
+
+  This binding is for using a CMSDK Timer as the system tick source.
+  For general-purpose counter/timer use, see arm,cmsdk-timer instead.
+
+compatible: "arm,cmsdk-systimer"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+    description: |
+      Base address and size of the CMSDK Timer register block.
+      Register layout:
+        0x000: CTRL      - Control Register (R/W)
+        0x004: VALUE     - Current Value Register (R/W)
+        0x008: RELOAD    - Reload Value Register (R/W)
+        0x00C: INTSTATUS - Interrupt Status (R) / Clear (W) Register
+
+  interrupts:
+    required: true
+    description: |
+      Interrupt line used by this timer instance.

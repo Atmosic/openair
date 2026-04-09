@@ -1,0 +1,20 @@
+# Copyright (c) 2024-2026 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_AT_CMD_SET
+	bool "Atmosic AT command set library (ADVDATA, ADVINT, NAME, SYSRESET, UNLOCK)"
+	depends on ATM_AT_CMD
+	help
+	  Enable the AT command set library which provides the following commands:
+	  - ADVDATA: Set advertising data
+	  - ADVINT: Set advertising interval
+	  - NAME: Set device name
+	  - SYSRESET: System reset
+	  - UNLOCK: Unlock device for configuration
+
+# Logging configuration for AT command set library
+module = ATM_AT_CMD_SET
+module-str = atm_at_cmd_set
+source "subsys/logging/Kconfig.template.log_config"
+

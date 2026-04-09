@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2025 Atmosic
+# Copyright (c) 2023-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -7,14 +7,27 @@ config ATM_BLE
 	default y
 	depends on BT
 	select ATM_ATLC
-	select ATM_EUI
 	select ATM_BTHCI_UTILS
-	# Get crypto from ATM_UECC, which requires all of the below selections
-	select ATM_UECC
-	select MBEDTLS
-	select MBEDTLS_ECP_DP_SECP256R1_ENABLED
-	select MBEDTLS_ECP_C
-	select MBEDTLS_ECDSA_C
+	select MBEDTLS if ATM_ENA_LL_FEAT_ENC_PRIV
+
+config ATM_BLE_DRIVER_SPLIT_INIT
+	bool "Split the initialization path for the BLE driver"
+	depends on ATM_BLE
+	help
+	  [EXPERIMENTAL] This option splits driver initialization
+	  into two phases.  The initial phase minimally initializes
+	  driver state and interrupts.  The second phase initiatizes the
+	  BLE driver thread and is deferred until the driver is opened.
+
+config ATM_BLE_ALLOW_PUB_ADDR
+	bool "Allow the use of a public BD address"
+	default y
+	depends on ATM_BLE
+	select ATM_EUI
+	help
+	  This option will acquire the public address
+	  from the EUI driver. If disabled, the application must
+	  request the BT stack to use a static random.
 
 config ATM_ATLC
 	bool "Atmosic ATLC driver"
@@ -45,6 +58,11 @@ config ATM_BLE_HIGH_PRIO
 
 config ATM_BLE_DUMP_HCI
 	bool "Dump HCI traffic in the BLE driver"
+	depends on ATM_BLE
+	select ATM_BTHCI_UTILS_DUMP_PKTS
+
+config ATM_BLE_DUMP_HCI_ALL
+	bool "Dump all HCI traffic in the BLE driver"
 	depends on ATM_BLE
 	select ATM_BTHCI_UTILS_DUMP_PKTS
 

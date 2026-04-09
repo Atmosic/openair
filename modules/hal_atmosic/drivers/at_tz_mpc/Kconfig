@@ -1,8 +1,28 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config ATM_TZ_MPC
 	bool "Atmosic TrustZone Memory Protection Controller module"
 	default y if TRUSTED_EXECUTION_SECURE && !MCUBOOT
-	depends on DT_HAS_ATMOSIC_SEC_TZ_ENABLED
+	depends on DT_HAS_ATMOSIC_SEC_TZ_ENABLED || NULL_POINTER_EXCEPTION_DETECTION_MPC
+
+choice NULL_POINTER_EXCEPTION_DETECTION
+
+config NULL_POINTER_EXCEPTION_DETECTION_MPC
+	bool "Use MPC for null pointer exception detection"
+	depends on ATM_NO_TZ
+	depends on !TRUSTED_EXECUTION_NONSECURE
+	select ATM_TZ_MPC
+	help
+	  Null pointer dereference detection implemented using
+	  TrustZone MPC. This frees up MPU regions for other uses
+	  like userspace. The MPC marks the NULL page as non-secure
+	  and generates bus faults on access attempts.
+
+	  To fully disable the rom_null_page MPU region, the DTS flag
+	  ATM_MPC_NULL_POINTER_DETECTION must also be passed via
+	  DTS_EXTRA_CPPFLAGS.
+
+endchoice

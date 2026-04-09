@@ -1,18 +1,13 @@
 /*
- * Copyright (c) 2023-2025 Atmosic
+ * Copyright (c) 2023-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/devicetree.h>
 
 #if (CONFIG_TRUSTED_EXECUTION_NONSECURE || CONFIG_ATM_NO_SPE) && \
 	DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
-
-#define PART_ADDR(label) ( \
-    DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(label))) + \
-    DT_REG_ADDR(DT_NODELABEL(label)) \
-)
 
 #ifndef CONFIG_ROMSTART_RELOCATION_ROM
 #error "Split-Image ROM start region must be relocated to RRAM"

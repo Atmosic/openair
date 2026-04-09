@@ -1,0 +1,19 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ATM_MCUMGR
+	bool "Atmosic MCUmgr support"
+	depends on BOOTLOADER_MCUBOOT
+	select BASE64
+	select NET_BUF
+	select ZCBOR
+	select MCUMGR
+	select STREAM_FLASH
+	select IMG_MANAGER
+	select FLASH
+	select MCUMGR_GRP_IMG
+	select MCUMGR_GRP_OS
+	help
+	  Enable MCUmgr with image and OS management command groups.
+	  This option also selects all required dependencies.

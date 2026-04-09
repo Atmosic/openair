@@ -4,28 +4,61 @@
 
 config ATM_GFP_CRYPTO
 	bool "Atmosic Google Fast Pair crypto implementation"
-	select ATM_UECC
 	select ENTROPY_ATM_TRNG
 	select ENTROPY_GENERATOR
 	select MBEDTLS
-	select MBEDTLS_CIPHER
-	select MBEDTLS_CIPHER_AES_ENABLED
-	select MBEDTLS_ECDH_C
-	select MBEDTLS_ECDSA_C
-	select MBEDTLS_ECP_C
-	select MBEDTLS_ECP_DP_SECP256R1_ENABLED
-	select MBEDTLS_MD
-	select MBEDTLS_SHA256
-
-config ATM_GFP_CRYPTO_DEBUG
-	bool "Debug crypto API result"
-	select LOG
-
-config ATM_GFP_DIRECT_UECC_INTERFACE
-	bool "option that allows the module to call uECC API directly when required to use sepc160r1 curve support"
+	select MBEDTLS_PSA_CRYPTO_C if !ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+	# PSA crypto for AES ECB operations (when using PSA)
+	select PSA_WANT_ALG_ECB_NO_PADDING if !ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+	select PSA_WANT_KEY_TYPE_AES if !ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+	# PSA crypto for SHA256 and HMAC-SHA256 operations (when using PSA)
+	select PSA_WANT_ALG_SHA_256 if !ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+	select PSA_WANT_ALG_HMAC if !ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+	select PSA_WANT_KEY_TYPE_HMAC if !ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+	help
+	  Enable Atmosic Google Fast Pair crypto implementation.
+	  - Uses PSA crypto APIs for AES, SHA256, and HMAC operations by default
+	  - Can optionally use mbedTLS APIs directly when ATM_GFP_DIRECT_MBEDTLS_INTERFACE is selected
+	  - ECP operations use uECC or mbedTLS directly depending on interface selection
 
 if ATM_GFP_CRYPTO
+
+choice ATM_GFP_CRYPTO_ECP_INTERFACE
+	prompt "Select ECP interface"
+	default ATM_GFP_DIRECT_UECC_INTERFACE
+	help
+	  Select the ECP interface to be used.
+
+config ATM_GFP_DIRECT_UECC_INTERFACE
+	bool "Use uECC library directly for ECP operations"
+	select ATM_UECC
+	select ATM_UECC_VLI_API
+	select ATM_UECC_SUPPORTS_SECP160R1
+	select ATM_UECC_SUPPORTS_SECP256R1
+	help
+	  This option allows the ECP module to call uECC API directly for secp160r1
+	  and secp256r1 curve support. This is the recommended option for better
+	  performance and smaller code size.
+
+config ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+	bool "Use mbedtls library directly for all crypto operations"
+	select MBEDTLS
+	select MBEDTLS_CIPHER
+	select MBEDTLS_CIPHER_AES_ENABLED
+	select MBEDTLS_MD
+	select MBEDTLS_SHA256
+	select MBEDTLS_ECDH_C
+	select MBEDTLS_ECP_C
+	select MBEDTLS_ECP_DP_SECP256R1_ENABLED
+	help
+	  This option allows the crypto module to call mbedtls API directly for all
+	  crypto operations including AES, SHA256, HMAC, and ECP operations. This
+	  provides a unified mbedtls-based implementation.
+
+endchoice
+
 module = GFP_CRYPTO
 module-str = gfp_crypto
 source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
 endif # ATM_GFP_CRYPTO

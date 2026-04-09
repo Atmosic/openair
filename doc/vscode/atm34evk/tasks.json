@@ -317,7 +317,7 @@
             "id": "gitRepo",
             "type": "promptString",
             "description": "Enter the git Repository",
-            "default": "git@github.com:Atmosic/atmosic-private.git"
+            "default": "https://github.com/Atmosic/openair.git"
         },
         {
             "id": "gitBranch",

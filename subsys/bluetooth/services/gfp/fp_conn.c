@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Connection Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -82,8 +82,8 @@ void fp_conn_init(void)
 	}
 #else
 	memcpy(&static_addr, &addr[BT_ID_DEFAULT], sizeof(bt_addr_le_t));
-	/* increment the first byte of the address to avoid collision */
-	static_addr.a.val[0] += bt_id_base;
+	/* increment the last second byte of the address to avoid collision */
+	static_addr.a.val[BT_ADDR_SIZE - 2] += bt_id_base;
 	static_addr.type = BT_ADDR_LE_RANDOM;
 #endif
 	/* FP BT base ID with expected BT address */

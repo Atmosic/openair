@@ -5,7 +5,7 @@
  *
  * @brief Secure device feature lockout driver
  *
- * Copyright (C) Atmosic 2022
+ * Copyright (C) Atmosic 2022-2025
  *
  ******************************************************************************
  */
@@ -19,6 +19,7 @@
  * @{
  */
 
+#include <stdint.h>
 #include "at_apb_wrpr_pins_regs_core_macro.h"
 
 #ifdef __cplusplus

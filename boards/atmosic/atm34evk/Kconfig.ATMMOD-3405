@@ -1,0 +1,11 @@
+# Copyright (c) 2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config BOARD_ATMMOD_3405
+	select SOC_ATM34XX_5
+
+# power manage the onboard stacked flash
+config FLASH
+	bool
+	default y if PM
+

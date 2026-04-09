@@ -1,5 +1,10 @@
 sample:
   name: ATM BLE peripheral sample
+common:
+  tags:
+    - atm_test_with_spe
+    - bluetooth
+    - role_peripheral
 tests:
   samples.bluetooth.atm_ble.atm_ble_peripheral.atm:
     sysbuild: true
@@ -8,6 +13,3 @@ tests:
       type: one_line
       regex:
       - "Advertising successfully started"
-    tags:
-      - bluetooth
-      - no_mcuboot

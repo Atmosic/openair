@@ -1,3 +1,6 @@
+common:
+  tags:
+    - atm_test_with_spe
 sample:
   name: GPIO Interrupt Basic Test
 tests:
@@ -7,4 +10,3 @@ tests:
     tags:
       - gpio
       - interrupt
-      - no_mcuboot

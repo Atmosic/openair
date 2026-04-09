@@ -82,9 +82,9 @@ To secure a partition, add the ``secure;`` flag to the partition in the dtsi fil
 
 In the above code segment,  the spe_partition is indicated to be a secure partition. The nspe_partition does not contain the flag and is presumed non-secure.
 
-Nested Partitions
--------------------------------
-In practice, nested partitions are functionally the same to the user. See code segment below::
+Subpartitions using ``fixed-subpartitions``
+--------------------------------------------
+Subpartitions are functionally the same as partitions but are defined within a parent partition using the ``fixed-subpartitions`` compatible string.  See code segment below::
 
 	&rram0 {
 	    partitions {
@@ -97,24 +97,23 @@ In practice, nested partitions are functionally the same to the user. See code s
 		    reg = <0x00000 0xc000>;
 		};
 		slot0_partition: partition@10000 {
+		    compatible = "atmosic,tz-fixed-subpartitions", "fixed-subpartitions";
 		    label = "image-0";
 		    reg = <0x10000 0x6f800>;
-		    partitions {
-		    	#address-cells = <1>;
-		    	#size-cells = <1>;
-		    	spe_partition: partition@10000 {
-			    label = "spe_partition";
-			    secure;
-			    reg = <0x10000 0x5800>;
-		    	};
-		    	nspe_partition: partition@15800 {
-			    label = "nspe_partition";
-			    reg = <0x15800 0x6a000>;
-		    	};
+		    #address-cells = <1>;
+		    #size-cells = <1>;
+		    spe_partition: partition@10000 {
+			label = "spe_partition";
+			secure;
+			reg = <0x10000 0x5800>;
+		    };
+		    nspe_partition: partition@15800 {
+			label = "nspe_partition";
+			reg = <0x15800 0x6a000>;
 		    };
 		};
 
-In the above code segment, the boot partition and the spe_partition (nested in the ``slot0_partition``) are treated as secure.  A system with upgradeable firmware through MCUBOOT utilizes nested partition.
+In the above code segment, the boot partition and the spe_partition (a subpartition in the ``slot0_partition``) are treated as secure.  A system with upgradeable firmware through MCUBOOT utilizes subpartitions.
 
 
 Build and Run

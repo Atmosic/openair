@@ -1,12 +1,13 @@
 /*
- * Copyright (c) 2024-2025 Atmosic
+ * Copyright (c) 2024-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <atm33_pinmux.h>
 
 &pinctrl {
+	/* I2C1 */
 	i2c1_sda_default: i2c1_sda_default {
 		pinmux = <7 PINMUX_I2C1_SDA>;
 	};
@@ -15,11 +16,46 @@
 		pinmux = <6 PINMUX_I2C1_SCL>;
 	};
 
+	/* I2C0 */
 	i2c0_sda_default: i2c0_sda_default {
 		pinmux = <17 PINMUX_I2C0_SDA>;
 	};
 
 	i2c0_scl_default: i2c0_scl_default {
 		pinmux = <16 PINMUX_I2C0_SCL>;
+	};
+
+	/* SPI0 */
+	spi0_clk_default: spi0_clk_default {
+		pinmux = <17 PINMUX_SPI0_CLK>;
+	};
+
+	spi0_mosi_default: spi0_mosi_default {
+		pinmux = <18 PINMUX_SPI0_MOSI>;
+	};
+
+	spi0_miso_default: spi0_miso_default {
+		pinmux = <19 PINMUX_SPI0_MISO>;
+	};
+
+	spi0_cs_default: spi0_cs_default {
+		pinmux = <20 PINMUX_SPI0_CS>;
+	};
+
+	/* SPI1 */
+	spi1_clk_default: spi1_clk_default {
+		pinmux = <5 PINMUX_SPI1_CLK>;
+	};
+
+	spi1_mosi_default: spi1_mosi_default {
+		pinmux = <22 PINMUX_SPI1_MOSI>;
+	};
+
+	spi1_cs_default: spi1_cs_default {
+		pinmux = <4 PINMUX_SPI1_CS>;
+	};
+
+	spi1_miso_default: spi1_miso_default {
+		pinmux = <15 PINMUX_SPI1_MISO>;
 	};
 };

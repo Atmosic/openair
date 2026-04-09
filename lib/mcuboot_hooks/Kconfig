@@ -4,6 +4,13 @@
 
 if MCUBOOT
 
+config ATM_MCUBOOT_BENCHMARK
+	bool "Enable MCUboot update time benchmarking"
+	select ATM_MCUBOOT_HOOKS
+	select ATM_MCUBOOT_EXT
+	help
+	  Enable benchmarking of MCUboot image update time.
+
 config ATM_MCUBOOT_HOOKS
 	bool
 	# enable Zephyr mcuboot action hooks

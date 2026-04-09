@@ -13,12 +13,6 @@
 
 #pragma once
 
-#include "compiler.h" // __NORETURN inline functions
-
-#ifdef CONFIG_BT_HCI_RAW_CMD_EXT
-#include "atm_vendor_internal.h"
-#endif
-
 /**
  * @defgroup ATM_BTFM_HCI_UART ATM HCI uart
  * @ingroup ATM_BTFM_PROC
@@ -28,6 +22,13 @@
  *
  * @{
  */
+
+#include <stdint.h>
+#include "compiler.h" // __NORETURN inline functions
+
+#ifdef CONFIG_BT_HCI_RAW_CMD_EXT
+#include "atm_vendor_internal.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {

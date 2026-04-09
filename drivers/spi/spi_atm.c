@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Atmosic 2021-2025
+ * Copyright (C) Atmosic 2021-2026
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,6 +12,7 @@ LOG_MODULE_REGISTER(spi_atm, CONFIG_SPI_LOG_LEVEL);
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/spi.h>
+#include <zephyr/drivers/pinctrl.h>
 #include <zephyr/sys/math_extras.h>
 #ifdef CONFIG_PM
 #include <zephyr/pm/pm.h>
@@ -25,7 +26,6 @@ LOG_MODULE_REGISTER(spi_atm, CONFIG_SPI_LOG_LEVEL);
 #include "spi_context.h"
 #include "arch.h"
 #include "at_wrpr.h"
-#include "at_pinmux.h"
 #include "at_apb_spi_regs_core_macro.h"
 #ifdef CONFIG_SPI_ATM_DMA
 #include "dma.h"
@@ -102,7 +102,8 @@ typedef void (*set_callback_t)(void);
 struct spi_atm_config {
 	int dummy_cycles;
 	CMSDK_AT_APB_SPI_TypeDef *base;
-	set_callback_t config_pins;
+	const struct pinctrl_dev_config *pcfg;
+	set_callback_t enable_clocks;
 	void (*irq_connect)(void);
 #ifdef CONFIG_SPI_ATM_DMA
 	IRQn_Type irqn;
@@ -560,11 +561,18 @@ static int spi_atm_transceive(struct device const *dev,
 	data->ctx.config = config;
 	spi_context_buffers_setup(&data->ctx, tx_bufs, rx_bufs, 1);
 
+	struct spi_atm_config const *aconfig = DEV_CFG(dev);
+
 #ifndef SPI_TRANSACTION_SETUP__LOOPBACK__SET
 	bool loopback = (config->operation & SPI_MODE_LOOP);
-	struct spi_atm_config const *aconfig = DEV_CFG(dev);
 	SPI_CTRL__LOOPBACK__MODIFY(aconfig->base->CTRL, loopback);
 #endif
+
+	/* Configure CPOL and CPHA */
+	bool cpol = SPI_MODE_GET(config->operation) & SPI_MODE_CPOL;
+	bool cpha = SPI_MODE_GET(config->operation) & SPI_MODE_CPHA;
+	SPI_CTRL__CPOL__MODIFY(aconfig->base->CTRL, cpol);
+	SPI_CTRL__CPHA__MODIFY(aconfig->base->CTRL, cpha);
 
 	return spi_atm_transfer(dev);
 }
@@ -694,7 +702,12 @@ static int spi_atm_init(struct device const *dev)
 	struct spi_atm_config const *aconfig = DEV_CFG(dev);
 	struct spi_atm_data *data = DEV_DATA(dev);
 
-	aconfig->config_pins();
+	aconfig->enable_clocks();
+	err = pinctrl_apply_state(aconfig->pcfg, PINCTRL_STATE_DEFAULT);
+	if (err) {
+		return err;
+	}
+
 	err = spi_context_cs_configure_all(&data->ctx);
 	if (err < 0) {
 		return err;
@@ -725,15 +738,9 @@ static int spi_atm_init(struct device const *dev)
 #define SPI_SIG(n, sig) CONCAT(CONCAT(SPI, DT_INST_PROP(n, instance)), _##sig)
 #define SPI_BASE(n) CONCAT(CMSDK_SPI, DT_INST_PROP(n, instance))
 #define SPI_DEVICE_INIT(n)                                                                         \
-	static void spi_atm_config_pins_##n(void)                                                  \
+	PINCTRL_DT_INST_DEFINE(n);                                                                 \
+	static void spi_atm_enable_clocks_##n(void)                                                \
 	{                                                                                          \
-		/* Configure pinmux for the given intance */                                       \
-		PIN_SELECT(DT_INST_PROP(n, cs_pin), SPI_SIG(n, CS));                               \
-		PIN_SELECT(DT_INST_PROP(n, clk_pin), SPI_SIG(n, CLK));                             \
-		IF_ENABLED(DT_INST_NODE_HAS_PROP(n, mosi_pin),					   \
-			PIN_SELECT(DT_INST_PROP(n, mosi_pin), SPI_SIG(n, MOSI)));		   \
-		IF_ENABLED(DT_INST_NODE_HAS_PROP(n, miso_pin),					   \
-			PIN_SELECT(DT_INST_PROP(n, miso_pin), SPI_SIG(n, MISO)));		   \
 		WRPR_CTRL_SET(SPI_BASE(n), WRPR_CTRL__CLK_ENABLE);                                 \
 	}                                                                                          \
 	ISR_DIRECT_DECLARE(spi_atm_isr##n)                                                         \
@@ -744,31 +751,31 @@ static int spi_atm_init(struct device const *dev)
 	}                                                                                          \
 	static void spi_atm_config_irq_##n(void)                                                   \
 	{                                                                                          \
-                IF_ENABLED(INTR_ROUTING_REQUIRED, (                                                \
+		IF_ENABLED(INTR_ROUTING_REQUIRED, (                                                \
 			__IO uint32_t *INTRPT_CFG = ((&CMSDK_WRPR->INTRPT_CFG_0) +                 \
 				DT_INST_IRQN(n));                                                  \
 			*INTRPT_CFG = INTISR_SRC_SPI##n;                                           \
                 ))                                                                                 \
 		IRQ_DIRECT_CONNECT(DT_INST_IRQN(n), DT_INST_IRQ(n, priority), spi_atm_isr##n, 0);  \
 		irq_enable(DT_INST_IRQN(n));                                                       \
-	}											   \
+	}                                                                                          \
 	static struct spi_atm_config const spi_atm_config_##n = {                                  \
 		.base = SPI_BASE(n),                                                               \
-		.config_pins = spi_atm_config_pins_##n,                                            \
+		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),                                         \
+		.enable_clocks = spi_atm_enable_clocks_##n,                                        \
 		.dummy_cycles = DT_INST_PROP(n, dummy_cycles),                                     \
 		.irq_connect = spi_atm_config_irq_##n,                                             \
-		IF_ENABLED(CONFIG_SPI_ATM_DMA, (						   \
-			.irqn = DT_INST_IRQN(n),						   \
-			.port = DT_INST_PROP(n, instance),					   \
-		))										   \
+		IF_ENABLED(CONFIG_SPI_ATM_DMA, (                                                   \
+			.irqn = DT_INST_IRQN(n),                                                   \
+			.port = DT_INST_PROP(n, instance),                                         \
+		)) };                                                                              \
+	static struct spi_atm_data spi_atm_data_##n = {                                            \
+		IF_ENABLED(CONFIG_SPI_ATM_DMA, (                                                   \
+			.dev = DEVICE_DT_INST_GET(n),                                              \
+		))                                                                                 \
+		SPI_CONTEXT_INIT_LOCK(spi_atm_data_##n, ctx),                                      \
+		SPI_CONTEXT_INIT_SYNC(spi_atm_data_##n, ctx),                                      \
 	};                                                                                         \
-	static struct spi_atm_data spi_atm_data_##n = {						   \
-		IF_ENABLED(CONFIG_SPI_ATM_DMA, (						   \
-			.dev = DEVICE_DT_INST_GET(n),						   \
-		))										   \
-		SPI_CONTEXT_INIT_LOCK(spi_atm_data_##n, ctx),					   \
-		SPI_CONTEXT_INIT_SYNC(spi_atm_data_##n, ctx),					   \
-	};											   \
 	DEVICE_DT_INST_DEFINE(n, &spi_atm_init, NULL, &spi_atm_data_##n, &spi_atm_config_##n,      \
 			      POST_KERNEL, CONFIG_SPI_INIT_PRIORITY, &spi_atm_driver_api);
 

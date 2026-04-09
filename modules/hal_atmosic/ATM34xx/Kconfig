@@ -5,7 +5,6 @@
 if SOC_SERIES_ATM34
 
 rsource "drivers/Kconfig"
-rsource "drivers/ble/Kconfig"
 rsource "lib/Kconfig"
 rsource "src/Kconfig"
 

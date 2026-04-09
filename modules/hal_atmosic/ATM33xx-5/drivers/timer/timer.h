@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Timer Driver
  *
- * Copyright (C) Atmosic 2019-2024
+ * Copyright (C) Atmosic 2019-2026
  *
  ******************************************************************************
  */
@@ -13,6 +13,9 @@
 #ifndef __TIMER_H__
 #define __TIMER_H__
 
+#include <stdint.h>
+#include <stdbool.h>
+#include "arch.h"
 #include "at_wrpr.h"
 
 /**
@@ -171,6 +174,19 @@ __STATIC_FORCEINLINE uint32_t atm_get_sys_time(void)
 }
 
 /**
+ * @brief Get the current system time and synchronize with the increment
+ */
+__STATIC_FORCEINLINE uint32_t atm_sync_get_sys_time(void)
+{
+    uint32_t then = atm_get_sys_time();
+    uint32_t now;
+    while ((now = atm_get_sys_time()) == then) {
+	YIELD();
+    }
+    return now;
+}
+
+/**
  * @brief Fetch LP clock frequency
  *
  * @return Value in Hz
@@ -235,6 +251,21 @@ static inline uint64_t atm_to_lpc_round(uint32_t freq, uint64_t cnt)
 	return ((cnt * lpc_rcos_hz()) + (freq / 2)) / freq;
     } else {
 	return ((cnt * 32768) + (freq / 2)) / freq;
+    }
+}
+
+/**
+ * @brief Translate duration to LPC cycles while rounding up
+ * @param[in] freq In Hertz
+ * @param[in] cnt Number of cycles at freq
+ * @return LPC cycles
+ */
+static inline uint64_t atm_to_lpc_round_up(uint32_t freq, uint64_t cnt)
+{
+    if (lpc_rcos_hz) {
+	return ((cnt * lpc_rcos_hz()) + (freq - 1)) / freq;
+    } else {
+	return ((cnt * 32768) + (freq - 1)) / freq;
     }
 }
 

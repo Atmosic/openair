@@ -27,11 +27,7 @@ extern "C" {
 
 struct rwip_rf_api;
 
-#ifdef __ICCARM__
-#define __VALIST __Va_list
-#elif defined(__ARMCC_VERSION)
-#define __VALIST va_list
-#elif defined(CONFIG_SOC_FAMILY_ATM) && !defined(__VALIST)
+#if defined(CONFIG_SOC_FAMILY_ATM) && !defined(__VALIST)
 #define __VALIST __gnuc_va_list
 #endif
 
