@@ -4,7 +4,7 @@
  * @file ranging_oob_de.h
  * @brief Ranging Capability Out-of-Band (OOB) Data Element definitions
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -153,10 +153,6 @@ typedef struct {
 	ranging_de_cs_sec_level_t sec_type;
 	/// Device Address (6 bytes, big endian)
 	uint8_t addr[6];
-	/// LE Appearance (2 bytes, little endian)
-	uint16_t appearance;
-	/// LE Flags (1 byte)
-	uint8_t flags;
 } __PACKED ranging_cap_de_cs_t;
 
 /// Ranging Capability Response Data Element structure
