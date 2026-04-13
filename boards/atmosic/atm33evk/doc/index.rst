@@ -224,7 +224,7 @@ Atmosic provides a mechanism to increase the legacy programming time called FAST
 
    west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/mcuboot --noreset
 
-Note that adding ``--erase_flash`` is an option to erase flash images if needed or ``--erase_all`` is an option to erase entire flash including bonding information in flash.
+Note that adding ``--erase_flash`` is an option to erase the entire flash, ``--erase_rram`` is an option to erase the entire RRAM, and ``--erase_all`` is an option to erase the entire RRAM and flash.
 
 Flash the signed application image::
 
@@ -258,7 +258,7 @@ Atmosic provides a mechanism to increase the legacy programming time called FAST
 
   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/mcuboot --noreset
 
-Note that adding ``--erase_flash`` is an option to erase flash images if needed or ``--erase_all`` is an option to erase entire flash including bonding information in flash.
+Note that adding ``--erase_flash`` is an option to erase the entire flash, ``--erase_rram`` is an option to erase the entire RRAM, and ``--erase_all`` is an option to erase the entire RRAM and flash.
 
 Flash the signed application image ::
 
