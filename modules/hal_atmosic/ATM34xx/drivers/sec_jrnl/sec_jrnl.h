@@ -3,9 +3,9 @@
  *
  * @file sec_jrnl.h
  *
- * @brief Secure Jornal driver
+ * @brief Secure Journal driver
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  ******************************************************************************
  */
@@ -29,10 +29,20 @@ extern "C" {
 /// Secure Journal start address
 #define CMSDK_SEC_JOURNAL_BASE 0x1008f800
 #ifndef SEC_JOURNAL_BASE
-#define SEC_JOURNAL_BASE  CMSDK_SEC_JOURNAL_BASE
+#define SEC_JOURNAL_BASE CMSDK_SEC_JOURNAL_BASE
 #endif
 /// Secure Journal journal size
 #define CMSDK_SEC_JOURNAL_SIZE 1776
+
+/// Secure Journal Ratchet address
+#define CMSDK_SEC_JOURNAL_RATCHET_ADDR \
+    (CMSDK_SEC_JOURNAL_BASE + CMSDK_SEC_JOURNAL_SIZE)
+
+/// Secure RRAM start address
+#define CMSDK_SEC_RRAM_BASE 0x10010000
+
+/// Secure Journal RRAM base address
+#define SEC_JOURNAL_RRAM_BASE (CMSDK_SEC_JOURNAL_BASE - CMSDK_SEC_RRAM_BASE)
 
 /// invalid tag value
 #define SEC_JRNL_INVALID_TAG 0xff
@@ -117,6 +127,18 @@ sec_jrnl_ret_status_t sec_jrnl_get(uint8_t tag, uint16_t *tag_length,
 __NONNULL(2, 3)
 sec_jrnl_ret_status_t sec_jrnl_get_aligned_32(uint8_t tag,
     sec_jrnl_tag_len_t *tag_length, uint32_t *tag_data);
+
+/**
+ * @brief Append secure journal tag
+ *
+ * @param[in] tag specified tag to append
+ * @param[in] tag_length length of tag data
+ * @param[in] tag_data input buffer of tag data
+ * @return sec_jrnl_ret_status_t return status
+ */
+__NONNULL(2, 3)
+sec_jrnl_ret_status_t sec_jrnl_append(uint8_t tag, uint16_t *tag_length,
+    uint8_t const *tag_data);
 #endif
 
 /**
@@ -179,6 +201,18 @@ sec_jrnl_ret_status_t nsc_sec_jrnl_get(uint8_t tag, uint16_t *tag_length,
 __NONNULL(2, 3)
 sec_jrnl_ret_status_t nsc_sec_jrnl_get_aligned_32(uint8_t tag,
     sec_jrnl_tag_len_t *tag_length, uint32_t *tag_data);
+
+/**
+ * @brief Append secure journal tag (NS-callable)
+ *
+ * @param[in] tag specified tag to append
+ * @param[in] tag_length length of tag data
+ * @param[in] tag_data input buffer of tag data
+ * @return sec_jrnl_ret_status_t return status
+ */
+__NONNULL(2, 3)
+sec_jrnl_ret_status_t nsc_sec_jrnl_append(uint8_t tag, uint16_t *tag_length,
+    uint8_t const *tag_data);
 
 #ifdef __cplusplus
 }

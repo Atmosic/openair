@@ -5,7 +5,7 @@
  *
  * @brief Secure Journal Driver
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
  *
  ******************************************************************************
  */
@@ -15,6 +15,7 @@
 #include <inttypes.h>
 #include "sec_jrnl.h"
 #include "stdio.h"
+#include "rram_rom_prot.h"
 #include "atm_utils_c.h"
 #ifdef SECURE_PROC_ENV
 #include "sec_service.h"
@@ -39,7 +40,7 @@
 
 #define SEC_JRNL_VERIFY_OFFSET_BOUNDS(offset, len) \
     (SEC_JRNL_VERIFY_OFFSET(offset) && \
-    (((offset) + (len)) < CMSDK_SEC_JOURNAL_SIZE))
+	(((offset) + (len)) < CMSDK_SEC_JOURNAL_SIZE))
 
 // Convert offset to sec journal address
 #define SEC_JRNL_OFF_TO_PTR(offset) \
@@ -47,15 +48,16 @@
 
 // tags are defined using a compressed length format
 #define SEC_JRNL_HEADER_SIZE(header) \
-    (sizeof(sec_jrnl_header_t) - (atm_get_le16(&(header)->length) & 0x80 ? \
-    0 : 1))
+    (sizeof(sec_jrnl_header_t) - \
+	(atm_get_le16(&(header)->length) & 0x80 ? 0 : 1))
 
 #define SEC_JRNL_TAG_SIZE(header) \
     ((atm_get_le16(&(header)->length) & 0x7f) | \
 	((atm_get_le16(&(header)->length) & 0x80) ? \
-	((atm_get_le16(&(header)->length) & 0xff00) >> 1) : 0))
+		((atm_get_le16(&(header)->length) & 0xff00) >> 1) : \
+		0))
 
-#define SEC_JRNL_STATUS_IMMUTABLE_MASK  0x02
+#define SEC_JRNL_STATUS_IMMUTABLE_MASK 0x02
 // check if tag is immutable. Status bit is active low
 #define SEC_JRNL_TAG_IS_IMMUTABLE(header) \
     (!((header)->status & SEC_JRNL_STATUS_IMMUTABLE_MASK))
@@ -63,7 +65,7 @@
 #define SEC_JRNL_SEC_ONLY_TAG_MASK 0xFC // 0b111111XX
 #define SEC_JRNL_SEC_ONLY_TAG_VAL 0xEC // 0b111011XX
 #define IS_TAG_SECURE_ONLY(tag) \
-    (((tag)&SEC_JRNL_SEC_ONLY_TAG_MASK) == SEC_JRNL_SEC_ONLY_TAG_VAL)
+    (((tag) & SEC_JRNL_SEC_ONLY_TAG_MASK) == SEC_JRNL_SEC_ONLY_TAG_VAL)
 
 typedef struct sec_jrnl_header {
     uint8_t tag;
@@ -126,8 +128,7 @@ static sec_jrnl_ret_status_t sec_jrnl_find_tag(uint8_t tag,
     } while (jrnl_header->tag != SEC_JRNL_INVALID_TAG);
 
     if (found_tag_offset == SEC_JRNL_MAGIC_OFFSET) {
-	DEBUG_TRACE_COND(SEC_JRNL_DEBUG, "No tag found for %#x!",
-	    tag);
+	DEBUG_TRACE_COND(SEC_JRNL_DEBUG, "No tag found for %#x!", tag);
 	return SEC_JRNL_NO_TAG;
     }
     *tag_offset = found_tag_offset;
@@ -252,7 +253,7 @@ sec_jrnl_ret_status_t sec_jrnl_get_aligned_32(uint8_t tag,
     length = SEC_JRNL_TAG_SIZE(jrnl_header);
     // length from jrnl tag must be mod
     if (length % 4) {
-	ASSERT_INFO(0,length, tag);
+	ASSERT_INFO(0, length, tag);
 	return SEC_JRNL_LEN_BAD_LEN;
     }
     uint16_t len_words = length / 4;
@@ -265,6 +266,155 @@ sec_jrnl_ret_status_t sec_jrnl_get_aligned_32(uint8_t tag,
 	tag_data++;
     }
     *tag_length = length;
+    return SEC_JRNL_OK;
+}
+
+static uint16_t sec_jrnl_read_ratchet(void)
+{
+    volatile uint16_t *ratchet_ptr =
+	(volatile uint16_t *)CMSDK_SEC_JOURNAL_RATCHET_ADDR;
+
+    // Read to get the secure journal ratchet value
+    return *ratchet_ptr;
+}
+
+static sec_jrnl_ret_status_t sec_jrnl_find_end(uint16_t *end_offset)
+{
+    sec_jrnl_ret_status_t ret = sec_jrnl_walk_init_ctx();
+    if (ret != SEC_JRNL_OK) {
+	return ret;
+    }
+
+    uint8_t tag;
+    sec_jrnl_tag_len_t tag_length;
+    uint16_t current_offset = 4; // Start after "NVDS" magic
+
+    // Walk through all TLV entries
+    do {
+	ret = sec_jrnl_walk_tag(&tag, &tag_length);
+	if (ret == SEC_JRNL_NO_TAG) {
+	    // Found the invalid tag (0xFF) - this is end position
+	    *end_offset = current_offset;
+	    ret = SEC_JRNL_OK;
+	    break;
+	}
+
+	if (ret != SEC_JRNL_OK) {
+	    break;
+	}
+
+	// Calculate header size, minimum: tag + status + length(1 byte)
+	uint16_t header_size = 3;
+
+	// Check if length is in long format (2 bytes)
+	uint8_t *header_ptr =
+	    (uint8_t *)(CMSDK_SEC_JOURNAL_BASE + current_offset);
+	uint16_t length_raw = *(uint16_t *)(header_ptr + 2);
+	if (length_raw & 0x80) {
+	    header_size = 4; // tag + status + length(2 bytes)
+	}
+
+	// Move to next entry: current_offset + header + data
+	current_offset += header_size + tag_length;
+
+	// Default status when bounds check fails
+	ret = SEC_JRNL_BAD_OFFSET;
+    } while (current_offset < CMSDK_SEC_JOURNAL_SIZE);
+
+    return ret;
+}
+
+static uint8_t encode_tlv_length(uint16_t data_len, uint16_t *encoded_len)
+{
+    if (data_len < 128) {
+	// Short form: length fits in 7 bits, no 0x80 bit set
+	// SEC_JRNL_TAG_SIZE will extract: (encoded_len & 0x7f) | 0 = data_len
+	*encoded_len = data_len & 0x7f;
+	return 3; // tag + status + length(1 byte)
+    } else {
+	// Long form: set bit 7 (0x80) and encode high bits in next byte
+	// SEC_JRNL_TAG_SIZE will extract:
+	// (encoded_len & 0x7f) | ((encoded_len & 0xff00) >> 1)
+	// data_len = (low_bits & 0x7f) | ((high_byte << 8) >> 1)
+	// data_len = (low_bits & 0x7f) | (high_byte << 7)
+	// high_byte = (data_len >> 7) & 0xff,
+	// low_bits = (data_len & 0x7f) | 0x80
+	uint8_t low_bits = (data_len & 0x7f) | 0x80;
+	uint8_t high_byte = (data_len >> 7) & 0xff;
+	*encoded_len = low_bits | (high_byte << 8);
+	return 4; // tag + status + length(2 bytes)
+    }
+}
+
+sec_jrnl_ret_status_t sec_jrnl_append(uint8_t tag,
+    sec_jrnl_tag_len_t *tag_length, uint8_t const *tag_data)
+{
+    if (!*tag_length) {
+	return SEC_JRNL_BAD_OFFSET;
+    }
+
+    // Find the end of existing TLV data
+    uint16_t end_offset;
+    sec_jrnl_ret_status_t ret = sec_jrnl_find_end(&end_offset);
+    if (ret != SEC_JRNL_OK) {
+	return ret;
+    }
+
+    // Calculate TLV header size and encode length
+    uint16_t encoded_len;
+    uint8_t header_size = encode_tlv_length(*tag_length, &encoded_len);
+    uint16_t total_size = header_size + *tag_length;
+
+    // Check if there's enough space
+    if (end_offset + total_size + 1 > CMSDK_SEC_JOURNAL_SIZE) {
+	// +1 for terminator 0xFF
+	return SEC_JRNL_BAD_OFFSET;
+    }
+
+    // Prepare TLV header bytes to ensure exact control over memory layout
+    // Maximum header size is 4 bytes
+    uint8_t tlv_header_bytes[4];
+
+    // Byte 0: Tag
+    tlv_header_bytes[0] = tag;
+
+    // Byte 1: Status (0x06 = mutable)
+    tlv_header_bytes[1] = 0x06;
+
+    // Bytes 2-3: Length in little-endian format (same as atm_set_le16)
+    tlv_header_bytes[2] = encoded_len & 0xff;
+    if (header_size == 4) {
+	tlv_header_bytes[3] = (encoded_len >> 8) & 0xff;
+    }
+
+    // Read current ratchet value before append operation
+    sec_jrnl_read_ratchet();
+
+    // Enable RRAM writes for secure journal region
+    rram_prot_write_enable(SEC_JOURNAL_RRAM_BASE, CMSDK_SEC_JOURNAL_SIZE);
+
+    // Write to secure journal memory
+    volatile uint8_t *write_ptr =
+	(volatile uint8_t *)(CMSDK_SEC_JOURNAL_BASE + end_offset);
+
+    // Write TLV header
+    for (uint8_t i = 0; i < header_size; i++) {
+	*write_ptr = tlv_header_bytes[i];
+	write_ptr++;
+    }
+
+    // Write data payload
+    for (uint16_t i = 0; i < *tag_length; i++) {
+	*write_ptr = tag_data[i];
+	write_ptr++;
+    }
+
+    // Write new terminator (0xFF) to mark end of TLV chain
+    *write_ptr = SEC_JRNL_INVALID_TAG;
+
+    // Disable RRAM write protection to secure journal region again
+    rram_prot_write_disable(SEC_JOURNAL_RRAM_BASE, CMSDK_SEC_JOURNAL_SIZE);
+
     return SEC_JRNL_OK;
 }
 
@@ -341,6 +491,23 @@ sec_jrnl_ret_status_t nsc_sec_jrnl_get_aligned_32(uint8_t tag,
     }
     return sec_jrnl_get_aligned_32(tag, tag_length, tag_data);
 }
+
+__SPE_NSC
+sec_jrnl_ret_status_t nsc_sec_jrnl_append(uint8_t tag,
+    sec_jrnl_tag_len_t *tag_length, uint8_t const *tag_data)
+{
+    if (!mem_check_has_access(tag_length, sizeof(sec_jrnl_tag_len_t), true,
+	    true)) {
+	return SEC_JRNL_NO_ACCESS;
+    }
+    if (!mem_check_has_access(tag_data, *tag_length, true, true)) {
+	return SEC_JRNL_NO_ACCESS;
+    }
+    if (IS_TAG_SECURE_ONLY(tag)) {
+	return SEC_JRNL_TAG_SECURE_ONLY;
+    }
+    return sec_jrnl_append(tag, tag_length, tag_data);
+}
 #elif defined(CFG_NO_SPE)
 
 sec_jrnl_ret_status_t nsc_sec_jrnl_walk_init_ctx(void)
@@ -358,5 +525,8 @@ sec_jrnl_ret_status_t nsc_sec_jrnl_get(uint8_t tag, uint16_t *tag_length,
 sec_jrnl_ret_status_t nsc_sec_jrnl_get_aligned_32(uint8_t tag,
     sec_jrnl_tag_len_t *tag_length, uint32_t *tag_data)
     __attribute__((alias("sec_jrnl_get_aligned_32")));
+
+sec_jrnl_ret_status_t nsc_sec_jrnl_append(uint8_t tag, uint16_t *tag_length,
+    uint8_t const *tag_data) __attribute__((alias("sec_jrnl_append")));
 
 #endif
