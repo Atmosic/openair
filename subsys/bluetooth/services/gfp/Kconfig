@@ -61,12 +61,12 @@ config FAST_PAIR_ACCOUNT_KEY_FILTER_MAX_LEN
 config FAST_PAIR_MODEL_ID
     hex "Google Fast Pair Model ID"
     default 0x1A7331 if SOC_SERIES_ATM33
-    default 0x8FE397 if SOC_SERIES_ATM34
+    default 0x8FE397
 
 config FAST_PAIR_AS_KEY
     string "Google Fast Pair Anti-Spoofing key"
     default "wLhpDl6Z4da3v/s1/AA32ZUtvMUkgtmPTCy5weMIDrs=" if SOC_SERIES_ATM33
-    default "3H/wrAa6A5Bn2IvSq0E6RrNMucXdhEtI/Vv4sKiHtoI=" if SOC_SERIES_ATM34
+    default "3H/wrAa6A5Bn2IvSq0E6RrNMucXdhEtI/Vv4sKiHtoI="
 
 config FAST_PAIR_AS_KEY_TAG
     hex "Google Fast Pair Anti-Spoofing key tag in secure journal"
