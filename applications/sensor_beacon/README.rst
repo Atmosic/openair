@@ -3,14 +3,14 @@
 Sensor Beacon Application
 ##########################
 
-A Zephyr application that broadcasts onboard sensor data (accelerometer, temperature, humidity) and battery voltage information via Bluetooth beacon advertisements.
+A Zephyr application that broadcasts onboard sensor data (accelerometer, temperature, humidity) and battery voltage information via Bluetooth beacon advertisements, with BLE connection support for runtime configuration via AT commands.
 
-This application is designed to be used with the **Atmosic DevTools** mobile app to monitor sensor data.
+This application is designed to be used with the **Atmosic DevTools** mobile app to monitor sensor data. It also exposes an AT command interface over BLE GATT for runtime device configuration.
 
 Overview
 ********
 
-The sensor_beacon application is a focused, non-configurable beacon implementation that provides sensor data collection and broadcasting without any runtime configuration or connection support. It is optimized for minimal memory usage, power consumption, and deterministic behavior.
+The sensor_beacon application provides sensor data collection and broadcasting via Bluetooth beacon advertisements, together with BLE connection support and an AT command interface for runtime configuration. It uses dual extended advertising sets: a non-connectable set that continuously broadcasts sensor data, and a connectable set that allows a BLE central to connect, authenticate, and issue AT commands over GATT.
 
 Using with Atmosic DevTools App
 ********************************
@@ -32,42 +32,54 @@ Features
 - **Sensor Data Collection**: Reads temperature, humidity, and 3-axis accelerometer data
 - **Battery Monitoring**: Monitors VStore and VBatt voltages
 - **Bluetooth Beacon Advertising**: Broadcasts sensor data using a standardized beacon format
-- **Non-Connectable**: Pure beacon mode without BLE connection support
-- **Fixed Configuration**: Compile-time configuration only, no runtime changes
+- **BLE Connection Support**: Accepts connections on a second advertising set and provides GATT services for AT command transport
+- **AT Command Interface**: Runtime configuration of device name, advertising interval, and custom advertising data; settings are persisted to NVS flash
 - **Periodic Updates**: Configurable interval for sensor data updates
-- **Power Management**: Supports Zephyr power management with optimized sleep
-- **Comprehensive Testing**: Full Ztest test suite for core functionality
+- **Power Management**: Supports Zephyr power management
+- **Comprehensive Testing**: Full Ztest test suite included
 
 Architecture
 ************
 
-The application follows a lean, modular design focused on core beacon functionality::
+The application follows a modular design with clear separation of functionalities::
 
     sensor_beacon/
     ├── src/
-    │   ├── main.c                 # Application entry point (minimal)
-    │   ├── sensor_beacon.c        # Main application logic
+    │   ├── main.c                 # Application entry point; BLE connection callbacks
+    │   ├── sensor_beacon.c        # Main application logic and sensor loop
     │   ├── sensor_interface.c     # Sensor reading with scaling
     │   ├── battery_monitor.c      # Battery voltage monitoring
-    │   ├── beacon_adv.c           # Bluetooth beacon advertising
-    │   └── sensor_data.c          # Periodic data collection
-    └── tests/                     # Core functionality test suite
+    │   ├── beacon_adv.c           # Dual-set Bluetooth advertising (sensor + connection)
+    │   ├── beacon_adv_at_cmd.c    # AT command extensions with NVS persistence
+    │   ├── at_gatt.c              # GATT service for AT command transport (TXRX characteristic)
+    │   ├── at_cmd_manager.c       # AT command routing and unlock state machine
+    │   └── sensor_data.c          # Periodic sensor data collection
+    └── tests/                     # Comprehensive test suite
+
+**Dual advertising sets** (both started at boot):
+
+- **Set 0** — Non-connectable extended advertising (SID 0). Carries the full sensor beacon
+  payload (Eddystone-URL, Manufacturer Data with sensor readings). Interval: 1–1.2 s normal,
+  100–150 ms fast.
+- **Set 1** — Connectable extended advertising (SID 1). Carries only Flags + Complete Name.
+  Used by a BLE central to connect and interact with the GATT-based AT command interface.
+  Interval: slow (``BT_GAP_ADV_SLOW_INT_MIN/MAX``).
 
 Configuration
 *************
 
-Key configuration options in ``prj.conf`` (compile-time only):
+Key configuration options in ``prj.conf``:
 
 - ``CONFIG_SENSOR_BEACON_UPDATE_INTERVAL``: Update interval in centiseconds (default: 100 = 1s)
 - ``CONFIG_SENSOR_BEACON_FAST_ADV``: Enable fast advertising mode for quick device discovery (default: n)
-- ``CONFIG_SENSOR_BEACON_ACCEL_SCALING_FACTOR``: Accelerometer scaling factor (default: 1000)
-- ``CONFIG_SENSOR_BEACON_TEMP_SCALING_FACTOR``: Temperature scaling factor (default: 256)
-- ``CONFIG_SENSOR_BEACON_HUMIDITY_SCALING_FACTOR``: Humidity scaling factor (default: 256)
+- ``CONFIG_BT_EXT_ADV_MAX_ADV_SET``: Number of extended advertising sets (default: 2 — one sensor beacon set, one connectable set)
+- ``CONFIG_ATM_AT_CMD``: Enable AT command framework (default: y)
+- ``CONFIG_SETTINGS`` / ``CONFIG_NVS``: Persistent storage for device name and user ad data
 
 Beacon Advertising Intervals
 ****************************
 
-The application supports two advertising modes (compile-time selection):
+The application supports two advertising modes (selected by Kconfig):
 
 - **Normal Mode (Default)**: 1-1.2 second intervals for optimal power consumption
 - **Fast Mode**: 100-150ms intervals for quick device discovery
@@ -92,16 +104,280 @@ The application uses a standardized sensor data format for client compatibility:
 Beacon Advertisement Structure
 ******************************
 
-The Bluetooth advertisement follows a standardized, non-connectable beacon format:
+The sensor beacon advertising set (Set 0, non-connectable) uses the following payload:
 
 1. **Flags**: ``BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR``
-2. **Complete Name**: Device name (fixed at compile time)
+2. **Complete Name**: Device name (runtime-configurable via ``AT+NAME``; persisted to NVS)
 3. **Service UUID**: Eddystone UUID (0xFEAA)
 4. **Service Data**: Eddystone-URL pointing to atmosic.com
 5. **Manufacturer Data**: Atmosic Company ID (0x0A24) + sensor data
+6. **User Data** *(optional)*: Custom TLV element appended when set via ``AT+ADVDATA``
+
+The connectable advertising set (Set 1) carries only:
+
+1. **Flags**: ``BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR``
+2. **Complete Name**: Device name
+
+AT Command Interface
+********************
+
+The sensor_beacon application includes a BLE GATT-based AT command interface that enables
+runtime configuration of the device over a Bluetooth LE connection. This feature is enabled by
+default in the production configuration (``prj.conf``).
+
+Prerequisites
+=============
+
+AT command support requires the following Kconfig options (all enabled by default in
+``prj.conf``):
+
+- ``CONFIG_ATM_AT_CMD=y`` — AT command core framework
+- ``CONFIG_ATM_AT_CMD_SET=y`` — Standard AT command set handlers
+- ``CONFIG_BT_MAX_CONN=2`` — Allows inbound BLE connections for configuration
+- ``CONFIG_SETTINGS=y`` / ``CONFIG_NVS=y`` — Persistent storage for settings
 
 .. note::
-   The beacon is **non-connectable** and does not accept BLE connections. All data is broadcast via advertisements only.
+   When ``CONFIG_BT_MAX_CONN`` is set to ``2``, the device advertises as **connectable** to
+   allow BLE GATT-based configuration in addition to broadcasting beacon data.
+
+GATT Service
+============
+
+AT commands are transported over a custom BLE GATT service. Connect to the sensor beacon
+device and interact with the TXRX characteristic:
+
++--------------------+----------------------------------------------------------+
+| Attribute          | Details                                                  |
++====================+==========================================================+
+| **Service**        | custom 128-bit UUID                                      |
++--------------------+----------------------------------------------------------+
+| **Characteristic** | TXRX (custom 128-bit UUID)                               |
+|                    | Properties: **Write** + **Notify**                       |
++--------------------+----------------------------------------------------------+
+
+- **Write** the AT command string to the TXRX characteristic to issue a command.
+- **Enable notifications** on the TXRX characteristic to receive command responses.
+
+Security — Unlock Mechanism
+============================
+
+The device starts in a **locked** state every time a new BLE connection is established.
+All configuration commands require the device to be unlocked first using ``AT+UNLOCK``.
+
+**Lock state lifecycle:**
+
+1. Device powers on or resets → starts **locked**
+2. New BLE connection established → automatically **re-locked**
+3. ``AT+UNLOCK`` with correct key → **unlocked**
+4. Configuration commands can now be issued
+5. BLE disconnect or device reset → returns to **locked**
+
+Supported AT Commands
+=====================
+
+Command Syntax
+--------------
+
+AT commands follow the standard format::
+
+    AT+<COMMAND>=<parameter>
+
+The ``AT+`` prefix is case-insensitive.
+
+Command Reference
+-----------------
+
+AT+UNLOCK
+^^^^^^^^^
+
+Unlocks the device for configuration. **Must be sent before any other configuration command.**
+
+.. code-block:: none
+
+    AT+UNLOCK=<key>
+
++---------------+----------------------------------+
+| Parameter     | Description                      |
++===============+==================================+
+| ``<key>``     | Unlock key string (max 31 chars) |
++---------------+----------------------------------+
+
+**Example:**
+
+.. code-block:: none
+
+    AT+UNLOCK=atm1atm123
+
+**Responses:**
+
+- ``OK`` — Device unlocked successfully
+- ``ERROR`` — Invalid key or authentication failure
+
+.. note::
+   The unlock key is ``atm1atm123``. The device is automatically re-locked on each new BLE
+   connection to prevent unauthenticated access.
+
+AT+NAME
+^^^^^^^
+
+Sets the BLE device name. The new name is immediately reflected in the advertisement and
+persisted to NVS flash so it survives reboot.
+
+.. code-block:: none
+
+    AT+NAME=<device name>
+
++--------------------+--------------------------------------------------+
+| Parameter          | Description                                      |
++====================+==================================================+
+| ``<device name>``  | New device name string (1 to 22 characters)      |
++--------------------+--------------------------------------------------+
+
+**Requires:** Device must be unlocked (``AT+UNLOCK`` first).
+
+**Example:**
+
+.. code-block:: none
+
+    AT+NAME=MySensorTag
+
+**Responses:**
+
+- ``OK`` — Device name updated; advertising restarted with the new name
+- ``ERROR`` — Device locked, name empty/too long, or write failure
+
+.. note::
+   The default device name is ``Atmosic Sensor Beacon``. The maximum length is set by
+   ``CONFIG_BT_DEVICE_NAME_MAX`` (default: 22 characters).
+
+AT+ADVINT
+^^^^^^^^^
+
+Sets the BLE advertising interval. The new value takes effect immediately and is persisted
+to NVS flash.
+
+.. code-block:: none
+
+    AT+ADVINT=<interval>
+
++------------------+--------------------------------------------------------------+
+| Parameter        | Description                                                  |
++==================+==============================================================+
+| ``<interval>``   | Advertising interval in units of 0.625 ms.                   |
+|                  | Valid range: **400 – 16384** (250 ms to 10.24 s)             |
++------------------+--------------------------------------------------------------+
+
+**Requires:** Device must be unlocked (``AT+UNLOCK`` first).
+
+**Examples:**
+
+.. code-block:: none
+
+    AT+ADVINT=400     # 250 ms  (minimum)
+    AT+ADVINT=1600    # 1 second
+    AT+ADVINT=3200    # 2 seconds
+    AT+ADVINT=16384   # 10.24 seconds (maximum)
+
+**Responses:**
+
+- ``OK`` — Advertising interval updated
+- ``ERROR`` — Device locked, value out of range, or write failure
+
+AT+ADVDATA
+^^^^^^^^^^
+
+Sets custom user data to be appended to the beacon advertisement. Data must be in
+**TLV (Type-Length-Value)** format and is persisted to NVS flash. Sending this command
+with empty data clears previously set user data and reverts to sensor-only advertising.
+
+.. code-block:: none
+
+    AT+ADVDATA=<tlv data>
+
++------------------+------------------------------------------------------------------------+
+| Parameter        | Description                                                            |
++==================+========================================================================+
+| ``<tlv data>``   | Byte array in TLV format. Maximum **27 bytes** total. First byte is    |
+|                  | the length (N); second byte is the type; followed by N−1 payload bytes |
+|                  | (maximum 25 bytes of payload).                                         |
++------------------+------------------------------------------------------------------------+
+
+**TLV format layout:**
+
+.. code-block:: none
+
+    +---------+--------+------------------------------+
+    | Length  |  Type  |         Payload              |
+    | (1 byte)|(1 byte)| (Length - 1 bytes, max 25)   |
+    +---------+--------+------------------------------+
+
+- ``Length`` = number of bytes following it (type byte + payload bytes).
+- ``Type`` = application-defined data type identifier.
+- ``Payload`` = up to 25 bytes of user-defined data.
+
+**Requires:** Device must be unlocked (``AT+UNLOCK`` first).
+
+**Responses:**
+
+- ``OK`` — User data updated; advertising restarted with new payload
+- ``ERROR`` — Device locked, invalid TLV format, data too large, or write failure
+
+AT+SYSRESET
+^^^^^^^^^^^
+
+Performs a cold system reset of the device.
+
+.. code-block:: none
+
+    AT+SYSRESET=<reason>
+
++---------------+----------------------------+
+| Parameter     | Description                |
++===============+============================+
+| ``<reason>``  | Reset reason code (``1``)  |
++---------------+----------------------------+
+
+**Requires:** Device must be unlocked (``AT+UNLOCK`` first).
+
+**Example:**
+
+.. code-block:: none
+
+    AT+SYSRESET=1
+
+**Response:** The device resets immediately; no response is returned to the client.
+
+Persistent Storage
+==================
+
+The following settings survive reboot (saved to NVS flash):
+
++---------------------+------------------+-----------------------------+
+| Setting             | AT Command       | NVS Key                     |
++=====================+==================+=============================+
+| Device name         | ``AT+NAME``      | ``sensor_beacon/dev_name``  |
++---------------------+------------------+-----------------------------+
+| Custom ad data      | ``AT+ADVDATA``   | ``sensor_beacon/user_data`` |
++---------------------+------------------+-----------------------------+
+
+Typical Usage Sequence
+======================
+
+.. code-block:: none
+
+    # 1. Connect to the device over BLE
+    # 2. Enable GATT notifications on the TXRX characteristic
+    # 3. Unlock the device
+    AT+UNLOCK=atm1atm123        → OK
+
+    # 4. Change the device name
+    AT+NAME=MySensorTag         → OK
+
+    # 5. Set advertising interval to 2 seconds (3200 × 0.625 ms = 2000 ms)
+    AT+ADVINT=3200              → OK
+
+    # 6. Reset to apply all changes
+    AT+SYSRESET=1               (device resets; reconnect to verify new settings)
 
 Building and Running
 ********************
@@ -191,9 +467,8 @@ The debug and production builds have **identical functionality** - they differ o
    - Power management settings
    - Stack sizes
    - Watchdog configuration
-   - Non-connectable beacon behavior
+   - BLE advertising behavior (dual advertising sets)
    - Sensor functionality
-   - No persistent storage or runtime configuration
 
 Testing
 *******
@@ -216,10 +491,10 @@ The test suite includes:
 
 - Sensor interface validation
 - Battery monitoring tests
-- Beacon advertising tests (core functionality only)
+- Beacon advertising tests (dual advertising sets; user data; device name updates)
+- AT command handler tests (unlock, name, interval, advdata, sysreset)
 - Data collection integration tests
 - Scaling factor verification
-- Non-connectable beacon behavior validation
 
 Power Management
 ****************
@@ -334,11 +609,8 @@ Compatibility
 
 - **Data Format**: Uses standardized sensor beacon data format
 - **Advertisement Structure**: Standard Bluetooth beacon format with manufacturer data
-- **Client Applications**: Compatible with Atmosic sensor beacon clients (receive-only)
-- **Mobile Apps**: Works with any BLE scanner or beacon monitoring application
-
-.. note::
-   Client applications must operate in **receive-only mode** since the beacon does not accept connections.
+- **Passive Observers**: Compatible with any BLE scanner or beacon monitoring application (Atmosic DevTools, etc.) — no connection required to receive sensor data
+- **BLE Centrals**: Can connect to the device, authenticate via ``AT+UNLOCK``, and issue configuration commands over the GATT TXRX characteristic
 
 Dependencies
 ************
