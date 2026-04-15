@@ -577,7 +577,7 @@ Samsung SmartThings Find (STF) details
 
 SmartThings Find Device SDK integration
 =======================================
-1. Once you have access to the SmartThings Find Device SDK (v2.6.0), request the integration patch from Atmosic.
+1. Once you have access to the `SmartThings Find Device SDK <https://partners.smartthings.com/>`_ (v2.6.0), request the integration patch from Atmosic.
 2. Create a directory named ``vendor`` under ``<WEST_TOPDIR>``, and place the unzipped ``TagSDK`` directory under ``vendor``. The path becomes ``<WEST_TOPDIR>/vendor/TagSDK``.
 3. Place the Atmosic patch file (e.g., ``<patch_name.diff>``) into ``<WEST_TOPDIR>/vendor/TagSDK``.
 4. Navigate to ``<WEST_TOPDIR>/vendor/TagSDK`` and apply the patch using the following command:
