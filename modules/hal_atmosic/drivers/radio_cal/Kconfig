@@ -14,7 +14,3 @@ config ATM_RADIO_CAL_REPEAT_MS
 	default 0
 
 endif
-
-config ATM_DC_OFFSET_CAL
-	bool "Atmosic DC Offset Calibration"
-	select ATM_ATLC
