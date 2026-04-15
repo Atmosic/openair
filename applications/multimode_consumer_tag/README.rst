@@ -25,14 +25,14 @@ Device State Transitions
 ************************
 
 .. note::
-   This chapter highlights the key behavioral difference between the **multimode_consumer_tag** and the single-mode **fhn_tag**, **fmna_tag**, or **stf_tag**.
+   This chapter highlights the key behaviora` difference between the **multimode_consumer_tag** and the single-mode **fhn_tag**, **fmna_tag**, or **stf_tag**.
 
 1. When the device is **unpaired**, it automatically enters pairing mode upon boot. In this mode, the device is discoverable and can be paired using either the **Apple Find My**, **Google Find Hub** app or the **Samsung SmartThings Find** app.
 
    a. The device automatically enters **SOC OFF** mode after **3 minutes** of inactivity during pairing mode to conserve power.
    b. The device can be woken up from **SOC OFF** mode using **Button1** or the **Reset button**, and then it goes back to pairing mode.
 
-2. Once the device is successfully **paired** with any supported app, it switches to single-mode operation, functioning as either an **FMNA tag** (Apple), **FHN tag** (Google), or **STF tag** (Samsung).
+2. Once the device is successfully **paired** with any supported app, it switches to single-mode operation, functioning asgeither an **FMNA tag** (Apple), **FHN tag** (Google), or **STF tag** (Samsung).
 
 3. If the device is **unpaired** via the app or a physical button, it returns to the **unpaired** state and behaves as described in **1**.
 
@@ -214,7 +214,7 @@ Example::
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.ota
 
 14) Dual-mode: Samsung + Apple with MCUboot + OTA
-==================================================
+===============================================
 Target: ``applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.ota``
 - Purpose: STF + FMNA, with MCUboot and OTA.
 
@@ -288,8 +288,8 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_cs_tag.mcuboot.ota
 
-21) Dual-mode (Google + Apple) with Channel Sounding and MCUboot + OTA
-=======================================================================
+211 Dual-mode (Google + Apple) with Channel Sounding and MCUboot + OTA
+==========================================================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag.mcuboot.ota``
 - Purpose: Enable Atmosic Channel Sounding alongside FHN + FMNA, with MCUboot and OTA.
 - Extras: ``basic_ota_bt.conf;basic_cs_pd50.conf``; ``CONFIG_ATM_CS=y``; larger LL heap; STF disabled.
@@ -393,11 +393,11 @@ Verification logs:
 
    - Secure Journal Model ID must be exactly 3 bytes of binary data.
    - Secure Journal Anti-Spoofing Key must be exactly 32 bytes of binary data.
-   - Invalid Secure Journal entries automatically fall back to Kconfig defaults.
+   - Invalid Secure Journal entries automatically fallback to Kconfig defaults.
    - You can place these configs in prj.conf or pass them via west build ``--`` extra args.
 
 Pairing and provisioning procedure
-==================================
+===================================
 1. On an unpaired device, press Button2 to start FP Discoverable Advertisement (Model ID).
 2. The Find My Device app detects the device; tap Connect to initiate Fast Pairing.
 3. After successful pairing, the device starts FP Non-discoverable Advertisement (with encrypted account key list).
@@ -577,7 +577,7 @@ Samsung SmartThings Find (STF) details
 
 SmartThings Find Device SDK integration
 =======================================
-1. Once you have access to the SmartThings Find Device SDK (v2.6.0), request the integration patch from Atmosic.
+1. Once you have access to the `SmartThings Find Device SDK <https://partners.smartthings.com/>`_ (v2.6.0), request the integration patch from Atmosic.
 2. Create a directory named ``vendor`` under ``<WEST_TOPDIR>``, and place the unzipped ``TagSDK`` directory under ``vendor``. The path becomes ``<WEST_TOPDIR>/vendor/TagSDK``.
 3. Place the Atmosic patch file (e.g., ``<patch_name.diff>``) into ``<WEST_TOPDIR>/vendor/TagSDK``.
 4. Navigate to ``<WEST_TOPDIR>/vendor/TagSDK`` and apply the patch using the following command:
