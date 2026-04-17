@@ -25,6 +25,19 @@ tests:
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - EXTRA_CONF_FILE="basic_dfu_serial.conf;"
+      - EXTRA_DTC_OVERLAY_FILE="dfu.overlay"
+    extra_configs:
+      - CONFIG_LOG_DEFAULT_LEVEL=3
+      - CONFIG_SENSOR_BEACON_LOG_LEVEL_INF=y
+  applications.sensor_beacon.atm.mcuboot.dfu.legacy_scratch:
+    tags:
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - EXTRA_CONF_FILE="basic_dfu_serial.conf;"
