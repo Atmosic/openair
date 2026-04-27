@@ -45,7 +45,7 @@ Flash the application:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --dl --device <DEVICE_ID> --fast_load [--erase_flash]
+   west flash --no-rebuild --dl --device <DEVICE_ID> --fast_load [--erase_flash]
 
 References
 **********

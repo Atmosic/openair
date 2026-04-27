@@ -18,6 +18,6 @@ config BROWNOUT_THR_VBAT
                 VBAT threshold = 1.4 + 0.05X, where
                     0 <= X <= 31, for non-rechargeable battery type
                     0 <= X <= 17, for rechargeable battery type
-            The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through CONFIG_BATT_LEVEL. Refer to the PMU configuration for additional details.
+            The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through the ``batt-level`` device tree property. Refer to the PMU configuration for additional details.
 
 endif

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2025 Atmosic
- * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2025-2026 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/sys/poweroff.h>
@@ -11,7 +11,7 @@
 
 void z_sys_poweroff(void)
 {
-	atm_pseq_soc_off(K_TICKS_FOREVER);
+	atm_pseq_soc_off(IDLE_FOREVER);
 
 	CODE_UNREACHABLE;
 }

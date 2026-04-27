@@ -1,10 +1,12 @@
 #!/usr/bin/env python
+# Copyright (C) Atmosic 2024-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file gen_atm_partition_info.py
 
 @Defines to parse dts file for generating the partition_info.map file with arguments
-
-Copyright (C) Atmosic 2024-2025
 """
 
 import sys
@@ -454,6 +456,97 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
         if self.debug:
             print(msg)
 
+    # Partition label to attributes mapping: (debug_prefix, attr_prefix)
+    # Attributes are auto-generated as {attr_prefix}_START, {attr_prefix}_OFFSET, {attr_prefix}_SIZE
+    PARTITION_ATTRS = {
+        "spe_partition": ("spe", "SPE"),
+        "nspe_partition": ("nspe", "NS_APP"),
+        "app_partition": ("app", "APP"),
+        "storage_partition": ("storage_data", "STORAGE_DATA"),
+        "factory_partition": ("factory_data", "FACTORY_DATA"),
+        "fast_code_partition": ("fc", "FAST_CODE"),
+        "slot2_partition_atmwstk": ("atmwstk", "ATMWSTK"),
+    }
+
+    def _parse_partition(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self,
+        parent_node,
+        label,
+        base_addr,
+        debug_prefix,
+        attr_prefix=None,
+        require_success=False,
+        secure_offset=False,
+    ):
+        """Parse a partition and set partition info attributes.
+
+        Args:
+            parent_node: Parent device tree node to search in
+            label: Label name of the partition to find
+            base_addr: Base address to add to the partition start
+            debug_prefix: Prefix for debug message (e.g., "spe", "mcuboot")
+            attr_prefix: Prefix for attributes, auto-generates {PREFIX}_START,
+                         {PREFIX}_OFFSET, {PREFIX}_SIZE (e.g., "SPE" -> SPE_START)
+            require_success: If True, exit on failure
+            secure_offset: If True, subtract SEC_BASE_ADDR from offset
+
+        Returns:
+            Tuple of (success, start, size) where success is True if parsed
+        """
+        partition = utils_get_node_by_lable(parent_node, label)
+        if not partition:
+            return False, None, None
+
+        ret, start, size = utils_get_node_property_reg(partition)
+        if ret != ST_PASS:
+            if require_success:
+                log_and_exit(f"Parsing {label} addr, size failed")
+            return False, None, None
+
+        self.debug_print(
+            f"{debug_prefix}_start = {hex(start)}, {debug_prefix}_size = {hex(size)}"
+        )
+
+        if attr_prefix:
+            setattr(self.part_info, f"{attr_prefix}_START", hex(start + base_addr))
+            if secure_offset:
+                setattr(
+                    self.part_info, f"{attr_prefix}_OFFSET", hex(start - SEC_BASE_ADDR)
+                )
+            else:
+                setattr(self.part_info, f"{attr_prefix}_OFFSET", hex(start))
+            setattr(self.part_info, f"{attr_prefix}_SIZE", hex(size))
+
+        return True, start, size
+
+    def _parse_known_partition(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        self, parent_node, label, base_addr, attrs_key=None
+    ):
+        """Parse a partition using predefined attributes from PARTITION_ATTRS.
+
+        Args:
+            parent_node: Parent device tree node to search in
+            label: Label name of the partition to find
+            base_addr: Base address to add to the partition start
+            attrs_key: Key to look up in PARTITION_ATTRS (defaults to label)
+
+        Returns:
+            Tuple of (success, start, size) where success is True if parsed
+        """
+        key = attrs_key or label
+        attrs = self.PARTITION_ATTRS.get(key)
+        if not attrs:
+            return False, None, None
+        debug_prefix, attr_prefix = attrs
+        return self._parse_partition(
+            parent_node, label, base_addr, debug_prefix, attr_prefix
+        )
+
+    def _parse_storage_and_factory(self, parent_node, base_addr):
+        """Parse storage_partition and factory_partition."""
+        self._parse_known_partition(parent_node, "storage_partition", base_addr)
+        self._parse_known_partition(parent_node, "factory_partition", base_addr)
+
     def update_data(self):
         """Append key/value to output file"""
         with open(self.outfile, "a+", encoding="ascii") as f:
@@ -475,235 +568,101 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
                 board_name_prefix = name_split[0]
         self.part_info.BOARD = board_name_prefix.replace("-", "_")
 
-    def parsing_not_use_mcuboot(
-        self, rram0, rram_start, rram_size
-    ):  # pylint: disable=too-many-locals,too-many-branches
+    def parsing_not_use_mcuboot(self, rram0, rram_start, rram_size):
         """Parse information for non MCUBOOT use case"""
         # PRIMARY image as RRAM
         self.part_info.PRIMARY_IMG_START = hex(rram_start)
-        self.part_info.PRIMARY_IMG_OFFSET = hex(rram_start - rram_start)
+        self.part_info.PRIMARY_IMG_OFFSET = hex(0)
         self.part_info.PRIMARY_IMG_SIZE = hex(rram_size)
-        spe_partition = utils_get_node_by_lable(rram0, "spe_partition")
-        if spe_partition:
-            ret_spe, spe_start, spe_size = utils_get_node_property_reg(spe_partition)
-            if ret_spe == ST_PASS:
-                self.debug_print(
-                    f"spe_start = {hex(spe_start)}, " f"spe_size = {hex(spe_size)}"
-                )
-                if not self.merge_spe_nspe:
-                    self.part_info.SPE_START = hex(spe_start + rram_start)
-                    self.part_info.SPE_OFFSET = hex(spe_start)
-                    self.part_info.SPE_SIZE = hex(spe_size)
+
+        # Parse SPE partition - store results for merge_spe_nspe logic
+        ret_spe, spe_start, spe_size = False, None, None
+        if not self.merge_spe_nspe:
+            self._parse_known_partition(rram0, "spe_partition", rram_start)
+        else:
+            ret_spe, spe_start, spe_size = self._parse_partition(
+                rram0, "spe_partition", rram_start, "spe"
+            )
+
         if self.split_img:
-            fast_code_partition = utils_get_node_by_lable(rram0, "fast_code_partition")
-            if fast_code_partition:
-                ret, fc_start, fc_size = utils_get_node_property_reg(
-                    fast_code_partition
-                )
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"fc_start = {hex(fc_start)}, " f"fc_size = {hex(fc_size)}"
-                    )
-                    self.part_info.FAST_CODE_START = hex(fc_start + rram_start)
-                    self.part_info.FAST_CODE_OFFSET = hex(fc_start)
-                    self.part_info.FAST_CODE_SIZE = hex(fc_size)
+            self._parse_known_partition(rram0, "fast_code_partition", rram_start)
             # nspe should be parsed from flash
             return
-        nspe_partition = utils_get_node_by_lable(rram0, "nspe_partition")
-        if nspe_partition:
-            ret_nspe, nspe_start, nspe_size = utils_get_node_property_reg(
-                nspe_partition
-            )
-            if ret_nspe == ST_PASS:
-                self.debug_print(
-                    f"nspe_start = {hex(nspe_start)}, " f"nspe_size = {hex(nspe_size)}"
-                )
-                if not self.merge_spe_nspe:
-                    self.part_info.NS_APP_START = hex(nspe_start + rram_start)
-                    self.part_info.NS_APP_OFFSET = hex(nspe_start)
-                    self.part_info.NS_APP_SIZE = hex(nspe_size)
-        app_partition = utils_get_node_by_lable(rram0, "app_partition")
-        if app_partition:
-            ret_app, app_start, app_size = utils_get_node_property_reg(app_partition)
-            if ret_app == ST_PASS:
-                self.debug_print(
-                    f"app_start = {hex(app_start)}, " f"app_size = {hex(app_size)}"
-                )
-                self.part_info.APP_START = hex(app_start + rram_start)
-                self.part_info.APP_OFFSET = hex(app_start)
-                self.part_info.APP_SIZE = hex(app_size)
-        if not self.merge_spe_nspe:
-            slot2_partition = utils_get_node_by_lable(rram0, "slot2_partition")
-            if slot2_partition:
-                ret, atmwstk_start, atmwstk_size = utils_get_node_property_reg(
-                    slot2_partition
-                )
 
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"atmwstk_start = {hex(atmwstk_start)}, "
-                        f"atmwstk_size = {hex(atmwstk_size)}"
-                    )
-                    self.part_info.ATMWSTK_START = hex(atmwstk_start + rram_start)
-                    self.part_info.ATMWSTK_OFFSET = hex(atmwstk_start)
-                    self.part_info.ATMWSTK_SIZE = hex(atmwstk_size)
+        # Parse NSPE partition - store results for merge_spe_nspe logic
+        ret_nspe, nspe_start, nspe_size = (
+            False,
+            None,
+            None,
+        )  # pylint: disable=unused-variable
+        if not self.merge_spe_nspe:
+            self._parse_known_partition(rram0, "nspe_partition", rram_start)
+        else:
+            ret_nspe, nspe_start, nspe_size = self._parse_partition(
+                rram0, "nspe_partition", rram_start, "nspe"
+            )
+
+        self._parse_known_partition(rram0, "app_partition", rram_start)
+
+        if not self.merge_spe_nspe:
+            self._parse_known_partition(
+                rram0, "slot2_partition", rram_start, "slot2_partition_atmwstk"
+            )
         else:
             # No MCUBOOT and Merge SPE NSPE
-            if ret_spe == ST_PASS and ret_nspe == ST_PASS:
+            if ret_spe and ret_nspe:
                 self.part_info.APP_START = hex(spe_start + rram_start)
                 self.part_info.APP_SIZE = hex(spe_size + nspe_size)
 
-    def parsing_use_mcuboot(
-        self, rram0, rram_start
-    ):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+    def parsing_use_mcuboot(self, rram0, rram_start):
         """Parse MCUBOOT information"""
         # MCUBOOT from boot_partition
-        boot_partition = utils_get_node_by_lable(rram0, "boot_partition")
-        if boot_partition:
-            ret, mcuboot_start, mcuboot_size = utils_get_node_property_reg(
-                boot_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"mcuboot_start = {hex(mcuboot_start)}, "
-                    f"mcuboot_size = {hex(mcuboot_size)}"
-                )
-                self.part_info.MCUBOOT_START = hex(mcuboot_start + rram_start)
-                self.part_info.MCUBOOT_OFFSET = hex(mcuboot_start)
-                self.part_info.MCUBOOT_SIZE = hex(mcuboot_size)
-        # MCUBOOT_SCRATSH from scratch_partition
-        scratch_partition = utils_get_node_by_lable(rram0, "scratch_partition")
-        if scratch_partition:
-            ret, scratch_start, scratch_size = utils_get_node_property_reg(
-                scratch_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"rram0 scratch_start = {hex(scratch_start)}, "
-                    f"scratch_size = {hex(scratch_size)}"
-                )
-                self.part_info.MCUBOOT_SCRATCH_START = hex(scratch_start + rram_start)
-                self.part_info.MCUBOOT_SCRATCH_OFFSET = hex(scratch_start)
-                self.part_info.MCUBOOT_SCRATCH_SIZE = hex(scratch_size)
+        self._parse_partition(rram0, "boot_partition", rram_start, "mcuboot", "MCUBOOT")
+        # MCUBOOT_SCRATCH from scratch_partition
+        self._parse_partition(
+            rram0, "scratch_partition", rram_start, "rram0 scratch", "MCUBOOT_SCRATCH"
+        )
         # PRIMARY image from slot0_partition
         slot0_partition = utils_get_node_by_lable(rram0, "slot0_partition")
         if not slot0_partition:
             return
-        ret, primary_start, primary_size = utils_get_node_property_reg(slot0_partition)
+        ret, _, _ = utils_get_node_property_reg(slot0_partition)
         if ret == ST_PASS:
-            self.debug_print(
-                f"primary_start = {hex(primary_start)}, "
-                f"primary_size = {hex(primary_size)}"
+            self._parse_partition(
+                rram0, "slot0_partition", rram_start, "primary", "PRIMARY_IMG"
             )
-            self.part_info.PRIMARY_IMG_START = hex(primary_start + rram_start)
-            self.part_info.PRIMARY_IMG_OFFSET = hex(primary_start)
-            self.part_info.PRIMARY_IMG_SIZE = hex(primary_size)
         if not self.merge_spe_nspe and not self.no_spe:
-            spe_partition = utils_get_node_by_lable(rram0, "spe_partition")
-            if spe_partition:
-                ret, spe_start, spe_size = utils_get_node_property_reg(spe_partition)
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"spe_start = {hex(spe_start)}, " f"spe_size = {hex(spe_size)}"
-                    )
-                    self.part_info.SPE_START = hex(spe_start + rram_start)
-                    self.part_info.SPE_OFFSET = hex(spe_start)
-                    self.part_info.SPE_SIZE = hex(spe_size)
-            nspe_partition = utils_get_node_by_lable(rram0, "nspe_partition")
-            if nspe_partition:
-                ret, nspe_start, nspe_size = utils_get_node_property_reg(nspe_partition)
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"nspe_start = {hex(nspe_start)}, "
-                        f"nspe_size = {hex(nspe_size)}"
-                    )
-                    self.part_info.NS_APP_START = hex(nspe_start + rram_start)
-                    self.part_info.NS_APP_OFFSET = hex(nspe_start)
-                    self.part_info.NS_APP_SIZE = hex(nspe_size)
-            app_partition = utils_get_node_by_lable(rram0, "app_partition")
-            if app_partition:
-                ret, app_start, app_size = utils_get_node_property_reg(app_partition)
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"app_start = {hex(app_start)}, " f"app_size = {hex(app_size)}"
-                    )
-                    self.part_info.APP_START = hex(app_start + rram_start)
-                    self.part_info.APP_OFFSET = hex(app_start)
-                    self.part_info.APP_SIZE = hex(app_size)
-        elif (self.merge_spe_nspe or self.no_spe) and self.split_img:
+            self._parse_known_partition(rram0, "spe_partition", rram_start)
+            self._parse_known_partition(rram0, "nspe_partition", rram_start)
+        elif self.split_img:
             # note: spe_partition will not be present in a no_spe build,
             #       but the fast_code partition will be present.
-            spe_partition = utils_get_node_by_lable(slot0_partition, "spe_partition")
-            if spe_partition:
-                ret, spe_start, spe_size = utils_get_node_property_reg(spe_partition)
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"spe_start = {hex(spe_start)}, " f"spe_size = {hex(spe_size)}"
-                    )
-                    self.part_info.SPE_START = hex(spe_start + rram_start)
-                    self.part_info.SPE_OFFSET = hex(spe_start)
-                    self.part_info.SPE_SIZE = hex(spe_size)
+            self._parse_known_partition(slot0_partition, "spe_partition", rram_start)
             # FAST_CODE parsing: In merged SPE/NSPE + split image mode,
             # fast_code_partition represents the actual fast code execution region
-            # This is different from the ATMWSTK usage above - here we're parsing
-            # the partition that contains performance-critical code that runs from RRAM
-            fast_code_partition = utils_get_node_by_lable(
-                slot0_partition, "fast_code_partition"
+            self._parse_known_partition(
+                slot0_partition, "fast_code_partition", rram_start
             )
-            if fast_code_partition:
-                ret, fc_start, fc_size = utils_get_node_property_reg(
-                    fast_code_partition
-                )
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"fc_start = {hex(fc_start)}, " f"fc_size = {hex(fc_size)}"
-                    )
-                    self.part_info.FAST_CODE_START = hex(fc_start + rram_start)
-                    self.part_info.FAST_CODE_OFFSET = hex(fc_start)
-                    self.part_info.FAST_CODE_SIZE = hex(fc_size)
+        # app_partition parsing for non-split_img builds (including no_spe)
+        if not self.split_img:
+            self._parse_known_partition(rram0, "app_partition", rram_start)
         # slot0_trailer to provide information only
-        slot0_trailer = utils_get_node_by_lable(rram0, "slot0_trailer")
-        if slot0_trailer:
-            ret, slot0_trailer_start, slot0_trailer_size = utils_get_node_property_reg(
-                slot0_trailer
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing slot0_trailer addr, size failed")
-            self.debug_print(
-                f"slot0_trailer_start = {hex(slot0_trailer_start)}, "
-                f"slot0_trailer_size = {hex(slot0_trailer_size)}"
-            )
-            self.part_info.SLOT0_TRAILER_START = hex(slot0_trailer_start + rram_start)
-            self.part_info.SLOT0_TRAILER_OFFSET = hex(slot0_trailer_start)
-            self.part_info.SLOT0_TRAILER_SIZE = hex(slot0_trailer_size)
+        self._parse_partition(
+            rram0,
+            "slot0_trailer",
+            rram_start,
+            "slot0_trailer",
+            "SLOT0_TRAILER",
+            require_success=False,
+        )
         # OTA_STAGING from slot1_partition
-        slot1_partition = utils_get_node_by_lable(rram0, "slot1_partition")
-        if slot1_partition:
-            ret, ota_staging_start, ota_staging_size = utils_get_node_property_reg(
-                slot1_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"ota_staging_start = {hex(ota_staging_start)}, "
-                    f"ota_staging_size = {hex(ota_staging_size)}"
-                )
-                self.part_info.OTA_STAGING_START = hex(ota_staging_start + rram_start)
-                self.part_info.OTA_STAGING_OFFSET = hex(ota_staging_start)
-                self.part_info.OTA_STAGING_SIZE = hex(ota_staging_size)
+        self._parse_partition(
+            rram0, "slot1_partition", rram_start, "ota_staging", "OTA_STAGING"
+        )
         # ATMWSTK from slot2_partition
-        slot2_partition = utils_get_node_by_lable(rram0, "slot2_partition")
-        if slot2_partition:
-            ret, atmwstk_start, atmwstk_size = utils_get_node_property_reg(
-                slot2_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"atmwstk_start = {hex(atmwstk_start)}, "
-                    f"atmwstk_size = {hex(atmwstk_size)}"
-                )
-                self.part_info.ATMWSTK_START = hex(atmwstk_start + rram_start)
-                self.part_info.ATMWSTK_OFFSET = hex(atmwstk_start)
-                self.part_info.ATMWSTK_SIZE = hex(atmwstk_size)
+        self._parse_known_partition(
+            rram0, "slot2_partition", rram_start, "slot2_partition_atmwstk"
+        )
 
     def parsing_rram(self):  # pylint: disable=too-many-branches
         """Parse RRAM information"""
@@ -729,36 +688,8 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
             self.parsing_not_use_mcuboot(rram0, rram0_start, rram0_size)
         else:
             self.parsing_use_mcuboot(rram0, rram0_start)
-        # settings data from storage_partition
-        storage_partition = utils_get_node_by_lable(rram0, "storage_partition")
-        if storage_partition:
-            ret, storage_data_start, storage_data_size = utils_get_node_property_reg(
-                storage_partition
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing rram storage failed")
-            self.debug_print(
-                f"storage_data_start = {hex(storage_data_start)}, "
-                f"storage_data_size = {hex(storage_data_size)}"
-            )
-            self.part_info.STORAGE_DATA_START = hex(storage_data_start + rram0_start)
-            self.part_info.STORAGE_DATA_OFFSET = hex(storage_data_start)
-            self.part_info.STORAGE_DATA_SIZE = hex(storage_data_size)
-        # factory data from factory_partition
-        factory_data_partition = utils_get_node_by_lable(rram0, "factory_partition")
-        if factory_data_partition:
-            ret, factory_data_start, factory_data_size = utils_get_node_property_reg(
-                factory_data_partition
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing rram factory data failed")
-            self.debug_print(
-                f"factory_data_start = {hex(factory_data_start)}, "
-                f"factory_data_size = {hex(factory_data_size)}"
-            )
-            self.part_info.FACTORY_DATA_START = hex(factory_data_start + rram0_start)
-            self.part_info.FACTORY_DATA_OFFSET = hex(factory_data_start)
-            self.part_info.FACTORY_DATA_SIZE = hex(factory_data_size)
+        # settings and factory data from storage_partition and factory_partition
+        self._parse_storage_and_factory(rram0, rram0_start)
         # erase block size from erase-block-size
         erase_block_size = rram0.props.get("erase-block-size", "Not found")
         if erase_block_size:
@@ -798,204 +729,68 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
         self.part_info.EXT_FLASH_START = hex(flash0_start)
         self.part_info.EXT_FLASH_SIZE = hex(flash0_size)
         # MCUBOOT from boot_partition
-        boot_partition = utils_get_node_by_lable(flash0, "boot_partition")
-        if boot_partition:
-            ret, mcuboot_start, mcuboot_size = utils_get_node_property_reg(
-                boot_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"mcuboot_start = {hex(mcuboot_start)}, "
-                    f"mcuboot_size = {hex(mcuboot_size)}"
-                )
-                self.part_info.MCUBOOT_START = hex(mcuboot_start + flash0_start)
-                self.part_info.MCUBOOT_OFFSET = hex(mcuboot_start)
-                self.part_info.MCUBOOT_SIZE = hex(mcuboot_size)
-        # MCUBOOT_SCRATSH from scratch_partition
-        scratch_partition = utils_get_node_by_lable(flash0, "scratch_partition")
-        if scratch_partition:
-            ret, scratch_start, scratch_size = utils_get_node_property_reg(
-                scratch_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"flash0 scratch_start = {hex(scratch_start)}, "
-                    f"scratch_size = {hex(scratch_size)}"
-                )
-                self.part_info.EXT_FLASH_MCUBOOT_SCRATCH_START = hex(
-                    scratch_start + flash0_start
-                )
-                self.part_info.EXT_FLASH_MCUBOOT_SCRATCH_OFFSET = hex(scratch_start)
-                self.part_info.EXT_FLASH_MCUBOOT_SCRATCH_SIZE = hex(scratch_size)
+        self._parse_partition(
+            flash0, "boot_partition", flash0_start, "mcuboot", "MCUBOOT"
+        )
+        # MCUBOOT_SCRATCH from scratch_partition
+        self._parse_partition(
+            flash0,
+            "scratch_partition",
+            flash0_start,
+            "flash0 scratch",
+            "EXT_FLASH_MCUBOOT_SCRATCH",
+        )
         # PRIMARY image from slot0_partition
-        slot0_partition = utils_get_node_by_lable(flash0, "slot0_partition")
-        if slot0_partition:
-            ret, primary_start, primary_size = utils_get_node_property_reg(
-                slot0_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"primary_start = {hex(primary_start)}, "
-                    f"primary_size = {hex(primary_size)}"
-                )
-                self.part_info.PRIMARY_IMG_START = hex(primary_start + flash0_start)
-                self.part_info.PRIMARY_IMG_OFFSET = hex(primary_start)
-                self.part_info.PRIMARY_IMG_SIZE = hex(primary_size)
+        self._parse_partition(
+            flash0, "slot0_partition", flash0_start, "primary", "PRIMARY_IMG"
+        )
         # slot0_trailer to provide information only
-        slot0_trailer = utils_get_node_by_lable(flash0, "slot0_trailer")
-        if slot0_trailer:
-            ret, slot0_trailer_start, slot0_trailer_size = utils_get_node_property_reg(
-                slot0_trailer
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing slot0_trailer addr, size failed")
-            self.debug_print(
-                f"slot0_trailer_start = {hex(slot0_trailer_start)}, "
-                f"slot0_trailer_size = {hex(slot0_trailer_size)}"
-            )
-            self.part_info.SLOT0_TRAILER_START = hex(slot0_trailer_start + flash0_start)
-            self.part_info.SLOT0_TRAILER_OFFSET = hex(slot0_trailer_start)
-            self.part_info.SLOT0_TRAILER_SIZE = hex(slot0_trailer_size)
+        self._parse_partition(
+            flash0, "slot0_trailer", flash0_start, "slot0_trailer", "SLOT0_TRAILER"
+        )
         # OTA_STAGING from slot1_partition
-        slot1_partition = utils_get_node_by_lable(flash0, "slot1_partition")
-        if slot1_partition:
-            ret, ota_staging_start, ota_staging_size = utils_get_node_property_reg(
-                slot1_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"ota_staging_start = {hex(ota_staging_start)}, "
-                    f"ota_staging_size = {hex(ota_staging_size)}"
-                )
-                self.part_info.EXT_FLASH_OTA_STAGING_START = hex(
-                    ota_staging_start + flash0_start
-                )
-                self.part_info.EXT_FLASH_OTA_STAGING_OFFSET = hex(ota_staging_start)
-                self.part_info.EXT_FLASH_OTA_STAGING_SIZE = hex(ota_staging_size)
+        self._parse_partition(
+            flash0,
+            "slot1_partition",
+            flash0_start,
+            "ota_staging",
+            "EXT_FLASH_OTA_STAGING",
+        )
         # Flash app (NSPE or APP) in slot 2 partition
         slot2_partition = utils_get_node_by_lable(flash0, "slot2_partition")
-        f_app_partition = utils_get_node_by_lable(
-            flash0, "app_partition" if self.no_spe else "nspe_partition"
-        )
-        if slot2_partition and f_app_partition:
-            ret, p_start, p_size = utils_get_node_property_reg(f_app_partition)
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"nspe/app start = {hex(p_start)}, "
-                    f"nspe/app size = {hex(p_size)}"
-                )
-                app_start = hex(p_start + flash0_start)
-                app_offset = hex(p_start)
-                app_size = hex(p_size)
-                if self.no_spe:
-                    self.part_info.APP_START = app_start
-                    self.part_info.APP_OFFSET = app_offset
-                    self.part_info.APP_SIZE = app_size
-                else:
-                    self.part_info.NS_APP_START = app_start
-                    self.part_info.NS_APP_OFFSET = app_offset
-                    self.part_info.NS_APP_SIZE = app_size
+        if slot2_partition:
+            app_label = "app_partition" if self.no_spe else "nspe_partition"
+            attr_prefix = "APP" if self.no_spe else "NS_APP"
+            self._parse_partition(
+                flash0, app_label, flash0_start, "nspe/app", attr_prefix
+            )
         # split flash image in slot2 image trailer
-        slot2_trailer = utils_get_node_by_lable(flash0, "slot2_trailer")
-        if slot2_trailer:
-            ret, slot2_trailer_start, slot2_trailer_size = utils_get_node_property_reg(
-                slot2_trailer
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing slot2_trailer addr, size failed")
-            self.debug_print(
-                f"slot2_trailer_start = {hex(slot2_trailer_start)}, "
-                f"slot2_trailer_size = {hex(slot2_trailer_size)}"
-            )
-            self.part_info.SLOT2_TRAILER_START = hex(slot2_trailer_start + flash0_start)
-            self.part_info.SLOT2_TRAILER_OFFSET = hex(slot2_trailer_start)
-            self.part_info.SLOT2_TRAILER_SIZE = hex(slot2_trailer_size)
+        self._parse_partition(
+            flash0, "slot2_trailer", flash0_start, "slot2_trailer", "SLOT2_TRAILER"
+        )
         # NSPE or APP STAGING from slot3_partition
-        slot3_partition = utils_get_node_by_lable(flash0, "slot3_partition")
-        if slot3_partition:
-            ret, p_staging_start, p_staging_size = utils_get_node_property_reg(
-                slot3_partition
+        if self.no_spe:
+            self._parse_partition(
+                flash0,
+                "slot3_partition",
+                flash0_start,
+                "nspe/app staging",
+                "EXT_FLASH_APP_STAGING",
             )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"nspe/app staging_start = {hex(p_staging_start)}, "
-                    f"nspe/app staging_size = {hex(p_staging_size)}"
-                )
-                staging_start = hex(p_staging_start + flash0_start)
-                staging_offset = hex(p_staging_start)
-                staging_size = hex(p_staging_size)
-                if self.no_spe:
-                    self.part_info.EXT_FLASH_APP_STAGING_START = staging_start
-                    self.part_info.EXT_FLASH_APP_STAGING_OFFSET = staging_offset
-                    self.part_info.EXT_FLASH_APP_STAGING_SIZE = staging_size
-                else:
-                    self.part_info.EXT_FLASH_NSPE_STAGING_START = staging_start
-                    self.part_info.EXT_FLASH_NSPE_STAGING_OFFSET = staging_offset
-                    self.part_info.EXT_FLASH_NSPE_STAGING_SIZE = staging_size
+        else:
+            self._parse_partition(
+                flash0,
+                "slot3_partition",
+                flash0_start,
+                "nspe/app staging",
+                "EXT_FLASH_NSPE_STAGING",
+            )
         if not self.merge_spe_nspe:
-            spe_partition = utils_get_node_by_lable(flash0, "spe_partition")
-            if spe_partition:
-                ret, spe_start, spe_size = utils_get_node_property_reg(spe_partition)
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"spe_start = {hex(spe_start)}, " f"spe_size = {hex(spe_size)}"
-                    )
-                    self.part_info.SPE_START = hex(spe_start + flash0_start)
-                    self.part_info.SPE_OFFSET = hex(spe_start)
-                    self.part_info.SPE_SIZE = hex(spe_size)
-            nspe_partition = utils_get_node_by_lable(flash0, "nspe_partition")
-            if nspe_partition:
-                ret, nspe_start, nspe_size = utils_get_node_property_reg(nspe_partition)
-                if ret == ST_PASS:
-                    self.debug_print(
-                        f"nspe_start = {hex(nspe_start)}, "
-                        f"nspe_size = {hex(nspe_size)}"
-                    )
-                    self.part_info.NS_APP_START = hex(nspe_start + flash0_start)
-                    self.part_info.NS_APP_OFFSET = hex(nspe_start)
-                    self.part_info.NS_APP_SIZE = hex(nspe_size)
-            app_partition = utils_get_node_by_lable(flash0, "app_partition")
-            if app_partition:
-                ret_app, app_start, app_size = utils_get_node_property_reg(
-                    app_partition
-                )
-                if ret_app == ST_PASS:
-                    self.debug_print(
-                        f"app_start = {hex(app_start)}, " f"app_size = {hex(app_size)}"
-                    )
-                    self.part_info.APP_START = hex(app_start + flash0_start)
-                    self.part_info.APP_OFFSET = hex(app_start)
-                    self.part_info.APP_SIZE = hex(app_size)
-        # settings data from storage_partition
-        storage_partition = utils_get_node_by_lable(flash0, "storage_partition")
-        if storage_partition:
-            ret, storage_data_start, storage_data_size = utils_get_node_property_reg(
-                storage_partition
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing storage_partition failed")
-            self.debug_print(
-                f"storage_data_start = {hex(storage_data_start)}, "
-                f"storage_data_size = {hex(storage_data_size)}"
-            )
-            self.part_info.STORAGE_DATA_START = hex(storage_data_start + flash0_start)
-            self.part_info.STORAGE_DATA_OFFSET = hex(storage_data_start)
-            self.part_info.STORAGE_DATA_SIZE = hex(storage_data_size)
-        # factory data from factory_partition
-        factory_data_partition = utils_get_node_by_lable(flash0, "factory_partition")
-        if factory_data_partition:
-            ret, factory_data_start, factory_data_size = utils_get_node_property_reg(
-                factory_data_partition
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing factory_partition failed")
-            self.debug_print(
-                f"factory_data_start = {hex(factory_data_start)}, "
-                f"factory_data_size = {hex(factory_data_size)}"
-            )
-            self.part_info.FACTORY_DATA_START = hex(factory_data_start + flash0_start)
-            self.part_info.FACTORY_DATA_OFFSET = hex(factory_data_start)
-            self.part_info.FACTORY_DATA_SIZE = hex(factory_data_size)
+            self._parse_known_partition(flash0, "spe_partition", flash0_start)
+            self._parse_known_partition(flash0, "nspe_partition", flash0_start)
+            self._parse_known_partition(flash0, "app_partition", flash0_start)
+        # settings and factory data from storage_partition and factory_partition
+        self._parse_storage_and_factory(flash0, flash0_start)
         if self.part_info.PLATFORM_FAMILY not in ("atm33", "atm34"):
             # erase block size from erase-block-size
             erase_block_size = flash0.props.get("erase-block-size", "Not found")
@@ -1032,90 +827,29 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
         self.part_info.FLASH_SIZE = hex(flash0_size)
         self.part_info.FLASH_TOTAL = hex(flash0_size)
         # MCUBOOT from boot_partition
-        boot_partition = utils_get_node_by_lable(flash0, "boot_partition")
-        if boot_partition:
-            ret, mcuboot_start, mcuboot_size = utils_get_node_property_reg(
-                boot_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"mcuboot_start = {hex(mcuboot_start)}, "
-                    f"mcuboot_size = {hex(mcuboot_size)}"
-                )
-                self.part_info.MCUBOOT_START = hex(mcuboot_start + flash0_start)
-                self.part_info.MCUBOOT_OFFSET = hex(mcuboot_start)
-                self.part_info.MCUBOOT_SIZE = hex(mcuboot_size)
+        self._parse_partition(
+            flash0, "boot_partition", flash0_start, "mcuboot", "MCUBOOT"
+        )
         # MCUBOOT_SCRATCH from scratch_partition
-        scratch_partition = utils_get_node_by_lable(flash0, "scratch_partition")
-        if scratch_partition:
-            ret, scratch_start, scratch_size = utils_get_node_property_reg(
-                scratch_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"rram0 scratch_start = {hex(scratch_start)}, "
-                    f"scratch_size = {hex(scratch_size)}"
-                )
-                self.part_info.MCUBOOT_SCRATCH_START = hex(scratch_start + flash0_start)
-                self.part_info.MCUBOOT_SCRATCH_OFFSET = hex(scratch_start)
-                self.part_info.MCUBOOT_SCRATCH_SIZE = hex(scratch_size)
+        self._parse_partition(
+            flash0,
+            "scratch_partition",
+            flash0_start,
+            "rram0 scratch",
+            "MCUBOOT_SCRATCH",
+        )
         # PRIMARY image from slot0_partition
-        slot0_partition = utils_get_node_by_lable(flash0, "slot0_partition")
-        if not slot0_partition:
+        found, _, _ = self._parse_partition(
+            flash0, "slot0_partition", flash0_start, "primary", "PRIMARY_IMG"
+        )
+        if not found:
             return
-        ret, primary_start, primary_size = utils_get_node_property_reg(slot0_partition)
-        if ret == ST_PASS:
-            self.debug_print(
-                f"primary_start = {hex(primary_start)}, "
-                f"primary_size = {hex(primary_size)}"
-            )
-            self.part_info.PRIMARY_IMG_START = hex(primary_start + flash0_start)
-            self.part_info.PRIMARY_IMG_OFFSET = hex(primary_start)
-            self.part_info.PRIMARY_IMG_SIZE = hex(primary_size)
         # OTA_STAGING from slot1_partition
-        slot1_partition = utils_get_node_by_lable(flash0, "slot1_partition")
-        if slot1_partition:
-            ret, ota_staging_start, ota_staging_size = utils_get_node_property_reg(
-                slot1_partition
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"ota_staging_start = {hex(ota_staging_start)}, "
-                    f"ota_staging_size = {hex(ota_staging_size)}"
-                )
-                self.part_info.OTA_STAGING_START = hex(ota_staging_start + flash0_start)
-                self.part_info.OTA_STAGING_OFFSET = hex(ota_staging_start)
-                self.part_info.OTA_STAGING_SIZE = hex(ota_staging_size)
-        # settings data from storage_partition
-        storage_partition = utils_get_node_by_lable(flash0, "storage_partition")
-        if storage_partition:
-            ret, storage_data_start, storage_data_size = utils_get_node_property_reg(
-                storage_partition
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing rram storage failed")
-            self.debug_print(
-                f"storage_data_start = {hex(storage_data_start)}, "
-                f"storage_data_size = {hex(storage_data_size)}"
-            )
-            self.part_info.STORAGE_DATA_START = hex(storage_data_start + flash0_start)
-            self.part_info.STORAGE_DATA_OFFSET = hex(storage_data_start)
-            self.part_info.STORAGE_DATA_SIZE = hex(storage_data_size)
-        # factory data from factory_partition
-        factory_data_partition = utils_get_node_by_lable(flash0, "factory_partition")
-        if factory_data_partition:
-            ret, factory_data_start, factory_data_size = utils_get_node_property_reg(
-                factory_data_partition
-            )
-            if ret == ST_ERROR:
-                log_and_exit("Parsing flash factory data failed")
-            self.debug_print(
-                f"factory_data_start = {hex(factory_data_start)}, "
-                f"factory_data_size = {hex(factory_data_size)}"
-            )
-            self.part_info.FACTORY_DATA_START = hex(factory_data_start + flash0_start)
-            self.part_info.FACTORY_DATA_OFFSET = hex(factory_data_start)
-            self.part_info.FACTORY_DATA_SIZE = hex(factory_data_size)
+        self._parse_partition(
+            flash0, "slot1_partition", flash0_start, "ota_staging", "OTA_STAGING"
+        )
+        # settings and factory data from storage_partition and factory_partition
+        self._parse_storage_and_factory(flash0, flash0_start)
         # erase block size from erase-block-size
         erase_block_size = flash0.props.get("erase-block-size", "Not found")
         if erase_block_size:
@@ -1125,73 +859,51 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
 
     def parsing_sec_jrnl_and_key(self):
         """Parse Secure Journal and Key"""
-        sec_jrnl = utils_get_node_by_lable(self.dt, "sec_jrnl")
-        if sec_jrnl:
-            ret, sec_jrnl_start, sec_jrnl_size = utils_get_node_property_reg(sec_jrnl)
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"sec_jrnl_start = {hex(sec_jrnl_start)}, "
-                    f"sec_jrnl_size = {hex(sec_jrnl_size)}"
-                )
-            self.part_info.SEC_JRNL_START = hex(sec_jrnl_start)
-            self.part_info.SEC_JRNL_OFFSET = hex(sec_jrnl_start - SEC_BASE_ADDR)
-            self.part_info.SEC_JRNL_SIZE = hex(sec_jrnl_size)
-
-        sec_cntr = utils_get_node_by_lable(self.dt, "sec_cntr")
-        if sec_cntr:
-            ret, sec_cntr_start, sec_cntr_size = utils_get_node_property_reg(sec_cntr)
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"sec_cntr_start = {hex(sec_cntr_start)}, "
-                    f"sec_cntr_size = {hex(sec_cntr_size)}"
-                )
-            self.part_info.SEC_CNTRS_START = hex(sec_cntr_start)
-            self.part_info.SEC_CNTRS_OFFSET = hex(sec_cntr_start - SEC_BASE_ADDR)
-            self.part_info.SEC_CNTRS_SIZE = hex(sec_cntr_size)
-
-        sec_sideload_keys = utils_get_node_by_lable(self.dt, "sec_sideload_keys")
-        if sec_sideload_keys:
-            ret, sec_sideload_keys_start, sec_sideload_keys_size = (
-                utils_get_node_property_reg(sec_sideload_keys)
-            )
-            if ret == ST_PASS:
-                self.debug_print(
-                    f"sec_sideload_keys_start = {hex(sec_sideload_keys_start)}, "
-                    f"sec_sideload_keys_size = {hex(sec_sideload_keys_size)}"
-                )
-            self.part_info.SEC_SIDELOAD_KEYS_START = hex(sec_sideload_keys_start)
-            self.part_info.SEC_SIDELOAD_KEYS_OFFSET = hex(
-                sec_sideload_keys_start - SEC_BASE_ADDR
-            )
-            self.part_info.SEC_SIDELOAD_KEYS_SIZE = hex(sec_sideload_keys_size)
+        # sec_jrnl - uses secure_offset since start is already absolute secure address
+        self._parse_partition(
+            self.dt, "sec_jrnl", 0, "sec_jrnl", "SEC_JRNL", secure_offset=True
+        )
+        # sec_cntr
+        self._parse_partition(
+            self.dt, "sec_cntr", 0, "sec_cntr", "SEC_CNTRS", secure_offset=True
+        )
+        # sec_sideload_keys
+        self._parse_partition(
+            self.dt,
+            "sec_sideload_keys",
+            0,
+            "sec_sideload_keys",
+            "SEC_SIDELOAD_KEYS",
+            secure_offset=True,
+        )
 
     def summary(self):
         """Calculate Total RRAM start and size"""
-        try:
-            if hasattr(self.part_info, "RRAM_START") and hasattr(
-                self.part_info, "RRAM_SIZE"
-            ):
-                self.part_info.TOTAL_RRAM_SIZE = int(
-                    self.part_info.RRAM_START, 16
-                ) + int(self.part_info.RRAM_SIZE, 16)
-                if hasattr(self.part_info, "SEC_JRNL_SIZE"):
-                    self.part_info.TOTAL_RRAM_SIZE += int(
-                        self.part_info.SEC_JRNL_SIZE, 16
-                    )
-                if hasattr(self.part_info, "SEC_CNTRS_SIZE"):
-                    self.part_info.TOTAL_RRAM_SIZE += int(
-                        self.part_info.SEC_CNTRS_SIZE, 16
-                    )
-                if hasattr(self.part_info, "SEC_SIDELOAD_KEYS_SIZE"):
-                    self.part_info.TOTAL_RRAM_SIZE += int(
-                        self.part_info.SEC_SIDELOAD_KEYS_SIZE, 16
-                    )
+        if not self.part_info.RRAM_START or not self.part_info.RRAM_SIZE:
+            return
 
-                self.part_info.TOTAL_RRAM_SIZE = hex(self.part_info.TOTAL_RRAM_SIZE)
-                self.part_info.TOTAL_RRAM_START = self.part_info.RRAM_START
-        except TypeError:
-            # ignore
-            pass
+        # TOTAL_RRAM_SIZE = RRAM_SIZE + secure region sizes
+        # Only set TOTAL_RRAM when we have secure region info (from SPE build)
+        # This allows the merge to pick up correct values from SPE partition_info
+        has_secure_regions = (
+            self.part_info.SEC_JRNL_SIZE
+            or self.part_info.SEC_CNTRS_SIZE
+            or self.part_info.SEC_SIDELOAD_KEYS_SIZE
+        )
+
+        if not has_secure_regions:
+            return
+
+        total_size = int(self.part_info.RRAM_SIZE, 16)
+        if self.part_info.SEC_JRNL_SIZE:
+            total_size += int(self.part_info.SEC_JRNL_SIZE, 16)
+        if self.part_info.SEC_CNTRS_SIZE:
+            total_size += int(self.part_info.SEC_CNTRS_SIZE, 16)
+        if self.part_info.SEC_SIDELOAD_KEYS_SIZE:
+            total_size += int(self.part_info.SEC_SIDELOAD_KEYS_SIZE, 16)
+
+        self.part_info.TOTAL_RRAM_SIZE = hex(total_size)
+        self.part_info.TOTAL_RRAM_START = self.part_info.RRAM_START
 
 
 def main():

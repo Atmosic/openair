@@ -5,14 +5,22 @@
  *
  * @brief Peripheral module clock and reset control
  *
- * Copyright (C) Atmosic 2020-2025
+ * Copyright (C) Atmosic 2020-2026
  *
  ******************************************************************************
  */
 
 #pragma once
 
+#include <stdint.h>
+#include <stddef.h>
+#include "cmsis_compiler.h"
+#include "base_addr.h"
 #include "at_apb_wrpr_pins_regs_core_macro.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define WRPR_CTRL__CLK_DISABLE	0x00000000U
 #define WRPR_CTRL__CLK_ENABLE	0x00000001U
@@ -152,16 +160,38 @@ module_to_ctrl(volatile const void *addr)
 /*
  * Compute signal macro (see at_pinmux.h)
  */
-#define PIN_SIG(pin, sig) ({ \
-    STATIC_ASSERT((1 << pin) & sig ## __MASK, "Pin does not support signal"); \
+#define PIN_SIG_PAR(pin, sig, par) ({ \
+    STATIC_ASSERT((1UL << pin) & sig ## __MASK ## par, \
+	"Pin does not support signal"); \
     PINMUX_ ## sig; \
 })
+#define PIN_SIG(pin, sig) PIN_SIG_PAR(pin, sig,)
 
 /*
  * Assign signal to pin
  */
-#define PIN_SELECT(pin, sig) \
-    PIN_SEL(pin, MODIFY)(CMSDK_WRPR0_NONSECURE->PIN2REG(pin), PIN_SIG(pin, sig))
+#define _PIN_SELECT(pin, sig, ...) PIN_SELECT_IMPL(pin, sig, ##__VA_ARGS__, 2, 1)
+#define PIN_SELECT_IMPL(pin, sig, par, n, ...) PIN_SELECT_##n(pin, sig, par)
+#define PIN_SELECT_1(pin, sig, par) \
+    PIN_SEL(pin, MODIFY)(CMSDK_WRPR0_NONSECURE->PIN2REG(pin), PIN_SIG_PAR(pin, sig,))
+#define PIN_SELECT_2(pin, sig, par) \
+    PIN_SEL(pin, MODIFY)(CMSDK_WRPR0_NONSECURE->PIN2REG(pin), PIN_SIG_PAR(pin, sig, _ ## par))
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+#include <zephyr/devicetree.h>
+#if !DT_NODE_HAS_PROP(DT_PATH(zephyr_user), pin_arrangement)
+#error "pin-arrangement property not found in device tree"
+#endif
+#define _PIN_ARR DT_STRING_UPPER_TOKEN(DT_PATH(zephyr_user), pin_arrangement)
+#elif defined(CHIP_PAR) /* CONFIG_SOC_FAMILY_ATM */
+#define _PIN_ARR CHIP_PAR
+#endif /* CONFIG_SOC_FAMILY_ATM */
+
+#ifdef _PIN_ARR
+#define PIN_SELECT(pin, sig) _PIN_SELECT(pin, sig, _PIN_ARR)
+#else
+#define PIN_SELECT(pin, sig) _PIN_SELECT(pin, sig)
+#endif
 
 #ifndef PINMUX_ASSERT
 #define PINMUX_ASSERT STATIC_ASSERT
@@ -235,3 +265,7 @@ module_to_ctrl(volatile const void *addr)
  */
 #define PIN2GPIO(pin) _PIN2GPIO(pin, GPIO)
 #define _PIN2GPIO(pin, sig) P ## pin ## _ ## sig
+
+#ifdef __cplusplus
+}
+#endif

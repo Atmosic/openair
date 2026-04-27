@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Flash Driver
  *
- * Copyright (C) Atmosic 2018-2025
+ * Copyright (C) Atmosic 2018-2026
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -52,8 +52,8 @@ LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
 #endif
 
 #define CTR_FROM_FIXED_PARTITION(node_id) \
-	COND_CODE_1(DT_NODE_EXISTS(DT_MEM_FROM_FIXED_PARTITION(DT_GPARENT(node_id))), \
-		    (DT_PARENT(DT_MEM_FROM_FIXED_PARTITION(DT_GPARENT(node_id)))), \
+	COND_CODE_1(DT_NODE_EXISTS(DT_MEM_FROM_FIXED_SUBPARTITION(node_id)), \
+		    (DT_PARENT(DT_MEM_FROM_FIXED_SUBPARTITION(node_id))), \
 		    (COND_CODE_1(DT_NODE_EXISTS(DT_MEM_FROM_FIXED_PARTITION(node_id)), \
 				 (DT_PARENT(DT_MEM_FROM_FIXED_PARTITION(node_id))), \
 				 (DT_GPARENT(node_id)))))
@@ -414,10 +414,8 @@ static bool flash_driver_give(void)
 
 #define QSPI_CLEAR_INTERRUPT()                                                                     \
 	do {                                                                                       \
-		QSPI_REMOTE_AHB_SETUP_4__CLEAR_INTRP__SET(                                         \
-			CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_4);                                 \
-		QSPI_REMOTE_AHB_SETUP_4__CLEAR_INTRP__CLR(                                         \
-			CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_4);                                 \
+		QSPI_REMOTE_AHB_SETUP_4__CLEAR_INTRP__SET(CMSDK_QSPI->REMOTE_AHB_SETUP_4);         \
+		QSPI_REMOTE_AHB_SETUP_4__CLEAR_INTRP__CLR(CMSDK_QSPI->REMOTE_AHB_SETUP_4);         \
 	} while (0)
 
 static uint8_t break_in_suspend_us;
@@ -479,10 +477,8 @@ static void external_flash_enable_breakin(void)
 	QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__SET(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
 	QSPI_REMOTE_AHB_SETUP_4__MASK_INTRP__SET(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
 	uint32_t suspend_time = break_in_suspend_us * atm_bp_clock_get() / 1000000;
-	QSPI_REMOTE_AHB_SETUP_9__ESL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9,
-					     suspend_time);
-	QSPI_REMOTE_AHB_SETUP_9__PSL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9,
-					     suspend_time);
+	QSPI_REMOTE_AHB_SETUP_9__ESL__MODIFY(CMSDK_QSPI->REMOTE_AHB_SETUP_9, suspend_time);
+	QSPI_REMOTE_AHB_SETUP_9__PSL__MODIFY(CMSDK_QSPI->REMOTE_AHB_SETUP_9, suspend_time);
 }
 
 static void external_flash_disable_breakin(void)
@@ -493,8 +489,8 @@ static void external_flash_disable_breakin(void)
 	}
 	QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__CLR(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
 	QSPI_REMOTE_AHB_SETUP_4__MASK_INTRP__CLR(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
-	QSPI_REMOTE_AHB_SETUP_9__ESL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9, 0);
-	QSPI_REMOTE_AHB_SETUP_9__PSL__MODIFY(CMSDK_QSPI_NONSECURE->REMOTE_AHB_SETUP_9, 0);
+	QSPI_REMOTE_AHB_SETUP_9__ESL__MODIFY(CMSDK_QSPI->REMOTE_AHB_SETUP_9, 0);
+	QSPI_REMOTE_AHB_SETUP_9__PSL__MODIFY(CMSDK_QSPI->REMOTE_AHB_SETUP_9, 0);
 #ifdef CONFIG_PM
 	UNLOCK_FLASH_PM();
 	// Clear BP frequency requirement
@@ -503,7 +499,7 @@ static void external_flash_disable_breakin(void)
 }
 
 #ifdef CONFIG_PM
-static rep_vec_err_t flash_prevent_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
+__ramfunc static rep_vec_err_t flash_prevent_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 {
 	// If flash breakin is active, maintain the BP frequency from when breakin started
 	if (flash_min_freq && *min_freq < flash_min_freq) {
@@ -716,15 +712,23 @@ static int flash_write_page(struct device const *dev, off_t addr,
 
 	memcpy((void *)pp_ram_addr, buffer, length);
 	if (length == PAGE_SIZE) {
-		CMSDK_QSPI_NONSECURE->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(0);
+		CMSDK_QSPI->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(0);
 	} else {
-		CMSDK_QSPI_NONSECURE->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(length);
+		CMSDK_QSPI->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(length);
 	}
 
 #define MAGIC_PP_WRITE_ADDR (DT_REG_ADDR(SOC_NV_FLASH_NODE) + 0x00FFFFF8)
 	*(volatile uint32_t *)MAGIC_PP_WRITE_ADDR = addr;
 
+#if CONFIG_SOC_FLASH_ATM_USE_WRITE_BREAK_IN
 	int err = SYNC_FLASH_BREAKIN("Write 1 page", addr);
+#else
+	int err = 0;
+	// Busy wait in this RAM function instead of allowing breakin on writes
+	while (CMSDK_QSPI->REMOTE_STATUS) {
+		__NOP();
+	}
+#endif
 
 	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
 	return err;
@@ -796,7 +800,7 @@ static int flash_write_pages(struct device const *dev, off_t addr, size_t length
 			((uintptr_t)buffer >> QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__WIDTH));
 	uint8_t copy_buf[precopy ? PAGE_SIZE : 0];
 	int err = 0;
-#ifdef __QSPI_BURST_PP_CTRL_MACRO__
+#if defined(__QSPI_BURST_PP_CTRL_MACRO__) && CONFIG_SOC_FLASH_ATM_USE_WRITE_BREAK_IN
 	ENABLE_FLASH_BREAKIN();
 #endif
 #ifdef INTEGRATE_FLASH_WITH_MGR
@@ -843,7 +847,7 @@ static int flash_write_pages(struct device const *dev, off_t addr, size_t length
 	atm_mac_mgr_complete_op(atm_mac_mgr_get_iface(), ATM_MAC_MGR_PROT_FLASH);
 	atm_mac_unlock();
 #endif
-#ifdef __QSPI_BURST_PP_CTRL_MACRO__
+#if defined(__QSPI_BURST_PP_CTRL_MACRO__) && CONFIG_SOC_FLASH_ATM_USE_WRITE_BREAK_IN
 	DISABLE_FLASH_BREAKIN();
 #endif
 	return err;
@@ -1550,7 +1554,7 @@ static struct flash_driver_api const flash_atm_api = {
 };
 
 #ifdef FLASH_PD
-static void notify_pm_state_entry(enum pm_state state)
+__ramfunc static void notify_pm_state_entry(enum pm_state state)
 {
 	if (state >= PM_STATE_SUSPEND_TO_RAM) {
 		// pull-up before switching to low power state
@@ -1568,7 +1572,7 @@ static void notify_pm_state_entry(enum pm_state state)
 	} WRPR_CTRL_POP();
 }
 
-static void notify_pm_state_exit(enum pm_state state)
+__ramfunc static void notify_pm_state_exit(enum pm_state state)
 {
 	if (state >= PM_STATE_SUSPEND_TO_RAM) {
 		// clear pull-up before switching to active state

@@ -24,7 +24,7 @@
 #include "at_pinmux.h"
 #include "atm_bp_clock.h"
 #define PMU_INTERNAL_GUARD
-#include "pmu_internal.h"
+#include "pmu.ih"
 #include "pinmux.h"
 
 #ifdef CONFIG_SOC_FAMILY_ATM

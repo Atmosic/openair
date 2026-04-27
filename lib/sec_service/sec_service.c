@@ -5,7 +5,7 @@
  *
  * @brief Secure services
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  ******************************************************************************
  */
@@ -150,9 +150,6 @@ static void rd_protect_mcuboot(void)
 #endif // MCUBOOT_RD_PROTECT
 
 #ifdef CONFIG_ATM_PROT
-#define PART_ADDR(label)                                                                           \
-	(DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(label))) +                           \
-	 DT_REG_ADDR(DT_NODELABEL(label)))
 #define PART_OFFSET(label) (DT_REG_ADDR(DT_NODELABEL(label)))
 #if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
 #if DT_NODE_EXISTS(DT_NODELABEL(rram_controller)) &&                                               \

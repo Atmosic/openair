@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 common:
   min_flash: 65
   min_ram: 36
@@ -9,7 +13,5 @@ common:
 tests:
   tests.crypto.mbedtls.atm:
     sysbuild: true
-    tags:
-      - no_mcuboot
     extra_configs:
-      - CONFIG_TEST_USERSPACE=n
+      - CONFIG_TEST_USERSPACE=y

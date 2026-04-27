@@ -5,7 +5,9 @@
  *
  * @brief Platform control OTA For Multimode Consumer Tag
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -130,11 +132,19 @@ static struct mgmt_callback mgmt_event_callback = {
 static void confirm_img_delay_work_cb(struct k_work *work)
 {
 	/* System stable for IMAGE_CONFIRM_DELAY_SEC seconds, confirm image to prevent revert */
-	int err = boot_write_img_confirmed();
-	if (err) {
-		LOG_ERR("Failed to confirm image: %d", err);
-	} else {
-		LOG_INF("Image confirmed successfully");
+	for (int i = 0; i < CONFIG_UPDATEABLE_IMAGE_NUMBER; i++) {
+		if (mcuboot_swap_type_multi(i) != BOOT_SWAP_TYPE_REVERT) {
+			continue;
+		}
+
+		LOG_INF("Image%d needs confirmation to prevent revert", i);
+
+		int err = boot_write_img_confirmed_multi(i);
+		if (err) {
+			LOG_ERR("Failed to confirm image%d: %d", i, err);
+		} else {
+			LOG_INF("Image%d confirmed successfully", i);
+		}
 	}
 }
 
@@ -144,10 +154,7 @@ static K_WORK_DELAYABLE_DEFINE(confirm_img_delay_work, confirm_img_delay_work_cb
 bool platform_ctrl_ota_init(void)
 {
 #ifndef CONFIG_MCUBOOT_BOOTLOADER_MODE_OVERWRITE_ONLY
-	if (!boot_is_img_confirmed()) {
-		/* Schedule confirmation after IMAGE_CONFIRM_DELAY_SEC seconds */
-		k_work_schedule(&confirm_img_delay_work, K_SECONDS(IMAGE_CONFIRM_DELAY_SEC));
-	}
+	k_work_schedule(&confirm_img_delay_work, K_SECONDS(IMAGE_CONFIRM_DELAY_SEC));
 #endif
 	mgmt_callback_register(&mgmt_event_callback);
 

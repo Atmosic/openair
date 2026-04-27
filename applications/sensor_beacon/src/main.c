@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -8,23 +8,20 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
-
+#include <zephyr/bluetooth/bluetooth.h>
+#if defined(CONFIG_BT_MAX_CONN) && (CONFIG_BT_MAX_CONN > 1)
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/hci.h>
+#include <zephyr/bluetooth/addr.h>
+#include <zephyr/bluetooth/gatt.h>
+#endif
 #include "sensor_beacon.h"
+#include "at_gatt.h"
+#include "at_cmd_manager.h"
 #include "led_button_ctrl.h"
 #include "reset.h"
-
 #ifdef CONFIG_PM
 #include "power.h"
-#endif
-
-#ifdef CONFIG_WURX
-#include <zephyr/logging/log_ctrl.h>
-#include "wurx.h"
-#ifdef CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL
-STATIC_ASSERT(
-	false,
-	"CONFIG_WURX and CONFIG_SENSOR_BEACON_BUTTON_POWER_CONTROL cannot both be set together.");
-#endif
 #endif
 
 LOG_MODULE_REGISTER(main, CONFIG_SENSOR_BEACON_LOG_LEVEL);
@@ -33,14 +30,8 @@ LOG_MODULE_REGISTER(main, CONFIG_SENSOR_BEACON_LOG_LEVEL);
 #define WDT_MIN_WINDOW_MS 0
 #define WDT_MAX_WINDOW_MS 5000
 
-static const struct device *const wdog_dev = DEVICE_DT_GET(DT_NODELABEL(wdog0));
+static const struct device *const wdog_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 static int wdt_channel_id;
-
-#ifdef CONFIG_WURX
-static const struct device *wurx_dev = NULL;
-static struct k_timer wurx_adv_timer;
-static struct k_work hibernate_work;
-#endif
 
 #ifdef CONFIG_PM
 static void wdog_poke(enum pm_state state)
@@ -54,34 +45,71 @@ static struct pm_notifier notifier = {
 };
 #endif
 
-#ifdef CONFIG_WURX
-static void hibernate_work_handler(struct k_work *work)
+/**
+ * @brief MTU exchange completion callback
+ */
+static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err,
+			    struct bt_gatt_exchange_params *params)
 {
-	LOG_INF("Stopping sensor beacon before entering hibernation");
+	if (err) {
+		LOG_WRN("MTU exchange failed (err 0x%02x)", err);
+	} else {
+		uint16_t mtu = bt_gatt_get_mtu(conn);
+		LOG_INF("MTU exchange successful: %u bytes", mtu);
+	}
+}
 
-	/* Stop sensor beacon synchronously */
-	int ret = sensor_beacon_stop();
-	if (ret) {
-		LOG_ERR("Failed to stop sensor beacon: %d", ret);
+static struct bt_gatt_exchange_params mtu_exchange_params = {.func = mtu_exchange_cb};
+
+#if defined(CONFIG_BT_MAX_CONN) && (CONFIG_BT_MAX_CONN > 1)
+/**
+ * @brief Bluetooth connection callback
+ *
+ * Automatically locks device on new connections to prevent authentication bypass vulnerability.
+ */
+static void connected_cb(struct bt_conn *conn, uint8_t err)
+{
+	if (err) {
+		LOG_ERR("BLE connection failed (err 0x%02x)", err);
+		return;
 	}
 
-#ifdef CONFIG_PM
-	LOG_INF("Entering hibernation");
-	LOG_INF("Waiting for WuRx wake-up signal...");
+	char addr[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+	LOG_INF("BLE connected: %s", addr);
 
-	/* Enter hibernation - device will wake up on WURX signal */
-	sensor_beacon_unlock_soft_off_state();
-#endif
+	/* Initiate MTU exchange for AT commands */
+	int ret = bt_gatt_exchange_mtu(conn, &mtu_exchange_params);
+	if (ret) {
+		LOG_WRN("MTU exchange request failed (err %d), using default MTU", ret);
+	} else {
+		LOG_INF("MTU exchange initiated (current: %u bytes)", bt_gatt_get_mtu(conn));
+	}
+
+	/* Force device to locked state on new connection */
+	at_cmd_connection_event(true);
+	LOG_INF("Device automatically locked for new BLE session");
 }
 
-static void wurx_adv_timer_handler(struct k_timer *timer)
+/**
+ * @brief Bluetooth disconnection callback
+ */
+static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 {
-	LOG_INF("Initial advertising period complete");
-
-	/* Submit work to stop beacon and enter hibernation from thread context */
-	k_work_submit(&hibernate_work);
+	char addr[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+	LOG_INF("BLE disconnected: %s (reason 0x%02x %s)", addr, reason, bt_hci_err_to_str(reason));
 }
-#endif
+
+/**
+ * @brief Bluetooth connection callbacks
+ */
+BT_CONN_CB_DEFINE(sensor_beacon_conn_cb) = {
+	.connected = connected_cb,
+	.disconnected = disconnected_cb,
+};
+
+#endif /* CONFIG_BT_MAX_CONN > 1 */
 
 int main(void)
 {
@@ -127,16 +155,21 @@ int main(void)
 		return 1;
 	}
 
-#ifdef CONFIG_WURX
-	/* Get WURX device */
-	wurx_dev = DEVICE_DT_GET(DT_NODELABEL(wurx));
-	if (!device_is_ready(wurx_dev)) {
-		LOG_ERR("WuRx device not ready");
-		return -ENODEV;
+	/* Initialize Bluetooth subsystem early */
+	ret = bt_enable(NULL);
+	if (ret) {
+		LOG_ERR("Bluetooth init failed: %d", ret);
+		return ret;
 	}
+	LOG_INF("Bluetooth initialized");
 
-	LOG_INF("WuRx device initialized");
-#endif
+	/* Initialize AT command manager */
+	ret = at_cmd_manager_init();
+	if (ret) {
+		LOG_ERR("AT command manager init failed: %" PRId32, ret);
+		return ret;
+	}
+	LOG_INF("AT command support initialized");
 
 	/* Initialize sensor beacon */
 	ret = sensor_beacon_init();
@@ -151,21 +184,6 @@ int main(void)
 
 	/* Set the device to ON state */
 	led_button_ctrl_set_device_state(DEVICE_STATE_ON);
-
-#ifdef CONFIG_WURX
-	LOG_INF("WURX mode enabled - advertising for %d ms before hibernation",
-		CONFIG_SENSOR_BEACON_WURX_ACTIVE_ADV_TIME_MS);
-
-	/* Initialize work item for hibernation */
-	k_work_init(&hibernate_work, hibernate_work_handler);
-
-	/* Initialize timer for initial advertising period */
-	k_timer_init(&wurx_adv_timer, wurx_adv_timer_handler, NULL);
-
-	/* Start timer for initial advertising period */
-	k_timer_start(&wurx_adv_timer, K_MSEC(CONFIG_SENSOR_BEACON_WURX_ACTIVE_ADV_TIME_MS),
-		      K_NO_WAIT);
-#endif /* CONFIG_WURX */
 
 #ifdef CONFIG_PM
 	pm_notifier_register(&notifier);

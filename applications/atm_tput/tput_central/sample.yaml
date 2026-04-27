@@ -2,21 +2,55 @@ sample:
   description: BLE throughput sample
   name: BLE throughput sample
 common:
+  sysbuild: true
   harness: console
   harness_config:
     type: one_line
     regex:
-      - "Test Success!"
+      - "Scanning successfully started"
+  tags:
+    - bluetooth
+    - atm_test_with_spe
+    - role_central
 tests:
-  applications.atm_tput_central.atm:
-    sysbuild: true
+  applications.atm_tput.tput_central.atm:
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  applications.atm_tput_central.atm.mcuboot.flash_xip:
+    tags:
+      - mcuboot
+      - flash_xip
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP -DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  applications.atm_tput_central.atm.mcuboot.flash_xip.overwrite:
+    tags:
+      - mcuboot
+      - flash_xip
+      - overwrite
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - mcuboot_CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS=n
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  applications.atm_tput.tput_central.atm.two_dev:
     harness: console
     harness_config:
       type: one_line
       regex:
-        - "Test Success!"
+        - "Test complete"
     tags:
-      - bluetooth
-      - no_mcuboot
+      - two_dev
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_ATM_TPUT_AUTO_TEST=y
+      - CONFIG_ATM_BT_RSSI_THRESHOLD=-70
+      - CONFIG_SHELL=n

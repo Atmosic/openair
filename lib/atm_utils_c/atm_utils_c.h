@@ -5,12 +5,14 @@
  *
  * @brief ATM common utility functions
  *
- * Copyright (C) Atmosic 2022
+ * Copyright (C) Atmosic 2022-2026
  *
  *******************************************************************************
  */
 #pragma once
 
+#include <stdint.h>
+#include <stdbool.h>
 #include "arch.h"
 
 /**
@@ -46,13 +48,14 @@ extern "C" {
 __NONNULL_ALL
 __STATIC_FORCEINLINE uint16_t atm_get_le16(void const *ptr)
 {
-    struct {
+    typedef struct __PACKED {
 	uint16_t val;
-    } __PACKED const *pu16 = ptr;
+    } atm_le16_t;
+    atm_le16_t const *pu16 = (atm_le16_t const *)ptr;
 #if (CPU_LE)
     return pu16->val;
 #else
-    return __REV16(pu16->val);
+    return __REVSH(pu16->val);
 #endif
 }
 
@@ -64,7 +67,7 @@ __STATIC_FORCEINLINE uint16_t atm_get_le16(void const *ptr)
 __NONNULL_ALL
 __STATIC_FORCEINLINE uint32_t atm_get_le24(void const *ptr)
 {
-    uint8_t const volatile *p = ptr;
+    uint8_t const volatile *p = (uint8_t const volatile *)ptr;
     return p[0] | (p[1] << 8) | (p[2] << 16);
 }
 
@@ -76,9 +79,10 @@ __STATIC_FORCEINLINE uint32_t atm_get_le24(void const *ptr)
 __NONNULL_ALL
 __STATIC_FORCEINLINE uint32_t atm_get_le32(void const *ptr)
 {
-    struct {
+    typedef struct __PACKED {
 	uint32_t val;
-    } __PACKED const *pu32 = ptr;
+    } atm_le32_t;
+    atm_le32_t const *pu32 = (atm_le32_t const *)ptr;
 #if (CPU_LE)
     return pu32->val;
 #else
@@ -94,13 +98,14 @@ __STATIC_FORCEINLINE uint32_t atm_get_le32(void const *ptr)
 __NONNULL_ALL
 __STATIC_FORCEINLINE uint16_t atm_get_be16(void const *ptr)
 {
-    struct {
+    typedef struct __PACKED {
 	uint16_t val;
-    } __PACKED const *pu16 = ptr;
+    } atm_be16_t;
+    atm_be16_t const *pu16 = (atm_be16_t const *)ptr;
 #if (!CPU_LE)
     return pu16->val;
 #else
-    return __REV16(pu16->val);
+    return __REVSH(pu16->val);
 #endif
 }
 
@@ -112,7 +117,7 @@ __STATIC_FORCEINLINE uint16_t atm_get_be16(void const *ptr)
 __NONNULL_ALL
 __STATIC_FORCEINLINE uint32_t atm_get_be24(void const *ptr)
 {
-    uint8_t const volatile *p = ptr;
+    uint8_t const volatile *p = (uint8_t const volatile *)ptr;
     return p[2] | (p[1] << 8) | (p[0] << 16);
 }
 
@@ -124,9 +129,10 @@ __STATIC_FORCEINLINE uint32_t atm_get_be24(void const *ptr)
 __NONNULL_ALL
 __STATIC_FORCEINLINE uint32_t atm_get_be32(void const *ptr)
 {
-    struct {
-        uint32_t val;
-    } __PACKED const *pu32 = ptr;
+    typedef struct __PACKED {
+	uint32_t val;
+    } atm_be32_t;
+    atm_be32_t const *pu32 = (atm_be32_t const *)ptr;
 #if (!CPU_LE)
     return pu32->val;
 #else
@@ -143,13 +149,14 @@ __STATIC_FORCEINLINE uint32_t atm_get_be32(void const *ptr)
 __NONNULL(1)
 __STATIC_FORCEINLINE void atm_set_le16(void *ptr, uint16_t value)
 {
-    struct {
+    typedef struct __PACKED {
 	uint16_t val;
-    } __PACKED *pu16 = ptr;
+    } atm_le16_t;
+    atm_le16_t *pu16 = (atm_le16_t *)ptr;
 #if (CPU_LE)
     pu16->val = value;
 #else
-    pu16->val = __REV16(value);
+    pu16->val = __REVSH(value);
 #endif
 }
 
@@ -162,7 +169,7 @@ __STATIC_FORCEINLINE void atm_set_le16(void *ptr, uint16_t value)
 __NONNULL(1)
 __STATIC_FORCEINLINE void atm_set_le24(void *ptr, uint32_t value)
 {
-    uint8_t volatile *p = ptr;
+    uint8_t volatile *p = (uint8_t volatile *)ptr;
     p[0] = value;
     p[1] = value >> 8;
     p[2] = value >> 16;
@@ -177,9 +184,10 @@ __STATIC_FORCEINLINE void atm_set_le24(void *ptr, uint32_t value)
 __NONNULL(1)
 __STATIC_FORCEINLINE void atm_set_le32(void *ptr, uint32_t value)
 {
-    struct {
+    typedef struct __PACKED {
 	uint32_t val;
-    } __PACKED *pu32 = ptr;
+    } atm_le32_t;
+    atm_le32_t *pu32 = (atm_le32_t *)ptr;
 #if (CPU_LE)
     pu32->val = value;
 #else
@@ -196,13 +204,14 @@ __STATIC_FORCEINLINE void atm_set_le32(void *ptr, uint32_t value)
 __NONNULL(1)
 __STATIC_FORCEINLINE void atm_set_be16(void *ptr, uint16_t value)
 {
-    struct {
+    typedef struct __PACKED {
 	uint16_t val;
-    } __PACKED *pu16 = ptr;
+    } atm_be16_t;
+    atm_be16_t *pu16 = (atm_be16_t *)ptr;
 #if (!CPU_LE)
     pu16->val = value;
 #else
-    pu16->val = __REV16(value);
+    pu16->val = __REVSH(value);
 #endif
 }
 
@@ -215,7 +224,7 @@ __STATIC_FORCEINLINE void atm_set_be16(void *ptr, uint16_t value)
 __NONNULL(1)
 __STATIC_FORCEINLINE void atm_set_be24(void *ptr, uint32_t value)
 {
-    uint8_t volatile *p = ptr;
+    uint8_t volatile *p = (uint8_t volatile *)ptr;
     p[2] = value;
     p[1] = value >> 8;
     p[0] = value >> 16;
@@ -230,9 +239,10 @@ __STATIC_FORCEINLINE void atm_set_be24(void *ptr, uint32_t value)
 __NONNULL(1)
 __STATIC_FORCEINLINE void atm_set_be32(void *ptr, uint32_t value)
 {
-    struct {
+    typedef struct __PACKED {
 	uint32_t val;
-    } __PACKED *pu32 = ptr;
+    } atm_be32_t;
+    atm_be32_t *pu32 = (atm_be32_t *)ptr;
 #if (!CPU_LE)
     pu32->val = value;
 #else

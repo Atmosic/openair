@@ -1,0 +1,14 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+common:
+  tags:
+    - drivers
+    - watchdog
+
+tests:
+  tests.drivers.watchdog.wdt_unified_api.atm:
+    sysbuild: true
+    tags:
+      - wdt_unified_api

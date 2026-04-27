@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,9 +35,10 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #ifdef CONFIG_ATM_ATLC
 #include "at_lc_regs_core_macro.h"
 #endif
+#include "vectors.h"
 
 #define PSEQ_INTERNAL_DIRECT_INCLUDE_GUARD
-#include "pseq_internal.h"
+#include "pseq.ih"
 
 /* WURX support */
 bool wurx0_enabled, wurx1_enabled;
@@ -67,12 +68,7 @@ void secure_irq_unlock(unsigned int key);
 #include "hw_cfg.h"
 #include "pmu.h"
 
-#ifdef CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE
-#define IDLE_FOREVER K_TICKS_FOREVER
-#else
-#define IDLE_FOREVER INT_MAX
-#endif
-
+#ifdef CONFIG_DETECT_PULSE_IN_RETENTION
 #ifdef CONFIG_ZTEST
 static bool gpio_pulse_detect_disabled;
 
@@ -85,6 +81,7 @@ void pseq_enable_gpio_pulse_detection(bool enable)
 #else
 #define SHOULD_DETECT_GPIO_PULSE() (true)
 #endif
+#endif /* CONFIG_DETECT_PULSE_IN_RETENTION */
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
 static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
@@ -99,8 +96,19 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 			duration = 0x100;
 		}
 #endif
+#if CONFIG_PM_MAX_SLEEP_DURATION_SEC
+		/* Apply maximum duration cap if configured */
+		uint64_t max_duration = atm_to_lpc(Z_HZ_sec, CONFIG_PM_MAX_SLEEP_DURATION_SEC);
+		if (duration > max_duration) {
+			duration = max_duration;
+		}
+#endif
 	} else {
+#if CONFIG_PM_MAX_SLEEP_DURATION_SEC
+		duration = atm_to_lpc(Z_HZ_sec, CONFIG_PM_MAX_SLEEP_DURATION_SEC);
+#else
 		duration = 0;
+#endif
 	}
 
 #ifdef CONFIG_POWER_OFF_SBRK
@@ -113,7 +121,19 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 #define MAX_TIME_IN_RETAIN (UINT32_MAX / Z_HZ_cyc) * 32000
 	duration = MIN(duration, MAX_TIME_IN_RETAIN);
 
-	pseq_core_config_retain(duration, block_sysram, wurx0_enabled, wurx1_enabled);
+#if defined(CONFIG_ATM_PMU_WDT_ENABLE) && CONFIG_PM_MAX_SLEEP_DURATION_SEC
+	/* Set PMU warning timer relative to actual sleep duration */
+	int64_t offset_lpcycles = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_WDT_PMU_WARN_OFFSET_SEC);
+	uint64_t pmu_wdog_duration = (int64_t)duration + offset_lpcycles;
+	WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
+	{
+		pseq_core_config_soc_off(pmu_wdog_duration);
+	}
+	WRPR_CTRL_POP();
+	pmu_set_pmu_wdog_reset(true);
+#endif
+	pseq_core_config_retain(duration, block_sysram, wurx0_enabled, wurx1_enabled,
+				IS_ENABLED(CONFIG_ATM_PMU_WDT_ENABLE));
 
 #ifdef CONFIG_DETECT_PULSE_IN_RETENTION
 	if (SHOULD_DETECT_GPIO_PULSE()) {
@@ -134,12 +154,34 @@ static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 		/* Convert ticks to lpcycles */
 		duration = atm_to_lpc(Z_HZ_ticks, idle);
 
+#if CONFIG_PM_MAX_SLEEP_DURATION_SEC
+		/* Apply maximum duration cap if configured */
+		uint64_t max_duration = atm_to_lpc(Z_HZ_sec, CONFIG_PM_MAX_SLEEP_DURATION_SEC);
+		if (duration > max_duration) {
+			duration = max_duration;
+		}
+#endif
 	} else {
+#if CONFIG_PM_MAX_SLEEP_DURATION_SEC
+		duration = atm_to_lpc(Z_HZ_sec, CONFIG_PM_MAX_SLEEP_DURATION_SEC);
+#else
 		duration = 0;
+#endif
 	}
 
-	__UNUSED uint32_t wake_mask =
-		pseq_core_config_hibernate(duration, wurx0_enabled, wurx1_enabled);
+#if defined(CONFIG_ATM_PMU_WDT_ENABLE) && CONFIG_PM_MAX_SLEEP_DURATION_SEC
+	/* Set PMU warning timer relative to actual sleep duration */
+	int64_t offset_lpcycles = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_WDT_PMU_WARN_OFFSET_SEC);
+	uint64_t pmu_wdog_duration = (int64_t)duration + offset_lpcycles;
+	WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
+	{
+		pseq_core_config_soc_off(pmu_wdog_duration);
+	}
+	WRPR_CTRL_POP();
+	pmu_set_pmu_wdog_reset(true);
+#endif
+	__UNUSED uint32_t wake_mask = pseq_core_config_hibernate(
+		duration, wurx0_enabled, wurx1_enabled, IS_ENABLED(CONFIG_ATM_PMU_WDT_ENABLE));
 
 #ifdef DEBUG_HIBERNATE
 	printk("Hibernate duration %" PRId32 ", ise 0x%08" PRIx32 "_%08" PRIx32 "_%08" PRIx32
@@ -166,16 +208,17 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
 		/* Convert ticks to lpcycles */
 		duration = atm_to_lpc(Z_HZ_ticks, idle);
-#if CONFIG_ATM_SOCOFF_MAX_DURATION_SEC
+
+#if CONFIG_PM_MAX_SLEEP_DURATION_SEC
 		/* Apply maximum duration cap if configured */
-		uint64_t max_duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_MAX_DURATION_SEC);
+		uint64_t max_duration = atm_to_lpc(Z_HZ_sec, CONFIG_PM_MAX_SLEEP_DURATION_SEC);
 		if (duration > max_duration) {
 			duration = max_duration;
 		}
 #endif
 	} else {
-#if CONFIG_ATM_SOCOFF_MAX_DURATION_SEC
-		duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_MAX_DURATION_SEC);
+#if CONFIG_PM_MAX_SLEEP_DURATION_SEC
+		duration = atm_to_lpc(Z_HZ_sec, CONFIG_PM_MAX_SLEEP_DURATION_SEC);
 #else
 		duration = 0;
 #endif
@@ -196,7 +239,10 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 	pmu_socoff_wakeup_lpcomp(true, DT_LPCOMP_WAKEUP_PIN, DT_LPCOMP_REF_LEVEL);
 #endif
 
+#if defined(CONFIG_ATM_PMU_WDT_ENABLE) && CONFIG_PM_MAX_SLEEP_DURATION_SEC
 	pmu_set_pmu_wdog_reset(true);
+#endif
+
 #ifdef DEBUG_HIBERNATE
 	printk("soc_off duration %llu\n", duration);
 #endif /* DEBUG_HIBERNATE */
@@ -623,33 +669,23 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 		__disable_irq();
 		extern void sys_clock_correct(uint32_t cycles);
 
-		uint32_t start = atm_get_sys_time();
+		uint32_t start = atm_sync_get_sys_time();
 		uint32_t systick_ctrl = SysTick->CTRL;
 		SysTick->CTRL = systick_ctrl & ~SysTick_CTRL_ENABLE_Msk;
 
 		atm_power_pseq_control(atm_power_mode_retain);
 
-#ifdef FIXED_PCRT_AFTER_RETENTION
-		uint32_t elapsed = atm_get_sys_time() - start;
-#else
-		uint32_t rt;
-		WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
-			uint32_t rt1 = CMSDK_PSEQ->CURRENT_REAL_TIME;
-			rt = CMSDK_PSEQ->CURRENT_REAL_TIME;
-			if (rt != rt1) {
-				uint32_t rt3 = CMSDK_PSEQ->CURRENT_REAL_TIME;
-				if (rt != rt3) {
-					__UNUSED uint32_t rt2 = rt;
-					rt = CMSDK_PSEQ->CURRENT_REAL_TIME;
-					TIMER_ASSERT_ERR(rt == rt3);
-				}
-			}
-		} WRPR_CTRL_POP();
-		uint32_t elapsed = rt - start;
-#endif
+		uint32_t elapsed = atm_sync_get_sys_time() - start;
 		SysTick->CTRL = systick_ctrl;
 		/* Convert lpcycles to hardware cycles */
 		sys_clock_correct(atm_lpc_to(Z_HZ_cyc, elapsed));
+
+#ifdef CONFIG_ATM_PMU_WDT_ENABLE
+		pmu_set_pmu_wdog_reset(false);
+
+		// Check and process any wakeup due to PMU interrupt
+		PMU_Handler();
+#endif
 
 		WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 		{

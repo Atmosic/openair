@@ -1,6 +1,7 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config ATM_PC_CTR_SLEEP
 	bool "Atmosic pc_ctr_sleep module"

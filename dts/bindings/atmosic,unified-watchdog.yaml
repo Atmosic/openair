@@ -1,0 +1,26 @@
+# Copyright (c) 2025-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  Atmosic Unified Watchdog Wrapper
+
+  This device wraps an ARM CMSDK APB watchdog and adds Atmosic PMU
+  watchdog management. It presents a single unified watchdog interface
+  to applications while managing both hardware watchdogs internally.
+
+  The wrapper delegates ARM watchdog operations to the upstream Zephyr
+  driver and adds PMU watchdog functionality for power state management.
+
+compatible: "atmosic,unified-watchdog"
+
+include: base.yaml
+
+properties:
+  arm-watchdog:
+    type: phandle
+    required: true
+    description: |
+      Reference to the ARM CMSDK APB watchdog device that this
+      wrapper will delegate ARM watchdog operations to.
+
+      This should point to a device with compatible = "arm,cmsdk-watchdog".

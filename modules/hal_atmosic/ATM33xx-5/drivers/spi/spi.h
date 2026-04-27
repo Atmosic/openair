@@ -21,7 +21,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
+#include "ll.h"
+#include "base_addr.h"
 #include "at_apb_spi_regs_core_macro.h"
 
 #ifdef __cplusplus

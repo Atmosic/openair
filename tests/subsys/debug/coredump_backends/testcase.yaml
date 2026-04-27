@@ -1,0 +1,20 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+common:
+  tags:
+    - coredump
+  sysbuild: true
+tests:
+  tests.subsys.debug.coredump_backends.atm:
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "PASS - test_coredump_0_ready"
+  tests.subsys.debug.coredump_backends.atm.flash:
+    tags:
+      - flash
+    extra_configs:
+      - CONFIG_TEST_STORED_COREDUMP=y

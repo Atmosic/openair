@@ -6,12 +6,13 @@
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN) extention
  * Key Process Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
@@ -26,6 +27,15 @@ static uint8_t fmdn_eid[FP_FMDN_STATE_EID_LEN] = {0};
 static bool is_eid_generated;
 static uint8_t latest_eid_hash_sig;
 static fp_fmdn_battery_cb battery_cb;
+
+/* FMDN clock management for power-loss recovery */
+static uint32_t fmdn_clock_offset;      /* Offset loaded from NVM at boot */
+static uint32_t fmdn_clock_boot_uptime; /* k_uptime_seconds() at initialization */
+static bool fmdn_clock_initialized;
+
+/* Periodic clock saving - FMDN spec recommends at least once per day */
+#define FMDN_CLOCK_SAVE_INTERVAL_MS (CONFIG_FMDN_CLOCK_SAVE_INTERVAL_SEC * MSEC_PER_SEC)
+static struct k_work_delayable fmdn_clock_save_work;
 
 bool fp_fmdn_key_generate(uint8_t const *eid_key, fp_fmdn_auth_key_type_t key_type,
 			  uint8_t *auth_key, size_t auth_key_len)
@@ -168,11 +178,104 @@ void fp_fmdn_key_gen_dult_id(uint8_t const *eid_key, uint8_t *fmdn_dult_id)
 }
 #endif // CONFIG_FAST_PAIR_FMDN_DULT
 
+void fp_fmdn_key_clock_init(void)
+{
+	if (fmdn_clock_initialized) {
+		LOG_WRN("FMDN Clock already initialized");
+		return;
+	}
+
+	uint32_t stored_clock = 0;
+	/* Try to restore clock value from NVM */
+	if (!fp_storage_fmdn_clock_get(&stored_clock)) {
+		fmdn_clock_offset = stored_clock;
+		LOG_DBG("FMDN Clock: restored from NVM: %" PRIu32 " [s]", stored_clock);
+	} else {
+		fmdn_clock_offset = 0;
+		LOG_WRN("FMDN Clock: no stored value, starting from 0");
+	}
+
+	fmdn_clock_boot_uptime = k_uptime_seconds();
+	fmdn_clock_initialized = true;
+
+	LOG_INF("FMDN Clock initialized: offset=%" PRIu32 ", boot_uptime=%" PRIu32,
+		fmdn_clock_offset, fmdn_clock_boot_uptime);
+}
+
 uint32_t fp_fmdn_key_clock_read(void)
 {
-	uint32_t fmdn_clock = k_uptime_seconds();
-	LOG_DBG("FMDN Clock: reading the last value: %#x [s]", fmdn_clock);
+	if (!fmdn_clock_initialized) {
+		/* Auto-initialize if not done yet */
+		fp_fmdn_key_clock_init();
+	}
+
+	uint32_t current_uptime = k_uptime_seconds();
+	/* Calculate actual FMDN clock: offset from NVM + time since boot */
+	uint32_t fmdn_clock = fmdn_clock_offset + (current_uptime - fmdn_clock_boot_uptime);
+
+	LOG_DBG("FMDN Clock: reading value: %" PRIu32 " [s] (offset=%" PRIu32 ", uptime=%" PRIu32
+		")",
+		fmdn_clock, fmdn_clock_offset, current_uptime);
+
 	return fmdn_clock;
+}
+
+int fp_fmdn_key_clock_save(void)
+{
+	uint32_t current_clock = fp_fmdn_key_clock_read();
+	int err = fp_storage_fmdn_clock_save(current_clock);
+
+	if (err) {
+		LOG_ERR("Failed to save FMDN clock: %d", err);
+	} else {
+		LOG_INF("FMDN Clock saved to NVM: %" PRIu32 " [s]", current_clock);
+	}
+
+	return err;
+}
+
+static void fmdn_clock_save_work_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	LOG_WRN("Periodic FMDN clock save triggered");
+	fp_fmdn_key_clock_save();
+
+	/* Reschedule for next save */
+	k_work_schedule(&fmdn_clock_save_work, K_MSEC(FMDN_CLOCK_SAVE_INTERVAL_MS));
+}
+
+void fp_fmdn_key_clock_periodic_save_start(void)
+{
+	/* Initialize the delayed work */
+	k_work_init_delayable(&fmdn_clock_save_work, fmdn_clock_save_work_handler);
+
+	/* Schedule periodic saves */
+	k_work_schedule(&fmdn_clock_save_work, K_MSEC(FMDN_CLOCK_SAVE_INTERVAL_MS));
+
+	LOG_INF("FMDN Clock periodic save started (interval: %d ms)", FMDN_CLOCK_SAVE_INTERVAL_MS);
+}
+
+void fp_fmdn_key_clock_periodic_save_stop(void)
+{
+	k_work_cancel_delayable(&fmdn_clock_save_work);
+	LOG_INF("FMDN Clock periodic save stopped");
+}
+
+void fp_fmdn_key_clock_save_immediate(void)
+{
+	k_work_reschedule(&fmdn_clock_save_work, K_NO_WAIT);
+}
+
+void fp_fmdn_key_clock_reset(void)
+{
+	/* Reset clock state variables */
+	fmdn_clock_offset = 0;
+	fmdn_clock_boot_uptime = 0;
+	fmdn_clock_initialized = false;
+
+	/* Delete clock value from NVM */
+	fp_storage_fmdn_clock_reset();
 }
 
 static uint32_t fmdn_eid_clock_checkpoint;

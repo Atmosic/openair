@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -90,8 +90,7 @@ static void atm_tput_measure_s2c_cb(struct bt_conn *conn, double throughput)
 {
 	LOG_INF("%s(%d): %f kbps\n", __func__, __LINE__, throughput);
 	LOG_INF("Test complete");
-#ifdef CONFIG_AUTO_TEST
-	LOG_INF("Central side is done \n");
+#ifdef CONFIG_ATM_TPUT_AUTO_TEST
 	atm_tput_client_done(conn);
 #endif
 }

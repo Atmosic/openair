@@ -4,7 +4,7 @@
 #
 # @brief Link layer control makefile
 #
-# Copyright (C) Atmosic 2024-2025
+# Copyright (C) Atmosic 2024-2026
 #
 ################################################################################
 
@@ -31,8 +31,8 @@ endif
 ifdef PC_LOW_THD
 CFLAGS += -DPC_LOW_THD=$(PC_LOW_THD)
 endif
-ifdef LL_HEAP_SIZE_OVERRIDE
-CFLAGS += -DLL_HEAP_SIZE_OVERRIDE=$(LL_HEAP_SIZE_OVERRIDE)
+ifdef LL_HEAP_SIZE
+CFLAGS += -DLL_HEAP_SIZE=$(LL_HEAP_SIZE)U
 endif
 ifdef DBG_PC_CTR_MEM_USAGE
 CFLAGS += -DDBG_PC_CTR_MEM_USAGE
@@ -51,4 +51,7 @@ CFLAGS += -DDIS_SCAN_RANDOM_BACKOFF
 endif
 ifdef MAX_ACL_TXBUF_SIZE
 CFLAGS += -DMAX_ACL_TXBUF_SIZE=$(MAX_ACL_TXBUF_SIZE)
+endif
+ifdef DTM_PACKET_INTERVAL_OVERRIDE
+CFLAGS += -DDTM_PACKET_INTERVAL_OVERRIDE=$(DTM_PACKET_INTERVAL_OVERRIDE)
 endif

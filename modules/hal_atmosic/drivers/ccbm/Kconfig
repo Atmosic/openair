@@ -1,0 +1,36 @@
+# Coin Cell Battery Management (CCBM) Driver
+#
+# Copyright (C) Atmosic 2026
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ATM_CCBM
+	bool "Coin Cell Battery Management (CCBM) Driver"
+	depends on SOC_FAMILY_ATM
+	select ADC
+	select ATM_RADIO_HAL_MGR
+	help
+	  Enable the Coin Cell Battery Management driver for generating
+	  high current through LNA attenuation and PA LDO settings.
+	  This driver measures battery voltage before and during load
+	  to assess coin cell battery health.
+
+	  IMPORTANT: This driver only works with non-rechargeable coin cell
+	  batteries (BATT_TYPE_NON_RECHARGEABLE). A compile-time assertion
+	  will fail if used with other battery types.
+
+if ATM_CCBM
+
+config ATM_CCBM_AUTO_INIT
+	bool "Auto-initialize CCBM driver"
+	default y
+	help
+	  Automatically initialize the CCBM driver during system
+	  initialization. If disabled, the application must call
+	  ccbm_init() before using the driver.
+
+module = CCBM
+module-str = Coin Cell Battery Management
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ATM_CCBM
+

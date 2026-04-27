@@ -5,7 +5,7 @@
  *
  * @brief DTM HCI bridge interface definitions
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -48,6 +48,12 @@ uint8_t dtm_hci_bridge_send_cmd(uint16_t opcode, uint8_t *param_buf, uint8_t par
  * @param[in] cb  call back to set
  */
 void dtm_hci_bridge_set_cmd_complete_cb(dtm_hci_cmd_cmpl_cb cb);
+
+#ifndef CONFIG_DTM_2WIRE_E2E
+/* overrideable weak functions */
+struct net_buf *dtm_hci_bridge_hci_cmd_alloc(void);
+int dtm_hci_bridge_hci_cmd_send_sync(uint16_t opcode, struct net_buf *buf, struct net_buf **rsp);
+#endif
 
 #ifdef __cplusplus
 }

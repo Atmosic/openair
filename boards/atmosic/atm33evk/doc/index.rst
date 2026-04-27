@@ -164,7 +164,7 @@ For an atmevk33 board, this is typically a J-Link serial number, but it can also
 
 If the application requires Bluetooth (configured with ``CONFIG_BT`` in the prj.conf file) and uses the fixed BLE link controller image option, then the controller image requires programming.  This is typically done before programming the application and resetting (omitting the ``--noreset`` option to ``west flash``). For example::
 
-  west flash --verify --device <DEVICE_ID> --jlink --fast_load --skip-rebuild -d build/<BOARD>/<APP> --use-elf --elf-file openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_CPD200.elf --noreset
+  west flash --verify --device <DEVICE_ID> --jlink --fast_load --no-rebuild -d build/<BOARD>/<APP> --use-elf --elf-file openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_CPD200.elf --noreset
 
 Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.
 
@@ -194,6 +194,8 @@ B. MCUboot Option
 
 .. _MCUboot option:
 
+Ensure Jumper JP8 is installed to enable external flash.
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Using CPD200 which is available as a Fixed Atmosic Wireless Stack Image only (Suboption #1)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -208,7 +210,7 @@ To build with MCUboot, for example, DFU is needed, first build MCUboot::
 
 Build the application with MCUboot as follows::
 
-  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=CPD200" -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
+  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DDTS_EXTRA_CPPFLAGS="-DFIXED_ATMWSTK=CPD200"
 
 When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command line, ``west`` automatically creates a signed image (``zephyr.signed.{bin,hex}``), which is ultimately used by ``west flash`` to program the device.
 
@@ -222,7 +224,7 @@ Atmosic provides a mechanism to increase the legacy programming time called FAST
 
    west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/mcuboot --noreset
 
-Note that adding ``--erase_flash`` is an option to erase Flash if needed.
+Note that adding ``--erase_flash`` is an option to erase the entire flash, ``--erase_rram`` is an option to erase the entire RRAM, and ``--erase_all`` is an option to erase the entire RRAM and flash.
 
 Flash the signed application image::
 
@@ -242,7 +244,7 @@ To build MCUboot::
 
 Build the application with MCUboot as follows::
 
-  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DEXTRA_CONF_FILE="<WEST_TOPDIR>/openair/doc/dfu/overlay-bt-dfu.conf"
+  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\"
 
 This is somewhat of a non-standard workflow.  When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command line, ``west`` automatically creates a signed, merged image (``zephyr.signed.{bin,hex}``), which is ultimately used by ``west flash`` to program the device.
 
@@ -256,7 +258,7 @@ Atmosic provides a mechanism to increase the legacy programming time called FAST
 
   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/mcuboot --noreset
 
-Note that adding ``--erase_flash`` is an option to erase Flash if needed.
+Note that adding ``--erase_flash`` is an option to erase the entire flash, ``--erase_rram`` is an option to erase the entire RRAM, and ``--erase_all`` is an option to erase the entire RRAM and flash.
 
 Flash the signed application image ::
 
@@ -326,4 +328,4 @@ Zephyr DFU
 
 Please review the content for DFU Serial and OTA support at Zephyr_DFU_.
 
-.. _Zephyr_DFU: https://github.com/Atmosic/openair/blob/HEAD/doc/dfu/dfu.rst
+.. _Zephyr_DFU: https://atmosic.com/public/OpenAir_SDK_doc/dfu_update/dfu_update.html

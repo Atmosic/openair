@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/ztest.h>
@@ -55,15 +55,13 @@ ZTEST(beacon_adv, test_beacon_adv_start_stop)
 ZTEST(beacon_adv, test_beacon_adv_update_data)
 {
 	int ret;
-	sensor_beacon_data_t test_data = {
-		.temp = 6400,      /* 25°C * 256 */
-		.humidity = 12800, /* 50% * 256 */
-		.x_axis = 100,
-		.y_axis = 200,
-		.z_axis = 300,
-		.vstore = 3.3f,
-		.vbatt = 3.0f
-	};
+	sensor_beacon_data_t test_data = {.temp = 6400,      /* 25°C * 256 */
+					  .humidity = 12800, /* 50% * 256 */
+					  .x_axis = 100,
+					  .y_axis = 200,
+					  .z_axis = 300,
+					  .vstore = 3.3f,
+					  .vbatt = 3.0f};
 
 	ret = beacon_adv_init();
 	if (ret == -EALREADY) {
@@ -94,15 +92,13 @@ ZTEST(beacon_adv, test_beacon_adv_update_data_null)
 
 ZTEST(beacon_adv, test_beacon_adv_data_format)
 {
-	sensor_beacon_data_t test_data = {
-		.temp = 1234,
-		.humidity = 5678,
-		.x_axis = 100,
-		.y_axis = 200,
-		.z_axis = 300,
-		.vstore = 3.3f,
-		.vbatt = 3.0f
-	};
+	sensor_beacon_data_t test_data = {.temp = 1234,
+					  .humidity = 5678,
+					  .x_axis = 100,
+					  .y_axis = 200,
+					  .z_axis = 300,
+					  .vstore = 3.3f,
+					  .vbatt = 3.0f};
 
 	/* Verify data structure size matches expected format */
 	zassert_equal(sizeof(test_data), sizeof(sensor_beacon_data_t),
@@ -114,25 +110,21 @@ ZTEST(beacon_adv, test_beacon_adv_data_format)
 ZTEST(beacon_adv, test_beacon_adv_update_strategy)
 {
 	int ret;
-	sensor_beacon_data_t test_data1 = {
-		.temp = 6400,      /* 25°C * 256 */
-		.humidity = 12800, /* 50% * 256 */
-		.x_axis = 100,
-		.y_axis = 200,
-		.z_axis = 300,
-		.vstore = 3.3f,
-		.vbatt = 3.0f
-	};
+	sensor_beacon_data_t test_data1 = {.temp = 6400,      /* 25°C * 256 */
+					   .humidity = 12800, /* 50% * 256 */
+					   .x_axis = 100,
+					   .y_axis = 200,
+					   .z_axis = 300,
+					   .vstore = 3.3f,
+					   .vbatt = 3.0f};
 
-	sensor_beacon_data_t test_data2 = {
-		.temp = 7680,      /* 30°C * 256 */
-		.humidity = 15360, /* 60% * 256 */
-		.x_axis = 150,
-		.y_axis = 250,
-		.z_axis = 350,
-		.vstore = 3.4f,
-		.vbatt = 3.1f
-	};
+	sensor_beacon_data_t test_data2 = {.temp = 7680,      /* 30°C * 256 */
+					   .humidity = 15360, /* 60% * 256 */
+					   .x_axis = 150,
+					   .y_axis = 250,
+					   .z_axis = 350,
+					   .vstore = 3.4f,
+					   .vbatt = 3.1f};
 
 	ret = beacon_adv_init();
 	if (ret == -EALREADY) {
@@ -142,7 +134,8 @@ ZTEST(beacon_adv, test_beacon_adv_update_strategy)
 
 	ret = beacon_adv_start();
 	if (ret) {
-		LOG_WRN("Beacon start failed: %" PRId32 " (may be expected in test environment)", ret);
+		LOG_WRN("Beacon start failed: %" PRId32 " (may be expected in test environment)",
+			ret);
 		return; /* Skip rest of test if advertising can't start */
 	}
 

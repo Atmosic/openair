@@ -1,0 +1,5 @@
+# Watchdog configuration options for Atmosic platforms
+# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+rsource "Kconfig.atmosic"

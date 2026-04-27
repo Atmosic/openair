@@ -38,7 +38,7 @@ Press `CTRL+SHIFT+P` to display options in the dropdown menu for:
 
 ## 6. West Initialize
 1. Click on **West Init**.
-2. Paste the repository link (default is `git@github.com:Atmosic/atmosic-private.git`) and specify the branch name.
+2. Paste the repository link (default is `https://github.com/Atmosic/openair.git`) and specify the branch name.
 3. After initializing, click on **West Update**.
 
 ---

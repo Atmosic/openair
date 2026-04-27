@@ -5,7 +5,7 @@
  *
  * @brief Calibration data
  *
- * Copyright (C) Atmosic 2021-2025
+ * Copyright (C) Atmosic 2021-2026
  *
  *******************************************************************************
  */
@@ -53,7 +53,6 @@ enum atm_nvds_tag {
     ATM_TAG_XTAL_CAL = 0xc2,
     ATM_TAG_PMU_CAL = 0xc3,
     ATM_TAG_GADC_CAL = 0xc4,
-    ATM_TAG_CS_CAL = 0xc5,
 
     /// Manufacturing lock for factory data
     ATM_TAG_LOCK_FACTORY_DATA = 0xe0,
@@ -181,7 +180,7 @@ struct gadc_cal_s {
     uint32_t gain_comp4;
     uint32_t gain_comp5;
     uint32_t gain_comp6;
-    uint32_t gain_comp7;
+    uint32_t temp_fifo;
     uint32_t offset_comp0;
     uint32_t offset_comp1;
     uint32_t offset_comp2;
@@ -201,15 +200,6 @@ struct xtal_cal_s {
     uint32_t xtal_bits1;
     uint32_t xtal_bits0;
 };
-
-struct cs_cal_s {
-    uint8_t delay_unit;
-    uint16_t delay_offset;
-    uint8_t pga_gain;
-    uint16_t lna_delays[8];
-    uint16_t pga_delays[25];
-    uint8_t lna_gain;
-} __PACKED;
 
 struct ate_s {
     uint32_t rsvd[7];

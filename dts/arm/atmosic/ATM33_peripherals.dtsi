@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2021-2025 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 timer0: timer@0 {
@@ -30,7 +30,7 @@ wdog0: wdog@81000 {
 };
 
 gpio0: gpio@100000 {
-	compatible = "arm,cmsdk-gpio";
+	compatible = "atmosic,atm-gpio";
 	reg = <0x00100000 0x1000>;
 	interrupts = <93 2>;
 	gpio-controller;
@@ -38,7 +38,7 @@ gpio0: gpio@100000 {
 };
 
 gpio1: gpio@101000 {
-	compatible = "arm,cmsdk-gpio";
+	compatible = "atmosic,atm-gpio";
 	reg = <0x00101000 0x1000>;
 	interrupts = <94 2>;
 	gpio-controller;
@@ -82,7 +82,7 @@ pwm0: pwm@146004 {
 	reg = <0x00146004 0x4>;
 	#pwm-cells = <3>;
 	channel = <0>;
-	max-frequency = <10000000>;
+	max-frequency = <8000000>;
 	min-frequency = <123>;
 	status = "disabled";
 };
@@ -92,7 +92,7 @@ pwm1: pwm@146010 {
 	reg = <0x00146010 0x4>;
 	#pwm-cells = <3>;
 	channel = <1>;
-	max-frequency = <10000000>;
+	max-frequency = <8000000>;
 	min-frequency = <123>;
 	status = "disabled";
 };
@@ -102,7 +102,7 @@ pwm2: pwm@14601c {
 	reg = <0x0014601c 0x4>;
 	#pwm-cells = <3>;
 	channel = <2>;
-	max-frequency = <10000000>;
+	max-frequency = <8000000>;
 	min-frequency = <123>;
 	status = "disabled";
 };
@@ -112,7 +112,7 @@ pwm3: pwm@146028 {
 	reg = <0x00146028 0x4>;
 	#pwm-cells = <3>;
 	channel = <3>;
-	max-frequency = <10000000>;
+	max-frequency = <8000000>;
 	min-frequency = <123>;
 	status = "disabled";
 };
@@ -122,7 +122,7 @@ pwm4: pwm@146034 {
 	reg = <0x00146034 0x4>;
 	#pwm-cells = <3>;
 	channel = <4>;
-	max-frequency = <10000000>;
+	max-frequency = <8000000>;
 	min-frequency = <123>;
 	status = "disabled";
 };
@@ -132,7 +132,7 @@ pwm5: pwm@146040 {
 	reg = <0x00146040 0x4>;
 	#pwm-cells = <3>;
 	channel = <5>;
-	max-frequency = <10000000>;
+	max-frequency = <8000000>;
 	min-frequency = <123>;
 	status = "disabled";
 };
@@ -142,7 +142,7 @@ pwm6: pwm@14604c {
 	reg = <0x0014604c 0x4>;
 	#pwm-cells = <3>;
 	channel = <6>;
-	max-frequency = <10000000>;
+	max-frequency = <8000000>;
 	min-frequency = <123>;
 	status = "disabled";
 };
@@ -152,7 +152,7 @@ pwm7: pwm@146058 {
 	reg = <0x00146058 0x4>;
 	#pwm-cells = <3>;
 	channel = <7>;
-	max-frequency = <10000000>;
+	max-frequency = <8000000>;
 	min-frequency = <123>;
 	status = "disabled";
 };

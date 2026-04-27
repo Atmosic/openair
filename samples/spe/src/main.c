@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Atmosic
+ * Copyright (c) 2022-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -42,17 +42,20 @@
 extern irq_target_state_t irq_target_state_set(unsigned int irq,
     irq_target_state_t target_state);
 
+#ifndef CONFIG_BOOTLOADER_MCUBOOT
 #define PART_ADDR(label) ( \
     DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(label))) + \
     DT_REG_ADDR(DT_NODELABEL(label)) \
 )
+#else
+// The MCUboot dtsi arranges code into subpartitions
+#define PART_ADDR(label) ( \
+    DT_REG_ADDR(DT_MTD_FROM_FIXED_SUBPARTITION(DT_NODELABEL(label))) + \
+    DT_REG_ADDR(DT_NODELABEL(label)) \
+)
+#endif
 
 #define PART_OFFSET(label) (DT_REG_ADDR(DT_NODELABEL(label)))
-
-// helper to get the address of a nested partition in a slot
-#define PART_IN_SLOT_ADDR(slot_label, label) \
-    (DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(slot_label))) + \
-	DT_REG_ADDR(DT_NODELABEL(label)))
 
 #ifndef CONFIG_BOOTLOADER_MCUBOOT
 #define PART_SPE_ADDR() PART_ADDR(spe_partition)
@@ -62,14 +65,13 @@ extern irq_target_state_t irq_target_state_set(unsigned int irq,
     DT_NODE_EXISTS(DT_NODELABEL(slot3_partition))
 // This is an implicit MCUBOOT configuration
 // the NSPE is now in slot2 with the OTA area in slot3
-#define PART_SPE_ADDR() PART_IN_SLOT_ADDR(slot0_partition, spe_partition)
-#define PART_NSPE_ADDR() PART_IN_SLOT_ADDR(slot2_partition, nspe_partition)
+#define PART_SPE_ADDR() PART_ADDR(spe_partition)
+#define PART_NSPE_ADDR() PART_ADDR(nspe_partition)
 // fast code is in slot 0
-#define PART_FAST_CODE_ADDR() \
-    PART_IN_SLOT_ADDR(slot0_partition, fast_code_partition)
+#define PART_FAST_CODE_ADDR() PART_ADDR(fast_code_partition)
 #else // CONFIG_BOOTLOADER_MCUBOOT
-#define PART_SPE_ADDR() PART_IN_SLOT_ADDR(slot0_partition, spe_partition)
-#define PART_NSPE_ADDR() PART_IN_SLOT_ADDR(slot0_partition, nspe_partition)
+#define PART_SPE_ADDR() PART_ADDR(spe_partition)
+#define PART_NSPE_ADDR() PART_ADDR(nspe_partition)
 #endif // CONFIG_BOOTLOADER_MCUBOOT
 
 #ifndef NSPE_APP_START_OFFSET
@@ -88,16 +90,16 @@ extern irq_target_state_t irq_target_state_set(unsigned int irq,
 #endif
 #endif // DT_NODE_EXISTS(DT_NODELABEL(fast_code_partition))
 
-#define PROG_MPC_PARTITION(part, base_partition) \
-    do { \
-	uint32_t part_baddr = \
-	    DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(base_partition)) + \
-	    DT_REG_ADDR(part); \
-	uint32_t part_laddr = part_baddr + DT_REG_SIZE(part) - 1; \
-	TRACE_TZ_CFG("MPC NS: [0x%08x - 0x%08x]\n", part_baddr, part_laddr); \
-	at_tz_mpc_config_region(part_baddr, part_laddr, \
-	    AT_TZ_MPC_ATTR_NONSECURE); \
-    } while (0)
+#define PROG_MPC_PARTITION(part, base_partition)                                                   \
+	do {                                                                                       \
+		at_tz_mpc_ret_t __ret;                                                             \
+		uint32_t part_baddr = DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(base_partition)) +   \
+				      DT_REG_ADDR(part);                                           \
+		uint32_t part_laddr = part_baddr + DT_REG_SIZE(part) - 1;                          \
+		TRACE_TZ_CFG("MPC NS: [0x%08x - 0x%08x]\n", part_baddr, part_laddr);               \
+		__ret = at_tz_mpc_config_region(part_baddr, part_laddr, AT_TZ_MPC_ATTR_NONSECURE); \
+		SEC_ASSERT(__ret == AT_TZ_MPC_RET_OK);                                             \
+	} while (0)
 
 #define PROG_MPC_PARTITION_ENTRY(part, base_partition)  \
 COND_CODE_1(DT_PROP(part, secure), (), ( \
@@ -109,7 +111,7 @@ COND_CODE_0(DT_CHILD_NUM(part),( \
         PROG_MPC_PARTITION_ENTRY(part, part) \
     ),( \
         DT_FOREACH_CHILD_VARGS( \
-	    DT_CAT(part, _S_partitions), PROG_MPC_PARTITION_ENTRY, part \
+	    part, PROG_MPC_PARTITION_ENTRY, part \
 	) \
     )) \
 

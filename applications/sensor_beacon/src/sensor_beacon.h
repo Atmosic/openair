@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #pragma once
@@ -74,11 +74,10 @@ int sensor_beacon_notify_beacon_tx(void);
 
 #ifdef CONFIG_PM
 /**
- * @brief Unlock PM_STATE_SOFT_OFF state with appropriate substate
+ * @brief Unlock PM_STATE_SOFT_OFF state
  *
- * This function unlocks the PM_STATE_SOFT_OFF state. When CONFIG_WURX is set,
- * it unlocks only the hibernate substate to allow WURX hibernation mode.
- * Otherwise, it unlocks all substates including soc off (if enabled).
+ * This function unlocks the PM_STATE_SOFT_OFF state for all substates
+ * including soc off (if enabled).
  */
 void sensor_beacon_unlock_soft_off_state(void);
 #endif

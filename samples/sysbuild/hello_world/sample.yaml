@@ -3,6 +3,7 @@ sample:
     introduction
   name: Sysbuild
 common:
+  sysbuild: true
   harness: console
   harness_config:
     type: one_line
@@ -10,34 +11,46 @@ common:
       - "Atmosic Sysbuild Hello World"
   tags:
     - introduction
+    - atm_test_with_spe
 tests:
-  samples.sysbuild.hello_world.atm:
-    sysbuild: true
-    tags:
-      - introduction
-      - no_mcuboot
+  samples.sysbuild.hello_world.atm: {}
   samples.sysbuild.hello_world.atm.mcuboot:
-    sysbuild: true
     tags:
-      - introduction
       - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-  samples.sysbuild.hello_world.atm.mcuboot.overwrite:
-    sysbuild: true
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+  samples.sysbuild.hello_world.atm.mcuboot.legacy_scratch:
     tags:
-      - introduction
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+  samples.sysbuild.hello_world.atm.mcuboot.overwrite:
+    tags:
       - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
   samples.sysbuild.hello_world.atm.spe.flash_xip:
-    sysbuild: true
     tags:
-      - introduction
+      - flash_xip
     extra_args:
       - SB_CONFIG_SPE=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+  samples.sysbuild.hello_world.atm.mcuboot.sec_debug:
+    harness: pytest
+    tags:
+      - mcuboot
+      - sec_debug
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS='-DUSE_ATM_SECURE_DEBUG'
+      - mcuboot_CONFIG_ATM_MCUBOOT_SECURE_DEBUG=y
+      - mcuboot_CONFIG_ATM_MCUBOOT_UART_DEBUG_AUTH_TIMEOUT_MS=50000

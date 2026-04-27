@@ -5,13 +5,12 @@
  *
  * @brief Base Address definitions
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  *****************************************************************************
  */
 
 #pragma once
-#include "base_addr_place_holders.h"
 
 /**
  * @defgroup at_base_addr base_addr
@@ -19,6 +18,16 @@
  * @brief base address definitions.
  * @{
  */
+
+#include <stddef.h>
+#include <stdint.h>
+#include "ARMv8MBL.h"
+#include "base_addr_place_holders.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*---------- AT_AHB_PRRF ----------*/
 typedef struct {
   __IO uint32_t  PATCH_TAG0;
@@ -1866,4 +1875,9 @@ typedef struct {
 #define CMSDK_AT_UART2_SECURE                             ((CMSDK_AT_APB_UART_TypeDef *) CMSDK_AT_UART2_SECURE_BASE)
 #define CMSDK_AT_UART2                                    CMSDK_AT_UART2_SECURE
 #define CMSDK_AT_DMA_SECURE                               ((CMSDK_AT_AHB_DMA_TypeDef *) CMSDK_AT_DMA_SECURE_BASE)
+
+#ifdef __cplusplus
+}
+#endif
+
 /** @} end of at_base_addr */

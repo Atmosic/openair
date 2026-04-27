@@ -1,12 +1,13 @@
-# Copyright (c) 2021-2025 Atmosic
+# Copyright (c) 2021-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if SOC_SERIES_ATM33
 
+# Get clock frequency from DTS sysclk node to support INIT_BP_FREQ for all domains
 config SYS_CLOCK_HW_CYCLES_PER_SEC
 	int
-	default 16000000
+	default $(dt_nodelabel_int_prop,sysclk,clock-frequency)
 
 config NUM_IRQS
 	int

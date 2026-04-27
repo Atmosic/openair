@@ -6,22 +6,22 @@ common:
   harness: console
   tags:
     - bluetooth
+    - role_central
 tests:
   samples.bluetooth.scan_adv.atm:
     harness_config:
       type: one_line
       regex:
         - "Starting Scanner/Advertiser Demo"
-    tags:
-      - no_mcuboot
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
   samples.bluetooth.scan_adv.atm.dump_hci:
     harness_config:
       type: one_line
       regex:
-        - "Starting Scanner/Advertiser Demo|CMD COMPL:"
+        - "CMD COMPL:"
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
-      - scan_adv_CONFIG_ATM_BLE_DUMP_HCI=y
-      - scan_adv_CONFIG_LOG_BUFFER_SIZE=8192
+    extra_configs:
+      - CONFIG_ATM_BLE_DUMP_HCI=y
+      - CONFIG_LOG_BUFFER_SIZE=8192

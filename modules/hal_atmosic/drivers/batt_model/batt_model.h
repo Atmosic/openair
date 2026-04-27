@@ -5,7 +5,9 @@
  *
  * @brief Battery model common prototype
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -79,7 +81,7 @@ typedef struct {
     /// Initialization of the battery model.
     void (*init)(batt_cbs const *);
     /// Issue a battery capacity sampling.
-    bool (*sample)(void (*cb)(uint16_t level, int32_t mvolt));
+    bool (*sample)(void (*cb)(uint16_t level_bp, int32_t mvolt));
 } batt_fns;
 
 /**

@@ -1,0 +1,28 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+sample:
+  name: Bluetooth shell
+  description: Bluetooth shell
+common:
+  sysbuild: true
+  harness: shell
+  harness_config:
+    shell_commands:
+      - command: "bt"
+        expected: bt - Bluetooth shell commands
+  tags:
+    - bluetooth
+tests:
+  tests.bluetooth.shell.atm:
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  tests.bluetooth.shell.atm.cs:
+    tags:
+      - channel_sounding
+    extra_args:
+      - EXTRA_CONF_FILE=${CMAKE_CURRENT_SOURCE_DIR}/basic_cs.conf
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_ATM_CS=y

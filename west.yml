@@ -1,7 +1,7 @@
 manifest:
   group-filter:
-  - -optional
   - -babblesim
+  - -optional
   projects:
   - name: hal_atmosic_lib
     url: https://github.com/Atmosic/hal_atmosic_lib
@@ -9,7 +9,7 @@ manifest:
     path: modules/hal/atmosic_lib
   - name: mcuboot
     url: https://github.com/Atmosic/mcuboot
-    revision: 9339824fe6983668ef7e12d84299585fae7aea44
+    revision: 3bd1226bb899a54e06c5e827390d6f860582df79
     path: bootloader/mcuboot
   - name: micro-ecc
     url: https://github.com/Atmosic/micro-ecc
@@ -17,7 +17,7 @@ manifest:
     path: modules/crypto/micro-ecc
   - name: zephyr
     url: https://github.com/Atmosic/zephyr
-    revision: 328fc0c85e2f4c2dca21a404ab4f43fb47600a37
+    revision: 56a42dea095784ab7a49733ec6dacc591c97d4d4
     west-commands: scripts/west-commands.yml
   - name: cmsis
     url: https://github.com/zephyrproject-rtos/cmsis
@@ -27,7 +27,7 @@ manifest:
     - hal
   - name: cmsis_6
     url: https://github.com/zephyrproject-rtos/CMSIS_6
-    revision: 06d952b6713a2ca41c9224a62075e4059402a151
+    revision: 30a859f44ef8ab4dc8f84b03ed586fd16ccf9d74
     path: modules/hal/cmsis_6
     groups:
     - hal
@@ -39,7 +39,7 @@ manifest:
     - fs
   - name: mbedtls
     url: https://github.com/zephyrproject-rtos/mbedtls
-    revision: 85440ef5fffa95d0e9971e9163719189cf34d979
+    revision: c5b06d89c9c498d8fc8659ce31f7e53137b6270f
     path: modules/crypto/mbedtls
     groups:
     - crypto

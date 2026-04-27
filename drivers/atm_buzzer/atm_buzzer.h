@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once
 
-#include "arch.h"
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
 #include <zephyr/drivers/pwm.h>
 
 /**
@@ -16,6 +16,7 @@
  * @brief Atmosic Pulse-Width Modulation Buzzer module
  *
  * This module implements to control buzzer by PWM signal.
+ * This is a Zephyr device driver - instances are defined in devicetree.
  *
  * @{
  */
@@ -25,8 +26,8 @@ extern "C" {
 #endif
 
 typedef enum {
-	BUZ_NO_ERROR,
-	BUZ_PARAM_INCORRECT,
+	BUZ_NO_ERROR = 0,
+	BUZ_PARAM_INCORRECT = -EINVAL,
 } atm_buzzer_error_t;
 
 /**
@@ -105,80 +106,171 @@ typedef enum {
 } note_freq_t;
 
 /**
- * @brief ATM buzzer configuration
+ * @brief Callback function type for buzzer stop event
+ *
+ * @param dev Pointer to the buzzer device
  */
-typedef struct atm_buzzer_s {
-	/** PWM device, channel, flags */
-	struct pwm_dt_spec pwm_dt;
-	/** Default pulse width (in usec or nsec depending on driver) */
-	uint32_t pulse;
-	/** Max frequency supported by this buzzer */
-	uint32_t max_frequency;
-	/** Min frequency supported by this buzzer */
-	uint32_t min_frequency;
+typedef void (*atm_buzzer_stop_cb_t)(const struct device *dev);
+
+/**
+ * @brief ATM buzzer driver API
+ *
+ * This is the API structure that upper layers use to interact with the buzzer.
+ */
+__subsystem struct atm_buzzer_api {
+	/**
+	 * @brief Turn buzzer on or off
+	 *
+	 * @param dev Pointer to the buzzer device
+	 * @param action_on true to turn on, false to turn off
+	 * @return 0 on success, negative errno on failure
+	 */
+	atm_buzzer_error_t (*onoff)(const struct device *dev, bool action_on);
+
+	/**
+	 * @brief Configure buzzer frequency and duty cycle without playing
+	 *
+	 * @param dev Pointer to the buzzer device
+	 * @param freq_hz Frequency in Hz
+	 * @param duty_percent Duty cycle percentage (0-100)
+	 * @return 0 on success, negative errno on failure
+	 */
+	atm_buzzer_error_t (*configure)(const struct device *dev, uint32_t freq_hz,
+					uint32_t duty_percent);
+
+	/**
+	 * @brief Play a tone continuously until turned off
+	 *
+	 * @param dev Pointer to the buzzer device
+	 * @param freq_hz Frequency in Hz
+	 * @param duty_percent Duty cycle percentage (0-100)
+	 * @return 0 on success, negative errno on failure
+	 */
+	atm_buzzer_error_t (*beep)(const struct device *dev, uint32_t freq_hz,
+				   uint32_t duty_percent);
+
 #ifdef CONFIG_ATM_BUZZER_TIMEOUT
-	/** Internal delayed work for auto-stop */
-	struct k_work_delayable stop_work;
-	/** Timer expire callback function */
-	void (*stop_cb)(struct atm_buzzer_s *buzzer);
-	/** User data for the callback function */
-	void *context;
+	/**
+	 * @brief Play a tone for a specified duration
+	 *
+	 * @param dev Pointer to the buzzer device
+	 * @param freq_hz Frequency in Hz
+	 * @param duty_percent Duty cycle percentage (0-100)
+	 * @param duration_ms Duration in milliseconds
+	 * @return 0 on success, negative errno on failure
+	 */
+	atm_buzzer_error_t (*beep_time)(const struct device *dev, uint32_t freq_hz,
+					uint8_t duty_percent, uint32_t duration_ms);
+
+	/**
+	 * @brief Set callback function for stop event
+	 *
+	 * @param dev Pointer to the buzzer device
+	 * @param callback Callback function to be called when buzzer stops
+	 * @return 0 on success, negative errno on failure
+	 */
+	int (*set_stop_callback)(const struct device *dev, atm_buzzer_stop_cb_t callback);
 #endif
-	/** Status flag */
-	bool active;
-} atm_buzzer_t;
+};
 
 /**
- * @brief Buzzer on/off
+ * @brief Turn buzzer on or off
  *
- * @param[in] buzzer atm buzzer configuration
- * @param[in] action_on true for buzzer on, otherwise buzzer off
- * @return 0 on success, non-zero on failure.
+ * @param dev Pointer to the buzzer device
+ * @param action_on true to turn on, false to turn off
+ * @return 0 on success, negative errno on failure
  */
-atm_buzzer_error_t atm_buzzer_onoff(atm_buzzer_t *buzzer, bool action_on);
+static inline atm_buzzer_error_t atm_buzzer_onoff(const struct device *dev, bool action_on)
+{
+	const struct atm_buzzer_api *api = (const struct atm_buzzer_api *)dev->api;
 
+	if (!api || !api->onoff) {
+		return BUZ_PARAM_INCORRECT;
+	}
 
-/**
- * @brief Buzzer configuration without play
- *
- * @param[in] buzzer atm buzzer configuration
- * @param[in] freq_hz specific frequency, unit: hz
- * @param[in] duty_cycle pwm signal high percentage
- * @return 0 on success, non-zero on failure.
- */
-atm_buzzer_error_t atm_buzzer_configure(atm_buzzer_t *buzzer, uint32_t freq_hz, uint32_t duty_cycle);
+	return api->onoff(dev, action_on);
+}
 
 /**
- * @brief Buzzer play tone till buzzer off
+ * @brief Configure buzzer frequency and duty cycle without playing
  *
- * @param[in] buzzer atm buzzer configuration
- * @param[in] freq_hz specific frequency, unit: hz
- * @param[in] duty_cycle pwm signal high percentage
- * @return 0 on success, non-zero on failure.
+ * @param dev Pointer to the buzzer device
+ * @param freq_hz Frequency in Hz
+ * @param duty_percent Duty cycle percentage (0-100)
+ * @return 0 on success, negative errno on failure
  */
-atm_buzzer_error_t atm_buzzer_beep(atm_buzzer_t *buzzer, uint32_t freq_hz, uint32_t duty_cycle);
+static inline atm_buzzer_error_t atm_buzzer_configure(const struct device *dev, uint32_t freq_hz,
+						      uint32_t duty_percent)
+{
+	const struct atm_buzzer_api *api = (const struct atm_buzzer_api *)dev->api;
+
+	if (!api || !api->configure) {
+		return BUZ_PARAM_INCORRECT;
+	}
+
+	return api->configure(dev, freq_hz, duty_percent);
+}
+
+/**
+ * @brief Play a tone continuously until turned off
+ *
+ * @param dev Pointer to the buzzer device
+ * @param freq_hz Frequency in Hz
+ * @param duty_percent Duty cycle percentage (0-100)
+ * @return 0 on success, negative errno on failure
+ */
+static inline atm_buzzer_error_t atm_buzzer_beep(const struct device *dev, uint32_t freq_hz,
+						 uint32_t duty_percent)
+{
+	const struct atm_buzzer_api *api = (const struct atm_buzzer_api *)dev->api;
+
+	if (!api || !api->beep) {
+		return BUZ_PARAM_INCORRECT;
+	}
+
+	return api->beep(dev, freq_hz, duty_percent);
+}
 
 #ifdef CONFIG_ATM_BUZZER_TIMEOUT
 /**
- * @brief Buzzer play tone till buzzer off
+ * @brief Play a tone for a specified duration
  *
- * @param[in] buzzer atm buzzer configuration
- * @param[in] freq_hz specific frequency, unit: hz
- * @param[in] duty_cycle pwm signal high percentage
- * @param[in] duration_ms duration in milliseconds to play the tone
- * @return 0 on success, non-zero on failure.
+ * @param dev Pointer to the buzzer device
+ * @param freq_hz Frequency in Hz
+ * @param duty_percent Duty cycle percentage (0-100)
+ * @param duration_ms Duration in milliseconds
+ * @return 0 on success, negative errno on failure
  */
-atm_buzzer_error_t atm_buzzer_beep_time(atm_buzzer_t *buzzer, uint32_t freq_hz, uint8_t duty_percent, uint32_t duration_ms);
+static inline atm_buzzer_error_t atm_buzzer_beep_time(const struct device *dev, uint32_t freq_hz,
+						      uint8_t duty_percent, uint32_t duration_ms)
+{
+	const struct atm_buzzer_api *api = (const struct atm_buzzer_api *)dev->api;
+
+	if (!api || !api->beep_time) {
+		return BUZ_PARAM_INCORRECT;
+	}
+
+	return api->beep_time(dev, freq_hz, duty_percent, duration_ms);
+}
 
 /**
- * @brief Register a callback function to be called when the buzzer stops
+ * @brief Set callback function for stop event
  *
- * This function registers a callback function that will be invoked when the buzzer stops.
- *
- * @param[in] buzzer atm buzzer configuration
- * @return 0 on success, non-zero on failure.
+ * @param dev Pointer to the buzzer device
+ * @param callback Callback function to be called when buzzer stops
+ * @return 0 on success, negative errno on failure
  */
-atm_buzzer_error_t atm_buzzer_cb_reg(atm_buzzer_t *buzzer);
+static inline int atm_buzzer_set_stop_callback(const struct device *dev,
+					       atm_buzzer_stop_cb_t callback)
+{
+	const struct atm_buzzer_api *api = (const struct atm_buzzer_api *)dev->api;
+
+	if (!api || !api->set_stop_callback) {
+		return -ENOTSUP;
+	}
+
+	return api->set_stop_callback(dev, callback);
+}
 #endif
 
 #ifdef __cplusplus

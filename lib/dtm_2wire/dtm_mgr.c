@@ -5,14 +5,16 @@
  *
  * @brief DTM interface manager for Zephyr
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
 
 #include <zephyr/kernel.h>
+#ifdef CONFIG_DTM_2WIRE_E2E
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
+#endif
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/bluetooth/bluetooth.h>
@@ -21,7 +23,7 @@
 #include "dtm_mgr.h"
 #include "dtm_hci_bridge.h"
 #define DTM_MGR_INTERNAL_GUARD
-#include "dtm_mgr_int.h"
+#include "dtm_mgr.ih"
 
 LOG_MODULE_REGISTER(dtm_mgr, CONFIG_DTM_2WIRE_LOG_LEVEL);
 
@@ -29,6 +31,7 @@ struct dtm_message {
 	uint16_t data;
 } __packed;
 
+#ifdef CONFIG_DTM_2WIRE_E2E
 /* Use devicetree chosen for DTM UART device */
 #define DTM_UART_NODE DT_CHOSEN(zephyr_dtm_2wire_uart)
 
@@ -44,6 +47,7 @@ static uint8_t rx_buf[sizeof(struct dtm_message)];
 static size_t rx_pos = 0;
 
 static void log_uart_config(const struct uart_config *cfg);
+#endif
 
 static bool cmd_completion(uint16_t opcode, const void *buf, uint8_t len)
 {
@@ -60,8 +64,10 @@ static bool cmd_completion(uint16_t opcode, const void *buf, uint8_t len)
 		dtm_reset_complete(status);
 		handled = true;
 	} break;
-	case BT_HCI_OP_LE_ENH_TX_TEST:
-	case BT_HCI_OP_LE_ENH_RX_TEST: {
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+	case BT_HCI_OP_LE_ENH_RX_TEST:
+#endif
+	case BT_HCI_OP_LE_ENH_TX_TEST: {
 		if (len < HCI_STATUS_LEN) {
 			break;
 		}
@@ -81,6 +87,7 @@ static bool cmd_completion(uint16_t opcode, const void *buf, uint8_t len)
 		dtm_test_end(status, num_pkts);
 		handled = true;
 	} break;
+#ifndef CONFIG_DTM_2WIRE_USER_DATA_LEN_PROPS
 	case BT_HCI_OP_LE_READ_MAX_DATA_LEN: {
 		if (len < sizeof(struct bt_hci_rp_le_read_max_data_len)) {
 			break;
@@ -98,6 +105,7 @@ static bool cmd_completion(uint16_t opcode, const void *buf, uint8_t len)
 		}
 		handled = true;
 	} break;
+#endif
 	default: {
 		LOG_DBG("Unhandled opcode 0x%x param len: %d", opcode, len);
 	} break;
@@ -105,6 +113,8 @@ static bool cmd_completion(uint16_t opcode, const void *buf, uint8_t len)
 
 	return handled;
 }
+
+#ifdef CONFIG_DTM_2WIRE_E2E
 
 static void uart_rx_handler(const struct device *dev, void *user_data)
 {
@@ -193,9 +203,11 @@ static void log_uart_config(const struct uart_config *cfg)
 		stop_bits_str,
 		(cfg->flow_ctrl == UART_CFG_FLOW_CTRL_NONE) ? "disabled" : "enabled");
 }
+#endif
 
-void dtmtl_send(uint16_t message)
+void __weak dtm_mgr_send(uint16_t message)
 {
+#ifdef CONFIG_DTM_2WIRE_E2E
 	if (tx_pending) {
 		LOG_ERR("TX pending, dropping message");
 		return;
@@ -205,14 +217,16 @@ void dtmtl_send(uint16_t message)
 	tx_message.data = sys_cpu_to_be16(message);
 	tx_pending = true;
 	k_work_submit(&tx_work);
+#else
+	__ASSERT(0, "weak symbol %s must be overriden", __FUNCTION__);
+#endif
 }
 
 int dtm_mgr_init(void)
 {
-	int ret;
-
 	LOG_INF("Initializing DTM manager");
 
+#ifdef CONFIG_DTM_2WIRE_E2E
 	// Check UART device is ready
 	if (!device_is_ready(uart_dev)) {
 		LOG_ERR("DTM UART device not ready");
@@ -221,7 +235,7 @@ int dtm_mgr_init(void)
 
 	// Get and display current UART configuration
 	struct uart_config uart_cfg;
-	ret = uart_config_get(uart_dev, &uart_cfg);
+	int ret = uart_config_get(uart_dev, &uart_cfg);
 	if (ret) {
 		LOG_ERR("Failed to read UART configuration: %d", ret);
 		return ret;
@@ -240,11 +254,18 @@ int dtm_mgr_init(void)
 	uart_irq_callback_user_data_set(uart_dev, uart_rx_handler, NULL);
 
 	uart_irq_rx_enable(uart_dev);
-
+#endif
 	dtm_hci_bridge_set_cmd_complete_cb(cmd_completion);
 
+#ifdef CONFIG_DTM_2WIRE_USER_DATA_LEN_PROPS
+	dtm_set_data_len_caps(CONFIG_DTM_2WIRE_USER_DATA_LEN_MAX_TX_OCTETS,
+			      CONFIG_DTM_2WIRE_USER_DATA_LEN_MAX_TX_TIME,
+			      CONFIG_DTM_2WIRE_USER_DATA_LEN_MAX_RX_OCTETS,
+			      CONFIG_DTM_2WIRE_USER_DATA_LEN_MAX_RX_TIME);
+#else
 	/* Prime controller capabilities: LE Read Max Data Length */
 	dtm_hci_bridge_send_cmd(BT_HCI_OP_LE_READ_MAX_DATA_LEN, NULL, 0);
+#endif
 
 	LOG_INF("DTM manager initialized");
 	return 0;

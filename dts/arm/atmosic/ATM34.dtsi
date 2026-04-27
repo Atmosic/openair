@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2021-2025 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <arm/armv8-m.dtsi>
@@ -34,10 +34,11 @@
 		retain: retain {
 			compatible = "zephyr,power-state";
 			power-state-name = "suspend-to-ram";
-			min-residency-us = <5000>;
+			/* Optimal for both power and time */
+			min-residency-us = <3300>;
 
 			/* Carefully measured in simulation - DO NOT ADJUST */
-			exit-latency-us = <2000>;
+			exit-latency-us = <2700>;
 		};
 		hibernate: hibernate {
 			compatible = "zephyr,power-state";
@@ -116,12 +117,6 @@
 	};
 };
 
-&wdog0 {
-#ifdef ATM_NS_APP
-	// non-secure watchdog uses interrupts
-	interrupts = <1 2>;
-#endif
-};
 
 &nvic {
 	arm,num-irq-priority-bits = <4>;

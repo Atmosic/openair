@@ -1,0 +1,66 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# This file provides default configurations for MCUmgr-based DFU/OTA functionality.
+# These settings are automatically applied when MCUMGR is enabled, eliminating the
+# need for manual overlay files in most cases.
+
+if MCUMGR
+
+# Stack sizes for MCUmgr command handlers
+config SYSTEM_WORKQUEUE_STACK_SIZE
+	default 2304
+
+config MAIN_STACK_SIZE
+	default 2048
+
+# Bluetooth transport specific defaults
+if MCUMGR_TRANSPORT_BT
+
+config MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL
+	default y
+
+# Enable the mcumgr Packet Reassembly feature over Bluetooth
+# MCUmgr buffer size is optimized to fit one SMP packet divided into five
+# Bluetooth Write Commands, transmitted with the maximum possible MTU value.
+config MCUMGR_TRANSPORT_BT_REASSEMBLY
+	default y
+
+config MCUMGR_TRANSPORT_NETBUF_SIZE
+	default 2475
+
+config MCUMGR_GRP_OS_MCUMGR_PARAMS
+	default y
+
+config MCUMGR_TRANSPORT_WORKQUEUE_STACK_SIZE
+	default 4608
+
+# Enable storage erase command (useful for clearing settings before OTA)
+config MCUMGR_GRP_ZBASIC
+	default y
+
+config MCUMGR_GRP_ZBASIC_STORAGE_ERASE
+	default y
+
+# Bluetooth packet sizes for large data transfers
+config BT_L2CAP_TX_MTU
+	default 512
+
+# BT_L2CAP_RX_MTU = CONFIG_BT_BUF_ACL_RX_SIZE - BT_L2CAP_HDR_SIZE(4 bytes)
+config BT_BUF_ACL_RX_SIZE
+	default 516
+
+endif # MCUMGR_TRANSPORT_BT
+
+# Serial/UART transport specific defaults
+if MCUMGR_TRANSPORT_UART
+
+# Increase MCUmgr buffer size for serial transport
+# This size can handle multiple images for XIP configurations
+config MCUMGR_TRANSPORT_NETBUF_SIZE
+	default 2048
+
+endif # MCUMGR_TRANSPORT_UART
+
+endif # MCUMGR

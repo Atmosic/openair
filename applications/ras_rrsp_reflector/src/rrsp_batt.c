@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -15,10 +15,10 @@ static int32_t last_batt_mv = 3000;
 #ifdef CONFIG_BATT_MODEL
 #include <zephyr/init.h>
 #include "batt_model.h"
-static void rrsp_batt_cb(uint16_t lvl, int32_t mvolt)
+static void rrsp_batt_cb(uint16_t lvl_bp, int32_t mvolt)
 {
 	last_batt_mv = mvolt;
-	LOG_DBG("update last_battery_vol to %d (lvl: %u)", last_batt_mv, lvl);
+	LOG_DBG("update last_battery_vol to %d (lvl: %u%%)", last_batt_mv, lvl_bp / 100);
 }
 
 static int rrsp_batt_init(void)

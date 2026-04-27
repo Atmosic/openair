@@ -5,7 +5,9 @@
  *
  * @brief DMA driver
  *
- * Copyright (C) Atmosic 2020-2025
+ * Copyright (C) Atmosic 2020-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */

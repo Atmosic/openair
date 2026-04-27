@@ -5,7 +5,9 @@
  *
  * @brief ATLC Driver Common Interface
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  ******************************************************************************
  */
@@ -73,35 +75,19 @@ extern uint32_t atlc_cmd_count;
 #define TCM_CLK_EN(en) do { \
 } while (0)
 
-/*
-TCM layout
-0x40128000     ATLC_TCM_NONSECURE_BASE
-0x000 - 0x1FE  TFF0
-0x200 - 0x3FE  RFF0
-0x600 - 0x6FE  TX_DATA_BUFFER
-0x700 - 0x7FF  ACK_154_BUFFER
-0x401287FF     END
-
-Current 15.4 usage
- - TFF0 8 bytes (two descriptor words)
- - RFF0 128 bytes (max 15.4 packet size)
- - TX_DATA_BUFFER 128 bytes (max 15.4 packet size)
- - ACK_154_BUFFER 128 bytes (max 15.4 packet size)
-Current BLE usage
- - TFF0 8 bytes (two descriptor words)
- - RFF0 257 bytes (max BLE packet size)
- - TX_DATA_BUFFER 257 bytes (max BLE packet size)
-*/
 #define NUM_BYTES_PER_TCM_WORD 4
-#define TCM_TFF0_ST_OFFSET        0x000
-#define TCM_TFF0_ED_OFFSET        0x1FE
-#define TCM_RFF0_ST_OFFSET        0x200
-#define TCM_RFF0_ED_OFFSET        0x3FE
-#define TX_DATA_BUFFER_TCM_OFFSET 0x600
-#define ACK_154_BUFFER_TCM_OFFSET 0x700
-
-// TX Descriptor
 #define NUM_TX_DESCRIPTOR_WORDS 2
+#define ATLC_FIFO_ALIGN 2
+
+extern uint16_t const atlc_tff0_st_offset;
+extern uint16_t const atlc_rff0_st_offset;
+extern uint16_t const atlc_tx_buf_tcm_offset;
+extern uint16_t const atlc_ack_154_buf_tcm_offset;
+
+#define TCM_TFF0_ST_OFFSET atlc_tff0_st_offset
+#define TCM_RFF0_ST_OFFSET atlc_rff0_st_offset
+#define TX_DATA_BUFFER_TCM_OFFSET atlc_tx_buf_tcm_offset
+#define ACK_154_BUFFER_TCM_OFFSET atlc_ack_154_buf_tcm_offset
 
 // Transmit power levels
 #define MIN_TX_POWER_DBM -20

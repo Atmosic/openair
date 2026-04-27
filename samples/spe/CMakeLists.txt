@@ -18,4 +18,5 @@ target_sources_ifdef(CONFIG_ATM_ENABLE_NSC_EXAMPLE app PRIVATE src/cust_sec_func
 
 zephyr_compile_options(
     -DSECURE_PROC_ENV=1
+    -include ${CMAKE_CURRENT_SOURCE_DIR}/include/atm_spe_exception_override.h
 )

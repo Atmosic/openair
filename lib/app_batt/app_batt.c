@@ -5,7 +5,7 @@
  *
  * @brief battery procedure for application layer.
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  *******************************************************************************
  */
@@ -188,24 +188,27 @@ static void app_batt_state_set(dev_state_t sts)
 }
 
 #if (CFG_APP_BATT_FEATURE & APP_BATT_AUTO_TIMER_BIT)
-static void app_batt_sample_cb_1st(uint16_t lvl, int32_t mvolt)
+static void app_batt_sample_cb_1st(uint16_t lvl_bp, int32_t mvolt)
 {
-    ATM_LOG(V, "1st - lvl: %d%%, mvolt: %" PRId32, lvl / 100, mvolt);
+	ATM_LOG(V, "1st - lvl: %d%%, mvolt: %" PRId32, lvl_bp / 100, mvolt);
 }
 #endif
 
-static void app_batt_sample_cb(uint16_t lvl, int32_t mvolt)
+static void app_batt_sample_cb(uint16_t lvl_bp, int32_t mvolt)
 {
     if (batt_state == DEV_ACTV) {
-	param->level_update(lvl, mvolt);
+	    param->level_update(lvl_bp, mvolt);
 #if (CFG_APP_BATT_FEATURE & APP_BATT_AUTO_TIMER_BIT)
 #ifndef CONFIG_SOC_FAMILY_ATM
-	sw_timer_set(tid_batt, (lvl > APP_BATT_LOW_BATTERY_PERCENTAGE ) ?
-	    APP_BATT_HIGH_POLL_TIME_CS : APP_BATT_LOW_POLL_TIME_CS);
+	    sw_timer_set(tid_batt, ((lvl_bp / 100) > APP_BATT_LOW_BATTERY_PERCENTAGE)
+					   ? APP_BATT_HIGH_POLL_TIME_CS
+					   : APP_BATT_LOW_POLL_TIME_CS);
 #else
-	k_timeout_t duration = K_MSEC(((lvl > APP_BATT_LOW_BATTERY_PERCENTAGE) ?
-            APP_BATT_HIGH_POLL_TIME_CS : APP_BATT_LOW_POLL_TIME_CS) * 10);
-	k_work_reschedule(&batt_timer_work, duration);
+	    k_timeout_t duration = K_MSEC((((lvl_bp / 100) > APP_BATT_LOW_BATTERY_PERCENTAGE)
+						   ? APP_BATT_HIGH_POLL_TIME_CS
+						   : APP_BATT_LOW_POLL_TIME_CS) *
+					  10);
+	    k_work_reschedule(&batt_timer_work, duration);
 #endif // CONFIG_SOC_FAMILY_ATM
 #endif // CFG_APP_BATT_FEATURE & APP_BATT_AUTO_TIMER_BIT
     }

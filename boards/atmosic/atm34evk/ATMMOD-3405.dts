@@ -1,0 +1,251 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/dts-v1/;
+#ifndef FLASH_SIZE
+#define FLASH_SIZE 0x100000
+#endif
+#include <arm/atmosic/ATM34xx.dtsi>
+#include <dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <atm34_pinmux.h>
+#define STACKED_FLASH_WQK
+#include "stacked_flash.dtsi"
+
+/ {
+	model = "Atmosic ATM34 Module";
+	compatible = "atmosic,ATMMOD_3405";
+
+	chosen {
+		zephyr,console = &uart1;
+		zephyr,uart-mcumgr = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash-controller = &rram_controller;
+		zephyr,flash = &rram0;
+		zephyr,entropy = &trng;
+#ifdef ATM_DTS_USER_APP
+		zephyr,shell-uart = &uart1;
+		zephyr,bt-mon-uart = &uart1;
+		zephyr,bt-c2h-uart = &uart0;
+#endif
+	};
+
+#ifdef ATM_DTS_USER_APP
+	leds {
+		compatible = "gpio-leds";
+		led0: led1_g {
+			gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
+			label = "Green LED1";
+		};
+		led1: led1_r {
+			gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+			label = "Red LED1";
+		};
+		led2: led2_g {
+			gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+			label = "Green LED2";
+		};
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_led0: pwm_led_0 {
+			pwms = <&pwm1 1 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+			label = "Green LED";
+		};
+	};
+
+	buzzers {
+		pwm_buzzer0: pwm_buzzer_0 {
+			compatible = "atmosic,atm3x-pwm-buzzer";
+			pwms = <&pwm1 1 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
+			min-frequency = <123>;
+			max-frequency = <10000>;
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+			label = "Button1";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+		button1: button_1 {
+			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
+			label = "Button2";
+			zephyr,code = <INPUT_KEY_1>;
+		};
+	};
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		i2c-1 = &i2c0;
+		led0 = &led0;
+		led1 = &led1;
+		pwm-0 = &pwm3;
+		pwm-test = &pwm3;
+		pwm-led0 = &pwm_led0;
+		sw0 = &button0;
+	};
+
+	/* mikroBUS connector support */
+	mikrobus_header: mikrobus-connector {
+		compatible = "mikro-bus";
+		#gpio-cells = <2>;
+		gpio-map-mask = <0xffffffff 0xffffffc0>;
+		gpio-map-pass-thru = <0 0x3f>;
+		gpio-map =	<0 0 &gpio0 4 0>,	/* AN   -> P4  */
+				<1 0 &gpio0 21 0>,	/* RST  -> P21 */
+				<2 0 &gpio0 20 0>,	/* CS   -> P20 */
+				<3 0 &gpio0 17 0>,	/* SCK  -> P17 */
+				<4 0 &gpio0 19 0>,	/* MISO -> P19 */
+				<5 0 &gpio0 18 0>,	/* MOSI -> P18 */
+							/* +3.3V */
+							/* GND */
+				<6 0 &gpio0 22 0>,	/* PWM  -> P22 */
+				<7 0 &gpio0 14 0>,	/* INT  -> P14 */
+				<8 0 &gpio0 30 0>,	/* RX   -> P30 */
+				<9 0 &gpio0 15 0>,	/* TX   -> P15 */
+				<10 0 &gpio0 12 0>,	/* SCL  -> P12 */
+				<11 0 &gpio0 13 0>;	/* SDA  -> P13 */
+							/* +5V */
+							/* GND */
+	};
+#endif
+
+	zephyr,user {
+		pin-arrangement = "5X5";
+	};
+};
+
+&uart1 {
+	tx-pin = <27>;
+};
+
+&uart0 {
+	rx-pin = <30>;
+	tx-pin = <15>;
+};
+
+&pmu {
+	vddio-type = <1>;
+	vddpa-src = <0>;
+};
+
+#ifdef ATM_DTS_USER_APP
+&pinctrl {
+	i2c0_sda_default: i2c0_sda_default {
+		pinmux = <13 PINMUX_I2C0_SDA>;
+	};
+
+	i2c0_scl_default: i2c0_scl_default {
+		pinmux = <12 PINMUX_I2C0_SCL>;
+	};
+
+	/* SPI0 */
+	spi0_clk_default: spi0_clk_default {
+		pinmux = <17 PINMUX_SPI0_CLK>;
+	};
+
+	spi0_mosi_default: spi0_mosi_default {
+		pinmux = <18 PINMUX_SPI0_MOSI>;
+	};
+
+	spi0_miso_default: spi0_miso_default {
+		pinmux = <19 PINMUX_SPI0_MISO>;
+	};
+
+	spi0_cs_default: spi0_cs_default {
+		pinmux = <20 PINMUX_SPI0_CS>;
+	};
+
+	/* SPI1 */
+	spi1_clk_default: spi1_clk_default {
+		pinmux = <5 PINMUX_SPI1_CLK>;
+	};
+
+	spi1_mosi_default: spi1_mosi_default {
+		pinmux = <22 PINMUX_SPI1_MOSI>;
+	};
+
+	spi1_cs_default: spi1_cs_default {
+		pinmux = <4 PINMUX_SPI1_CS>;
+	};
+
+	spi1_miso_default: spi1_miso_default {
+		pinmux = <15 PINMUX_SPI1_MISO>;
+	};
+};
+
+&i2c0 {
+	pinctrl-0 = <&i2c0_sda_default &i2c0_scl_default>;
+	pinctrl-names = "default";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+&pwm1 {
+	pin = <25>;
+	status = "okay";
+};
+
+&pwm3 {
+	pin = <29>;
+	status = "okay";
+};
+
+&adc {
+	ch-cell = <1>;
+	ch-store = <2>;
+	ch-batt = <11>;
+	ch-p4single = <7>;
+	ch-p1single1 = <8>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1_8";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+
+	channel@b {
+		reg = <11>;
+		zephyr,gain = "ADC_GAIN_1_2";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+
+	channel@7 {
+		reg = <7>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+
+	channel@8 {
+		reg = <8>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+};
+
+&spi0 {
+	pinctrl-0 = <&spi0_clk_default &spi0_cs_default &spi0_mosi_default &spi0_miso_default>;
+	pinctrl-names = "default";
+};
+
+&spi1 {
+	pinctrl-0 = <&spi1_clk_default &spi1_cs_default &spi1_mosi_default &spi1_miso_default>;
+	pinctrl-names = "default";
+};
+
+arduino_i2c: &i2c0 {};
+arduino_spi: &spi1 {};
+#endif

@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/ztest.h>
@@ -17,11 +17,12 @@ extern void fast_code_test_2(void);
 #endif
 
 #ifdef CONFIG_BOOTLOADER_MCUBOOT
-// partition is nested in slot0
+// fast_code is a subpartition of slot0, which is a partition of flash
 #define PART_FAST_CODE_ADDR()                                                                      \
-	(DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(slot0_partition))) +                 \
+	(DT_REG_ADDR(DT_MTD_FROM_FIXED_SUBPARTITION(DT_NODELABEL(fast_code_partition))) +          \
 	 DT_REG_ADDR(DT_NODELABEL(fast_code_partition)))
 #else
+// fast_code is a partition of flash directly
 #define PART_FAST_CODE_ADDR()                                                                      \
 	(DT_REG_ADDR(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(fast_code_partition))) +             \
 	 DT_REG_ADDR(DT_NODELABEL(fast_code_partition)))

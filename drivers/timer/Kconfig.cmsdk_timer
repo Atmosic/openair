@@ -1,0 +1,24 @@
+# Copyright (c) 2026 Atmosic Technologies, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config CMSDK_TIMER
+	bool "ARM CMSDK Timer (System Clock)"
+	default y
+	depends on DT_HAS_ARM_CMSDK_SYSTIMER_ENABLED
+	select TICKLESS_CAPABLE
+	select SYSTEM_TIMER_HAS_DISABLE_SUPPORT
+	help
+	  This module implements a kernel device driver for the ARM CMSDK
+	  Timer and provides the standard "system clock driver" interfaces.
+
+	  The CMSDK Timer is a 32-bit down-counting timer found in ARM
+	  Corstone and similar SoC designs.
+
+config CMSDK_TIMER_64BIT_CYCLE_COUNTER
+	bool "Use 64-bit cycle counter"
+	depends on CMSDK_TIMER
+	default y if (SYS_CLOCK_HW_CYCLES_PER_SEC > 60000000)
+	select TIMER_HAS_64BIT_CYCLE_COUNTER
+	help
+	  Use a 64-bit cycle counter internally to avoid overflow issues
+	  with long-running systems.

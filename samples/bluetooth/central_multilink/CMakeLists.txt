@@ -8,6 +8,7 @@ set(OA_APP_DIR samples/bluetooth/central_multilink)
 # cross-platform compilation.
 cmake_path(CONVERT "$ENV{ZEPHYR_BASE}" TO_CMAKE_PATH_LIST OA_ZEPHYR_BASE)
 set(APPLICATION_CONFIG_DIR ${OA_ZEPHYR_BASE}/${OA_APP_DIR})
+set(EXTRA_CONF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/atm.conf")
 set(KCONFIG_ROOT ${APPLICATION_CONFIG_DIR}/Kconfig)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})

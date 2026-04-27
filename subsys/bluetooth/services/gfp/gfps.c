@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -18,13 +18,15 @@
 #include "dult.h"
 #endif
 #include "gfps.h"
+#ifdef CONFIG_ATM_GFP_DIS
+#include "dis/dis.h"
+#endif
 #include "fp_adv.h"
 #ifdef CONFIG_FAST_PAIR_FMDN
 #include "fp_fmdn_adv.h"
 #include "fp_fmdn_gatt.h"
 #endif
 #include "fp_gatt.h"
-#include "fp_common.h"
 #include "fp_conn.h"
 #include "fp_storage.h"
 
@@ -50,15 +52,15 @@ void gfps_handlers_register(gfps_hdlrs_t const *hdlrs)
 		fp_fmdn_key_battery_reg(hdlrs->battery_status_cb);
 	}
 #endif // CONFIG_FAST_PAIR_FMDN_DULT
-#ifdef CONFIG_FMDN_PRECISION_FINDING
-	if (hdlrs->ranging_handlers) {
-		fp_fmdn_ranging_handler_register(hdlrs->ranging_handlers);
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+	if (hdlrs->reverse_ringing_action_cb) {
+		fp_fmdn_reverse_ringing_action_reg(hdlrs->reverse_ringing_action_cb);
 	}
-#endif // CONFIG_FMDN_PRECISION_FINDING
+#endif // CONFIG_FMDN_REVERSE_RINGING
 #endif // CONFIG_FAST_PAIR_FMDN
 }
 
-void gfps_button_notify(void)
+void gfps_button_notify(fp_tap_type_t tap_type)
 {
 	fp_mode_t mode = fp_mode_get();
 	if (mode <= FP_MODE_PAIRED) {
@@ -66,11 +68,16 @@ void gfps_button_notify(void)
 		gfps_fp_pairing_adv();
 #endif
 	} else if (mode == FP_MODE_PROVISIONED) {
-		fp_fmdn_button_notify();
+		if (tap_type == FP_SINGLE_TAP) {
+			fp_fmdn_button_notify();
+		}
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+		fp_fmdn_reverse_ringing_button_press(tap_type);
+#endif
 	}
 }
 
-static void gfps_init_service(void)
+static void gfps_init_service()
 {
 	fp_conn_init();
 	fp_mode_init();
@@ -81,12 +88,15 @@ static void gfps_init_service(void)
 #endif
 }
 
-int gfps_init(void)
+int gfps_init(const char *fw_version)
 {
 	if (fp_storage_init()) {
 		LOG_ERR("fp_storage_init returned error");
 		return -EALREADY;
 	}
+#ifdef CONFIG_ATM_GFP_DIS
+	gfp_dis_init(fw_version);
+#endif
 	gfps_init_service();
 	return 0;
 }

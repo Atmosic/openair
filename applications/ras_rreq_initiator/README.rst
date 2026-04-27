@@ -105,35 +105,56 @@ This option enables:
 .. note::
    RSSI readings provide valuable signal strength information that can be used to improve connection quality assessment.
 
-1M PHY for Long-Distance Testing
-================================
+BLE PHY Mode Selection
+======================
 
-To enable 1M PHY mode for improved range and signal penetration in long-distance testing scenarios, add the following configuration option to your project configuration file (``prj.conf``):
+To enable BLE PHY mode selection and automatic PHY updates, add the following configuration options to your project configuration file (``prj.conf``):
 
 .. code-block:: bash
 
-   CONFIG_ATM_BT_PHY_1M=y
+   CONFIG_ATM_BT_PHY_UPDATE=y
+   CONFIG_ATM_BT_PHY=0
 
-This option enables:
+These options enable:
 
-- 1M PHY mode for enhanced range and signal penetration capabilities
-- Automatic enabling of BT_USER_PHY_UPDATE for PHY management functionality
-- Automatic disabling of BT_AUTO_PHY_UPDATE to ensure consistent 1M PHY usage
-- Forced PHY update to 1M if non-1M PHY is detected during connection
-- Optimized Channel Sounding procedure intervals (16 vs 12) for 1M PHY operation
+- Flexible PHY mode selection (0=1M, 1=2M, 2=Coded)
+- Automatic PHY update to the configured mode if a different PHY is detected during connection
+- Retry mechanism for PHY update failures
 
-When this option is enabled:
+Configuration Details
 
-- The system will automatically attempt to update the PHY to 1M if a different PHY is detected
-- Channel Sounding procedure intervals are adjusted from 12 to 16 for optimal 1M PHY performance
-- Up to 3 retry attempts are made if PHY update to 1M fails
-- PHY update status is logged for monitoring and debugging purposes
+**CONFIG_ATM_BT_PHY_UPDATE**: Enable/disable automatic PHY updates
+
+- When enabled, the system will automatically attempt to update the PHY to the configured mode if a different PHY is detected
+- Up to 3 retry attempts are made if PHY update fails
+
+**CONFIG_ATM_BT_PHY**: Select the preferred PHY mode
+
+- ``0``: 1M PHY (default) - Enhanced range and signal penetration for long-distance testing
+- ``1``: 2M PHY - Higher data rate for improved throughput
+- ``2``: Coded PHY - Extended range with lower data rate
+
+Example configurations:
+
+.. code-block:: bash
+
+   # For long-distance Channel Sounding with 1M PHY
+   CONFIG_ATM_BT_PHY_UPDATE=y
+   CONFIG_ATM_BT_PHY=0
+
+   # For high-throughput scenarios with 2M PHY
+   CONFIG_ATM_BT_PHY_UPDATE=y
+   CONFIG_ATM_BT_PHY=1
+
+   # For extended range with Coded PHY
+   CONFIG_ATM_BT_PHY_UPDATE=y
+   CONFIG_ATM_BT_PHY=2
 
 .. note::
-   This feature is specifically designed for long-distance Channel Sounding applications where 1M PHY provides better range and signal penetration compared to higher data rate PHYs. The automatic PHY management ensures consistent 1M PHY usage throughout the connection lifecycle.
+   This feature is specifically designed for Channel Sounding applications where PHY mode selection is critical for optimal performance. The automatic PHY management ensures consistent PHY usage throughout the connection lifecycle.
 
 .. important::
-   **Reflector Configuration Requirement**: When testing with a reflector device (e.g., :ref:`ras_rrsp_reflector <ras_rrsp_reflector-application>`), the reflector must also have ``CONFIG_BT_AUTO_PHY_UPDATE=n`` disabled to ensure both devices maintain consistent 1M PHY usage. Without this configuration on the reflector side, PHY mismatches may occur during the connection, potentially affecting Channel Sounding performance and range measurements.
+   **Reflector Configuration Requirement**: When testing with a reflector device (e.g., :ref:`ras_rrsp_reflector <ras_rrsp_reflector-application>`), the reflector must disable auto phy ``CONFIG_BT_AUTO_PHY_UPDATE=n``. If not, PHY mismatches may occur during the connection, potentially affecting Channel Sounding performance and range measurements.
 
 Building and Running
 ********************
@@ -146,14 +167,8 @@ Build with UART0 as console and shell command:
 
    west build -p always -b <BOARD> openair/applications/ras_rreq_initiator --sysbuild -T applications.ras_rreq_initiator.atm
 
-Build with UART1 as console and shell command:
-
-.. code-block:: bash
-
-   west build -p always -b <BOARD> openair/applications/ras_rreq_initiator --sysbuild -T applications.ras_rreq_initiator.atm.uart1
-
 Flash command:
 
 .. code-block:: bash
 
-   west flash --skip-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]

@@ -3,14 +3,35 @@ sample:
   name: DTM 2-wire
 common:
   sysbuild: true
-  harness: console
-  harness_config:
-    type: one_line
-    regex:
-      - "DTM 2-wire application started"
+  tags:
+    - bluetooth
+    - dtm
 tests:
-  samples.bluetooth.dtm_2wire.atm:
-    tags:
-      - bluetooth
-      - dtm
-      - no_mcuboot
+  samples.bluetooth.dtm_2wire.atm: &dtm_2wire_console
+    harness: console
+    harness_config: &dtm_2wire_console_harness
+      type: one_line
+      regex:
+        - "DTM 2-wire application started"
+    extra_configs:
+      - CONFIG_LOG=y
+      - CONFIG_LOG_MODE_IMMEDIATE=y
+  samples.bluetooth.dtm_2wire.atm.debug:
+    harness: console
+    harness_config: *dtm_2wire_console_harness
+    extra_configs:
+      - CONFIG_LOG=y
+      - CONFIG_ASSERT=y
+      - CONFIG_LOG_MODE_IMMEDIATE=y
+      - CONFIG_DTM_2WIRE_LOG_LEVEL_DBG=y
+  samples.bluetooth.dtm_2wire.atm.pytest_single:
+    harness: pytest
+    timeout: 300
+    harness_config:
+      pytest_root: ["pytest/test_dtm_single.py"]
+      pytest_dut_scope: class
+      pytest_args:
+        - "-v"
+    extra_configs:
+      - CONFIG_LOG=y
+      - CONFIG_LOG_MODE_IMMEDIATE=y

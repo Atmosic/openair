@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/ztest.h>
 #include "batt_model.h"
 
-static void batt_sample_cb(uint16_t lvl, int32_t mvolt)
+static void batt_sample_cb(uint16_t lvl_bp, int32_t mvolt)
 {
-	TC_PRINT("lvl=%u mvolt=%d\n", lvl, mvolt);
+	TC_PRINT("lvl_bp=%u mvolt=%d\n", lvl_bp, mvolt);
 }
 
 static dev_state_t batt_state_get(void)

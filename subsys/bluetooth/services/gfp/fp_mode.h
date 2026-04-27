@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Mode Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -25,6 +25,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Power-loss recovery state */
+typedef enum {
+	POWER_LOSS_RECOVERY_IDLE,
+	POWER_LOSS_RECOVERY_CONTINUOUS,
+	POWER_LOSS_RECOVERY_PERIODIC,
+} power_loss_recovery_state_t;
 
 /**
  * @brief FP mode init
@@ -84,6 +91,37 @@ void fp_mode_switch_reg(fp_mode_switch_cb const hdlr);
  * @return rap timeout
  */
 uint16_t fp_mode_rpa_timeout(void);
+
+/**
+ * @brief Get current power loss recovery state
+ *
+ * @return current PLR state
+ */
+power_loss_recovery_state_t fp_mode_power_loss_recovery_state_get(void);
+
+/**
+ * @brief fp current fp mode power loss recovery required
+ * @param[in] mode fp mode
+ *
+ * @return true if power loss recovery required
+ */
+bool fp_mode_power_loss_recovery_required_adv(fp_mode_t mode);
+
+/**
+ * @brief Start power-loss recovery advertising
+ */
+void fp_mode_power_loss_recovery_start(void);
+
+/**
+ * @brief Stop power-loss recovery advertising
+ */
+void fp_mode_power_loss_recovery_stop(void);
+
+/**
+ * @brief Check if in periodic advertising phase
+ * @return true if periodic, false otherwise
+ */
+bool fp_mode_power_loss_is_periodic(void);
 
 #ifdef __cplusplus
 }

@@ -27,9 +27,17 @@ Device State Transitions
 .. note::
    This chapter highlights the key behavioral difference between the **multimode_consumer_tag** and the single-mode **fhn_tag**, **fmna_tag**, or **stf_tag**.
 
-- **Step 1**: When the device is **unpaired**, it automatically enters pairing mode upon boot. In this mode, the device is discoverable and can be paired using either the **Apple Find My**, **Google Find Hub** app or the **Samsung SmartThings Find** app.
-- **Step 2**: Once the device is successfully **paired** with any supported app, it switches to single-mode operation, functioning as either an **FMNA tag** (Apple), **FHN tag** (Google), or **STF tag** (Samsung).
-- **Step 3**: If the device is **unpaired** via the app or a physical button, it returns to the **unpaired** state and behaves as described in **Step 1**.
+1. When the device is **unpaired**, it automatically enters pairing mode upon boot. In this mode, the device is discoverable and can be paired using either the **Apple Find My**, **Google Find Hub** app or the **Samsung SmartThings Find** app.
+
+   a. The device automatically enters **SOC OFF** mode after **3 minutes** of inactivity during pairing mode to conserve power.
+   b. The device can be woken up from **SOC OFF** mode using **Button1** or the **Reset button**, and then it goes back to pairing mode.
+
+2. Once the device is successfully **paired** with any supported app, it switches to single-mode operation, functioning as either an **FMNA tag** (Apple), **FHN tag** (Google), or **STF tag** (Samsung).
+
+3. If the device is **unpaired** via the app or a physical button, it returns to the **unpaired** state and behaves as described in **1**.
+
+.. note::
+   GPIO5 (Button1) is the only pin that can wake the device from SOC OFF. Other GPIO pins cannot trigger a wakeup from this deep sleep state.
 
 Buttons and user actions (Summary)
 **********************************
@@ -171,17 +179,31 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fmna_only.mcuboot.uarp
 
-11) Samsung only (STF, minimal) with MCUboot + OTA
-==================================================
+11) Samsung only (STF, minimal) with MCUboot + Native Firmware Update Only
+===========================================================================
+Target: ``applications.multimode_consumer_tag.atm.stf_only.mcuboot.native_fw_update_only``
+- Purpose: SmartThings Find only (minimal footprint), with MCUboot support. Atmosic OTA is disabled to maintain single STF tag behavior. This build has Samsung's native firmware update mechanism via the STF GATT service only.
+
+.. note::
+
+   For firmware update instructions using SmartThings native OTA, see ``README_STF_FIRMWARE_UPDATE.rst``.
+
+Example::
+
+  west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+    --sysbuild -T applications.multimode_consumer_tag.atm.stf_only.mcuboot.native_fw_update_only
+
+12) Samsung only (STF) with MCUboot + OTA
+==========================================
 Target: ``applications.multimode_consumer_tag.atm.stf_only.mcuboot.ota``
-- Purpose: SmartThings Find only (minimal footprint), with MCUboot and OTA.
+- Purpose: SmartThings Find only, with MCUboot and OTA (both Atmosic OTA and Samsung native firmware update).
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_only.mcuboot.ota
 
-12) Dual-mode: Google + Apple with MCUboot + OTA
+13) Dual-mode: Google + Apple with MCUboot + OTA
 =================================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.ota``
 - Purpose: FHN + FMNA, with MCUboot and OTA.
@@ -191,7 +213,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.ota
 
-13) Dual-mode: Samsung + Apple with MCUboot + OTA
+14) Dual-mode: Samsung + Apple with MCUboot + OTA
 ==================================================
 Target: ``applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.ota``
 - Purpose: STF + FMNA, with MCUboot and OTA.
@@ -201,7 +223,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.ota
 
-14) Dual-mode: Samsung + Google with MCUboot + OTA
+15) Dual-mode: Samsung + Google with MCUboot + OTA
 ===================================================
 Target: ``applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.ota``
 - Purpose: STF + FHN, with MCUboot and OTA.
@@ -212,28 +234,28 @@ Example::
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.ota
 
 
-15) ATM34: MCUboot + Flash XIP (triple-mode)
-=============================================
-Target: ``applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip``
-- Purpose: ATM34 SoC: app executes in external flash XIP with MCUboot.
+16) ATM34: MCUboot + Flash XIP (triple-mode) with OTA
+======================================================
+Target: ``applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.ota``
+- Purpose: ATM34 SoC: app executes in external flash XIP with MCUboot and OTA.
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip
+    --sysbuild -T applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.ota
 
-16) ATM34: MCUboot + Flash XIP (overwrite-only)
-================================================
-Target: ``applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.overwrite``
-- Purpose: Similar to (15) but MCUboot overwrite-only (no scratch).
+17) ATM34: MCUboot + Flash XIP (overwrite-only) with OTA
+=========================================================
+Target: ``applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.overwrite.ota``
+- Purpose: Similar to (16) but MCUboot overwrite-only (no scratch), with OTA.
 - Extras: ``SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y``, scratch size 0, verify img addr off.
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.overwrite
+    --sysbuild -T applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.overwrite.ota
 
-17) Google only (FHN) with Channel Sounding
+18) Google only (FHN) with Channel Sounding
 ============================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_cs_tag``
 - Purpose: Google Find Hub Network, with Channel Sounding.
@@ -244,7 +266,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_cs_tag
 
-18) Dual-mode (Google + Apple) with Channel Sounding
+19) Dual-mode (Google + Apple) with Channel Sounding
 =====================================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag``
 - Purpose: Enable Atmosic Channel Sounding alongside FHN + FMNA.
@@ -255,7 +277,7 @@ Example::
   west build -p always -b <BOARD> openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag
 
-19) Google only (FHN) with Channel Sounding and MCUboot + OTA
+20) Google only (FHN) with Channel Sounding and MCUboot + OTA
 ==============================================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_cs_tag.mcuboot.ota``
 - Purpose: Google Find Hub Network with Channel Sounding, MCUboot and OTA.
@@ -266,7 +288,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_cs_tag.mcuboot.ota
 
-20) Dual-mode (Google + Apple) with Channel Sounding and MCUboot + OTA
+21) Dual-mode (Google + Apple) with Channel Sounding and MCUboot + OTA
 =======================================================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag.mcuboot.ota``
 - Purpose: Enable Atmosic Channel Sounding alongside FHN + FMNA, with MCUboot and OTA.
@@ -277,7 +299,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag.mcuboot.ota
 
-21) Google only (FHN) with Ranging OOB Data Element (Precision Finding)
+22) Google only (FHN) with Ranging OOB Data Element (Precision Finding)
 ========================================================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_only.oob_de``
 - Purpose: Google Fast Pair + FMDN with Precision Finding using Ranging OOB Data Elements.
@@ -327,17 +349,29 @@ Configuration options:
 
    CONFIG_FAST_PAIR_MODEL_ID=<Model ID>
    CONFIG_FAST_PAIR_AS_KEY=<Anti-Spoofing Key>
-   CONFIG_FAST_PAIR_AS_KEY_TAG=<Secure Journal Tag>
+   CONFIG_FAST_PAIR_MODEL_ID_TAG=<Secure Journal Tag for Model ID>
+   CONFIG_FAST_PAIR_AS_KEY_TAG=<Secure Journal Tag for Anti-Spoofing Key>
 
 Secure Journal support
 ======================
-The Fast Pair service supports loading the anti-spoofing key from the Secure Journal with automatic fallback to Kconfig defaults.
+The Fast Pair service supports loading both the Model ID and anti-spoofing key from the Secure Journal with automatic fallback to Kconfig defaults.
 
-Key loading priority:
+Model ID loading priority:
+1. Secure Journal (Production): 3-byte binary Model ID stored at ``CONFIG_FAST_PAIR_MODEL_ID_TAG`` (default: 0xde)
+2. Kconfig fallback (Development): Model ID from ``CONFIG_FAST_PAIR_MODEL_ID``
+
+Anti-Spoofing Key loading priority:
 1. Secure Journal (Production): 32-byte binary key stored at ``CONFIG_FAST_PAIR_AS_KEY_TAG`` (default: 0xdf)
 2. Kconfig fallback (Development): Base64-encoded key from ``CONFIG_FAST_PAIR_AS_KEY``
 
-Add key to Secure Journal:
+Add Model ID to Secure Journal:
+
+.. code-block:: console
+
+   west secjrnl append --device <DEVICE_ID> --board <BOARD> --jlink \
+     --tag 0xde --data "\x<3-bytes-hex>" [--locked]
+
+Add Anti-Spoofing Key to Secure Journal:
 
 .. code-block:: console
 
@@ -348,13 +382,17 @@ Verification logs:
 
 .. code-block:: console
 
-   [INF] fp: Model ID [0xXXXXXX] AS Key loaded from Secure Journal
+   [INF] fp: Model ID loaded from Secure Journal
    # or
-   [INF] fp: Model ID [0xXXXXXX] AS Key loaded from Kconfig default
+   [INF] fp: Model ID loaded from Kconfig default
+   [INF] fp: AS Key loaded from Secure Journal
+   # or
+   [INF] fp: AS Key loaded from Kconfig default
 
 .. note::
 
-   - Secure Journal keys must be exactly 32 bytes of binary data.
+   - Secure Journal Model ID must be exactly 3 bytes of binary data.
+   - Secure Journal Anti-Spoofing Key must be exactly 32 bytes of binary data.
    - Invalid Secure Journal entries automatically fall back to Kconfig defaults.
    - You can place these configs in prj.conf or pass them via west build ``--`` extra args.
 
@@ -364,8 +402,14 @@ Pairing and provisioning procedure
 2. The Find My Device app detects the device; tap Connect to initiate Fast Pairing.
 3. After successful pairing, the device starts FP Non-discoverable Advertisement (with encrypted account key list).
 4. Tap Agree in the app to start FMDN provisioning.
-5. After successful provisioning, the device starts FMDN Advertisement (encrypted EID) and stops FP Non-discoverable Advertisement by default.
-6. The device appears in the user's device list with its location on the map.
+5. After successful provisioning, advertising switches to the Find Hub Network provisioned path:
+
+   - With ``CONFIG_FAST_PAIR_FMDN_MERGED_ADV=y``, a single extended advertiser carries both Fast Pair non-discoverable service data and FMDN EID service data.
+   - With ``CONFIG_FAST_PAIR_FMDN_MERGED_ADV=n``, the device uses FMDN provisioned advertising and stops standalone Fast Pair non-discoverable advertising by default.
+
+6. In merged provisioned mode, the advertising interval is aligned to ``2000 ms`` and the BLE address rotation follows the Spot-style timeout of ``1024 s + random up to 200 s``.
+7. Power-loss recovery (PLR) advertising remains a separate recovery mode. It is not part of the merged provisioned advertiser described above.
+8. The device appears in the user's device list with its location on the map.
 
 .. note::
 
@@ -533,7 +577,7 @@ Samsung SmartThings Find (STF) details
 
 SmartThings Find Device SDK integration
 =======================================
-1. Once you have access to the SmartThings Find Device SDK, request the integration patch from Atmosic.
+1. Once you have access to the `SmartThings Find Device SDK <https://partners.smartthings.com/>`_ (v2.6.0), request the integration patch from Atmosic.
 2. Create a directory named ``vendor`` under ``<WEST_TOPDIR>``, and place the unzipped ``TagSDK`` directory under ``vendor``. The path becomes ``<WEST_TOPDIR>/vendor/TagSDK``.
 3. Place the Atmosic patch file (e.g., ``<patch_name.diff>``) into ``<WEST_TOPDIR>/vendor/TagSDK``.
 4. Navigate to ``<WEST_TOPDIR>/vendor/TagSDK`` and apply the patch using the following command:
@@ -556,7 +600,7 @@ Use west to flash the combined sysbuild images and factory data:
 
 ::
 
-  west flash --skip-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+  west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
 
 .. note::
     - Use the ``--erase_all`` option cautiously, as it may erase critical updated token information.
@@ -564,5 +608,15 @@ Use west to flash the combined sysbuild images and factory data:
 
 Additional Notes
 ================
-- PWM Buzzer: add ``CONFIG_ATM_BUZZER=y`` and map a PWM channel in the board overlay (``boards/<BOARD>.overlay``). The buzzer binding requires both ``pwms`` and ``pulse`` properties.
+- PWM Buzzer: EVK boards don't have a built-in buzzer, map a PWM channel in ``app.overlay`` and enable ``CONFIG_ATM_BUZZER=y`` to enable the buzzer feature manually. Example:
+
+  .. code-block:: dts
+
+      buzzers {
+          pwm_buzzer0: pwm_buzzer_0 {
+              compatible = "atmosic,atm3x-pwm-buzzer";
+              pwms = <&pwm1 1 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
+              pulse = <PWM_USEC(500)>;
+          };
+      };
 - For STF, ensure the TagSDK integration is complete and that ``stf_tag.conf`` is provided via EXTRA_CONF_FILE as shown in the build items.

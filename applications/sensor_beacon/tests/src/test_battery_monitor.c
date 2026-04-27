@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/ztest.h>
@@ -25,22 +25,20 @@ ZTEST(battery_monitor, test_battery_monitor_init)
 
 ZTEST(battery_monitor, test_battery_monitor_get_voltages)
 {
-	float vstore, vbatt;
-	int ret;
-
 	/* Try to initialize first */
 	battery_monitor_init();
 
-	ret = battery_monitor_get_voltages(&vstore, &vbatt);
+	float vstore, vbatt;
+	int ret = battery_monitor_get_voltages(&vstore, &vbatt);
 
 	if (!ret) {
 		LOG_INF("VStore: %.3fV, VBatt: %.3fV", (double)vstore, (double)vbatt);
 
 		/* Basic sanity checks for voltage values */
-		zassert_true(vstore >= 0.0f && vstore <= 5.0f,
-			     "VStore voltage out of range: %.3f", (double)vstore);
-		zassert_true(vbatt >= 0.0f && vbatt <= 5.0f,
-			     "VBatt voltage out of range: %.3f", (double)vbatt);
+		zassert_true(vstore >= 0.0f && vstore <= 5.0f, "VStore voltage out of range: %.3f",
+			     (double)vstore);
+		zassert_true(vbatt >= 0.0f && vbatt <= 5.0f, "VBatt voltage out of range: %.3f",
+			     (double)vbatt);
 
 		LOG_INF("Battery voltage validation passed");
 	} else {
@@ -62,7 +60,8 @@ ZTEST(battery_monitor, test_battery_monitor_parameter_validation)
 		zassert_true(vstore >= 0.0f && vstore <= 5.0f, "VStore should be in valid range");
 		zassert_true(vbatt >= 0.0f && vbatt <= 5.0f, "VBatt should be in valid range");
 	} else {
-		LOG_WRN("Parameter validation test: function returned error %" PRId32 " (may be expected)",
+		LOG_WRN("Parameter validation test: function returned error %" PRId32
+			" (may be expected)",
 			ret);
 	}
 

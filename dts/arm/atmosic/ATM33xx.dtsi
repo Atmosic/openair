@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2021-2025 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <arm/atmosic/ATM33.dtsi>
@@ -44,12 +44,17 @@
 #ifndef ATM_NS_APP
 	// define the area for the MPU to catch NULL pointers
 	// NS applications use secure access violations to detect NULL
+	// When ATM_MPC_NULL_POINTER_DETECTION is defined, MPC is used instead
+	// of MPU for NULL pointer detection, so this node should be disabled.
 	rom_null_page: memory@0 {
 		compatible = "zephyr,memory-attr","zephyr,memory-region";
 		zephyr,memory-region = "NULL_PAGE";
 		zephyr,memory-attr = <( DT_MEM_ARM(ATTR_MPU_FLASH) )>;
 		device_type = "memory";
 		reg = <0x0 ROM_NULL_PAGE_SIZE>;
+#ifdef ATM_MPC_NULL_POINTER_DETECTION
+		status = "disabled";
+#endif
 	};
 #endif
 

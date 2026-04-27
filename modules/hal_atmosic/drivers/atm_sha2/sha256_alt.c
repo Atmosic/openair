@@ -5,7 +5,9 @@
  *
  * @brief mbedtls glue for Atmosic SHA256 driver
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -56,7 +58,11 @@ int mbedtls_sha256_starts(mbedtls_sha256_context *ctx, int is224)
     atm_sha256_params_t const sha256_params = {
 	.mode = ATM_SHA256_SHA_MODE,
 	.byte_endianess = ATM_SHA256_ENDIANESS_BIG,
+#ifdef CONFIG_BOOT_SHA2_ATM
+	.digest_endianess = ATM_SHA256_ENDIANESS_BIG,
+#else
 	.digest_endianess = ATM_SHA256_ENDIANESS_LITTLE,
+#endif
     };
 
     if (is224) {

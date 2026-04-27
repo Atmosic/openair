@@ -1,100 +1,29 @@
+# Copyright (C) Atmosic 2024-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file atm_openocd.py
 
 @brief Helper file for Atmosic openocd
-
-Copyright (C) Atmosic 2024-2025
 """
 
+import argparse
 import contextlib
 import glob
 import os
 from pathlib import Path
 import platform
 import subprocess
+import sys
+import yaml
 
-
-def get_atm_plat_dir_from_board(board):
-    """Generates the partial platform path from a specific board
-
-    Note: the path is relative to $ZEPHYR_BASE
-
-    Returns:
-        str: partial platform path
-        None: if path cannot be found
-    """
-    try:
-        # if a revision is passed, strip it before continuing
-        board, _ = board.split("@")
-    except:
-        board = board
-    # if a ns board is passed, strip before continuing
-    if board.endswith("ns"):
-        board = board.split("/", 1)[0]
-
-    soc = get_soc_from_board(board)
-
-    if soc == "ATM33xx-5":
-        openocd_dir_path = os.path.join("openair", "modules", "hal_atmosic")
-        return os.path.join(openocd_dir_path, "ATM33xx-5")
-    elif soc.startswith("ATM34xx"):
-        openocd_dir_path = os.path.join("openair", "modules", "hal_atmosic")
-        if soc.endswith("-2"):
-            return os.path.join(openocd_dir_path, "ATM34xx", "rev-2")
-        elif soc.endswith("-5"):
-            return os.path.join(openocd_dir_path, "ATM34xx", "rev-5")
-        else:
-            raise RuntimeError("Could not match board revision.")
-    return None
-
-
-def get_soc_from_board(board):
-    def get_soc_from_west_boards(board, board_path):
-        try:
-            west_boards_results = subprocess.run(
-                [
-                    "west",
-                    "boards",
-                    "-f",
-                    "{qualifiers}",
-                    "--board",
-                    board,
-                    "--board-root",
-                    board_path,
-                ],
-                text=True,
-                capture_output=True,
-                check=True,
-            )
-            if west_boards_results.stdout:
-                qualifiers = west_boards_results.stdout.strip().split(",")
-                socs = [i for i in qualifiers if not i.endswith("/ns")]
-                print(socs)
-                return socs[0]
-            else:
-                return None
-        except subprocess.CalledProcessError:
-            return None
-
-    # First check if the given board is defined in regular board paths.
-    board_paths = ["./zephyr/boards/atmosic/", "./atmosic-internal/boards/atmosic/"]
-
-    for board_path in board_paths:
-        soc = get_soc_from_west_boards(board, board_path)
-        if soc is not None:
-            return soc
-
-    # If none match, check the board name.
-    atm33 = ["3325", "3330"]
-    atm34 = ["3405", "3425", "3430"]
-    if any(i in board for i in atm33):
-        return "ATM33xx-5"
-    elif any(i in board for i in atm34):
-        if board.endswith("-5"):
-            return "ATM34xx-5"
-        else:
-            return "ATM34xx-2"
-    return None
+ZEPHYR_BASE = Path(__file__).parent.parent.parent.parent / "zephyr"
+sys.path.append(os.fspath(ZEPHYR_BASE / "scripts"))
+# pylint: disable=import-error,no-name-in-module,wrong-import-position
+import list_boards
+import zephyr_module
+from west.manifest import Manifest
 
 
 @contextlib.contextmanager
@@ -145,28 +74,65 @@ def get_atm_openocd():
     return (openocd, openocd_search)
 
 
-def get_atm_openocd_cfg(board):
-    """Returns the correct openocd.cfg for a given Atmosic platform.
+def get_openocd_config_from_board_dir(board_dir):
+    """Get OpenOCD configuration path for a specific board directory
+
+    This function looks for a runner_config.yml file in the board directory
+    and returns the openocd_config value from it.
 
     Args:
-        board (str): board of atmosic platform
+        board_dir: Board configuration directory
 
     Returns:
-        str: path to openocd.cfg
+        Path to the OpenOCD config file, or None if not found
     """
-    zephyr_top = os.path.dirname(os.path.abspath(os.environ["ZEPHYR_BASE"]))
+    runner_config_file = Path(board_dir) / "runner_config.yml"
+    with runner_config_file.open("r", encoding="utf-8") as f:
+        config = yaml.load(f.read(), Loader=yaml.SafeLoader)
 
-    atm_plat_dir = get_atm_plat_dir_from_board(board)
-    def_path = os.path.join(zephyr_top, atm_plat_dir, "openocd", "*openocd.cfg")
-    try:
-        default = glob.glob(def_path, recursive=True)[0]
-        # even if glob succeeds, sanity check file exists
-        if os.path.exists(default):
-            return default
-        return None
-    except:
-        # glob raises exception when nothing is found
-        return None
+    # Get and expand the openocd_config value
+    return config.get("openocd_config").replace("ZEPHYR_BASE", str(ZEPHYR_BASE))
+
+
+def get_board_dir_from_board(board_name):
+    """Get board directory for a specific board.
+
+    This function looks for the board directory for a given board. It follows the
+    same logic as the `west boards` command implemented in
+    zephyr/scripts/west_commands/boards.py.
+
+    Args:
+        board_name: Name of the board
+
+    Returns:
+        Board configuration directory
+    """
+    args = argparse.Namespace(
+        board=board_name,
+        board_dir=[],
+        arch_roots=[],
+        board_roots=[],
+        soc_roots=[],
+        fuzzy_match=None,
+    )
+
+    module_settings = {
+        "arch_root": [ZEPHYR_BASE],
+        "board_root": [ZEPHYR_BASE],
+        "soc_root": [ZEPHYR_BASE],
+    }
+    for module in zephyr_module.parse_modules(ZEPHYR_BASE, Manifest.from_file()):
+        for key, dirs in module_settings.items():
+            root = module.meta.get("build", {}).get("settings", {}).get(key)
+            if root is not None:
+                dirs.append(Path(module.project) / root)
+
+    args.arch_roots += module_settings["arch_root"]
+    args.board_roots += module_settings["board_root"]
+    args.soc_roots += module_settings["soc_root"]
+
+    boards = list_boards.find_v2_boards(args)
+    return boards[board_name].directories[0]
 
 
 class AtmOpenOCD:
@@ -198,17 +164,21 @@ class AtmOpenOCD:
         if self.openocd_search is None:
             raise RuntimeError("Could not find Openocd search directory.")
 
-        if not openocd_cfg:
-            self.openocd_cfg = get_atm_openocd_cfg(board)
-            if self.openocd_cfg is None:
-                raise RuntimeError(
-                    "Could not find Openocd config file. Please pass config file via: `--openocd_config`"
-                )
-        else:
-            self.openocd_cfg = openocd_cfg
+        # If openocd_cfg not provided, try to infer it from the board
+        if openocd_cfg is None and board is not None:
+            board_dir = get_board_dir_from_board(board)
+            openocd_cfg = get_openocd_config_from_board_dir(board_dir)
+            if openocd_cfg:
+                print(f"Inferred OpenOCD config for board '{board}': {openocd_cfg}")
+
+        self.openocd_cfg = openocd_cfg
 
         if (self.openocd_cfg is None) or (not os.path.exists(self.openocd_cfg)):
-            raise RuntimeError("Could not find openocd.cfg file")
+            raise RuntimeError(
+                f"Could not find openocd.cfg file. "
+                f"Please provide openocd_cfg parameter or ensure board '{board}' "
+                f"has a runner_config.yml file in its board directory."
+            )
 
         self.device = device
         if jlink:

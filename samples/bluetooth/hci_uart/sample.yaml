@@ -1,3 +1,9 @@
+common:
+  tags:
+    - introduction
+    - bluetooth
+    - atm_test_with_spe
+    - role_all
 tests:
   samples.bluetooth.hci_uart.atm:
     sysbuild: true
@@ -6,9 +12,6 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
-    tags:
-      - introduction
-      - no_mcuboot
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
   samples.bluetooth.hci_uart.atm.mcuboot:
@@ -19,7 +22,6 @@ tests:
       regex:
         - "Booting Zephyr OS"
     tags:
-      - introduction
       - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
@@ -34,12 +36,27 @@ tests:
       regex:
         - "Booting Zephyr OS"
     tags:
-      - introduction
       - mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+  samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.pd50.legacy_scratch:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Booting Zephyr OS"
+    tags:
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - SB_CONFIG_ATMWSTK_PD50=y
   samples.bluetooth.hci_uart.atm.mcuboot.atmwstk.pd50.overwrite:
     sysbuild: true
@@ -49,8 +66,8 @@ tests:
       regex:
         - "Booting Zephyr OS"
     tags:
-      - introduction
       - mcuboot
+      - overwrite_no_flash_xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y

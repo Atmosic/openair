@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Timer Driver
  *
- * Copyright (C) Atmosic 2019-2025
+ * Copyright (C) Atmosic 2019-2026
  *
  ******************************************************************************
  */
@@ -13,6 +13,9 @@
 #ifndef __TIMER_H__
 #define __TIMER_H__
 
+#include <stdint.h>
+#include <stdbool.h>
+#include "arch.h"
 #include "at_wrpr.h"
 
 /**
@@ -172,6 +175,19 @@ __STATIC_FORCEINLINE uint32_t atm_get_sys_time(void)
     } WRPR_CTRL_POP();
     return rt;
 #endif
+}
+
+/**
+ * @brief Get the current system time and synchronize with the increment
+ */
+__STATIC_FORCEINLINE uint32_t atm_sync_get_sys_time(void)
+{
+    uint32_t then = atm_get_sys_time();
+    uint32_t now;
+    while ((now = atm_get_sys_time()) == then) {
+	YIELD();
+    }
+    return now;
 }
 
 /**

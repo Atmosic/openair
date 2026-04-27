@@ -9,7 +9,7 @@
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
  *
- *  Copyright (c) Atmosic 2025
+ *  Copyright (c) Atmosic 2025-2026
  *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
@@ -106,7 +106,7 @@ typedef void (*BbBleExec_t)(BbOpDesc_t *pBod);
 typedef void (*BbBleCancel_t)(BbOpDesc_t *pBod);
 
 /*! \brief      Advertising PDU transmit setup call signature. */
-typedef void (*BbBleTxAdvSetup_t)(BbOpDesc_t *pBod, uint32_t advTxTime);
+typedef bool (*BbBleTxAdvSetup_t)(BbOpDesc_t *pBod, uint32_t advTxTime);
 
 /*! \brief      Chain indication PDU transmit setup call signature. */
 typedef uint32_t (*BbBleTxAuxSetup_t)(BbOpDesc_t *pBod, bool isChainInd);
@@ -599,6 +599,7 @@ typedef struct
   BbBleData_t             cmn;                /*!< Common operation parameters. */
 
   bool                    testMode;           /*!< True if CS Test command is being used. */
+  bool                    unsyncMode;         /*!< True if CS unsync mode is being used. */
   uint16_t                totalDriffPpm;      /*!< Total clock driff. */
 
   /* Return parameters. */

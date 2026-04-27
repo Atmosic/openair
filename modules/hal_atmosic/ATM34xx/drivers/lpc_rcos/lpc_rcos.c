@@ -5,7 +5,7 @@
  *
  * @brief Low Power Clock (RC Oscillator based)
  *
- * Copyright (C) Atmosic 2020-2025
+ * Copyright (C) Atmosic 2020-2026
  *
  ******************************************************************************
  */
@@ -35,7 +35,11 @@
 #define CMSDK_RCOS_CAL CMSDK_RCOS_CAL_NONSECURE
 
 /// Duration for an RCOS measurement to remain valid in 32KHz cycles
+#ifdef CONFIG_ATM_LPC_RCOS_VALID_SECONDS
+#define LPC_RCOS_VALID (CONFIG_ATM_LPC_RCOS_VALID_SECONDS * 32768)
+#else
 #define LPC_RCOS_VALID	(5 * 32768)	// 5 seconds
+#endif
 
 #ifdef FORCE_LPC_RCOS
 #define DEBUG_LPC_RCOS

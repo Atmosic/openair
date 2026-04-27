@@ -229,7 +229,7 @@ extern "C" {
 #endif
 
 #ifndef LL_NUM_PAWR_RSP_REPORT_BUF
-#define LL_NUM_PAWR_RSP_REPORT_BUF  2  /*!< Number of PAwR response report buffer. */
+#define LL_NUM_PAWR_RSP_REPORT_BUF  4  /*!< Number of PAwR response report buffer. */
 #endif
 
 #ifndef LL_MAX_PAWR_RX_IDX

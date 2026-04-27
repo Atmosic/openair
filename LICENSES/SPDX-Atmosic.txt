@@ -1,0 +1,6 @@
+LicenseID:  LicenseRef-Atmosic
+
+PLEASE READ THE LICENSE AGREEMENT AT ATMOSIC WEBSITE:
+
+SDK License:
+    https://atmosic.com/legal_sdk-license/

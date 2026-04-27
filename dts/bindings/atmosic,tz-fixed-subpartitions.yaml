@@ -1,0 +1,11 @@
+description: Atmosic Trustzone Fixed subpartitions
+
+compatible: "atmosic,tz-fixed-subpartitions"
+
+include: fixed-subpartitions.yaml
+
+child-binding:
+  properties:
+    secure:
+      type: boolean
+      description: set this property if the partition is a secure parition.

@@ -1,13 +1,16 @@
+# Copyright (c) Atmosic 2024-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file sec_jrnl_west_ext.py
 
 @brief West extension for managing secure journal
-
-Copyright (c) Atmosic 2024-2025
 """
 
 import binascii
 import codecs
+import json
 import subprocess
 import tempfile
 from textwrap import dedent
@@ -26,7 +29,7 @@ sys.path.append(
     )
 )
 import atm_openocd
-from sec_jrnl_tlv.sec_jrnl_tlv import SecJrnl
+from sec_jrnl_tlv.sec_jrnl_tlv import SecJrnl, TLV
 
 
 def auto_int(x):
@@ -196,15 +199,33 @@ class SecJrnlCommand(WestCommand):
             type=auto_int,
             required=False,
             action="append",
-            help="tag to append, each tag and data will be processed sequentially",
+            help="tag to append (hex value, e.g., 0xB8)",
+        )
+        create_parser.add_argument(
+            "-n",
+            "--tag-name",
+            type=str,
+            required=False,
+            action="append",
+            help="tag name to append (e.g., ATE, CHIP_INFO)",
+            dest="tag_name",
         )
         create_parser.add_argument(
             "-d",
             "--data",
             type=unescaped_str,
             required=False,
-            help="tag data to append.",
+            help="tag data to append (binary file path or escaped string)",
             action="append",
+        )
+        create_parser.add_argument(
+            "-j",
+            "--json",
+            type=str,
+            required=False,
+            action="append",
+            help="tag data in JSON format (e.g., '{\"rsvd\": [0,0,0,0,0,0,0]}')",
+            dest="json_data",
         )
         create_parser.add_argument(
             "--board",
@@ -244,10 +265,10 @@ class SecJrnlCommand(WestCommand):
                 finally:
                     os.remove(tf.name)
 
-    def push_sec_jrnl(self, bin):
+    def push_sec_jrnl(self, binary):
         """Push secure journal from device"""
         with tempfile.NamedTemporaryFile("w+b", delete=False) as tf:
-            tf.write(bin)
+            tf.write(binary)
             tf.flush()
             temp_path = Path(
                 tf.name
@@ -302,6 +323,62 @@ class SecJrnlCommand(WestCommand):
         else:
             self.push_sec_jrnl(sec_jrnl.bin)
 
+    def _resolve_tag_entries(self, args):
+        """Resolve tag entries from --tag/--tag-name and --data/--json arguments.
+
+        Returns:
+            list: List of (tag_number, binary_data) tuples
+        """
+        tags = args.tag or []
+        tag_names = args.tag_name or []
+        data_list = args.data or []
+        json_list = args.json_data or []
+
+        # Convert tag names to tag numbers
+        resolved_tags = list(tags)
+        for name in tag_names:
+            tag_num = TLV.tag_name_to_number(name)
+            if tag_num is None:
+                available = ", ".join(TLV.NAME_TO_TAG.keys())
+                raise RuntimeError(f"Unknown tag name '{name}'. Available: {available}")
+            resolved_tags.append(tag_num)
+
+        # Combine data sources
+        resolved_data = []
+        for data in data_list:
+            if isinstance(data, bytes):
+                resolved_data.append(data)
+            elif os.path.isfile(data):
+                with open(data, "rb") as fd:
+                    resolved_data.append(bytes(fd.read()))
+            else:
+                resolved_data.append(data)
+
+        # Process JSON data - needs tag for schema lookup
+        json_start_idx = len(resolved_data)
+        for i, json_str in enumerate(json_list):
+            tag_idx = len(data_list) + i
+            if tag_idx >= len(resolved_tags):
+                raise RuntimeError(f"JSON data at index {i} has no corresponding tag")
+            tag = resolved_tags[tag_idx]
+            try:
+                json_obj = json.loads(json_str)
+                binary_data = TLV.json_to_binary(tag, json_obj)
+                resolved_data.append(binary_data)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Invalid JSON: {e}")
+            except ValueError as e:
+                raise RuntimeError(f"JSON conversion error: {e}")
+
+        if len(resolved_tags) != len(resolved_data):
+            raise RuntimeError(
+                f"Mismatched tags and data: {len(resolved_tags)} tags, "
+                f"{len(resolved_data)} data entries. "
+                "Each --tag/--tag-name must have a corresponding --data/--json."
+            )
+
+        return list(zip(resolved_tags, resolved_data))
+
     def create(self, args):
         """Create a brand new secure journal bin file.
 
@@ -313,18 +390,9 @@ class SecJrnlCommand(WestCommand):
             args: args passed at the command line
         """
         sec_jrnl = SecJrnl(max_len=args.len)
-        if len(args.tag) != len(args.data):
-            raise RuntimeError(
-                "There must be an equal number of --data flags to --tag flags."
-            )
-        for tag, data in zip(args.tag, args.data):
-            tag_data = data
-            if os.path.isfile(data):
-                with open(data, "rb") as fd:
-                    tag_data = bytes(fd.read())
-            else:
-                tag_data = bytes.fromhex("".join("{:02x}".format(ord(c)) for c in data))
-            sec_jrnl.append_tag(tag, tag_data, False)
+        tag_entries = self._resolve_tag_entries(args)
+        for tag, data in tag_entries:
+            sec_jrnl.append_tag(tag, data, False)
         args.outfile.write(sec_jrnl.raw_bin)
         args.outfile.flush()
         args.outfile.close()

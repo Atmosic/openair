@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -42,7 +42,7 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #endif
 
 #define PSEQ_INTERNAL_DIRECT_INCLUDE_GUARD
-#include "pseq_internal.h"
+#include "pseq.ih"
 
 /* WURX support */
 bool wurx0_enabled, wurx1_enabled;
@@ -68,11 +68,20 @@ void secure_irq_unlock(unsigned int key);
 #ifdef CONFIG_PM
 #include "pmu.h"
 
-#ifdef CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE
-#define IDLE_FOREVER K_TICKS_FOREVER
+#ifdef CONFIG_DETECT_PULSE_IN_RETENTION
+#ifdef CONFIG_ZTEST
+static bool gpio_pulse_detect_disabled;
+
+void pseq_enable_gpio_pulse_detection(bool enable)
+{
+	gpio_pulse_detect_disabled = !enable;
+}
+
+#define SHOULD_DETECT_GPIO_PULSE() (!gpio_pulse_detect_disabled)
 #else
-#define IDLE_FOREVER INT_MAX
+#define SHOULD_DETECT_GPIO_PULSE() (true)
 #endif
+#endif /* CONFIG_DETECT_PULSE_IN_RETENTION */
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
 static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
@@ -105,6 +114,11 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 	pseq_core_config_retain(duration, block_sysram, (uintptr_t)ssrs_block, wurx0_enabled,
 				wurx1_enabled);
 
+#ifdef CONFIG_DETECT_PULSE_IN_RETENTION
+	if (SHOULD_DETECT_GPIO_PULSE()) {
+		pseq_core_gpio_data_snapshot();
+	}
+#endif
 	pseq_core_enter_retain(wurx0_enabled, wurx1_enabled);
 }
 #endif // power_states/retain
@@ -289,6 +303,12 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	{
 		pseq_core_back_from_retain();
 		pseq_core_back_from_retain_final();
+
+#ifdef CONFIG_DETECT_PULSE_IN_RETENTION
+		if (SHOULD_DETECT_GPIO_PULSE() && !pseq_core_gpio_pulse_restore()) {
+			ASSERT_ERR(0);
+		}
+#endif
 	}
 	WRPR_CTRL_POP();
 
@@ -343,13 +363,13 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 		__disable_irq();
 		extern void sys_clock_correct(uint32_t cycles);
 
-		uint32_t start = atm_get_sys_time();
+		uint32_t start = atm_sync_get_sys_time();
 		uint32_t systick_ctrl = SysTick->CTRL;
 		SysTick->CTRL = systick_ctrl & ~SysTick_CTRL_ENABLE_Msk;
 
 		atm_power_pseq_control(atm_power_mode_retain);
 
-		uint32_t elapsed = atm_get_sys_time() - start;
+		uint32_t elapsed = atm_sync_get_sys_time() - start;
 		SysTick->CTRL = systick_ctrl;
 		/* Convert lpcycles to hardware cycles */
 		sys_clock_correct(atm_lpc_to(Z_HZ_cyc, elapsed));

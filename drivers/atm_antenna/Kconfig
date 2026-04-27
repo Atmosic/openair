@@ -4,13 +4,17 @@
 
 config ATM_ANTENNA_SWITCH
 	bool "Atmosic antenna driver"
-	default y
+	default y if !MCUBOOT
 	depends on DT_HAS_ATMOSIC_ANTENNA_ENABLED
+	depends on GPIO
 
 if ATM_ANTENNA_SWITCH
 
 module = ATM_ANTENNA_SWITCH
 module-str = Atmosic antenna switch
 source "subsys/logging/Kconfig.template.log_config"
+
+config ATM_ANTENNA_RAM_ONLY_FOR_PM
+	bool "Configure driver to only access RAM during power management"
 
 endif # ATM_ANTENNA_SWITCH

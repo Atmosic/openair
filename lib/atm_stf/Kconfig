@@ -1,0 +1,27 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_STF
+	bool "Atmosic Samsung SmartThings Find (STF) TagSDK integration"
+	help
+	  Enable Samsung SmartThings Find TagSDK integration.
+	  This provides the Atmosic wrapper for the Samsung TagSDK.
+	  Note: Requires MBEDTLS configuration in application conf file.
+
+if ATM_STF
+
+config HEAP_MEM_POOL_ADD_SIZE_ATM_STF
+	int "Heap memory pool size for STF TagSDK"
+	default 7168
+	help
+	  Additional heap memory pool size required by Samsung SmartThings Find TagSDK.
+	  This includes security contexts, crypto buffers, BLE events, and control service data.
+
+config ATM_STF_MULTI_MODE
+	bool "Multi-Mode Samsung SmartThings support"
+	help
+	  Enable multi-mode support for Samsung SmartThings Find,
+	  allowing coexistence with other tracking networks like FMNA and GFP.
+
+endif # ATM_STF

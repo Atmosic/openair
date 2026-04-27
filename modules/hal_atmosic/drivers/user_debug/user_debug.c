@@ -5,7 +5,9 @@
  *
  * @brief Print-based debug interface
  *
- * Copyright (C) Atmosic 2021-2025
+ * Copyright (C) Atmosic 2021-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -13,7 +15,16 @@
 #ifdef CONFIG_SOC_FAMILY_ATM
 #include <zephyr/kernel.h>
 #include <soc.h>
-#define PRINTF printk
+#include <stdio.h>
+
+#define PRINTF(fmt, ...) \
+    do { \
+	if (k_is_pre_kernel()) { \
+	    printf(fmt, ##__VA_ARGS__); \
+	} else { \
+	    printk(fmt, ##__VA_ARGS__); \
+	} \
+    } while (0)
 #else
 #define PRINTF printf
 #endif
@@ -175,14 +186,18 @@ debug_trace(const char *fmt, ...)
     va_start(ap, fmt);
 #ifdef CONFIG_SOC_FAMILY_ATM
     int ret = 0;
-    vprintk(fmt, ap);
+    if (k_is_pre_kernel()) {
+	ret = vprintf(fmt, ap);
+    } else {
+	vprintk(fmt, ap);
+    }
 #else
     int ret = vprintf(fmt, ap);
 #endif
     va_end(ap);
 
 #ifdef CONFIG_SOC_FAMILY_ATM
-    printk("\n");
+    PRINTF("\n");
 #else
     putchar('\n');
 #endif

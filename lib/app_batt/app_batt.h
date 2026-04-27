@@ -5,7 +5,7 @@
  *
  * @brief battery procedure for application layer.
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -23,7 +23,9 @@
 #ifndef CONFIG_SOC_FAMILY_ATM
 #include "gadc.h"
 #endif
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_BATT_MODEL)
 #include "batt_model.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {

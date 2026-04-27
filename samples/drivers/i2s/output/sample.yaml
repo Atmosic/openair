@@ -1,3 +1,7 @@
+common:
+  tags:
+    - atm_test_with_spe
+    - introduction
 sample:
   description: i2s TX output sample
   name: i2s output
@@ -9,6 +13,3 @@ tests:
       type: one_line
       regex:
         - "All I2S blocks written"
-    tags:
-      - introduction
-      - no_mcuboot

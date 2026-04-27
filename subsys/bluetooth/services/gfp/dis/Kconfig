@@ -1,0 +1,44 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ATM_GFP_DIS
+    bool "Device Information Service (DIS) of Google Fast Pair"
+    depends on BT && !BT_DIS
+
+    help
+	Device Information Service (DIS) of Google Fast Pair
+	To prevent tracking access to the Firmware Revision characteristic should be restricted.
+	Seeker only allow to read after provisioned. If an attempt is made to read the firmware
+	revision, and the Provider isn't bonded nor an authenticated operation was successfully
+	completed over that same connection, the Provider should return an unauthenticated error.
+
+
+if ATM_GFP_DIS
+
+module = ATM_GFP_DIS
+module-str = gfp_dis
+source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
+config GFP_DIS_FW_VERSION_STR_MAX
+    int "Maximum firmware version string length"
+    default 100
+    range 2 512
+    help
+	Maximum length of the firmware version string buffer in the Device Information
+	Service (DIS). The Google Fast Pair specification does not explicitly limit the
+	firmware version string length or mandate a specific format, so this is a
+	configurable implementation parameter.
+
+	The buffer must be large enough to accommodate:
+	- The firmware version string itself (application-defined format)
+	- A null terminator (1 byte)
+
+	Minimum: 2 bytes (allows single character + null terminator)
+	Default: 100 bytes (provides reasonable headroom for various version formats)
+	Maximum: 512 bytes (practical limit for embedded devices)
+
+	If gfp_dis_init() receives a string longer than this value minus 1 (for null
+	terminator), it will reject the string with -ENAMETOOLONG error.
+
+endif # ATM_GFP_DIS

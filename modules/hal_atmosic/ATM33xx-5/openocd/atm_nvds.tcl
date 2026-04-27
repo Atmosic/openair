@@ -1,7 +1,7 @@
 #
 # atm_nvds.tcl
 # Provide NVDS functions
-# Copyright (C) Atmosic 2022
+# Copyright (C) Atmosic 2022-2026
 #
 
 
@@ -10,7 +10,7 @@ proc atm_erase_nvds { region_start region_size } {
 }
 
 proc atm_dump_nvds { image region_start region_size } {
-    adapter speed 75
+    adapter speed [expr {[info exists ::env(SWD_SPEED)] ? $::env(SWD_SPEED) : 75}]
     dump_image $image [expr { $region_start }] $region_size
     adapter speed $::_SWD_KHZ
 }

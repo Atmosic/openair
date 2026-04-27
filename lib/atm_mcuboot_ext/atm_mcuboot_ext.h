@@ -5,10 +5,11 @@
  *
  * @brief  Atmosic MCUBOOT extensions definitions
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  *******************************************************************************
  */
+
 #pragma once
 
 /**
@@ -19,6 +20,9 @@
  * @{
  *
  */
+
+#include <stdint.h>
+#include "compiler.h"
 
 #ifdef __cplusplus
 extern "C" {

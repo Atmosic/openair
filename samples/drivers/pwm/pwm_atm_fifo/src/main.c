@@ -234,7 +234,7 @@ int main(void)
 		LOG_INF("PWM FIFO deinitialized successfully");
 	}
 
-	LOG_INF("PWM FIFO sample finished successfully");
+	LOG_INF("PWM FIFO sample finished successfully\n");
 
 	return 0;
 }

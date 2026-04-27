@@ -5,7 +5,9 @@
  *
  * @brief DMA driver
  *
- * Copyright (C) Atmosic 2020-2025
+ * Copyright (C) Atmosic 2020-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -74,6 +76,10 @@ void *dma_memcpy_inline(void *d, const void *s, size_t n)
 
     uint32_t int_stat;
     uint32_t err_stat;
+#if defined(CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC)
+    unsigned int mpc_retry_count = 0;
+retry_memcpy:
+#endif
     GLOBAL_INT_DISABLE();
     DMA_SEC_CFG_ALLOW_SECURE();
     CMSDK_AT_DMA->SRC_ADDR = (uintptr_t)s;
@@ -107,6 +113,15 @@ void *dma_memcpy_inline(void *d, const void *s, size_t n)
 	    return (memmove(d, s, n));
 	}
 
+#if defined(CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC)
+	if (AT_DMA_ERR_STAT__BUS_ERR__READ(err_stat) && MPC_FLS->INT_STAT) {
+	    if (!mpc_retry_count) {
+		mpc_retry_count++;
+		MPC_FLS->INT_CLEAR = MPC_INT_CLEAR_IRQ_CLEAR_Msk;
+		goto retry_memcpy;
+	    }
+	}
+#endif
 	DEBUG_TRACE("dma_memcpy(%p, %p, %u)", d, s, n);
 	ASSERT_INFO(0, int_stat, err_stat);
     } else if (AT_DMA_INTERRUPT_STATUS__DMA_ERR__READ(int_stat)) {
@@ -118,7 +133,7 @@ void *dma_memcpy_inline(void *d, const void *s, size_t n)
 }
 
 #ifdef CONFIG_ATM_DMA_RELOC_SRAM
-void z_early_memcpy(void *d, const void *s, size_t n)
+void arch_early_memcpy(void *d, const void *s, size_t n)
 {
     (void) dma_memcpy_inline(d, s, n);
 }
@@ -130,7 +145,7 @@ void *dma_memcpy(void *d, const void *s, size_t n)
     return dma_memcpy_inline(d, s, n);
 }
 
-#ifndef CONFIG_USERSPACE
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_DMA_USE_FOR_MEMCPY)
 // Override libc memcpy()
 void *memcpy(void *d, const void *s, size_t n)
     __attribute__((alias("dma_memcpy")));
@@ -143,11 +158,17 @@ void *dma_memset_inline(void *m, int c, size_t n)
     unsigned int d = (unsigned char)c;
     unsigned long buf = (d << 8) | d;
     buf |= (buf << 16);
+#if defined(CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC)
+    unsigned int mpc_retry_count = 0;
+#endif
 
     do {
 	size_t sz = (n > DMA_SIZE_LIMIT) ? DMA_SIZE_LIMIT : n;
 	uint32_t int_stat;
 	__UNUSED uint32_t err_stat;
+#if defined(CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC)
+    retry_memset:
+#endif
 	GLOBAL_INT_DISABLE();
 	DMA_SEC_CFG_ALLOW_SECURE();
 	CMSDK_AT_DMA->CONST_WDATA = buf;
@@ -180,6 +201,17 @@ void *dma_memset_inline(void *m, int c, size_t n)
 		return m;
 	    }
 
+#if defined(CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC)
+	    if (AT_DMA_ERR_STAT__BUS_ERR__READ(err_stat) && MPC_FLS->INT_STAT) {
+		if (!mpc_retry_count) {
+		    mpc_retry_count++;
+		    MPC_FLS->INT_CLEAR = MPC_INT_CLEAR_IRQ_CLEAR_Msk;
+		    addr -= sz;
+		    n += sz;
+		    goto retry_memset;
+		}
+	    }
+#endif
 	    DEBUG_TRACE("dma_memset(%p, %d, %u)", m, c, n);
 	    ASSERT_INFO(0, int_stat, err_stat);
 	} else if (AT_DMA_INTERRUPT_STATUS__DMA_ERR__READ(int_stat)) {
@@ -192,7 +224,7 @@ void *dma_memset_inline(void *m, int c, size_t n)
 }
 
 #ifdef CONFIG_ATM_DMA_RELOC_SRAM
-void z_early_memset(void *m, int c, size_t n)
+void arch_early_memset(void *m, int c, size_t n)
 {
     (void) dma_memset_inline(m, c, n);
 }
@@ -204,7 +236,7 @@ void *dma_memset(void *m, int c, size_t n)
     return dma_memset_inline(m, c, n);
 }
 
-#ifndef CONFIG_USERSPACE
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_DMA_USE_FOR_MEMSET)
 // Override libc memset()
 void *memset(void *m, int c, size_t n)
     __attribute__((alias("dma_memset")));

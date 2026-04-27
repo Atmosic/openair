@@ -5,7 +5,9 @@
  *
  * @brief radio_hal_ble_cs header
  *
- * Copyright (C) Atmosic 2024-2025
+ * Copyright (C) Atmosic 2024-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -44,7 +46,7 @@ typedef enum {
 } cs_mode_t;
 
 /// Structure of CS enable
-typedef struct {
+typedef struct cs_enable_s {
     atm_mac_ble_cs_step_comp_t step_cmpl_cb;
     uint16_t t_pm;
     bool enable;
@@ -244,6 +246,14 @@ void atm_mac_ble_enable_cs_ldo(bool enable);
  * @param[in] enable True to set, false to unset
  */
 void atm_mac_ble_set_cs_ldo(bool enable);
+
+/**
+ * @brief Update CS step completion status and store step info
+ *
+ * @param[in] status The BLE MAC status to set for CS step completion
+ */
+void atm_mac_ble_cs_update_status(atm_mac_ble_status_t status);
+
 #ifdef __cplusplus
 }
 #endif

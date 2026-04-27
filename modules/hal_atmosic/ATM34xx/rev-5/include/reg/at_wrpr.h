@@ -5,15 +5,23 @@
  *
  * @brief Peripheral module clock and reset control
  *
- * Copyright (C) Atmosic 2020-2025
+ * Copyright (C) Atmosic 2020-2026
  *
  ******************************************************************************
  */
 
 #pragma once
 
+#include <stdint.h>
+#include <stddef.h>
+#include "cmsis_compiler.h"
+#include "base_addr.h"
 #include "at_apb_wrpr_pins_regs_core_macro.h"
 #include "at_apb_wrpr_short_regs_core_macro.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define WRPR_CTRL__CLK_DISABLE	0x00000000U
 #define WRPR_CTRL__CLK_ENABLE	0x00000001U
@@ -195,19 +203,19 @@ module_to_ctrl(volatile const void *addr)
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 #include <zephyr/devicetree.h>
-#if DT_NODE_HAS_PROP(DT_PATH(zephyr_user), pin_arrangement)
-#define PIN_SELECT(pin, sig) \
-    _PIN_SELECT(pin, sig, DT_STRING_UPPER_TOKEN(DT_PATH(zephyr_user), pin_arrangement))
+#if !DT_NODE_HAS_PROP(DT_PATH(zephyr_user), pin_arrangement)
+#error "pin-arrangement property not found in device tree"
+#endif
+#define _PIN_ARR DT_STRING_UPPER_TOKEN(DT_PATH(zephyr_user), pin_arrangement)
+#elif defined(CHIP_PAR) /* CONFIG_SOC_FAMILY_ATM */
+#define _PIN_ARR CHIP_PAR
+#endif /* CONFIG_SOC_FAMILY_ATM */
+
+#ifdef _PIN_ARR
+#define PIN_SELECT(pin, sig) _PIN_SELECT(pin, sig, _PIN_ARR)
 #else
 #define PIN_SELECT(pin, sig) _PIN_SELECT(pin, sig)
 #endif
-#else // CONFIG_SOC_FAMILY_ATM
-#ifdef CHIP_PAR
-#define PIN_SELECT(pin, sig) _PIN_SELECT(pin, sig, CHIP_PAR)
-#else
-#define PIN_SELECT(pin, sig) _PIN_SELECT(pin, sig)
-#endif // CHIP_PAR
-#endif // CONFIG_SOC_FAMILY_ATM
 
 #ifndef PINMUX_ASSERT
 #define PINMUX_ASSERT STATIC_ASSERT
@@ -306,3 +314,7 @@ module_to_ctrl(volatile const void *addr)
 	    (__m)->REV_HASH, __n ## _REV_HASH__RESET_VALUE); \
     } WRPR_CTRL_POP(); \
 } while (0)
+
+#ifdef __cplusplus
+}
+#endif

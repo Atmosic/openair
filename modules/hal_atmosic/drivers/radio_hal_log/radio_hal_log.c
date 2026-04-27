@@ -5,7 +5,9 @@
  *
  * @brief Mac log driver
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -19,6 +21,7 @@
 #include "arch.h"
 #include <inttypes.h>
 #include "atm_utils_c.h"
+#include "rep_vec.h"
 #include "radio_hal_log.h"
 
 // Debugs - to enable, change undef to define

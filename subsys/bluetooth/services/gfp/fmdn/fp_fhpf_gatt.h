@@ -25,34 +25,35 @@ extern "C" {
 
 /**
  * @brief Callback for ranging capability events
- * @param id Technology ID
- * @param capability Capability structure
+ * @param tech_id Technology ID
+ * @param capability Discriminated union containing capability structure
  * @return 0 on success, negative on error
  */
-typedef int (*fp_fmdn_ranging_capability_cb)(rt_id_t id, void *capability);
+typedef int (*fp_fmdn_ranging_capability_cb)(rt_id_t tech_id, ranging_capability_t *capability);
 
 /**
  * @brief Callback for ranging configuration events
- * @param id Technology ID
- * @param config Configuration data
+ * @param tech_id Technology ID
+ * @param config Discriminated union containing configuration data
  * @param start_immediately Whether to start immediately
  * @return 0 on success, negative on error
  */
-typedef int (*fp_fmdn_ranging_config_cb)(rt_id_t id, void *config, bool start_immediately);
+typedef int (*fp_fmdn_ranging_config_cb)(rt_id_t tech_id, ranging_config_t *config,
+					 bool start_immediately);
 
 /**
  * @brief Callback for ranging start events
- * @param id Technology ID
+ * @param tech_id Technology ID
  * @return 0 on success, negative on error
  */
-typedef int (*fp_fmdn_ranging_start_cb)(rt_id_t id);
+typedef int (*fp_fmdn_ranging_start_cb)(rt_id_t tech_id);
 
 /**
  * @brief Callback for ranging stop events
- * @param id Technology ID
+ * @param tech_id Technology ID
  * @return 0 on success, negative on error
  */
-typedef int (*fp_fmdn_ranging_stop_cb)(rt_id_t id);
+typedef int (*fp_fmdn_ranging_stop_cb)(rt_id_t tech_id);
 
 /**
  * @brief FMDN ranging callback handler structure

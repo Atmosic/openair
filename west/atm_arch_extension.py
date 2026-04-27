@@ -1,10 +1,12 @@
 #!/usr/bin/env python
+# Copyright (C) Atmosic 2024-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file atm_arch_extension.py
 
 @Defines to generate/show/burn atm isp atm file
-
-Copyright (C) Atmosic 2024-2025
 """
 
 import argparse
@@ -184,13 +186,20 @@ class AtmIsp:
         """Function update partition info"""
         self.partinfo = partinfo
 
+    def has_partinfo_attrs(self, *attrs):
+        """Check if partinfo has all specified attributes.
+
+        Args:
+            *attrs: Variable number of attribute names to check
+
+        Returns:
+            bool: True if all attributes exist, False otherwise
+        """
+        return all(hasattr(self.partinfo, attr) for attr in attrs)
+
     def init_atm(self, output_file, sd_key_cs, sb_key_cs, sd_static_unlock):
         """Function initilize atm file"""
-        if (
-            not self.partinfo.PLATFORM_FAMILY
-            or not self.partinfo.PLATFORM_NAME
-            or not self.partinfo.BOARD
-        ):
+        if not self.has_partinfo_attrs("PLATFORM_FAMILY", "PLATFORM_NAME", "BOARD"):
             print("Cannot find PLATFORM_FAMILY or PLATFORM_NAME or BOARD info")
             sys.exit(1)
         # atm_isp init [-o NEW_ARCHIVE] [-t] [-s] \
@@ -210,16 +219,16 @@ class AtmIsp:
             cmd_arg.append("--sec_boot")
             cmd_arg.append("--sec_boot_key_checksum")
             cmd_arg.append(sb_key_cs)
-        if hasattr(self.partinfo, "REV_PFX"):
+        if self.has_partinfo_attrs("REV_PFX"):
             cmd_arg.append("--revision")
             cmd_arg.append(self.partinfo.REV_PFX)
         return self.exe_cmd(cmd_arg)
 
     def append_erase_flash(self, region_start, region_size, input_file, output_file):
         """Function append erase flash command to atm file"""
-        if not self.partinfo.EXT_FLASH_START or not self.partinfo.EXT_FLASH_SIZE:
+        if not self.has_partinfo_attrs("EXT_FLASH_START", "EXT_FLASH_SIZE"):
             print("Cannot find EXT_FLASH_START and EXT_FLASH_SIZE info")
-            sys.exit(1)
+            return
         ext_flash_start = ast.literal_eval(self.partinfo.EXT_FLASH_START)
         ext_flash_size = ast.literal_eval(self.partinfo.EXT_FLASH_SIZE)
         if not region_start and not region_size:
@@ -236,25 +245,102 @@ class AtmIsp:
                 f"{hex(region_size)}] exceed flash range"
             )
             sys.exit(1)
-        cmd_arg = [
-            "python",
-            self.atm_isp_exe_path,
-            "eraseFlash",
-            "-i",
-            input_file,
-            "-o",
-            output_file,
-        ]
-        cmd_arg.append(hex(region_size))
-        cmd_arg.append(hex(region_start))
-        cmd_arg.append(hex(ext_flash_start))
-        return self.exe_cmd(cmd_arg)
+
+        # Get protected regions to exclude from erase (convert to flash-relative offsets)
+        protected_regions = []
+        ext_flash_end = ext_flash_start + ext_flash_size
+        if self.has_partinfo_attrs("SEC_JRNL_OFFSET", "SEC_JRNL_SIZE"):
+            sec_jrnl_offset = ast.literal_eval(self.partinfo.SEC_JRNL_OFFSET)
+            sec_jrnl_size = ast.literal_eval(self.partinfo.SEC_JRNL_SIZE)
+            # Check if SEC_JRNL is within external flash range
+            if ext_flash_start <= sec_jrnl_offset < ext_flash_end:
+                # Convert to flash-relative offset
+                protected_regions.append(
+                    (sec_jrnl_offset - ext_flash_start, sec_jrnl_size)
+                )
+        if self.has_partinfo_attrs(
+            "SEC_SIDELOAD_KEYS_OFFSET", "SEC_SIDELOAD_KEYS_SIZE"
+        ):
+            sec_sideload_keys_offset = ast.literal_eval(
+                self.partinfo.SEC_SIDELOAD_KEYS_OFFSET
+            )
+            sec_sideload_keys_size = ast.literal_eval(
+                self.partinfo.SEC_SIDELOAD_KEYS_SIZE
+            )
+            # Check if SEC_SIDELOAD_KEYS is within external flash range
+            if ext_flash_start <= sec_sideload_keys_offset < ext_flash_end:
+                # Convert to flash-relative offset
+                protected_regions.append(
+                    (sec_sideload_keys_offset - ext_flash_start, sec_sideload_keys_size)
+                )
+
+        # Compute erase regions excluding protected regions
+        erase_regions = self._exclude_protected_regions(
+            region_start, region_size, protected_regions
+        )
+
+        # Execute erase commands for each region
+        for erase_start, erase_size in erase_regions:
+            cmd_arg = [
+                "python",
+                self.atm_isp_exe_path,
+                "eraseFlash",
+                "-i",
+                input_file,
+                "-o",
+                output_file,
+            ]
+            cmd_arg.append(hex(erase_size))
+            cmd_arg.append(hex(erase_start))
+            cmd_arg.append(hex(ext_flash_start))
+            self.exe_cmd(cmd_arg)
+
+    def _exclude_protected_regions(self, region_start, region_size, protected_regions):
+        """Exclude protected regions from the erase region.
+
+        Args:
+            region_start: Start offset of the region to erase
+            region_size: Size of the region to erase
+            protected_regions: List of (offset, size) tuples for protected regions
+
+        Returns:
+            List of (start, size) tuples for regions to erase
+        """
+        if not protected_regions:
+            return [(region_start, region_size)]
+
+        region_end = region_start + region_size
+        # Sort protected regions by start offset
+        protected_regions = sorted(protected_regions, key=lambda x: x[0])
+
+        erase_regions = []
+        current_start = region_start
+
+        for prot_offset, prot_size in protected_regions:
+            prot_end = prot_offset + prot_size
+
+            # Skip if protected region is completely outside our erase region
+            if prot_end <= region_start or prot_offset >= region_end:
+                continue
+
+            # If there's a gap before this protected region, add it as erase region
+            if current_start < prot_offset:
+                erase_regions.append((current_start, prot_offset - current_start))
+
+            # Move current_start past the protected region
+            current_start = max(current_start, prot_end)
+
+        # Add remaining region after the last protected region
+        if current_start < region_end:
+            erase_regions.append((current_start, region_end - current_start))
+
+        return erase_regions
 
     def append_erase_rram(self, region_start, region_size, input_file, output_file):
         """Function append erase rram command to atm file"""
-        if not self.partinfo.RRAM_START or not self.partinfo.RRAM_SIZE:
+        if not self.has_partinfo_attrs("RRAM_START", "RRAM_SIZE"):
             print("Cannot find RRAM_START and RRAM_SIZE info")
-            sys.exit(1)
+            return
         rram_start = ast.literal_eval(self.partinfo.RRAM_START)
         rram_size = ast.literal_eval(self.partinfo.RRAM_SIZE)
         if not region_start and not region_size:
@@ -289,11 +375,11 @@ class AtmIsp:
         self, region_start, region_size, input_file, output_file
     ):
         """Function append erase storage command to atm file"""
-        if hasattr(self.partinfo, "RRAM_START"):
+        if self.has_partinfo_attrs("RRAM_START"):
             rram_start = ast.literal_eval(self.partinfo.RRAM_START)
         else:
             rram_start = 0
-        if hasattr(self.partinfo, "EXT_FLASH_START"):
+        if self.has_partinfo_attrs("EXT_FLASH_START"):
             ext_flash_start = ast.literal_eval(self.partinfo.EXT_FLASH_START)
         else:
             ext_flash_start = 0
@@ -332,12 +418,12 @@ class AtmIsp:
         factory_size = 0
         settings_start = 0
         settings_size = 0
-        if not self.partinfo.FACTORY_DATA_START or not self.partinfo.FACTORY_DATA_SIZE:
+        if not self.has_partinfo_attrs("FACTORY_DATA_START", "FACTORY_DATA_SIZE"):
             print("Cannot find FACTORY_DATA_START and FACTORY_DATA_SIZE info")
         else:
             factory_start = ast.literal_eval(self.partinfo.FACTORY_DATA_START)
             factory_size = ast.literal_eval(self.partinfo.FACTORY_DATA_SIZE)
-        if not self.partinfo.STORAGE_DATA_START or not self.partinfo.STORAGE_DATA_SIZE:
+        if not self.has_partinfo_attrs("STORAGE_DATA_START", "STORAGE_DATA_SIZE"):
             print("Cannot find STORAGE_DATA_START and STORAGE_DATA_SIZE info")
         else:
             settings_start = ast.literal_eval(self.partinfo.STORAGE_DATA_START)
@@ -359,13 +445,13 @@ class AtmIsp:
 
     def append_load(self, filepath, region_start, input_file, output_file):
         """Function append load bin file command to atm file"""
-        if hasattr(self.partinfo, "RRAM_START"):
+        if self.has_partinfo_attrs("RRAM_START"):
             rram_start = ast.literal_eval(self.partinfo.RRAM_START)
             rram_size = ast.literal_eval(self.partinfo.RRAM_SIZE)
         else:
             rram_size = 0
             rram_start = 0
-        if hasattr(self.partinfo, "EXT_FLASH_START"):
+        if self.has_partinfo_attrs("EXT_FLASH_START"):
             ext_flash_start = ast.literal_eval(self.partinfo.EXT_FLASH_START)
             ext_flash_size = ast.literal_eval(self.partinfo.EXT_FLASH_SIZE)
         else:
@@ -416,70 +502,53 @@ class AtmIsp:
     def append(self, load_type, filepath, input_file, output_file):
         """Function append load known bin file command to atm file"""
         if load_type == TYPE_STORAGE_DATA:
-            if (
-                not self.partinfo.STORAGE_DATA_START
-                or not self.partinfo.STORAGE_DATA_SIZE
-            ):
+            if not self.has_partinfo_attrs("STORAGE_DATA_START", "STORAGE_DATA_SIZE"):
                 print("Cannot find STORAGE_DATA_START and STORAGE_DATA_SIZE" " info")
                 sys.exit(1)
             region_start = self.partinfo.STORAGE_DATA_START
             region_size = self.partinfo.STORAGE_DATA_SIZE
             extra_info = "STORAGE_DATA"
         elif load_type == TYPE_FACTORY_DATA:
-            if (
-                not self.partinfo.FACTORY_DATA_START
-                or not self.partinfo.FACTORY_DATA_SIZE
-            ):
+            if not self.has_partinfo_attrs("FACTORY_DATA_START", "FACTORY_DATA_SIZE"):
                 print("Cannot find FACTORY_DATA_START and FACTORY_DATA_SIZE" " info")
                 sys.exit(1)
             region_start = self.partinfo.FACTORY_DATA_START
             region_size = self.partinfo.FACTORY_DATA_SIZE
             extra_info = "FACTORY_DATA"
         elif load_type == TYPE_SPE:
-            if hasattr(self.partinfo, "ATM_SPLIT_IMG") and hasattr(
-                self.partinfo, "USE_MCUBOOT"
-            ):
-                if (
-                    not self.partinfo.PRIMARY_IMG_START
-                    or not self.partinfo.PRIMARY_IMG_SIZE
-                ):
+            if self.has_partinfo_attrs("ATM_SPLIT_IMG", "USE_MCUBOOT"):
+                if not self.has_partinfo_attrs("PRIMARY_IMG_START", "PRIMARY_IMG_SIZE"):
                     print("Cannot find PRIMARY_IMG_START and PRIMARY_IMG_SIZE" " info")
                     sys.exit(1)
                 region_start = self.partinfo.PRIMARY_IMG_START
                 region_size = self.partinfo.PRIMARY_IMG_SIZE
                 extra_info = "SIGNED_SPE_FASTCODE"
             else:
-                if not self.partinfo.SPE_START or not self.partinfo.SPE_SIZE:
+                if not self.has_partinfo_attrs("SPE_START", "SPE_SIZE"):
                     print("Cannot find SPE_START and SPE_SIZE info")
                     sys.exit(1)
                 region_start = self.partinfo.SPE_START
                 region_size = self.partinfo.SPE_SIZE
                 extra_info = "BOOTLOADER"
         elif load_type == TYPE_APP:
-            if not hasattr(self.partinfo, "USE_MCUBOOT"):
+            if not self.has_partinfo_attrs("USE_MCUBOOT"):
                 extra_info = "APP"
-                if not hasattr(self.partinfo, "MERGE_SPE_NSPE"):
-                    if hasattr(self.partinfo, "NS_APP_START") and hasattr(
-                        self.partinfo, "NS_APP_SIZE"
-                    ):
+                if not self.has_partinfo_attrs("MERGE_SPE_NSPE"):
+                    if self.has_partinfo_attrs("NS_APP_START", "NS_APP_SIZE"):
                         region_start = self.partinfo.NS_APP_START
                         region_size = self.partinfo.NS_APP_SIZE
-                    elif hasattr(self.partinfo, "APP_START") and hasattr(
-                        self.partinfo, "APP_SIZE"
-                    ):
+                    elif self.has_partinfo_attrs("APP_START", "APP_SIZE"):
                         region_start = self.partinfo.APP_START
                         region_size = self.partinfo.APP_SIZE
                     else:
                         print("Cannot find <NS_>APP_START and <NS_>APP_SIZE info")
                         sys.exit(1)
                 else:
-                    if hasattr(self.partinfo, "NS_APP_START") and hasattr(
-                        self.partinfo, "NS_APP_SIZE"
-                    ):
+                    if self.has_partinfo_attrs("NS_APP_START", "NS_APP_SIZE"):
                         region_start = self.partinfo.NS_APP_START
                         region_size = self.partinfo.NS_APP_SIZE
-                    elif hasattr(self.partinfo, "PRIMARY_IMG_START") and hasattr(
-                        self.partinfo, "PRIMARY_IMG_SIZE"
+                    elif self.has_partinfo_attrs(
+                        "PRIMARY_IMG_START", "PRIMARY_IMG_SIZE"
                     ):
                         # build flash_xip only without use_mcuboot
                         region_start = self.partinfo.PRIMARY_IMG_START
@@ -488,26 +557,37 @@ class AtmIsp:
                         print("Cannot find NS_APP_START or PRIMARY_IMG_START " "info")
                         sys.exit(1)
             else:
-                if hasattr(self.partinfo, "ATM_SPLIT_IMG"):
+                if self.has_partinfo_attrs("ATM_SPLIT_IMG"):
                     extra_info = "APP"
-                    if hasattr(self.partinfo, "NS_APP_START") and hasattr(
-                        self.partinfo, "NS_APP_SIZE"
-                    ):
+                    if self.has_partinfo_attrs("NS_APP_START", "NS_APP_SIZE"):
                         region_start = self.partinfo.NS_APP_START
                         region_size = self.partinfo.NS_APP_SIZE
-                    elif hasattr(self.partinfo, "APP_START") and hasattr(
-                        self.partinfo, "APP_SIZE"
-                    ):
+                    elif self.has_partinfo_attrs("APP_START", "APP_SIZE"):
                         region_start = self.partinfo.APP_START
                         region_size = self.partinfo.APP_SIZE
                     else:
                         print("Cannot find SPLIT <NS_>APP_START and <NS_>APP_SIZE info")
                         sys.exit(1)
+                elif self.has_partinfo_attrs("ATM_NO_SPE"):
+                    # MCUboot + no_spe (without split_img): use APP_START/SIZE
+                    extra_info = "SIGNED_APP"
+                    if self.has_partinfo_attrs("APP_START", "APP_SIZE"):
+                        region_start = self.partinfo.APP_START
+                        region_size = self.partinfo.APP_SIZE
+                    elif self.has_partinfo_attrs(
+                        "PRIMARY_IMG_START", "PRIMARY_IMG_SIZE"
+                    ):
+                        region_start = self.partinfo.PRIMARY_IMG_START
+                        region_size = self.partinfo.PRIMARY_IMG_SIZE
+                    else:
+                        print(
+                            "Cannot find APP_START/SIZE or PRIMARY_IMG_START/SIZE info"
+                        )
+                        sys.exit(1)
                 else:
                     extra_info = "SIGNED_APP"
-                    if (
-                        not self.partinfo.PRIMARY_IMG_START
-                        or not self.partinfo.PRIMARY_IMG_SIZE
+                    if not self.has_partinfo_attrs(
+                        "PRIMARY_IMG_START", "PRIMARY_IMG_SIZE"
                     ):
                         print(
                             "Cannot find PRIMARY_IMG_START and " "PRIMARY_IMG_SIZE info"
@@ -516,15 +596,15 @@ class AtmIsp:
                     region_start = self.partinfo.PRIMARY_IMG_START
                     region_size = self.partinfo.PRIMARY_IMG_SIZE
         elif load_type == TYPE_MCUBOOT:
-            if not self.partinfo.MCUBOOT_START or not self.partinfo.MCUBOOT_SIZE:
+            if not self.has_partinfo_attrs("MCUBOOT_START", "MCUBOOT_SIZE"):
                 print("Cannot find MCUBOOT_START and MCUBOOT_SIZE info")
                 sys.exit(1)
             region_start = self.partinfo.MCUBOOT_START
             region_size = self.partinfo.MCUBOOT_SIZE
             extra_info = "MCUBOOT"
         elif load_type == TYPE_ATMWSTK:
-            if not hasattr(self.partinfo, "ATM_SPLIT_IMG"):
-                if not self.partinfo.ATMWSTK_START or not self.partinfo.ATMWSTK_SIZE:
+            if not self.has_partinfo_attrs("ATM_SPLIT_IMG"):
+                if not self.has_partinfo_attrs("ATMWSTK_START", "ATMWSTK_SIZE"):
                     print("Cannot find ATMWSTK_START and ATMWSTK_SIZE info")
                     sys.exit(1)
                 region_start = self.partinfo.ATMWSTK_START
@@ -535,10 +615,7 @@ class AtmIsp:
                     self.do_objcopy(filepath, binfile)
                     filepath = binfile
             else:
-                if (
-                    not self.partinfo.FAST_CODE_START
-                    or not self.partinfo.FAST_CODE_SIZE
-                ):
+                if not self.has_partinfo_attrs("FAST_CODE_START", "FAST_CODE_SIZE"):
                     print("Cannot find FAST_CODE_START and FAST_CODE_SIZE info")
                     sys.exit(1)
                 region_start = self.partinfo.FAST_CODE_START
@@ -547,13 +624,13 @@ class AtmIsp:
         else:
             print(f"Unknown type {load_type}")
             sys.exit(1)
-        if hasattr(self.partinfo, "RRAM_START"):
+        if self.has_partinfo_attrs("RRAM_START"):
             rram_start = ast.literal_eval(self.partinfo.RRAM_START)
             rram_size = ast.literal_eval(self.partinfo.RRAM_SIZE)
         else:
             rram_size = 0
             rram_start = 0
-        if hasattr(self.partinfo, "EXT_FLASH_START"):
+        if self.has_partinfo_attrs("EXT_FLASH_START"):
             ext_flash_start = ast.literal_eval(self.partinfo.EXT_FLASH_START)
             ext_flash_size = ast.literal_eval(self.partinfo.EXT_FLASH_SIZE)
         else:
@@ -896,7 +973,7 @@ class AtmArchCommand(WestCommand):
                     "root-debug-ec-p256.pem",
                 )
             if not os.path.exists(sec_dbg_key):
-                print(f"{sec_dbg_key} not exist")
+                print(f"{sec_dbg_key} does not exist")
                 sys.exit(1)
             with open(sec_dbg_key, "rb") as dbg_key_f:
                 sd_cs = hashlib.md5(dbg_key_f.read()).hexdigest()
@@ -908,7 +985,7 @@ class AtmArchCommand(WestCommand):
                 sys.exit(1)
             sec_boot_key = args.sec_boot_key
             if not os.path.exists(sec_boot_key):
-                print(f"{sec_boot_key} not exist")
+                print(f"{sec_boot_key} does not exist")
                 sys.exit(1)
             with open(sec_boot_key, "rb") as boot_key_f:
                 sb_cs = hashlib.md5(boot_key_f.read()).hexdigest()
@@ -953,7 +1030,7 @@ class AtmArchCommand(WestCommand):
             atmisp.burn_atm(erase_atm, openocd_pkg_root, None, False, fast_load)
             print("============== Erase Done ==============")
         else:
-            print(f"{info_file} not exist in atm file, skip erase_all before burn")
+            print(f"{info_file} does not exist in atm file, skip erase_all before burn")
         if os.path.exists(tmp_dst_dir):
             shutil.rmtree(tmp_dst_dir)
         if os.path.exists(erase_atm):
@@ -967,7 +1044,7 @@ class AtmArchCommand(WestCommand):
             str(Path(__file__).resolve().parents[1]), "tools", "scripts", "atm_isp"
         )
         if not os.path.exists(atm_isp_path):
-            print(f"{atm_isp_path} not exist")
+            print(f"{atm_isp_path} does not exist")
             sys.exit(1)
         atmisp = AtmIsp(atm_isp_path, args.debug)
         if args.show:
@@ -975,7 +1052,7 @@ class AtmArchCommand(WestCommand):
                 print("Required input_atm_file")
                 sys.exit(1)
             if not os.path.exists(args.input_atm_file):
-                print(f"{args.input_atm_file} not exist")
+                print(f"{args.input_atm_file} does not exist")
                 sys.exit(1)
             return atmisp.decode_atm(args.input_atm_file)
 
@@ -988,13 +1065,13 @@ class AtmArchCommand(WestCommand):
                 print("Required input_atm_file")
                 sys.exit(1)
             if not os.path.exists(args.input_atm_file):
-                print(f"{args.input_atm_file} not exist")
+                print(f"{args.input_atm_file} does not exist")
                 sys.exit(1)
             if not args.openocd_pkg_root:
                 print("Required openocd_pkg_root")
                 sys.exit(1)
             if not os.path.exists(args.openocd_pkg_root):
-                print(f"{args.openocd_pkg_root} not exist")
+                print(f"{args.openocd_pkg_root} does not exist")
                 sys.exit(1)
             if args.device:
                 if not args.jlink:
@@ -1029,7 +1106,7 @@ class AtmArchCommand(WestCommand):
             print("Required output_atm_file")
             sys.exit(1)
         if not os.path.exists(args.partition_info_file):
-            print(f"{args.partition_info_file} not exist")
+            print(f"{args.partition_info_file} does not exist")
             sys.exit(1)
         if args.append:
             # erase command cannot be append
@@ -1037,7 +1114,7 @@ class AtmArchCommand(WestCommand):
                 print("append not support erase commands")
                 sys.exit(1)
             if not os.path.exists(args.input_atm_file):
-                print(f"{args.input_atm_file} not exist")
+                print(f"{args.input_atm_file} does not exist")
                 sys.exit(1)
             input_file = args.input_atm_file
         else:
@@ -1096,7 +1173,7 @@ class AtmArchCommand(WestCommand):
 
         if args.storage_data_file:
             if not os.path.exists(args.storage_data_file):
-                print(f"{args.storage_data_file} not exist")
+                print(f"{args.storage_data_file} does not exist")
                 sys.exit(1)
 
             atmisp.append(
@@ -1107,7 +1184,7 @@ class AtmArchCommand(WestCommand):
             )
         if args.factory_data_file:
             if not os.path.exists(args.factory_data_file):
-                print(f"{args.factory_data_file} not exist")
+                print(f"{args.factory_data_file} does not exist")
                 sys.exit(1)
             atmisp.append(
                 TYPE_FACTORY_DATA,
@@ -1117,24 +1194,24 @@ class AtmArchCommand(WestCommand):
             )
         if args.spe_file:
             if not os.path.exists(args.spe_file):
-                print(f"{args.spe_file} not exist")
+                print(f"{args.spe_file} does not exist")
                 sys.exit(1)
             atmisp.append(TYPE_SPE, args.spe_file, input_file, args.output_atm_file)
         if args.app_file:
             if not os.path.exists(args.app_file):
-                print(f"{args.app_file} not exist")
+                print(f"{args.app_file} does not exist")
                 sys.exit(1)
             atmisp.append(TYPE_APP, args.app_file, input_file, args.output_atm_file)
         if args.mcuboot_file:
             if not os.path.exists(args.mcuboot_file):
-                print(f"{args.mcuboot_file} not exist")
+                print(f"{args.mcuboot_file} does not exist")
                 sys.exit(1)
             atmisp.append(
                 TYPE_MCUBOOT, args.mcuboot_file, input_file, args.output_atm_file
             )
         if args.atmwstk_file:
             if not os.path.exists(args.atmwstk_file):
-                print(f"{args.atmwstk_file} not exist")
+                print(f"{args.atmwstk_file} does not exist")
                 sys.exit(1)
             if not args.atmwstk_file.endswith(".bin"):
                 if not os.getenv("ZEPHYR_SDK_INSTALL_DIR"):
@@ -1151,12 +1228,12 @@ class AtmArchCommand(WestCommand):
         if args.load_bin:
             load_args = args.load_bin.split(",")
             if len(load_args) != 2:
-                print(f"{args.load_bin} should be bin_flie,address")
+                print(f"{args.load_bin} should be bin_file,address")
                 sys.exit(1)
             bin_file = load_args[0]
             region_start = ast.literal_eval(load_args[1])
             if not os.path.exists(bin_file):
-                print(f"{bin_file} not exist")
+                print(f"{bin_file} does not exist")
                 sys.exit(1)
             atmisp.append_load(bin_file, region_start, input_file, args.output_atm_file)
         if not args.append:

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-Atmosic
+# Copyright (c) 2026 Atmosic
+common:
+  sysbuild: true
+  harness: ztest
+  tags:
+    - drivers
+    - ccbm
+    - battery
+tests:
+  tests.drivers.ccbm.atm: {}

@@ -1,6 +1,6 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 # Helper macro to get the atm_arch script filename based on host system
 macro(atm_arch_get_script_filename output_dir output_var)

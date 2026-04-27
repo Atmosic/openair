@@ -9,6 +9,8 @@
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
  *
+ *  Copyright (C) Atmosic 2026
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -93,11 +95,14 @@ extern "C" {
 /*! \brief  Initialize LL with MONADV (Monitored Advertisers) support. */
 #define LL_FEATURE_INIT_MONADV (1 << 11)
 
+/*! \brief  Initialize LL with FSU (Frame Space Update) support. */
+#define LL_FEATURE_INIT_FSU (1 << 12)
+
 /*! \brief  Initialize LL with all features enabled. */
 #define LL_FEATURE_INIT_ALL (LL_FEATURE_INIT_CENTRAL | LL_FEATURE_INIT_PERIPHERAL \
   | LL_FEATURE_INIT_BROADCASTER | LL_FEATURE_INIT_OBSERVER | LL_FEATURE_INIT_CS \
   | LL_FEATURE_INIT_BIS | LL_FEATURE_INIT_CIS | LL_FEATURE_INIT_ISO | LL_FEATURE_INIT_PAWR \
-  | LL_FEATURE_INIT_EXTFEAT | LL_FEATURE_INIT_DBAF | LL_FEATURE_INIT_MONADV)
+  | LL_FEATURE_INIT_EXTFEAT | LL_FEATURE_INIT_DBAF | LL_FEATURE_INIT_MONADV | LL_FEATURE_INIT_FSU)
 
 /*! \brief Check that all of the feature bits in mask are set in featureEn */
 #define LL_FEAT_ALL(featureEn, mask) (((featureEn) & (mask)) == (mask))

@@ -19,6 +19,50 @@ Applications Included
 - **atm_ble_peripheral**: Acts as a GATT server that advertises, accepts connections, and communicates with a central device.
 - **atm_ble_central**: Scans for nearby peripherals, establishes connections, and interacts with the server for data exchange and control.
 
+Building and Running
+********************
+
+This sample is built from the following application directories:
+
+- ``openair/samples/bluetooth/atm_ble/atm_ble_peripheral``
+- ``openair/samples/bluetooth/atm_ble/atm_ble_central``
+
+Default Mode
+============
+
+Build the peripheral application:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/samples/bluetooth/atm_ble/atm_ble_peripheral --sysbuild -T samples.bluetooth.atm_ble.atm_ble_peripheral.atm
+
+Build the central application:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/samples/bluetooth/atm_ble/atm_ble_central --sysbuild -T samples.bluetooth.atm_ble.atm_ble_central.atm
+
+Periodic Advertising Mode
+=========================
+
+Build the peripheral application in periodic advertising mode:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/samples/bluetooth/atm_ble/atm_ble_peripheral --sysbuild -T samples.bluetooth.atm_ble.atm_ble_peripheral.atm -- -DEXTRA_CONF_FILE=periodic_adv.conf
+
+Build the central application in periodic sync mode:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/samples/bluetooth/atm_ble/atm_ble_central --sysbuild -T samples.bluetooth.atm_ble.atm_ble_central.atm -- -DEXTRA_CONF_FILE=periodic_sync.conf
+
+Flash command:
+
+.. code-block:: bash
+
+   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+
 Features
 ********
 

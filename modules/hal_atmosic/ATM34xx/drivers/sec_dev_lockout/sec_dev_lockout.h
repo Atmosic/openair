@@ -19,6 +19,7 @@
  * @{
  */
 
+#include <stdint.h>
 #include "at_apb_wrpr_pins_regs_core_macro.h"
 
 #ifdef WRPRPINS_PROT_BITS_SET1__ROM_PATCH_LOCK_SET__MASK

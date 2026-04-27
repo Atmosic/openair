@@ -4,7 +4,7 @@
  * @file gfp_crypto.h
  *
  * @brief Atmosic Google Fast Pair Secure Crypto Middleware
- * This secure Crypto Middleware for Google Fast Pair with mbedtls/uECC.
+ * This secure Crypto Middleware for Google Fast Pair with psa/mbedtls/uECC.
  *
  * Copyright (C) Atmosic 2025
  *
@@ -12,8 +12,6 @@
  */
 
 #pragma once
-
-#include "compiler.h" // __NORETURN inline functions
 
 /**
  * @defgroup ATM_BTFM_GFPCRYPTO Atmosic Google fast pair API
@@ -26,14 +24,22 @@
  * @{
  */
 
+#include <stdint.h>
+#include "compiler.h" // __NORETURN inline functions
+
 #ifdef CONFIG_SOC_FAMILY_ATM
-#include "mbedtls/ecdsa.h"
-#include "mbedtls/aes.h"
+#ifdef CONFIG_MBEDTLS
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
 #include "mbedtls/sha256.h"
+#include "mbedtls/md.h"
 #else
+#include "psa/crypto.h"
+#endif
+#endif // CONFIG_MBEDTLS
+#else // CONFIG_SOC_FAMILY_ATM
 #include "atm_aes.h"
 #include "atm_sha2.h"
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 
 #ifdef __cplusplus
 extern "C" {
@@ -150,80 +156,44 @@ __NONNULL_ALL
 bool gfp_crypto_hmac_sha256(uint8_t const *data_in, uint16_t data_len, uint8_t *data_out,
 			    uint8_t const *key, uint16_t key_len);
 
-#ifdef CONFIG_SOC_FAMILY_ATM
+#if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_MBEDTLS)
+#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+/// SHA256 context (mbedTLS implementation)
+typedef mbedtls_sha256_context gfp_crypto_sha256_ctx_t;
+#else
+/// SHA256 context (PSA Crypto implementation)
+typedef psa_hash_operation_t gfp_crypto_sha256_ctx_t;
+#endif
+#else  // CONFIG_SOC_FAMILY_ATM && CONFIG_MBEDTLS
+/// SHA256 context (ATM Crypto implementation)
+typedef void *gfp_crypto_sha256_ctx_t;
+#endif // CONFIG_SOC_FAMILY_ATM && CONFIG_MBEDTLS
+
 /**
  * @brief Initialize SHA-256 module
- * @param[in] ctx mbedtls sha256 context
+ * @param[in] ctx sha256 context
  */
 __NONNULL_ALL
-void gfp_crypto_sha256_init(mbedtls_sha256_context *ctx);
-#else
-/**
- * @brief Initialize SHA-256 module
- */
-void gfp_crypto_sha256_init(void);
-#endif
+void gfp_crypto_sha256_init(gfp_crypto_sha256_ctx_t *ctx);
 
-#ifdef CONFIG_SOC_FAMILY_ATM
-/**
- * @brief Initialize HMAC SHA-256 module
- * @param[in] ctx mbedtls md context
- * @param[in] key key of HMAC SHA256
- * @param[in] key_len length of key
- *
- * @return true if succeed
- */
-__NONNULL_ALL
-bool gfp_crypto_hmac_sha256_init(mbedtls_md_context_t *ctx, uint8_t const *key, uint16_t key_len);
-#else
-/**
- * @brief Initialize HMAC SHA-256 module
- * @param[in] key key of HMAC SHA256
- * @param[in] key_len length of key
- */
-__NONNULL_ALL
-void gfp_crypto_hmac_sha256_init(uint8_t const *key, uint16_t key_len);
-#endif
-
-#ifdef CONFIG_SOC_FAMILY_ATM
 /**
  * @brief Stream more input data for an on-going SHA-256 calculation
- * @param[in] ctx mbedtls md context
+ * @param[in] ctx md context
  * @param[in] data data to be crypto hashed
  * @param[in] data_len data length of be crypto hashed
  *
  * @return true if succeed
  */
 __NONNULL_ALL
-bool gfp_crypto_sha256_update(mbedtls_sha256_context *ctx, uint8_t const *data, uint16_t data_len);
-#else
-/**
- * @brief Stream more input data for an on-going SHA-256 calculation
- * @param[in] data data to be crypto hashed
- * @param[in] data_len data length of be crypto hashed
- *
- * @return true if succeed
- */
-__NONNULL_ALL
-bool gfp_crypto_sha256_update(uint8_t const *data, uint16_t data_len);
-#endif
+bool gfp_crypto_sha256_update(gfp_crypto_sha256_ctx_t *ctx, uint8_t const *data, uint16_t data_len);
 
-#ifdef CONFIG_SOC_FAMILY_ATM
 /**
  * @brief de-initialize SHA256 module
- * @param[in] ctx mbedtls md context
+ * @param[in] ctx md context
  * @param[out] out digest of SHA256 calculation
  */
 __NONNULL_ALL
-void gfp_crypto_sha256_deinit(mbedtls_sha256_context *ctx, uint8_t *out);
-#else
-/**
- * @brief de-initialize SHA256 module
- * @param[out] out digest of SHA256 calculation
- */
-__NONNULL_ALL
-void gfp_crypto_sha256_deinit(uint8_t *out);
-#endif
+void gfp_crypto_sha256_deinit(gfp_crypto_sha256_ctx_t *ctx, uint8_t *out);
 
 /**
  * @brief array reverse

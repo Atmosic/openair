@@ -1,11 +1,15 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 source "Kconfig.zephyr"
 
 config BTN_DISABLE_CS_PROC
 	bool "Enable/Disable CS Procedure with Button"
+
+config AUTO_ENABLE_CS_FOR_UNSPECIFIED_ABORT
+	bool "Auto Enable CS Procedure as abort with unspecified reason"
+	default y
 
 config CS_PROC_ANT_CFG_SEL
 	int "CS Tone Antenna Selection 0:1_1 1:2_1 2:3_1 3:4_1 4:1-2 5:1_3 6:1_4 7:2_2"
@@ -25,6 +29,7 @@ config TX_POWER_DELTA
 
 config TX_PHY_CS_REF
 	bool "Use current TX PHY as CS reference TX power PHY"
+	depends on BT_USER_PHY_UPDATE
 	default y
 	help
 	  Enable to use the current TX PHY as the reference PHY for CS transmit power.
@@ -34,18 +39,24 @@ config TX_PHY_CS_REF
 config READ_RSSI
 	bool "Read RSSI after CS procedure"
 
-config ATM_BT_PHY_1M
-	bool "Enable 1M PHY for long-distance testing"
+config ATM_BT_PHY_UPDATE
+	bool "Enable PHY Update"
+	depends on BT_USER_PHY_UPDATE
 	help
-	  Enable 1M PHY mode for improved range and signal penetration.
-	  This will automatically disable CONFIG_BT_AUTO_PHY_UPDATE to
-	  ensure consistent 1M PHY usage throughout the connection.
+	  Enable automatic PHY update to the configured mode if a different PHY is detected
+	  during connection. When enabled, the system will attempt to update the PHY to the
+	  mode specified by CONFIG_ATM_BT_PHY.
 
-# Override the default BT_AUTO_PHY_UPDATE behavior
-config BT_AUTO_PHY_UPDATE
-	bool
-	default n if ATM_BT_PHY_1M
-	default y
+config ATM_BT_PHY
+	int "Preferred PHY Mode"
+	depends on ATM_BT_PHY_UPDATE
+	range 0 2
+	default 1
+	help
+	  Select the preferred PHY mode for automatic PHY updates:
+	  0: 1M PHY - Enhanced range and signal penetration
+	  1: 2M PHY - Higher data rate for improved throughput
+	  2: Coded PHY - Extended range with lower data rate
 
 module = RREQ
 module-str = RREQ

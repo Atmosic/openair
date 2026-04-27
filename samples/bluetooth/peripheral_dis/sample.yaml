@@ -1,3 +1,9 @@
+sample:
+  name: Bluetooth Peripheral DIS
+common:
+  tags:
+    - bluetooth
+    - role_peripheral
 tests:
   samples.bluetooth.peripheral_dis.atm:
     sysbuild: true
@@ -6,6 +12,3 @@ tests:
       type: one_line
       regex:
         - "Advertising successfully started"
-    tags:
-      - bluetooth
-      - no_mcuboot

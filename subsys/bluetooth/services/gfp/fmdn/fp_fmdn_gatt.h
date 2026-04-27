@@ -6,7 +6,7 @@
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN) extention
  * Gatt Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -89,7 +89,16 @@ void fp_fmdn_gatt_ring_action_reg(fp_fmdn_ring_action_cb const hdlr);
 
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 /**
- * @brief The callback function of fmdn update id handler register
+ * @brief Callback invoked when a new DULT ID has been generated
+ *
+ * Called by the FMDN GATT layer after a new DULT ID is derived from
+ * the EID key (e.g., on provisioning or power-loss recovery). The
+ * application should store the supplied ID so it can be returned to
+ * the DULT layer via the @c dult_get_id_cb.
+ *
+ * @param[in] id     Pointer to the buffer containing the newly generated
+ *                   DULT ID bytes
+ * @param[in] id_len Length of the DULT ID in bytes
  */
 typedef void (*fp_fmdn_update_id_cb)(uint8_t *id, uint8_t id_len);
 

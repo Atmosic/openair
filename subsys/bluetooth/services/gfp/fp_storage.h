@@ -5,13 +5,14 @@
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Storage Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
 
 #pragma once
 
+#include "compiler.h"
 #include "fp_common.h"
 
 /**
@@ -109,7 +110,69 @@ void fp_storage_utp_ignore_ring_auth_save(uint8_t ignore_auth);
  */
 uint8_t fp_storage_utp_ignore_ring_auth_get(void);
 
-/*
+/**
+ * @brief fp save fmdn clock value
+ * @param[in] clock_value FMDN clock value in seconds
+ *
+ * @return 0 if successful. Otherwise, a (negative) error code is returned
+ */
+int fp_storage_fmdn_clock_save(uint32_t clock_value);
+
+/**
+ * @brief fp get saved fmdn clock value
+ * @param[out] clock_value FMDN clock value in seconds
+ *
+ * @return 0 if successful. Otherwise, a (negative) error code is returned
+ */
+__NONNULL_ALL
+int fp_storage_fmdn_clock_get(uint32_t *clock_value);
+
+/**
+ * @brief fp reset fmdn clock value to 0
+ *
+ * Resets the FMDN clock value to 0 and deletes it from NVM.
+ * This should be called during factory reset so new provisioning
+ * can start with clock value of 0.
+ */
+void fp_storage_fmdn_clock_reset(void);
+
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+/**
+ * @brief Save persistent connection client ID to NVS
+ * @param[in] client_id Client ID from the Seeker that set force bit
+ *
+ * This is used to enforce ownership of persistent connection across power cycles.
+ * Only the Seeker with this client ID (or a new Seeker with force bit) can
+ * configure persistent connection after restart.
+ */
+void fp_storage_pc_client_id_save(uint8_t client_id);
+
+/**
+ * @brief Get saved persistent connection client ID
+ * @param[out] client_id Pointer to store the client ID
+ *
+ * @return 0 if successful, -ENOENT if no client ID is saved
+ */
+__NONNULL_ALL
+int fp_storage_pc_client_id_get(uint8_t *client_id);
+
+/**
+ * @brief Check if persistent connection client ID is saved
+ *
+ * @return true if client ID is saved in NVS
+ */
+bool fp_storage_pc_client_id_valid(void);
+
+/**
+ * @brief Delete saved persistent connection client ID
+ *
+ * This should be called when persistent connection is explicitly disabled
+ * or when the connection is terminated to clear ownership.
+ */
+void fp_storage_pc_client_id_delete(void);
+#endif // CONFIG_FMDN_PERSISTENT_CONNECTION
+
+/**
  * @brief Save personalized name received via Fast Pair Additional Data
  * @param[in] name Personalized name string (null-terminated)
  *

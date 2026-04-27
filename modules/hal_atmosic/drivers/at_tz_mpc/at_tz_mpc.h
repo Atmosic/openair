@@ -5,7 +5,9 @@
  *
  * @brief Memory Protection Controller (MPC) driver
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -66,6 +68,8 @@ typedef enum {
     AT_TZ_MPC_RET_BLK_IDX_TOO_HIGH,
     /// Memory type not supported by MPC
     AT_TZ_MPC_RET_INVALID_TYPE,
+    /// Chosen Attribute is unavailable for memory region
+    AT_TZ_MPC_RET_ATTR_UNAVAIL,
     AT_TZ_MPC_RET_MAX,
 } at_tz_mpc_ret_t;
 
@@ -218,12 +222,11 @@ at_tz_mpc_ret_t at_tz_mpc_config_region(uint32_t base, uint32_t limit,
 __STATIC_INLINE at_tz_mpc_ret_t at_tz_mpc_config_remaining_ext_flash(
     at_tz_mpc_attr_t attr)
 {
-    MPC_FLS->BLK_IDX = MAX_MPC_FLS_LUT_IDX;
-    if (attr == AT_TZ_MPC_ATTR_NONSECURE) {
-	MPC_FLS->BLK_LUT = 0x1;
-	return AT_TZ_MPC_RET_OK;
+    if (attr == AT_TZ_MPC_ATTR_SECURE) {
+	return AT_TZ_MPC_RET_ATTR_UNAVAIL;
     }
-    MPC_FLS->BLK_LUT = 0x0;
+    MPC_FLS->BLK_IDX = MAX_MPC_FLS_LUT_IDX;
+    MPC_FLS->BLK_LUT = 0x1;
     return AT_TZ_MPC_RET_OK;
 }
 

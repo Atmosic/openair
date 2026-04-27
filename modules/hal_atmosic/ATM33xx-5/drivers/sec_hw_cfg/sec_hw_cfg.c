@@ -25,7 +25,7 @@
 #include "sec_hw_cfg.h"
 
 #define SEC_HW_CFG_INTERNAL_GUARD
-#include "sec_hw_cfg_internal.h"
+#include "sec_hw_cfg.ih"
 
 static void bootloader_pseq_init(void)
 {

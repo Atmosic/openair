@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1143,6 +1143,10 @@ static void ras_cs_subevent_result_cb(struct bt_conn *conn,
 		ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY);
 		LOG_INF("CS procedure%u done:0x%x", result->header.procedure_counter,
 			result->header.procedure_done_status);
+		if (result->header.procedure_done_status == BT_CONN_LE_CS_PROCEDURE_ABORTED) {
+			LOG_ERR("CS Procedure abort:  %u %u", result->header.procedure_counter,
+				result->header.procedure_abort_reason);
+		}
 	}
 }
 

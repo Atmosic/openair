@@ -1,8 +1,25 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+// Move storage_partition from RRAM to end of flash
+#define STORAGE_PART_SIZE 0x3000
+#define STORAGE_PART_OFFSET (FLASH_SIZE - STORAGE_PART_SIZE)
+
+// Delete the existing RRAM storage_partition
+/delete-node/ &storage_partition;
+
+// Create new storage_partition at end of flash since smp_svr main.c hardcodes storage_partition
+&flash0 {
+	partitions {
+		storage_partition: partition@ceceff00 {
+			label = "storage";
+			reg = <STORAGE_PART_OFFSET STORAGE_PART_SIZE>;
+		};
+	};
+};
 
 &uart0 {
 	status = "okay";

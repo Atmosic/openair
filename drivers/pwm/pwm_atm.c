@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025, Atmosic
+ * Copyright (c) 2021-2026, Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -24,38 +24,42 @@ LOG_MODULE_REGISTER(pwm_atm, CONFIG_PWM_LOG_LEVEL);
 #include "at_wrpr.h"
 #include "at_pinmux.h"
 #include "at_apb_pwm_regs_core_macro.h"
+
+// PWM block base is 4 bytes before pwm0's register address
+#define Z_CMSDK_PWM ((CMSDK_AT_APB_PWM_TypeDef *)(DT_REG_ADDR(DT_NODELABEL(pwm0)) - 4))
 #include "at_apb_pseq_regs_core_macro.h"
 #include "dma.h"
 
-#define DT_DRV_COMPAT atmosic_atm3x_pwm
+#define DT_DRV_COMPAT  atmosic_atm3x_pwm
 #define SYS_CLK_IN_KHZ (PCLK_ALT_FREQ / 1000) // PWM block runs on 16MHz clock domain
-#define PWM_CLK_CTRL (WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL)
-#define PWM_IRQ PWM_IRQn
+#define PWM_CLK_CTRL   (WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL)
+#define PWM_IRQ        PWM_IRQn
 #define PWM0_TOT_WIDTH (PWM_PWM0_DUR__LO_DUR__WIDTH + PWM_PWM0_DUR__HI_DUR__WIDTH)
 #define PWM_SET_DURATION(I, hi_dur, lo_dur)                                                        \
 	do {                                                                                       \
-		CMSDK_PWM->PWM##I##_DUR = PWM_PWM##I##_DUR__HI_DUR__WRITE((hi_dur)) |              \
-					  PWM_PWM##I##_DUR__LO_DUR__WRITE((lo_dur));               \
+		Z_CMSDK_PWM->PWM##I##_DUR = PWM_PWM##I##_DUR__HI_DUR__WRITE((hi_dur)) |            \
+					    PWM_PWM##I##_DUR__LO_DUR__WRITE((lo_dur));             \
 	} while (0)
 
 #define PWM_SET_PARAMS(I, polarity, mode)                                                          \
 	do {                                                                                       \
-		CMSDK_PWM->PWM##I##_CTRL = PWM_PWM##I##_CTRL__INVERT__WRITE(polarity) |            \
-					   PWM_PWM##I##_CTRL__MODE__WRITE(mode) |                  \
-					   PWM_PWM##I##_CTRL__OK_TO_RUN__WRITE(0);                 \
+		Z_CMSDK_PWM->PWM##I##_CTRL = PWM_PWM##I##_CTRL__INVERT__WRITE(polarity) |          \
+					     PWM_PWM##I##_CTRL__IDLE_POLARITY__WRITE(polarity) |   \
+					     PWM_PWM##I##_CTRL__MODE__WRITE(mode) |                \
+					     PWM_PWM##I##_CTRL__OK_TO_RUN__WRITE(0);               \
 	} while (0)
 
 #define PWM_UNSET_PARAMS(I)                                                                        \
 	do {                                                                                       \
-		CMSDK_PWM->PWM##I##_CTRL = 0;                                                      \
-		CMSDK_PWM->PWM##I##_DUR = 0;                                                       \
+		Z_CMSDK_PWM->PWM##I##_CTRL = 0;                                                    \
+		Z_CMSDK_PWM->PWM##I##_DUR = 0;                                                     \
 	} while (0)
 #define PWM(n) CONCAT(PWM, DT_INST_PROP(n, channel))
 
 #define SYS_CLK_IN_HZ (SYS_CLK_IN_KHZ * 1000)
 
 #define PWM_TOT_DUR_ADJ 1
-#define MAX_PWM_INST 8
+#define MAX_PWM_INST    8
 
 typedef enum {
 	PWM_CONTINUOUS_MODE,
@@ -64,7 +68,7 @@ typedef enum {
 	PWM_IR_FIFO_MODE,
 } pwm_mode_t;
 
-#define DEV_CFG(dev) ((struct pwm_atm_config const *)(dev)->config)
+#define DEV_CFG(dev)  ((struct pwm_atm_config const *)(dev)->config)
 #define DEV_DATA(dev) ((struct pwm_atm_data *)(dev)->data)
 
 typedef void (*set_callback_t)(void);
@@ -89,7 +93,7 @@ struct pwm_atm_fifo_data {
 #endif
 
 struct pwm_atm_data {
-	uint32_t period_cycles[MAX_PWM_INST];  /* Track period for each PWM channel */
+	uint32_t period_cycles[MAX_PWM_INST]; /* Track period for each PWM channel */
 #ifdef CONFIG_PWM_ATM_FIFO
 	struct pwm_atm_fifo_data fifo_data[MAX_PWM_INST];
 #endif
@@ -111,28 +115,28 @@ static void pwm_disable(uint8_t instance)
 {
 	switch (instance) {
 	case 0:
-		PWM_PWM0_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM0_CTRL);
+		PWM_PWM0_CTRL__OK_TO_RUN__CLR(Z_CMSDK_PWM->PWM0_CTRL);
 		break;
 	case 1:
-		PWM_PWM1_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM1_CTRL);
+		PWM_PWM1_CTRL__OK_TO_RUN__CLR(Z_CMSDK_PWM->PWM1_CTRL);
 		break;
 	case 2:
-		PWM_PWM2_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM2_CTRL);
+		PWM_PWM2_CTRL__OK_TO_RUN__CLR(Z_CMSDK_PWM->PWM2_CTRL);
 		break;
 	case 3:
-		PWM_PWM3_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM3_CTRL);
+		PWM_PWM3_CTRL__OK_TO_RUN__CLR(Z_CMSDK_PWM->PWM3_CTRL);
 		break;
 	case 4:
-		PWM_PWM4_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM4_CTRL);
+		PWM_PWM4_CTRL__OK_TO_RUN__CLR(Z_CMSDK_PWM->PWM4_CTRL);
 		break;
 	case 5:
-		PWM_PWM5_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM5_CTRL);
+		PWM_PWM5_CTRL__OK_TO_RUN__CLR(Z_CMSDK_PWM->PWM5_CTRL);
 		break;
 	case 6:
-		PWM_PWM6_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM6_CTRL);
+		PWM_PWM6_CTRL__OK_TO_RUN__CLR(Z_CMSDK_PWM->PWM6_CTRL);
 		break;
 	case 7:
-		PWM_PWM7_CTRL__OK_TO_RUN__CLR(CMSDK_PWM->PWM7_CTRL);
+		PWM_PWM7_CTRL__OK_TO_RUN__CLR(Z_CMSDK_PWM->PWM7_CTRL);
 		break;
 	default:
 		ASSERT_INFO(0, instance, 0);
@@ -166,14 +170,14 @@ static inline bool pwm_atm_fifo_validate(const struct device *dev, uint32_t chan
 
 static void pwm_atm_fifo_isr(void)
 {
-	uint32_t intr_mask = CMSDK_PWM->INTERRUPTS;
+	uint32_t intr_mask = Z_CMSDK_PWM->INTERRUPTS;
 
 	if (PWM_INTERRUPTS__FIFO_LWM_HIT_INTRPT__READ(intr_mask)) {
 		/* FIFO low water mark hit - call alert handler */
 		if (fifo_config && fifo_config->fifo_alert_callback) {
 			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, 0);
 		}
-		CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT1__MASK;
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT1__MASK;
 	}
 
 	if (PWM_INTERRUPTS__FIFO_CMD_DONE_INTRPT__READ(intr_mask)) {
@@ -182,7 +186,7 @@ static void pwm_atm_fifo_isr(void)
 		if (fifo_config && fifo_config->fifo_done_callback) {
 			fifo_config->fifo_done_callback(fifo_dev, fifo_channel, 0);
 		}
-		CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT3__MASK;
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT3__MASK;
 	}
 
 	if (PWM_INTERRUPTS__FIFO_OVRFLOW_INTRPT__READ(intr_mask)) {
@@ -191,10 +195,10 @@ static void pwm_atm_fifo_isr(void)
 		if (fifo_config && fifo_config->fifo_alert_callback) {
 			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, -EOVERFLOW);
 		}
-		CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT2__MASK;
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT2__MASK;
 	}
 
-	CMSDK_PWM->INTERRUPTS_CLEAR = 0x0;
+	Z_CMSDK_PWM->INTERRUPTS_CLEAR = 0x0;
 }
 #endif
 
@@ -278,7 +282,7 @@ static void pinmux_config(uint8_t instance, uint8_t polarity, pwm_mode_t mode)
 #endif
 }
 
-static void pwm_set_duration(uint8_t instance, uint32_t hi_dur, uint32_t lo_dur)
+static void pwm_set_duration(uint8_t instance, uint16_t hi_dur, uint16_t lo_dur)
 {
 	switch (instance) {
 	case 0:
@@ -315,28 +319,28 @@ static void pwm_enable(uint8_t instance)
 {
 	switch (instance) {
 	case 0:
-		PWM_PWM0_CTRL__OK_TO_RUN__SET(CMSDK_PWM->PWM0_CTRL);
+		PWM_PWM0_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM0_CTRL);
 		break;
 	case 1:
-		PWM_PWM1_CTRL__OK_TO_RUN__SET(CMSDK_PWM->PWM1_CTRL);
+		PWM_PWM1_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM1_CTRL);
 		break;
 	case 2:
-		PWM_PWM2_CTRL__OK_TO_RUN__SET(CMSDK_PWM->PWM2_CTRL);
+		PWM_PWM2_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM2_CTRL);
 		break;
 	case 3:
-		PWM_PWM3_CTRL__OK_TO_RUN__SET(CMSDK_PWM->PWM3_CTRL);
+		PWM_PWM3_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM3_CTRL);
 		break;
 	case 4:
-		PWM_PWM4_CTRL__OK_TO_RUN__SET(CMSDK_PWM->PWM4_CTRL);
+		PWM_PWM4_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM4_CTRL);
 		break;
 	case 5:
-		PWM_PWM5_CTRL__OK_TO_RUN__SET(CMSDK_PWM->PWM5_CTRL);
+		PWM_PWM5_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM5_CTRL);
 		break;
 	case 6:
-		PWM_PWM6_CTRL__OK_TO_RUN__SET(CMSDK_PWM->PWM6_CTRL);
+		PWM_PWM6_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM6_CTRL);
 		break;
 	case 7:
-		PWM_PWM7_CTRL__OK_TO_RUN__SET(CMSDK_PWM->PWM7_CTRL);
+		PWM_PWM7_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM7_CTRL);
 		break;
 	default:
 		ASSERT_INFO(0, instance, 0);
@@ -364,9 +368,12 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 		return -EINVAL;
 	}
 
+	bool polarity = flags & PWM_POLARITY_INVERTED;
+
 	if (!pulse_cycles) {
 		pwm_set_duration(channel, 0, 0);
 		pwm_disable(channel);
+		pinmux_config(channel, polarity, PWM_CONTINUOUS_MODE);
 #ifdef CONFIG_PM
 		pwm_atm_pm_constraint_release(dev, channel);
 #endif
@@ -400,29 +407,6 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 	}
 #endif // PWM_PWM0_CTRL__TOT_DUR__READ
 
-	/* Scale the input to maintain the duty cycle if the exact timing cannot be accomodated  */
-	uint32_t max_cycles = DEV_CFG(dev)->max_freq;
-
-	if (period_cycles > max_cycles) {
-#ifdef PWM_PWM0_CTRL__TOT_DUR__READ
-		pulse_cycles = PULSE_CYCLES_FROM_DUTY_CYCLE(max_cycles, max_duty_cycle);
-#else
-		pulse_cycles *= ((float)max_cycles / (float)period_cycles);
-#endif // PWM_PWM0_CTRL__TOT_DUR__READ
-		period_cycles = max_cycles;
-	}
-
-	uint32_t min_cycles = DEV_CFG(dev)->min_freq;
-
-	if (period_cycles < min_cycles) {
-#ifdef PWM_PWM0_CTRL__TOT_DUR__READ
-		pulse_cycles = PULSE_CYCLES_FROM_DUTY_CYCLE(min_cycles, min_duty_cycle);
-#else
-		pulse_cycles *= ((float)min_cycles / (float)period_cycles);
-#endif // PWM_PWM0_CTRL__TOT_DUR__READ
-		period_cycles = min_cycles;
-	}
-
 #ifdef PWM_PWM0_CTRL__TOT_DUR__READ
 	/* Convert to period cycles to kilohertz */
 	period_cycles = period_cycles / 1000;
@@ -431,13 +415,18 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 	uint32_t mpc_clk_period_cycles = (SYS_CLK_IN_KHZ / period_cycles);
 	uint32_t mpc_clk_pulse_cycles = (mpc_clk_period_cycles * duty_cycle) / 100;
 	uint32_t tot_dur = mpc_clk_period_cycles - PWM_TOT_DUR_ADJ;
-	uint16_t hi_dur = mpc_clk_pulse_cycles - PWM_TOT_DUR_ADJ;
-	uint16_t lo_dur = tot_dur - hi_dur;
+	uint32_t hi_dur = mpc_clk_pulse_cycles - PWM_TOT_DUR_ADJ;
+	uint32_t lo_dur = tot_dur - hi_dur;
 #else
-	uint32_t tot_dur = period_cycles - PWM_TOT_DUR_ADJ;
-	uint16_t lo_dur = tot_dur - (((float)pulse_cycles / (float)period_cycles) * tot_dur);
-	uint16_t hi_dur = tot_dur - lo_dur;
+	uint32_t tot_dur = period_cycles;
+	uint32_t lo_dur = tot_dur - (((float)pulse_cycles / (float)period_cycles) * tot_dur);
+	uint32_t hi_dur = tot_dur - lo_dur;
 #endif // PWM_PMW0_CTRL__TOT_DUR__READ
+
+	/* hi_dur and lo_dur cannot exceed 16 bit value. */
+	if (hi_dur > UINT16_MAX || lo_dur > UINT16_MAX) {
+		return -EINVAL;
+	}
 
 	data->period_cycles[channel] = period_cycles;
 
@@ -445,7 +434,7 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 	pwm_atm_pm_constraint_set(dev, channel);
 #endif
 
-	pinmux_config(channel, 0, PWM_CONTINUOUS_MODE);
+	pinmux_config(channel, polarity, PWM_CONTINUOUS_MODE);
 	pwm_set_duration(channel, hi_dur, lo_dur);
 
 	pwm_enable(channel);
@@ -540,40 +529,40 @@ int pwm_atm_fifo_init(const struct device *dev, uint32_t channel,
 	}
 
 	/* Initialize PWM clock if not already done */
-	WRPR_CTRL_SET(CMSDK_PWM, PWM_CLK_CTRL);
+	WRPR_CTRL_SET(Z_CMSDK_PWM, PWM_CLK_CTRL);
 
 	uint16_t hi_dur, lo_dur;
 	/* Configure carrier 1 if provided */
 	if (config->carrier1) {
 		pwm_cal_hi_lo_duration(config->carrier1->freq_hz, config->carrier1->duty_cycle,
 				       &hi_dur, &lo_dur);
-		CMSDK_PWM->FIFO_CARRIER1_DUR = PWM_FIFO_CARRIER1_DUR__HI_DUR__WRITE(hi_dur) |
-					       PWM_FIFO_CARRIER1_DUR__LO_DUR__WRITE(lo_dur);
+		Z_CMSDK_PWM->FIFO_CARRIER1_DUR = PWM_FIFO_CARRIER1_DUR__HI_DUR__WRITE(hi_dur) |
+						 PWM_FIFO_CARRIER1_DUR__LO_DUR__WRITE(lo_dur);
 	}
 
 	/* Configure carrier 2 if provided */
 	if (config->carrier2) {
 		pwm_cal_hi_lo_duration(config->carrier2->freq_hz, config->carrier2->duty_cycle,
 				       &hi_dur, &lo_dur);
-		CMSDK_PWM->FIFO_CARRIER2_DUR = PWM_FIFO_CARRIER2_DUR__HI_DUR__WRITE(hi_dur) |
-					       PWM_FIFO_CARRIER2_DUR__LO_DUR__WRITE(lo_dur);
+		Z_CMSDK_PWM->FIFO_CARRIER2_DUR = PWM_FIFO_CARRIER2_DUR__HI_DUR__WRITE(hi_dur) |
+						 PWM_FIFO_CARRIER2_DUR__LO_DUR__WRITE(lo_dur);
 	}
 
 	/* Configure FIFO settings */
-	CMSDK_PWM->FIFO_CFG = PWM_FIFO_CFG__LWM__WRITE(config->fifo_alert_threshold) |
-			      PWM_FIFO_CFG__CH_STOP__WRITE(1);
+	Z_CMSDK_PWM->FIFO_CFG = PWM_FIFO_CFG__LWM__WRITE(config->fifo_alert_threshold) |
+				PWM_FIFO_CFG__CH_STOP__WRITE(1);
 
 	/* Configure PWM channel for FIFO mode */
 	pinmux_config(channel, config->polarity, PWM_IR_FIFO_MODE);
 
 	/* Enable interrupts */
-	CMSDK_PWM->INTERRUPTS_MASK = PWM_INTERRUPTS__FIFO_OVRFLOW_INTRPT__MASK |
-				     PWM_INTERRUPTS__FIFO_LWM_HIT_INTRPT__MASK |
-				     PWM_INTERRUPTS__FIFO_CMD_DONE_INTRPT__MASK;
+	Z_CMSDK_PWM->INTERRUPTS_MASK = PWM_INTERRUPTS__FIFO_OVRFLOW_INTRPT__MASK |
+				       PWM_INTERRUPTS__FIFO_LWM_HIT_INTRPT__MASK |
+				       PWM_INTERRUPTS__FIFO_CMD_DONE_INTRPT__MASK;
 
 	/* Clear any existing interrupt status */
-	CMSDK_PWM->INTERRUPTS_CLEAR = CMSDK_PWM->INTERRUPTS_MASK;
-	CMSDK_PWM->INTERRUPTS_CLEAR = 0;
+	Z_CMSDK_PWM->INTERRUPTS_CLEAR = Z_CMSDK_PWM->INTERRUPTS_MASK;
+	Z_CMSDK_PWM->INTERRUPTS_CLEAR = 0;
 
 	/* Install interrupt handler */
 	IRQ_CONNECT(PWM_IRQ, 0, pwm_atm_fifo_isr, 0, 0);
@@ -613,8 +602,8 @@ int pwm_atm_fifo_deinit(const struct device *dev, uint32_t channel)
 	irq_disable(PWM_IRQ);
 
 	/* Clear FIFO to prevent stale commands */
-	PWM_FIFO_CFG__FLUSH__SET(CMSDK_PWM->FIFO_CFG);
-	PWM_FIFO_CFG__FLUSH__CLR(CMSDK_PWM->FIFO_CFG);
+	PWM_FIFO_CFG__FLUSH__SET(Z_CMSDK_PWM->FIFO_CFG);
+	PWM_FIFO_CFG__FLUSH__CLR(Z_CMSDK_PWM->FIFO_CFG);
 
 	pinmux_deconfig(channel);
 
@@ -682,7 +671,7 @@ int pwm_atm_fifo_write_cmd(const struct device *dev, uint32_t channel,
 	}
 
 	/* Check if FIFO is full */
-	if (PWM_FIFO_STAT__FULL__READ(CMSDK_PWM->FIFO_STAT)) {
+	if (PWM_FIFO_STAT__FULL__READ(Z_CMSDK_PWM->FIFO_STAT)) {
 		return -ENOSPC;
 	}
 
@@ -690,7 +679,7 @@ int pwm_atm_fifo_write_cmd(const struct device *dev, uint32_t channel,
 	uint16_t carrier_cnt = cmd->carrier_count - 1;
 
 	/* Write command to FIFO */
-	CMSDK_PWM->FIFO_DATA = (cmd->carrier << 15) | (cmd->carrier_on << 14) | carrier_cnt;
+	Z_CMSDK_PWM->FIFO_DATA = (cmd->carrier << 15) | (cmd->carrier_on << 14) | carrier_cnt;
 
 	return 0;
 }
@@ -794,7 +783,7 @@ int pwm_atm_fifo_get_free_slots(const struct device *dev, uint32_t channel)
 		return -ENODEV;
 	}
 
-	return PWM_FIFO_STAT1__NUM_OPEN_SLOTS__READ(CMSDK_PWM->FIFO_STAT1);
+	return PWM_FIFO_STAT1__NUM_OPEN_SLOTS__READ(Z_CMSDK_PWM->FIFO_STAT1);
 }
 
 bool pwm_atm_fifo_is_empty(const struct device *dev, uint32_t channel)
@@ -805,7 +794,7 @@ bool pwm_atm_fifo_is_empty(const struct device *dev, uint32_t channel)
 		return false;
 	}
 
-	return PWM_FIFO_STAT__EMPTY__READ(CMSDK_PWM->FIFO_STAT);
+	return PWM_FIFO_STAT__EMPTY__READ(Z_CMSDK_PWM->FIFO_STAT);
 }
 
 bool pwm_atm_fifo_is_full(const struct device *dev, uint32_t channel)
@@ -816,7 +805,7 @@ bool pwm_atm_fifo_is_full(const struct device *dev, uint32_t channel)
 		return true;
 	}
 
-	return PWM_FIFO_STAT__FULL__READ(CMSDK_PWM->FIFO_STAT);
+	return PWM_FIFO_STAT__FULL__READ(Z_CMSDK_PWM->FIFO_STAT);
 }
 #endif /* CONFIG_PWM_ATM_FIFO */
 
@@ -824,7 +813,7 @@ static int pwm_atm_init(struct device const *dev)
 {
 	struct pwm_atm_config const *config = DEV_CFG(dev);
 
-	WRPR_CTRL_SET(CMSDK_PWM, PWM_CLK_CTRL);
+	WRPR_CTRL_SET(Z_CMSDK_PWM, PWM_CLK_CTRL);
 	config->config_pins();
 
 	return 0;
@@ -835,31 +824,31 @@ static struct pwm_driver_api const pwm_atm_driver_api = {
 	.get_cycles_per_sec = pwm_atm_get_cycles_per_sec,
 };
 
-#define PWM_CTRL(n) CONCAT(CONCAT(&CMSDK_PWM->PWM, DT_INST_PROP(n, channel)), _CTRL)
-#define PWM_MAX_FREQ(n) DT_PROP(DT_NODELABEL(pwm##n), max_frequency)
-#define PWM_MIN_FREQ(n) DT_PROP(DT_NODELABEL(pwm##n), min_frequency)
-#define PWM_MAX_DUTY_CYCLE(n) DT_PROP(DT_NODELABEL(pwm##n), max_duty_cycle)
-#define PWM_MIN_DUTY_CYCLE(n) DT_PROP(DT_NODELABEL(pwm##n), min_duty_cycle)
-#define PWM_DEVICE_INIT(n)                                                                         \
-	static void pwm_atm_config_pins_##n(void)                                                  \
-	{                                                                                          \
-		PIN_SELECT(DT_INST_PROP(n, pin), PWM(n));                                          \
-	}                                                                                          \
-	static struct pwm_atm_data pwm_atm_data_##n;                                               \
-	static struct pwm_atm_config const pwm_atm_config_##n = {                                  \
-		.ctrl = PWM_CTRL(n),                                                               \
-		.config_pins = pwm_atm_config_pins_##n,                                            \
-		.max_freq = PWM_MAX_FREQ(n),                                                       \
-		.min_freq = PWM_MIN_FREQ(n),                                                       \
+#define PWM_CTRL(n)           CONCAT(CONCAT(&Z_CMSDK_PWM->PWM, DT_INST_PROP(n, channel)), _CTRL)
+#define PWM_MAX_FREQ(n)       DT_INST_PROP(n, max_frequency)
+#define PWM_MIN_FREQ(n)       DT_INST_PROP(n, min_frequency)
+#define PWM_MAX_DUTY_CYCLE(n) DT_INST_PROP(n, max_duty_cycle)
+#define PWM_MIN_DUTY_CYCLE(n) DT_INST_PROP(n, min_duty_cycle)
+#define PWM_DEVICE_INIT(n)                                                                           \
+	static void pwm_atm_config_pins_##n(void)                                                    \
+	{                                                                                            \
+		PIN_SELECT(DT_INST_PROP(n, pin), PWM(n));                                            \
+	}                                                                                            \
+	static struct pwm_atm_data pwm_atm_data_##n;                                                 \
+	static struct pwm_atm_config const pwm_atm_config_##n = {                                    \
+		.ctrl = PWM_CTRL(n),                                                                 \
+		.config_pins = pwm_atm_config_pins_##n,                                              \
+		.max_freq = PWM_MAX_FREQ(n),                                                         \
+		.min_freq = PWM_MIN_FREQ(n),                                                         \
 		IF_ENABLED(DT_INST_NODE_HAS_PROP(n, max_duty_cycle),                               \
-		           (.max_duty_cycle = PWM_MAX_DUTY_CYCLE(n),))                             \
-		IF_ENABLED(DT_INST_NODE_HAS_PROP(n, min_duty_cycle),                               \
-		           (.min_duty_cycle = PWM_MIN_DUTY_CYCLE(n),))                             \
-	};                                                                                         \
-	static struct pwm_atm_data pwm_atm_data_##n = {                                            \
-		.period_cycles = {0},  /* Initialize all period tracking to 0 */                   \
-	};                                                                                         \
-	DEVICE_DT_INST_DEFINE(n, &pwm_atm_init, NULL, &pwm_atm_data_##n, &pwm_atm_config_##n,      \
-		POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &pwm_atm_driver_api);
+		           (.max_duty_cycle = PWM_MAX_DUTY_CYCLE(n),)) \
+				 IF_ENABLED(DT_INST_NODE_HAS_PROP(n, min_duty_cycle),                               \
+		           (.min_duty_cycle = PWM_MIN_DUTY_CYCLE(n),)) };              \
+	static struct pwm_atm_data pwm_atm_data_##n = {                                              \
+		.period_cycles = {0}, /* Initialize all period tracking to 0 */                      \
+	};                                                                                           \
+	DEVICE_DT_INST_DEFINE(n, &pwm_atm_init, NULL, &pwm_atm_data_##n, &pwm_atm_config_##n,        \
+			      POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,                       \
+			      &pwm_atm_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(PWM_DEVICE_INIT)

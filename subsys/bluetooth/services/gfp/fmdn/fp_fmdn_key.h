@@ -6,7 +6,7 @@
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN) extention
  * Key Process Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -44,11 +44,62 @@ typedef enum {
 } fp_fmdn_battery_level_t;
 
 /**
+ * @brief FP FMDN key clock initialization
+ *
+ * Initializes the FMDN clock by restoring the value from NVM if available.
+ * This should be called once during system initialization.
+ */
+void fp_fmdn_key_clock_init(void);
+
+/**
  * @brief FP FMDN key clock read
  *
- * @return clock
+ * @return clock value in seconds
  */
 uint32_t fp_fmdn_key_clock_read(void);
+
+/**
+ * @brief FP FMDN key clock save
+ *
+ * Saves the current FMDN clock value to NVM for power-loss recovery.
+ * According to FMDN spec, this should be called at least once per day.
+ * This is called automatically by the periodic save worker.
+ *
+ * @return 0 if successful. Otherwise, a (negative) error code is returned
+ */
+int fp_fmdn_key_clock_save(void);
+
+/**
+ * @brief Start periodic FMDN clock saving
+ *
+ * Starts a periodic work queue that saves the FMDN clock value to NVM
+ * every 24 hours as recommended by the FMDN specification.
+ */
+void fp_fmdn_key_clock_periodic_save_start(void);
+
+/**
+ * @brief Stop periodic FMDN clock saving
+ *
+ * Stops the periodic work queue for FMDN clock saving.
+ */
+void fp_fmdn_key_clock_periodic_save_stop(void);
+
+/**
+ * @brief Schedule immediate FMDN clock save
+ *
+ * Schedules the clock save work item for immediate execution via work queue.
+ * This avoids race conditions with the periodic save handler.
+ */
+void fp_fmdn_key_clock_save_immediate(void);
+
+/**
+ * @brief Reset FMDN clock value to 0
+ *
+ * Resets the FMDN clock value to 0 and deletes it from NVM.
+ * This should be called during factory reset so new provisioning
+ * can start with clock value of 0.
+ */
+void fp_fmdn_key_clock_reset(void);
 
 /**
  * @brief FP FMDN bcna key generate

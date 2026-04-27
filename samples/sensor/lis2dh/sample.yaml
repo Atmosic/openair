@@ -16,5 +16,3 @@ tests:
       type: one_line
       regex:
         - Polling at 0.5 Hz
-    tags:
-      - no_mcuboot

@@ -15,6 +15,42 @@ The ATM BLE Throughput Peripheral Test Application is a Bluetooth Low Energy (BL
 - **Connection Monitoring**: Logs connection events and parameter changes
 - **TX Power Control**: Supports TX power control from central
 
+## Building and Running
+
+This application is built from `openair/applications/atm_tput/tput_peripheral`.
+
+### Standard Build
+
+```bash
+west build -p always -b <BOARD> openair/applications/atm_tput/tput_peripheral --sysbuild -T applications.atm_tput.tput_peripheral.atm
+```
+
+### Two-Device Auto-Test Build
+
+Use this target when pairing with the matching central auto-test target:
+
+```bash
+west build -p always -b <BOARD> openair/applications/atm_tput/tput_peripheral --sysbuild -T applications.atm_tput.tput_peripheral.atm.two_dev
+```
+
+### MCUboot + Flash XIP Build
+
+```bash
+west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_peripheral --sysbuild -T applications.atm_tput_peripheral.atm.mcuboot.flash_xip
+```
+
+### MCUboot + Flash XIP Overwrite-Only Build
+
+```bash
+west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_peripheral --sysbuild -T applications.atm_tput_peripheral.atm.mcuboot.flash_xip.overwrite
+```
+
+### Flash Command
+
+```bash
+west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+```
+
 ## Usage
 
 ### Test Procedure

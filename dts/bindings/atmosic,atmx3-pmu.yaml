@@ -1,5 +1,5 @@
-# Copyright (c) 2024 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2024-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 description: Atmosic PMU
 
@@ -13,169 +13,226 @@ properties:
 
   interrupts:
     required: true
+    description: |
+      PMU interrupt (PMU_IRQn) for brownout, PMU watchdog warning, and energy monitoring events.
+      The PMU driver provides a central handler that dispatches to appropriate sub-handlers based
+      on compile-time configuration (CONFIG_ATM_BROWNOUT, CONFIG_WDT_ATMOSIC_PMU_ENABLE).
 
   batt-type:
     type: int
+    enum:
+      - 0 # Li-ion
+      - 1 # Rechargeable
+      - 2 # No battery
+      - 3 # Non-rechargeable
     required: false
-    description:
-        The battery type is specified through OTP and is equal to BATT_TYPE_NON_RECHARGEABLE by default. It can be overwritten through this compile time flag based on the board design. Valid battery types are given below.
-        - BATT_TYPE_LI_ION
-        - BATT_TYPE_RECHARGEABLE
-        - BATT_TYPE_NO_BATTERY
-        - BATT_TYPE_NON_RECHARGEABLE
-        If you wish to use BATT_TYPE_LI_ION, you will need to first power the board using a power source that is NOT lithium ion then load a program with CONFIG_BATT_TYPE=0. This will enable the lithium ion power ciruit, at which point you can disconnect the non lithium ion power source, hook up the lithium ion battery and proceed like normal.
+    description: |
+      The battery type is specified through OTP and defaults to non-rechargeable. This
+      property can override that default based on the board design.
+
+      If ``batt-type = <0>`` (Li-ion) is used, first power the board using a power
+      source that is not lithium-ion, then load a program with ``batt-type`` set
+      to ``<0>``. This enables the lithium-ion power circuit. The non-lithium-ion
+      power source can then be disconnected, the lithium-ion battery can be
+      connected, and operation can proceed normally.
 
   batt-level:
     type: int
+    enum:
+      - 0 # <= 1.8 V
+      - 1 # > 1.8 V
     required: false
-    description:
-        The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through this compile time flag. Valid battery levels.
-        - BATT_LEVEL_LE_1P8V (<= 1.8V)
-        - BATT_LEVEL_GT_1P8V (> 1.8V)
+    description: |
+      The battery level is specified through OTP and defaults to ``> 1.8 V``.
+      This property can override that default.
 
   vddio-type:
     type: int
+    enum:
+      - 0 # Internal
+      - 1 # External
     required: false
-    description:
-        The 'vddio' type is equal to VDDIO_TYPE_INTERNAL by default and can be overwritten through this compile time flag based on the board design. Valid vddio types.
-        - VDDIO_TYPE_INTERNAL
-        - VDDIO_TYPE_EXTERNAL
-        Note that the external VDDIO type is determined by the source on the board, which is commonly assumed to be VBAT. Therefore, it is supported for battery level greater than 1.8V.
+    description: |
+      The VDDIO type defaults to Internal and can be overridden through the ``vddio-type``
+      property based on the board design.
+
+      The external VDDIO type is determined by the source on the board, which
+      is commonly assumed to be ``VBAT``. Therefore, it is supported only for
+      ``batt-level = <1>`` (``> 1.8 V``).
 
   vstore-max:
     type: int
     required: false
-    description:
-        The vstore max is specified through OTP. It can be overwritten through this compile time flag. Suppported Vstore max values given below.
-        - Between 1500 mV - 3000 mV with 50 mV step,
-        - 3100 mV
-        - 3300 mV (default)
+    description: |
+      The VSTORE maximum is specified through OTP and can be overridden through the
+      ``vstore-max`` property.
+
+      Supported values for ``vstore-max``:
+
+      * 1500 mV to 3000 mV in 50 mV steps
+      * 3100 mV
+      * 3300 mV (default)
 
   vddpa-src:
     type: int
+    enum:
+      - 0 # VDDIOP
+      - 1 # VDDPAP / VSTORE
+      - 2 # None
     required: false
-    description:
-        Suppported Vddpa src values given below.
-        - VDDPA_SRC_VDDIOP
-        - VDDPA_SRC_VDDPAP
+    description: |
+      Supply source for VDDPA.
 
   nonrf-harv:
     type: boolean
     required: false
-    description:
-        Enables PhotoVoltaic (PV) harvesting. Can be specified with RF_HARV to enable combined harvesting.
+    description: |
+      Enables photovoltaic (PV) harvesting. Can be specified with ``rf-harv`` to enable
+      combined harvesting.
 
   vharv-range:
     type: int
+    enum:
+      - 0 # 0.4 V - 0.45 V
+      - 1 # 0.45 V - 0.5 V
+      - 2 # 0.525 V - 0.6 V
+      - 3 # 0.6 V - 0.7 V
+      - 4 # 0.675 V - 0.8 V
+      - 5 # 0.75 V - 0.9 V
+      - 6 # 0.825 V - 1.0 V
+      - 7 # 0.9 V - 1.1 V
+      - 8 # 0.975 V - 1.2 V
+      - 9 # 1.05 V - 1.3 V
+      - 10 # 1.175 V - 1.45 V
+      - 11 # 1.3 V - 1.6 V
+      - 12 # 1.5 V - 1.8 V
+      - 13 # 1.7 V - 2.0 V
+      - 14 # 1.95 V - 2.25 V
+      - 15 # 2.2 V - 2.5 V
     required: false
-    description:
-        Harvesting range needs to be specified for PV harvesting. It can be done at compile time using this flag. Valid vharv range values are given below.
-        - VHARV_RANGE_0P4V_0P45V
-        - VHARV_RANGE_0P45V_0P5V
-        - VHARV_RANGE_0P525V_0P6V
-        - VHARV_RANGE_0P6V_0P7V
-        - VHARV_RANGE_0P675V_0P8V
-        - VHARV_RANGE_0P75V_0P9V
-        - VHARV_RANGE_0P825V_1P0V
-        - VHARV_RANGE_0P9V_1P1V
-        - VHARV_RANGE_0P975V_1P2V
-        - VHARV_RANGE_1P05V_1P3V
-        - VHARV_RANGE_1P175V_1P45V
-        - VHARV_RANGE_1P3V_1P6V
-        - VHARV_RANGE_1P5V_1P8V
-        - VHARV_RANGE_1P7V_2P0V
-        - VHARV_RANGE_1P95V_2P25V
-        - VHARV_RANGE_2P2V_2P5V
+    description: |
+      The harvesting range must be specified when using PV harvesting and needs to
+      match the PV cell operating region.
 
   boost-from-vharv-inductor:
     type: boolean
     required: false
-    description:
-        This option is only available with BATT_TYPE=BATT_TYPE_LI_ION, and PV harvesting (CFG_NONRF_HARV and corresponding VHARV_RANGE option). Please refer to the application notes for the applicable scenarios, hardware connections and performance. Based on the characteristic of the selected PV cell, the user needs to choose the upper level or lower level of the VHARV_RANGE by enabling one of the 2 options - vharv-ll or vharv-ul
+    description: |
+      This option is only available with ``batt-type = <0>`` (Li-ion), PV
+      harvesting enabled, and a valid ``vharv-range`` setting.
+
+      Refer to the application notes for the applicable scenarios, hardware connections,
+      and performance.
+
+      Based on the selected PV cell characteristics, choose the lower or upper
+      level of ``vharv-range`` by enabling one of these properties:
+
+      * ``vharv-ll``
+      * ``vharv-ul``
 
   vharv-ll:
     type: boolean
     required: false
-    description:
-        VHARV range lower level
+    description: |
+      Select the lower level of the configured ``vharv-range``.
 
   vharv-ul:
     type: boolean
     required: false
-    description:
-        VHARV range upper level
+    description: |
+      Select the upper level of the configured ``vharv-range``.
 
   dig-test-out-pin:
     type: int
     required: false
-    description:
-        dig test out pin
+    description: |
+      Digital test output pin. Set when using inductive boost.
 
   boost-io-pin:
     type: int
     required: false
-    description:
-        boost io pin
+    description: |
+      Boost I/O pin. Set when using two-diode boost.
 
   boost-from-vharv-two-diode:
     type: boolean
     required: false
-    description:
-        This option is only available with BATT_TYPE=BATT_TYPE_LI_ION, and PV harvesting (CFG_NONRF_HARV and corresponding VHARV_RANGE option). Please refer to the application notes for the applicable scenarios, hardware connections and performance.
+    description: |
+      This option is only available with ``batt-type = <0>`` (Li-ion), PV
+      harvesting enabled, and a valid ``vharv-range`` setting.
+
+      Refer to the application notes for the applicable scenarios, hardware connections,
+      and performance.
 
   boost-from-vstore-two-diode:
     type: boolean
     required: false
-    description:
-        This option is only available with BATT_TYPE=BATT_TYPE_LI_ION, and PV harvesting (CFG_NONRF_HARV and corresponding VHARV_RANGE option). Please refer to the application notes for the applicable scenarios, hardware connections and performance.
+    description: |
+      This option is only available with ``batt-type = <0>`` (Li-ion), PV
+      harvesting enabled, and a valid ``vharv-range`` setting.
+
+      Refer to the application notes for the applicable scenarios, hardware connections,
+      and performance.
 
   rf-harv:
     type: boolean
     required: false
-    description:
-        Enables RF harvesting. Can be specified with NONRF_HARV to enable combined harvesting.
+    description: |
+      Enables RF harvesting. Can be specified with ``nonrf-harv`` to enable
+      combined harvesting.
 
   harv-meter:
     type: boolean
     required: false
-    description:
-        Supported only when MPPT is disabled. The application needs to call the pmu_set_harv_meter() API to start/stop the meter. The instantaneous power computation depends on the vharv range and the inductor used.
+    description: |
+      Supported only when MPPT is disabled. The application must call the
+      ``pmu_set_harv_meter()`` API to start or stop the meter.
+
+      Instantaneous power computation depends on the configured
+      ``vharv-range`` and the inductor used.
 
   inductor-nhenry:
     type: int
     required: false
-    description:
-        Inductor being used in the board design for harvesting meter
+    description: |
+      Inductor value, in nH, used in the board design for the harvesting meter.
 
   soc-off-lpcomp-wakeup-pin:
     type: int
     description: |
-        LP comparator input pin number for SOC off wakeup.
-        Valid values are platform-specific:
-        - ATM33xx/ATM34xx: 3 or 4
-        When this property is defined, soc-off-lpcomp-ref-level must also be defined.
+      LP comparator input pin number for SoC-off wakeup.
+
+      Valid values are platform-specific:
+
+      * ATM33xx / ATM34xx: ``3`` or ``4``
+
+      When this property is defined, ``soc-off-lpcomp-ref-level`` must also be defined.
 
   soc-off-lpcomp-ref-level:
     type: int
     description: |
-        LP comparator reference voltage level (1-15).
-        The system will wake when the input voltage crosses this threshold.
-        This property is required when soc-off-lpcomp-wakeup-pin is defined.
+      LP comparator reference voltage level (``1`` to ``15``).
+
+      The system wakes when the input voltage crosses this threshold.
+
+      This property is required when ``soc-off-lpcomp-wakeup-pin`` is defined.
 
   xtal-32k-cap-in:
     type: int
     description: |
-      32kHz crystal load value on XTALI_32K pin. The value is calculated using
-      calibration tools.
+      32 kHz crystal load value on ``XTALI_32K``. The value is calculated using calibration
+      tools.
 
   xtal-32k-cap-out:
     type: int
     description: |
-      32kHz crystal load value on XTALO_32K pin. The value is calculated using
-      calibration tools.
+      32 kHz crystal load value on ``XTALO_32K``. The value is calculated using calibration
+      tools.
 
   hsc-mode:
     type: boolean
     required: false
-    description:
-        Indicate if the design is using Hybrid Super Cap (valid for batt-type = BATT_TYPE_LI_ION)
+    description: |
+      Indicates whether the design uses a Hybrid Super Cap.
+
+      This is valid only for ``batt-type = <0>`` (Li-ion).

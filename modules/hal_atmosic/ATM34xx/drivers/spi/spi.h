@@ -5,7 +5,7 @@
  *
  * @brief SPI driver
  *
- * Copyright (C) Atmosic 2018-2025
+ * Copyright (C) Atmosic 2018-2026
  *
  *******************************************************************************
  */
@@ -21,7 +21,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
+#include "ll.h"
+#include "base_addr.h"
 #include "at_apb_spi_regs_core_macro.h"
 
 #ifdef __cplusplus
@@ -242,6 +243,8 @@ void spi_pmuradio_write_word(const spi_dev_t *spi, uint8_t block, uint8_t addr, 
 #define SWREG_READ(__m, __reg) SPR_READ(&spi_pmu, SWREG_ ## __m, __reg)
 #define SWREG_WRITE(__m, __reg, __val) \
     SPR_WRITE(&spi_pmu, SWREG_ ## __m, __reg, __val)
+#define SWREG_WRITE_NO_VERIFY(__m, __reg, __val) \
+    SPR_WRITE_NO_VERIFY(&spi_pmu, SWREG_ ## __m, __reg, __val)
 
 #define PMU_GADC_READ(__reg) PMU_READ(GADC, __reg)
 #define PMU_GADC_WRITE(__reg, __val) PMU_WRITE(GADC, __reg, __val)

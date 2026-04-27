@@ -1,6 +1,7 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 add_subdirectory(at_tz_mpc)
 add_subdirectory(at_tz_sau)
@@ -12,6 +13,7 @@ add_subdirectory(batt_model)
 add_subdirectory(batt_model_coin)
 add_subdirectory(batt_model_dry)
 add_subdirectory(batt_model_hsc_liion)
+add_subdirectory(ccbm)
 add_subdirectory(dma)
 add_subdirectory(eui)
 add_subdirectory(lpc)
@@ -19,6 +21,7 @@ add_subdirectory(pc_ctr)
 add_subdirectory(pc_ctr_sleep)
 add_subdirectory(pc_ll_cfg)
 add_subdirectory(pc_vs_cmd)
+add_subdirectory(radio_cal)
 add_subdirectory(radio_hal_ble)
 add_subdirectory(radio_hal_ble_cs)
 add_subdirectory(radio_hal_ble_cte)

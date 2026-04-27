@@ -1,0 +1,18 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_MPC_NULL_POINTER_DETECTION
+	bool "Use MPC for NULL pointer detection in no-TZ mode"
+	default y
+	depends on !SPE
+	help
+	  Use TrustZone MPC instead of MPU for NULL pointer detection.
+	  This frees up MPU regions for other uses like userspace.
+
+	  When enabled via sysbuild, this option will:
+	  - Pass ATM_MPC_NULL_POINTER_DETECTION DTS flag to disable
+	    the rom_null_page node
+	  - Set CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC
+
+	  This option is enabled by default in no-TZ (no SPE) configurations.

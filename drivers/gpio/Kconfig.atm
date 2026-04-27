@@ -1,0 +1,33 @@
+# Atmosic GPIO driver configuration
+
+# Copyright (c) 2025 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+config GPIO_ATM
+	bool "Atmosic GPIO driver with automatic pinmux"
+	default y
+	depends on DT_HAS_ATMOSIC_ATM_GPIO_ENABLED
+	help
+	  Enable the Atmosic GPIO driver which extends the ARM CMSDK AHB
+	  GPIO driver with automatic pin multiplexing configuration.
+
+	  This driver automatically calls PIN_SELECT() to configure pins
+	  as GPIO when gpio_pin_configure() is called, eliminating the
+	  need for manual pinmux setup in application code.
+
+	  This is particularly useful for pins like P0 and P1 which
+	  default to SWD function and need to be explicitly muxed to
+	  GPIO before use.
+
+	  Note: This driver reuses functions from the ARM CMSDK AHB GPIO
+	  driver (gpio_cmsdk_ahb.c) which is compiled as part of this driver.
+
+config GPIO_ATM_RESET_GPIOS_ON_WARM_RESET
+	bool "Reset GPIO state on warm reset"
+	depends on GPIO_ATM
+	default y if MCUBOOT
+	default y if !BOOTLOADER_MCUBOOT && (ATM_NO_TZ || TRUSTED_EXECUTION_NONSECURE)
+	select ATM_RESET
+	help
+	  This option resets GPIO pin states during either due to warm
+	  reset or watchdog reset

@@ -76,41 +76,40 @@ config VND_IO_CTRL
 
 config VND_GADC_V2
 	bool "[0xF80B] GADC - set gadc value."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	default y
 
 config VND_GPIO_TEST
 	bool "[0xF80E] GPIO Self Test."
 
 config VND_COREMARK
 	bool "[0xF810] coremark - get coremark score multiplied by 100."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
 
 config VND_WFI
 	bool "[0xF811] wfi - do wfi to be used for power measure tests."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	default y
 
 config VND_NO_CLOCK
 	bool "[0xF812] no_clock - turn off mpc clock to be used for power measure tests."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	default y
 
 config VND_WHILE_ONE
 	bool "[0xF813] while_one - do while_one to be used for power measure tests"
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	default y
 
 config VND_SET_TX_PWR
 	bool "[0xF814] set max Tx power."
 
 config VND_PMU_RADIO_REGR
 	bool "[0xFC32] PMU Radio Register Read."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	default y
 
 config VND_PMU_RADIO_REGW
 	bool "[0xFC33] PMU Radio Register Write."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	default y
 
 config VND_XTAL_32K_PIN_OUT
 	bool "[0xFC34] 32KHz XTAL Pin Out assignment in runtime."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
+	default y
 
 endif # ATM_VENDOR
 
@@ -125,20 +124,18 @@ config VND_API_SET_PREF_SLAVE_LAT
 
 config VND_API_SET_MAX_TX_POWER
 	bool "Set Maximum Transmitter Power."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
 
 config VND_API_SET_ADV_TX_POWER
 	bool "Set Advertising Transmitter Power."
-	depends on SOC_SERIES_ATM34
+	depends on (SOC_SERIES_ATM34 || SOC_SERIES_ATM53)
 	help
 	  Direct configuration of advertising TX power is not supported on the ATM33 series. Instead, it can be set indirectly through the atm_vendor_set_max_tx_power() API.
 
 config VND_API_SET_CON_TX_POWER
 	bool "[0xFC1A] Set Transmitter Power."
-	depends on (SOC_SERIES_ATM33 || SOC_SERIES_ATM34)
 
 config VND_API_SET_SCAN_CHMAP
 	bool "[0xFFE0] Set Scan Channel Map."
-	depends on SOC_SERIES_ATM34
+	depends on (SOC_SERIES_ATM34 || SOC_SERIES_ATM53)
 
 endif # ATM_VENDOR_API

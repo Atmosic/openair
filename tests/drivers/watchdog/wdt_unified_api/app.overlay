@@ -1,0 +1,29 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
+ */
+
+/* Enable ARM watchdog (required by unified) */
+&wdog0 {
+	status = "okay";
+};
+
+/* Enable unified watchdog wrapper */
+&wdog_unified {
+	status = "okay";
+};
+
+/* Update alias to point to unified watchdog */
+/ {
+	aliases {
+		watchdog0 = &wdog_unified;
+	};
+};
+
+&soc_off {
+        status = "okay";
+};
+
+&cpu0 {
+	cpu-power-states = <&idle &sleep &retain &hibernate &soc_off>;
+};

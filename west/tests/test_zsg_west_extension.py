@@ -1,9 +1,11 @@
+# Copyright (c) Atmosic 2025-2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file test_zsg_west_extension.py
 
 @brief Unit test for zsg west extension
-
-Copyright (c) Atmosic 2025
 """
 
 import os

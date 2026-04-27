@@ -1,5 +1,9 @@
 sample:
   name: Bluetooth Central HR
+common:
+  tags:
+    - bluetooth
+    - role_central
 tests:
   samples.bluetooth.central_hr.atm:
     sysbuild: true
@@ -8,8 +12,5 @@ tests:
       type: one_line
       regex:
         - '\[DEVICE\]: .*RSSI -\d+|Scanning successfully started'
-    tags:
-      - bluetooth
-      - no_mcuboot
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

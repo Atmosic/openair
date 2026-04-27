@@ -1,0 +1,16 @@
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
+
+config ATM_RADIO_CAL
+	bool "Atmosic Radio Calibration module"
+	depends on ATM_HW_CFG && ATM_RADIO_HAL_MGR
+
+if ATM_RADIO_CAL
+
+config ATM_RADIO_CAL_REPEAT_MS
+	int "Number of milliseconds between calibrations. 0 to disable"
+	default 0
+
+endif

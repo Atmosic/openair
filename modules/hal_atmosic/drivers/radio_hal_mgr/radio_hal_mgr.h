@@ -11,7 +11,9 @@
  * running and requested operations. When possible, the manager will be given
  * information relevant to priority declaratively in each request.
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -54,6 +56,7 @@ typedef enum {
     ATM_MAC_MGR_PROT_BLE, /*!< BLE */
     ATM_MAC_MGR_PROT_154, /*!< 15.4 */
     ATM_MAC_MGR_PROT_FLASH, /*!< Flash operations */
+    ATM_MAC_MGR_PROT_CAL, /*!< Periodic calibration */
     ATM_MAC_MGR_PROT_NUM,
 } atm_mac_mgr_protocol_t;
 

@@ -1,6 +1,7 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config ATM_PC_LL_CFG
 	bool "Atmosic pc_ll_cfg module"
@@ -9,6 +10,23 @@ config ATM_PC_LL_CFG
 
 if ATM_PC_LL_CFG
 
+config ATM_ENA_LL_FEAT_PEER_FILT
+	bool "Enable Peer address filtering in whitelist and resolving lists"
+	default y
+	help
+	  Enable support for the BLE peer filtering for whitelist
+	  and resolvable address lists.  Required for BT scanning, connectivity,
+	  scannable advertising and privacy.  Can be disabled if none of these
+	  features are required.
+
+config ATM_ENA_LL_FEAT_ENC_PRIV
+	bool "When available, enable encryption and privacy"
+	default y if (BT_PRIVACY || BT_SMP || BT_HCI_RAW || BT_EXT_ADV)
+	depends on ATM_ENA_LL_FEAT_PEER_FILT
+	help
+	   Enable encryption and privacy support if used by
+	   the BT host stack or application.
+
 config ATM_ENA_LL_FEAT_PC
 	bool "When available, enable LL power control feature"
 	default n if ATMWSTK_PD50
@@ -16,26 +34,34 @@ config ATM_ENA_LL_FEAT_PC
 
 config ATM_ENA_LL_FEAT_CENTRAL
 	bool "When available, enable as capable of being a central"
-	default n if ATMWSTK_PD50
-	default y
+	default y if BT_CENTRAL
+	depends on !ATMWSTK_PD50
 
 config ATM_ENA_LL_FEAT_PERIPHERAL
 	bool "When available, enable as capable of being a peripheral"
-	default y
+	default y if (BT_PERIPHERAL || DTM_2WIRE)
+	default y if (BT_BROADCASTER && ATM_LCROM_IFACE)
+	default y if ATM_ENA_LL_FEAT_PAWR
+	depends on ATM_ENA_LL_FEAT_BROADCASTER
 
 config ATM_ENA_LL_FEAT_BROADCASTER
 	bool "When available, enable as capable of being a broadcaster"
-	default y
+	default y if (BT_BROADCASTER || DTM_2WIRE)
 
 config ATM_ENA_LL_FEAT_OBSERVER
 	bool "When available, enable as capable of being an observer"
 	default n if ATMWSTK_PD50
-	default y
+	default y if BT_OBSERVER
 
 config ATM_ENA_LL_FEAT_CS
 	bool "When available, enable LL channel sounding feature"
 	default n if (ATMWSTK_PD50 || ATMWSTK_CPD200)
-	default y
+	default y if (BT_CHANNEL_SOUNDING || BT_HCI_RAW)
+
+config ATM_ENA_LL_FEAT_CS_TEST
+	bool "When available, enable LL channel sounding test feature"
+	default y if BT_HCI_RAW
+	depends on ATM_ENA_LL_FEAT_CS
 
 config ATM_ENA_LL_FEAT_ISO
 	bool "When available, enable LL ISO feature"
@@ -60,12 +86,20 @@ config ATM_ENA_LL_FEAT_EXT
 	bool "When available, enable LL EXTFEAT (Extended Features)"
 	default y if ATMWSTK_FULL
 
+config ATM_ENA_LL_FEAT_EXT_ADV
+	bool "When available, enable LL Extended Advertising Features"
+	default y if (BT_HCI_RAW || BT_EXT_ADV)
+
 config ATM_ENA_LL_FEAT_DBAF
 	bool "When available, enable LL DBAF (Decision Based Advertising Filtering) feature"
 	default y if ATMWSTK_FULL
 
 config ATM_ENA_LL_FEAT_MONADV
 	bool "When available, enable LL MONADV (Monitored Advertisers) feature"
+	default y if ATMWSTK_FULL
+
+config ATM_ENA_LL_FEAT_FSU
+	bool "When available, enable LL FSU (Frame Space Update) feature"
 	default y if ATMWSTK_FULL
 
 config ATM_BLE_CS_NUM_ANTENNAS
@@ -77,9 +111,11 @@ config ATM_BLE_CS_NUM_ANTENNAS
 
 config ATM_LL_ECC_SUPPORT
 	bool "Support HCI ECC commands in the LL"
-	default y if !BT_ECC
+	default y if BT_HCI_RAW || (BT_SMP && !BT_ECC)
 
 config ATM_DTM_SUPPORT
 	bool "Support LE directed test mode"
-	default y
+	default y if (BT_HCI_RAW || DTM_2WIRE)
+	depends on !ATM_LCROM_IFACE || (ATM_LCROM_IFACE && (ATM_ENA_LL_FEAT_PERIPHERAL || ATM_ENA_LL_FEAT_CENTRAL))
+
 endif # ATM_PC_LL_CFG

@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -51,7 +51,10 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 #endif
 #ifdef CONFIG_FHN_TAG
 #define FP_TAP_COUNT 1
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+#define FP_TAP_DOUBLE_COUNT 2
 #endif
+#endif // CONFIG_FHN_TAG
 #ifdef CONFIG_ATM_CS
 #define CS_UNPAIR_TAP_COUNT 7
 #endif
@@ -86,7 +89,10 @@ struct button_action {
 static const struct button_action button_actions[] = {
 #ifdef CONFIG_FHN_TAG
 	{atm_gfp_button_notify, FP_TAP_COUNT},
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+	{atm_gfp_button_double_notify, FP_TAP_DOUBLE_COUNT},
 #endif
+#endif // CONFIG_FHN_TAG
 #ifdef CONFIG_TAG_BTN_BATT_REPORT
 	{battery_report_handler, BATTERY_REPORT_TAP_COUNT},
 #endif

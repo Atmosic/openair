@@ -16,5 +16,3 @@ tests:
       regex:
 #        - Polling at 0.5 Hz
         - Booting Zephyr OS build
-    tags:
-      - no_mcuboot

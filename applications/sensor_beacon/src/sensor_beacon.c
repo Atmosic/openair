@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #include <zephyr/logging/log.h>
@@ -23,13 +23,9 @@ LOG_MODULE_REGISTER(sensor_beacon, CONFIG_SENSOR_BEACON_LOG_LEVEL);
 #ifdef CONFIG_PM
 void sensor_beacon_unlock_soft_off_state(void)
 {
-#ifdef CONFIG_WURX
-	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_SUBSTATE_HIBERNATE);
-#else
 	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-#endif
 }
-#endif
+#endif // CONFIG_PM
 
 static bool initialized;
 static bool started;

@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <arm/atmosic/ATM33xx_mcuboot_partitions.dtsi>
@@ -12,7 +12,23 @@
 		compatible = "mmio-sram";
 		reg = <0x30010000 0x10000>;
 	};
+
+	chosen {
+		/delete-property/ zephyr,entropy;
+	};
 };
+
+/*
+ * For swap-with-offset mode, MCUboot requires that primary slot (RRAM) and
+ * secondary slot (flash) have matching sector sizes. Override RRAM erase-block-size
+ * to match flash (4KB) so boot_slots_compatible() validation passes.
+ * This only affects MCUboot's view of sector size, not the main application.
+ */
+#if ATM_MCUBOOT_SWAP_WITH_OFFSET
+&rram0 {
+	erase-block-size = <4096>;
+};
+#endif
 
 /* secure board file used, but TZ is not actually used */
 &sec_tz {

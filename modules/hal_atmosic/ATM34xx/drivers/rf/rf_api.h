@@ -12,6 +12,13 @@
 
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define INVALID_TX_POWER_VALUE 0xFF
 
 typedef uint32_t atm_txpwr_ovr_key;
@@ -60,3 +67,7 @@ void rf_restore_txpwr_override(atm_txpwr_ovr_key key);
  * @return Tx power in dbm.
  */
 int8_t rf_set_cs_txpwr_val(uint16_t conhdl, int8_t txpwr_dbm);
+
+#ifdef __cplusplus
+}
+#endif

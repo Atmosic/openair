@@ -5,7 +5,7 @@
  *
  * @brief mbedtls glue for Atmosic HW engines
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
  *
  *******************************************************************************
  */
@@ -32,6 +32,11 @@
 #define MBEDTLS_ECDSA_GENKEY_ALT
 #define MBEDTLS_ECDSA_SIGN_ALT
 #define MBEDTLS_ECDSA_VERIFY_ALT
+
+#ifdef CONFIG_BOOT_ECDSA_MICRO_ECC
+#define MBEDTLS_ECP_ALT
+#endif
+
 #undef MBEDTLS_ECP_DP_SECP384R1_ENABLED
 #undef MBEDTLS_ECP_DP_SECP521R1_ENABLED
 #undef MBEDTLS_ECP_DP_SECP192K1_ENABLED

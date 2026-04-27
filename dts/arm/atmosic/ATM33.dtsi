@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2021-2025 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <arm/armv8-m.dtsi>
@@ -34,7 +34,8 @@
 		retain: retain {
 			compatible = "zephyr,power-state";
 			power-state-name = "suspend-to-ram";
-			min-residency-us = <5000>;
+			/* Optimal for power */
+			min-residency-us = <4400>;
 
 			/* Carefully measured in simulation - DO NOT ADJUST */
 			exit-latency-us = <1800>;

@@ -5,7 +5,7 @@
  *
  * @brief Power mode api
  *
- * Copyright (C) Atmosic 2024-2025
+ * Copyright (C) Atmosic 2024-2026
  *
  *******************************************************************************
  */
@@ -21,6 +21,12 @@
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef CONFIG_SYSTEM_CLOCK_SLOPPY_IDLE
+#define IDLE_FOREVER K_TICKS_FOREVER
+#else
+#define IDLE_FOREVER INT_MAX
 #endif
 
 #define PM_SUBSTATE_HIBERNATE DT_PROP(DT_NODELABEL(hibernate), substate_id)

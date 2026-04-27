@@ -1,6 +1,6 @@
-# Copyright (c) 2021-2025 Atmosic
+# Copyright (c) 2021-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 zephyr_library()
 zephyr_library_sources(board.c pinmux.c)
@@ -189,14 +189,14 @@ function(atm_generate_tag_data_bin_file)
     set(factory_yaml_file ${CMAKE_SOURCE_DIR}/tag_data/factory.yml)
     if(EXISTS "${settings_yaml_file}")
       set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
-      COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT} -t settings -obj ${CMAKE_OBJCOPY} -p ${partition_file} -i ${settings_yaml_file} -o ${ZEPHYR_BINARY_DIR}/zephyr_settings.bin
+      COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT} -t settings -p ${partition_file} -i ${settings_yaml_file} -o ${ZEPHYR_BINARY_DIR}/zephyr_settings.bin
       )
     else()
       message("ignore generate settings.bin")
     endif()
     if(EXISTS "${factory_yaml_file}")
       set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
-      COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT} -t factory -obj ${CMAKE_OBJCOPY} -p ${partition_file} -i ${factory_yaml_file} -o ${ZEPHYR_BINARY_DIR}/zephyr_factory.bin
+      COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT} -t factory -p ${partition_file} -i ${factory_yaml_file} -o ${ZEPHYR_BINARY_DIR}/zephyr_factory.bin
       )
     else()
       message("ignore generate factory.bin")

@@ -5,7 +5,7 @@
  *
  * @brief ATM common endian conversion functions
  *
- * Copyright (C) Atmosic 2022
+ * Copyright (C) Atmosic 2022-2026
  *
  *******************************************************************************
  */
@@ -87,7 +87,7 @@ __STATIC_FORCEINLINE uint32_t atm_bswap32(uint32_t val)
  */
 __STATIC_FORCEINLINE uint16_t atm_bswap16(uint16_t val)
 {
-    return __REV16(val);
+    return __REVSH(val);
 }
 
 /**

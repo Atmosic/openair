@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2021 Nordic Semiconductor ASA
- * Copyright (c) 2024-2025 Atmosic
+ * Copyright (c) 2024-2026 Atmosic
  *
  * Based on boot/zephyr/hook_sample.c
  *
@@ -29,6 +29,10 @@
 #endif
 
 BOOT_LOG_MODULE_REGISTER(mcuboot_hooks);
+
+#ifdef CONFIG_ATM_MCUBOOT_BENCHMARK
+static uint64_t update_start;
+#endif
 
 #ifdef MCUBOOT_IMAGE_ACCESS_HOOKS
 int boot_read_image_header_hook(int img_index, int slot,
@@ -62,7 +66,16 @@ int boot_read_swap_state_primary_slot_hook(int image_index,
 int boot_copy_region_post_hook(int img_index, const struct flash_area *area,
     size_t size)
 {
-    return 0;
+#ifdef CONFIG_ATM_MCUBOOT_BENCHMARK
+	// Stop timing the update operation.
+	// This hook is called after successful completion of:
+	// - boot_copy_image() in overwrite mode
+	// - boot_swap_image() in swap mode
+	int elapsed = k_uptime_delta(&update_start);
+	int bytes_per_sec = elapsed ? ((1000 * size) / elapsed) : 0;
+	BOOT_LOG_INF("update completed: %u bytes in %d ms (%d B/s)", size, elapsed, bytes_per_sec);
+#endif
+	return 0;
 }
 
 int boot_serial_uploaded_hook(int img_index, const struct flash_area *area,
@@ -146,6 +159,15 @@ void mcuboot_status_change(mcuboot_status_type_t status)
 		.write = debug_auth_uart_write,
 	    };
 	    uart_debug_auth(&uart_auth_funcs);
+#endif
+	    break;
+	case MCUBOOT_STATUS_UPGRADING:
+#ifdef CONFIG_ATM_MCUBOOT_BENCHMARK
+		// Start timing the update operation.
+		// This is called before boot_perform_update().
+		// Timing stops in boot_copy_region_post_hook() after the update completes.
+		update_start = k_uptime_get();
+		BOOT_LOG_INF("MCUboot update started");
 #endif
 	    break;
 	case MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND:

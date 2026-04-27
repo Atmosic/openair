@@ -6,7 +6,7 @@
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN) extention
  * Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -35,6 +35,22 @@ extern "C" {
  * @return true if enabled
  */
 bool fp_fmdn_is_utp_en(void);
+
+/**
+ * @brief FP FMDN clock save to NVM
+ *
+ * @return 0 if successful, otherwise a (negative) error code is returned
+ */
+int fp_fmdn_clock_save(void);
+
+/**
+ * @brief FP FMDN clock reset to 0
+ *
+ * Resets the FMDN clock value to 0 and deletes it from NVM.
+ * This should be called during factory reset so new provisioning
+ * can start with clock value of 0.
+ */
+void fp_fmdn_clock_reset(void);
 
 #ifdef __cplusplus
 }

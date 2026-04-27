@@ -5,10 +5,13 @@
  *
  * @brief Channel sounding driver
  *
- * Copyright (C) Atmosic 2024-2025
+ * Copyright (C) Atmosic 2024-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
+
 #include "arch.h"
 #include "radio_hal_ble_cs.h"
 #ifdef LDO_MODE_EN

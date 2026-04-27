@@ -4,7 +4,8 @@
 
 @Parse the content of partition_info.map and generate tag data bin file
 
-Copyright (C) Atmosic 2024-2025
+Copyright (C) Atmosic 2024-2026
+SPDX-License-Identifier: LicenseRef-Atmosic
 """
 
 import sys
@@ -77,9 +78,6 @@ def parse_args(args=None):
     parser.add_argument(
         "-o", "--output_file", required=False, default=None, help="output file path"
     )
-    parser.add_argument(
-        "-obj", "--objcopy_file", required=True, help="objcopy exe file path"
-    )
     return parser.parse_args(args)
 
 
@@ -105,14 +103,10 @@ def main(args=None):
         sys.exit(1)
     if args.output_file and os.path.exists(args.output_file):
         os.remove(args.output_file)
-    if args.objcopy_file and not os.path.exists(args.objcopy_file):
-        print(f"{args.objcopy_file} not exist")
-        sys.exit(1)
 
     cmd = (
         f"west zsg write -i {args.input_file} -o {args.output_file} "
-        f"-p {args.partition_file} -t {args.partition_type} "
-        f"-obj {args.objcopy_file} --hex"
+        f"-p {args.partition_file} -t {args.partition_type} --hex"
     )
     return_code = run_with_timeout(cmd)
     if return_code != 0:

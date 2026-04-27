@@ -1,6 +1,6 @@
-# Copyright (c) Atmosic 2021
+# Copyright (c) Atmosic 2021-2026
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 board_set_flasher_ifnset(atmisp)
 board_set_debugger_ifnset(atmisp)

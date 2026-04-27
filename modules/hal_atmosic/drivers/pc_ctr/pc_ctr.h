@@ -5,7 +5,9 @@
  *
  * @brief Link layer controller
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -39,6 +41,13 @@ void pc_ctr_main(void);
  * @brief Process a unit of work for controller.  Call from main event loop.
  */
 bool pc_ctr_schedule(void);
+
+/**
+ * @brief Allocate and return pointer to link layer heap.
+ *
+ * @return Pointer to the allocated heap buffer.
+ */
+uint8_t *pc_ctr_ll_heap_alloc(void);
 
 #ifdef __cplusplus
 }

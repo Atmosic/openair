@@ -1,10 +1,17 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config ATM_PC_CTR
 	bool "Atmosic pc_ctr module"
 	default y if ATM_BLE
+	select ATM_UECC if ATM_LL_ECC_SUPPORT
+	select ATM_UECC_VLI_API if ATM_LL_ECC_SUPPORT
+	select ATM_UECC_SUPPORTS_SECP160R1 if ATM_LL_ECC_SUPPORT
+	select ATM_UECC_SUPPORTS_SECP192R1 if ATM_LL_ECC_SUPPORT
+	select ATM_UECC_SUPPORTS_SECP256R1 if ATM_LL_ECC_SUPPORT
+	select ATM_UECC_SUPPORTS_SECP256K1 if ATM_LL_ECC_SUPPORT
 	depends on ATM_ATLC
 
 if ATM_PC_CTR
@@ -34,11 +41,13 @@ config ATM_PC_LOW_THD
 	default 0
 
 config ATM_LL_HEAP_SIZE
-	int "Override LL heap size"
+	int "LL heap size"
 	default 40388 if ATM_LCROM_IFACE && ATMWSTK_PD50
 	default 30000 if ATM_ENA_LL_FEAT_CS && ATMWSTK_PD50
+	default 24000 if ATMWSTK_PD50
 	default 60388 if ATM_LCROM_IFACE && ATMWSTK_CPD200
-	default 0
+	default 80388 if ATM_LCROM_IFACE
+	default 80572
 
 config ATM_ENA_DBG_PC_CTR_MEM_USAGE
 	bool "Show pc_ctr memory usage information"
@@ -51,6 +60,10 @@ config ATM_PC_FSU_CIS_IFS_MIN
 	int "Override minimum value of frame space update CIS IFS"
 	default 0
 
+config ATM_DTM_PACKET_INTERVAL
+	int "Override packet interval in DTM mode (slots, 0 = no override, 1 slot = 625us)"
+	default 0
+
 config ATM_ENA_BLE_CS_MANDATORY_TIMING_ONLY
 	bool "Use channel sounding mandatory timing only"
 
@@ -60,6 +73,9 @@ config ATM_ENA_SCAN_RANDOM_BACKOFF
 
 config ATM_ENA_BLE_CS_DBG_VECTOR
 	bool "Enable channel sounding debug vector"
+
+config ATM_ENA_BLE_CS_TEST_UNSYNC_MODE
+	bool "Enable channel sounding test unsync mode"
 
 config ATM_MAX_ACL_TXBUF_SIZE
 	int "Override max value of ACL Tx buffer size"
@@ -73,5 +89,16 @@ config ATM_BLE_CS_SYNC_PHY_2M_ENABLE
 config ATM_BLE_CS_SYNC_PHY_2M_BT2_ENABLE
 	bool "Enable 2M BT 2.0 PHY for Channel Sounding Sync exchanges"
 	default y
+
+config ATM_BLE_CS_NUM_CONFIG_SUP
+	int "Number of Channel Sounding configurations supported"
+	default 1
+
+config ATM_LL_MAX_CONN
+	int "Link layer max connections"
+	default BT_MAX_CONN if BT_CONN
+	default 0
+	help
+	  Maximum number of connections supported by the link layer.
 
 endif # ATM_PC_CTR

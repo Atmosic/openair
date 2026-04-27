@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2021 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #ifndef __INC_BOARD_H__

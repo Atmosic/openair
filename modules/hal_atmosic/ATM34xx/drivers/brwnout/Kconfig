@@ -4,7 +4,7 @@
 
 config ATM_BROWNOUT
 	bool "Enable brownout support"
-	default y if PM && $(dt_path_enabled,/power-states/soc_off)
+	default y if PM
 
 if ATM_BROWNOUT
 
@@ -21,7 +21,7 @@ config BROWNOUT_THR_VBAT
                     0 <= X <= 17, for rechargeable battery type
 	    For VBATLI,
 		VBATLI threshold = 2.4V + 0.050X, where 2 <= X <= 31
-            The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through CONFIG_BATT_LEVEL. Refer to the PMU configuration for additional details.
+            The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through the ``batt-level`` device tree property. Refer to the PMU configuration for additional details.
 
 config BROWNOUT_THR_VSTORE
         int "VSTORE brownout threshold"
@@ -42,5 +42,21 @@ config BROWNOUT_THR_VSTORE
 
             The chip enters brownout if both VBAT and VSTORE are below their
             configured thresholds.
+
+config BROWNOUT_THR_VBAT_HYSTERESIS_DELTA
+        int "VBAT brownout hysteresis delta"
+        range 0 31
+        default 10
+        help
+            Delta value added to BROWNOUT_THR_VBAT when increasing the VBAT
+            brownout threshold for hysteresis during hibernation entry.
+
+            When entering hibernation due to brownout, the VBAT threshold is
+            temporarily increased by this delta to provide hysteresis and
+            prevent rapid on/off cycling near the brownout threshold.
+
+            The effective threshold is clamped to a maximum of 31.
+
+            Set to 0 to disable hysteresis (not recommended).
 
 endif

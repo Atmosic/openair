@@ -11,7 +11,9 @@
  * the BLE Request Driver, all calls should go here, and no calls should go
  * directly to the BLE HAL directly.
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -34,7 +36,6 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include "radio_hal_ble.h"
-#include "radio_hal_ble_cs.h"
 #include "radio_hal_frc.h"
 #include "radio_status.h"
 
@@ -131,7 +132,7 @@ void atm_req_ble_register_complete_callbacks(atm_req_ble_interface_t interface,
  * effect when the radio manager is in use
  * @param[in] interface The request interface to use.
  */
-void atm_req_ble_enable(__UNUSED atm_req_ble_interface_t interface);
+void atm_req_ble_enable(atm_req_ble_interface_t interface);
 
 /**
  * @brief Receives a packet using the current radio configuration.
@@ -202,8 +203,19 @@ void atm_req_ble_stop(atm_req_ble_interface_t interface);
  * @param[in] length The length of packet
  */
 __NONNULL(2)
-void atm_req_ble_tx_scheduled_packet(__UNUSED atm_req_ble_interface_t interface,
+void atm_req_ble_tx_scheduled_packet(atm_req_ble_interface_t interface,
     uint8_t const *packet, uint16_t length);
+
+/**
+ * @brief Transmit the previously scheduled packet
+ *
+ * Transmit the previously scheduled packet data without providing new data.
+ * This function reuses the packet data from the most recent call to
+ * \ref atm_req_ble_tx_scheduled_packet.
+ *
+ * @param[in] interface The request interface to use.
+ */
+void atm_req_ble_tx_prev_scheduled_packet(atm_req_ble_interface_t interface);
 
 /**
  * @brief Provide the receive buffer
@@ -218,7 +230,7 @@ void atm_req_ble_tx_scheduled_packet(__UNUSED atm_req_ble_interface_t interface,
  * @param[in] length The length of packet
  */
 __NONNULL(2)
-void atm_req_ble_rx_scheduled_packet(__UNUSED atm_req_ble_interface_t interface,
+void atm_req_ble_rx_scheduled_packet(atm_req_ble_interface_t interface,
     uint8_t *packet, uint16_t length);
 
 /**
@@ -480,6 +492,8 @@ atm_mac_ble_phy_t atm_req_ble_get_curr_rx_pkt_phy(
 void atm_req_ble_cs_kick_step(atm_req_ble_interface_t interface,
     uint32_t start_time, atm_mac_mgr_priority_t priority);
 
+struct cs_enable_s;
+
 /**
  * @brief Enable or disable channel sounding
  *
@@ -487,7 +501,7 @@ void atm_req_ble_cs_kick_step(atm_req_ble_interface_t interface,
  * @param[in] param cs enable parameters
  */
 void atm_req_ble_cs_enable_cs(atm_req_ble_interface_t interface,
-    cs_enable_t *param);
+    struct cs_enable_s *param);
 #ifdef __cplusplus
 }
 #endif

@@ -1,6 +1,6 @@
-# Copyright (c) 2021-2024 Atmosic
+# Copyright (c) 2021-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if SOC_ATM33XX_5
 
@@ -41,6 +41,9 @@ config TRUSTED_EXECUTION_NONSECURE
 	default y
 	depends on $(dt_nodelabel_bool_prop,sec_tz,ns_app)
 
+config ARM_SECURE_BUSFAULT_HARDFAULT_NMI
+	default y if TRUSTED_EXECUTION_SECURE
+
 # enable uart driver
 config SERIAL
 	bool
@@ -58,7 +61,7 @@ config UART_CONSOLE
 # GPIOs
 config GPIO
 	bool
-	default y
+	default y if !MCUBOOT
 
 # Watchdog
 config WATCHDOG
@@ -74,16 +77,13 @@ config BUILD_OUTPUT_HEX
 
 if ENTROPY_ATM_TRNG
 
-# entropy driver needs additional support (i.e. BLE driver)
-config HEAP_MEM_POOL_SIZE
-       default 32768
-
 endif # ENTROPY_ATM_TRNG
 
 if PM
 
 config IDLE_STACK_SIZE
 	int
+	default 2048 if COVERAGE_GCOV
 	default 1024
 
 endif # PM
@@ -118,6 +118,14 @@ config ATM_NO_TZ
 #     large enough capacity
 #  -) slot0/slot1 (RRAM/FLASH) can be up to 2MB slot sizes if RRAM capacity
 #     allows it
+#
+# Disable BOOT_MAX_IMG_SECTORS_AUTO since it may calculate an incorrect value
+# for configurations with larger slots.
+
+config BOOT_MAX_IMG_SECTORS_AUTO
+	bool
+	default n
+	depends on MCUBOOT
 
 config BOOT_MAX_IMG_SECTORS
 	int
@@ -160,15 +168,22 @@ endif # BOOTLOADER_MCUBOOT
 
 endif # TRUSTED_EXECUTION_NONSECURE
 
+config HEAP_MEM_POOL_ADD_SIZE_BOARD
+	int "Board-level heap memory pool size"
+	default 18432 if ATMWSTK_CPD200
+	default 512
+	help
+	  Base heap memory pool size required by the board for general operations.
+	  This is combined with subsystem-specific heap requirements to form the
+	  final HEAP_MEM_POOL_SIZE.
+	  CPD200 BLE stack requires ~16.5KB for ke_mem_init via k_malloc.
+
 if BT
 
 # Controller provides random numbers via HCI_LE_RAND; host-side PRNG not needed.
 # Disabling avoids redundant HMAC-based PRNG in host and reduces memory footprint.
 config BT_HOST_CRYPTO_PRNG
 	default n
-
-config HEAP_MEM_POOL_SIZE
-	default 32768
 
 config ENTROPY_GENERATOR
 	default y

@@ -1,8 +1,6 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
-
-source "Kconfig.zephyr"
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 module = MULTIMODE_CONSUMER_TAG
 module-str = multimode_consumer_tag
@@ -21,6 +19,7 @@ config FHN_TAG
 
 config STF_TAG
 	bool "Enable STF Tag"
+	select ATM_STF
 	default y
 
 config FMNA_DEV_CUSTOM_BT_ADDR
@@ -92,6 +91,18 @@ config FMNA_VERSION_REVISION
 	range 0 65535
 	default 18
 
+if FHN_TAG
+
+config FHN_FW_VERSION
+	string "FP Tag Firmware Version"
+	default "1.0.0"
+	help
+	  Firmware version string for FHN tag. This version is returned by the
+	  fp_tag_get_fw_version() function and used in FP tag operations.
+	  The maximum length is (CONFIG_GFP_DIS_FW_VERSION_STR_MAX - 1).
+
+endif # FHN_TAG
+
 config TAG_BTN_POWER_CTRL
 	bool "Enable button power on/off control"
 	select PM
@@ -154,5 +165,24 @@ config TAG_AUDIO_FEEDBACK
 	help
 	  Enable audio feedback when factory reset is triggered.
 
-config ATM_STF_MULTI_MODE
-	bool "Multi-Mode Samsung SmartThings support"
+config ATM_LL_HEAP_SIZE
+	int "Override LL heap size"
+	default 41396 if ATM_LCROM_IFACE && ATMWSTK_PD50
+	default 36364 if ATM_ENA_LL_FEAT_CS && ATMWSTK_PD50
+	default 61396 if ATM_LCROM_IFACE && ATMWSTK_CPD200
+	default 81396 if ATM_LCROM_IFACE
+	default 28656
+
+config APP_WORK_Q_STACK_SIZE
+	int "Application work queue stack size"
+	default 4096
+
+config MCUMGR_MGMT_NOTIFICATION_HOOKS
+	bool "Enable MCUmgr notification hooks"
+	default y if MCUMGR_TRANSPORT_UART
+
+config MCUMGR_GRP_IMG_STATUS_HOOKS
+	bool "Enable MCUmgr image status hooks"
+	default y if MCUMGR_TRANSPORT_UART
+
+source "Kconfig.zephyr"

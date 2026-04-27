@@ -14,7 +14,6 @@ common:
     - drivers
     - wurx
     - samples
-    - no_mcuboot
 
 tests:
-  samples.drivers.wurx: {}
+  samples.drivers.wurx.atm: {}

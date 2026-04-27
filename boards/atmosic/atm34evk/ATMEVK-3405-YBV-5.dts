@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 /dts-v1/;
@@ -80,14 +80,15 @@
 		i2c-1 = &i2c0;
 		led0 = &led0;
 		pwm-0 = &pwm3;
+		pwm-test = &pwm3;
 		pwm-led0 = &pwm_led0;
 		sw0 = &button0;
 	};
+#endif
 
 	zephyr,user {
 		pin-arrangement = "bga";
 	};
-#endif
 };
 
 &uart1 {
@@ -121,17 +122,13 @@
 };
 
 &spi0 {
-	clk-pin = <17>;
-	cs-pin = <8>;
-	mosi-pin = <2>;
-	miso-pin = <3>;
+	pinctrl-0 = <&spi0_clk_default &spi0_cs_default &spi0_mosi_default &spi0_miso_default>;
+	pinctrl-names = "default";
 };
 
 &spi1 {
-	clk-pin = <21>;
-	cs-pin = <20>;
-	mosi-pin = <22>;
-	miso-pin = <23>;
+	pinctrl-0 = <&spi1_clk_default &spi1_cs_default &spi1_mosi_default &spi1_miso_default>;
+	pinctrl-names = "default";
 };
 
 &adc {
@@ -171,4 +168,3 @@
 arduino_i2c: &i2c0 {};
 arduino_spi: &spi1 {};
 #endif
-

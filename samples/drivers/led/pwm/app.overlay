@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Disable the gpio-leds node to prevent pin conflict with pwm-leds.
+ *
+ * The gpio-leds and pwm-leds nodes in the board DTS share the same physical
+ * pins. When both CONFIG_LED_GPIO and CONFIG_LED_PWM are enabled (both default
+ * to 'y'), the GPIO LED driver configures the pins as GPIO outputs during
+ * initialization, which overrides the PWM pinmux configuration and prevents
+ * the PWM LEDs from working.
+ *
+ * By disabling the leds node here, the GPIO LED driver won't be instantiated
+ * for these LEDs, allowing the PWM driver to properly control the pins.
+ */
+
+/ {
+	leds {
+		status = "disabled";
+	};
+};
+

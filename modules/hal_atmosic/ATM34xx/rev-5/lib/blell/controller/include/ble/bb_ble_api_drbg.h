@@ -71,9 +71,13 @@ typedef struct
 /*************************************************************************************************/
 /*!
  *  \brief  Invoke backtracking resistance.
+ *
+ *  \param  pCtx        DRBG control block.
+ *  \param  pDrbgKey    Optional pointer to store DRBG key (can be NULL).
+ *  \param  pDrbgVector Optional pointer to store DRBG vector (can be NULL).
  */
 /*************************************************************************************************/
-void BbBleDrbgInvokeBacktrackResist(BbBleDrbgCtx_t *pCtx);
+void BbBleDrbgInvokeBacktrackResist(BbBleDrbgCtx_t *pCtx, uint8_t *pDrbgKey, uint8_t *pDrbgVector);
 
 /*************************************************************************************************/
 /*!

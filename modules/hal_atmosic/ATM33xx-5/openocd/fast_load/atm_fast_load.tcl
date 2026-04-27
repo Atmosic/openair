@@ -2,7 +2,7 @@
 # atm_fast_load.tcl
 #
 # Production APIs for fast_load operations
-# Copyright (C) Atmosic 2023-2024
+# Copyright (C) Atmosic 2023-2026
 #
 
 # The address offset of share memory
@@ -157,7 +157,7 @@ proc fl_ram_erase { region_size region_start {er_sector_size 4096} } {
 	set FL_RAM_ER_ALL 0xFFFF
 	set erase_size $FL_RAM_ER_ALL
     } else {
-	if { $flash_type == $FLASH_TYPE_RRAM && $region_size < $er_sector_size } {
+	if { $flash_type == $FLASH_TYPE_RRAM && $region_size % $er_sector_size } {
 	    puts "Use 256B sector for RRAM"
 	    set er_sector_size 256
 	}
@@ -191,13 +191,12 @@ proc fl_ram_erase { region_size region_start {er_sector_size 4096} } {
     fl_ram_get_program_wait_timeout $FL_RAM_OP_ERASE $flash_type
 
     global FL_RAM_PROG_WAIT_TIME
-    global FL_RAM_ER_SEC_4096
     set er_size_tmp $region_size
     if { $region_size == $FL_RAM_INPUT_ER_ALL } {
 	# The maximum size is 512KB
 	set er_size_tmp 0x80000
     }
-    set er_dft_wait_time [expr {(($er_size_tmp / $FL_RAM_ER_SEC_4096 + 1) *
+    set er_dft_wait_time [expr {(($er_size_tmp / $er_sector_size + 1) *
 	$FL_RAM_PROG_WAIT_TIME)}]
     puts [format "<fast_load> er_dft_wait_time: %d, FL_RAM_PROG_WAIT_TIME: %d" \
 	$er_dft_wait_time $FL_RAM_PROG_WAIT_TIME ]
@@ -451,6 +450,38 @@ proc fl_ram_init {} {
     mwb [expr {$fl_ram_buf0_addr + 3}] 0
 
     mww [expr {$fl_ram_buf0_addr + 4}] 0
+
+    set fl_ram_buf_num [mrb [expr {$fl_ram_block_info + 9}]]
+    set fl_ram_flash_cfg [expr {$fl_ram_block_info + 16 + (8 * $fl_ram_buf_num)}]
+    global FL_RAM_FLASH_REMAP
+    global FL_RAM_FLASH_QSPI_CLK
+    global FL_RAM_FLASH_QSPI_CSN
+    global FL_RAM_FLASH_QSPI_D0
+    global FL_RAM_FLASH_QSPI_D1
+    global FL_RAM_FLASH_QSPI_D2
+    global FL_RAM_FLASH_QSPI_D3
+    if { [info exists FL_RAM_FLASH_REMAP] } {
+	mwb [expr {$fl_ram_flash_cfg}] $FL_RAM_FLASH_REMAP
+    }
+    if { [info exists FL_RAM_FLASH_QSPI_CLK] } {
+	mwb [expr {$fl_ram_flash_cfg + 1}] $FL_RAM_FLASH_QSPI_CLK
+    }
+    if { [info exists FL_RAM_FLASH_QSPI_CSN] } {
+	mwb [expr {$fl_ram_flash_cfg + 2}] $FL_RAM_FLASH_QSPI_CSN
+    }
+    if { [info exists FL_RAM_FLASH_QSPI_D0] } {
+	mwb [expr {$fl_ram_flash_cfg + 3}] $FL_RAM_FLASH_QSPI_D0
+    }
+    if { [info exists FL_RAM_FLASH_QSPI_D1] } {
+	mwb [expr {$fl_ram_flash_cfg + 4}] $FL_RAM_FLASH_QSPI_D1
+    }
+    if { [info exists FL_RAM_FLASH_QSPI_D2] } {
+	mwb [expr {$fl_ram_flash_cfg + 5}] $FL_RAM_FLASH_QSPI_D2
+    }
+    if { [info exists FL_RAM_FLASH_QSPI_D3] } {
+	mwb [expr {$fl_ram_flash_cfg + 6}] $FL_RAM_FLASH_QSPI_D3
+    }
+
     fl_ram_program_page $fl_ram_kick_program
 
     # calculate the firmware (fl_ram) initial time and overhead, the initial
@@ -556,7 +587,7 @@ proc atmx3_load_ram_image { image } {
 
     sleep 1
     global _FL_RAM_RESET_HANDLER_PROGRAM
-    set reset_handler_program $_FL_RAM_RESET_HANDLER_PROGRAM
+    set reset_handler_program [expr {$_FL_RAM_RESET_HANDLER_PROGRAM | 1}]
     puts [format "<fast_load> reset_handler_program addr 0x%x" $reset_handler_program]
 
     global _FL_RAM_STACK_TOP
@@ -564,7 +595,8 @@ proc atmx3_load_ram_image { image } {
     puts [format "<fast_load> stack top addr 0x%x" $stack_top]
 
     puts [format "<fast_load> run the reset handler program..."]
-    set_reg {pc 0x$reset_handler_program sp 0x$stack_top}
+
+    reg sp $stack_top
     resume $reset_handler_program
     sleep 400
 

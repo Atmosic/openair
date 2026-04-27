@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Authentication Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -17,6 +17,7 @@
 
 #include "fp_auth.h"
 #include "fp_conn.h"
+#include "fp_mode.h"
 #include "fp_storage.h"
 
 LOG_MODULE_DECLARE(fp, CONFIG_ATM_FP_LOG_LEVEL);
@@ -111,7 +112,7 @@ static void fp_auth_cleanup_conn_data(struct bt_conn *conn)
 }
 
 // Fast Pair 10-second passkey timeout as per specification
-#define FP_PASSKEY_TIMEOUT_MS (10 * 1000) // 10 seconds
+#define FP_PASSKEY_TIMEOUT_MS (10 * MSEC_PER_SEC) // 10 seconds
 static struct bt_conn *fp_auth_passkey_timeout_conn = NULL;
 static bool fp_auth_waiting_for_passkey;
 
@@ -309,6 +310,52 @@ static void fp_auth_cancel(struct bt_conn *conn)
 	fp_auth_passkey_timeout_cancel();
 }
 
+#if defined(CONFIG_BT_SMP_APP_PAIRING_ACCEPT)
+/**
+ * @brief Pairing accept callback for Fast Pair pairing flow
+ *
+ * Only accepts pairing when Fast Pair Key-based Pairing is in progress.
+ * This ensures normal Bluetooth pairing is rejected per FMDN specification.
+ */
+static enum bt_security_err fp_auth_pairing_accept(struct bt_conn *conn,
+						   const struct bt_conn_pairing_feat *const feat)
+{
+	if (!fp_conn_validate(conn)) {
+		return BT_SECURITY_ERR_SUCCESS;
+	}
+
+	// Check if Fast Pair pairing is in progress via mode state machine
+	if (fp_mode_get() != FP_MODE_PAIRING_PROCESSING) {
+		// No Fast Pair session active - reject normal Bluetooth pairing
+		LOG_WRN(FP_AUTH_LOG_PREFIX "Reject normal BT pairing (mode=%d)", fp_mode_get());
+		return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
+	}
+
+	// Fast Pair pairing session is active - accept
+	LOG_DBG(FP_AUTH_LOG_PREFIX "Accept Fast Pair pairing");
+	return BT_SECURITY_ERR_SUCCESS;
+}
+
+/**
+ * @brief Pairing accept callback for already-provisioned devices
+ *
+ * For provisioned devices, we reject all NEW pairing attempts.
+ * Re-encryption of existing bonds does NOT trigger this callback.
+ */
+static enum bt_security_err
+fp_auth_default_pairing_accept(struct bt_conn *conn, const struct bt_conn_pairing_feat *const feat)
+{
+	if (!fp_conn_validate(conn)) {
+		return BT_SECURITY_ERR_SUCCESS;
+	}
+
+	// Already provisioned - reject any new pairing attempts
+	// Re-encryption of existing bonds does NOT trigger pairing_accept
+	LOG_WRN(FP_AUTH_LOG_PREFIX "Reject new pairing on provisioned device");
+	return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
+}
+#endif /* CONFIG_BT_SMP_APP_PAIRING_ACCEPT */
+
 void fp_auth_bond_deleted(uint8_t id, const bt_addr_le_t *peer)
 {
 	if (!fp_conn_id_validate(id)) {
@@ -327,9 +374,19 @@ void fp_auth_bond_deleted(uint8_t id, const bt_addr_le_t *peer)
 }
 
 static struct bt_conn_auth_cb fp_auth_pairing_callbacks = {
+#ifdef CONFIG_BT_SMP_APP_PAIRING_ACCEPT
+	.pairing_accept = fp_auth_pairing_accept, // Reject normal BT pairing
+#endif
 	// Fast Pair requires DisplayYesNo IO capability for proper passkey verification
 	.passkey_display = fp_auth_passkey_display, // Display passkey to user
 	.passkey_confirm = fp_auth_passkey_confirm, // Confirm passkey matches
+	.cancel = fp_auth_cancel,
+};
+
+static struct bt_conn_auth_cb fp_auth_default_pairing_callbacks = {
+#ifdef CONFIG_BT_SMP_APP_PAIRING_ACCEPT
+	.pairing_accept = fp_auth_default_pairing_accept, // Reject new pairing if provisioned
+#endif
 	.cancel = fp_auth_cancel,
 };
 
@@ -354,9 +411,35 @@ static void fp_auth_disconnected(struct bt_conn *conn, uint8_t reason)
 	fp_auth_cleanup_conn_data(conn);
 }
 
+static void fp_auth_connected(struct bt_conn *conn, uint8_t err)
+{
+	if (!fp_conn_validate(conn)) {
+		return;
+	}
+
+	if (err) {
+		LOG_ERR(FP_AUTH_LOG_PREFIX "Connection failed, err %u", err);
+		return;
+	}
+
+	LOG_DBG(FP_AUTH_LOG_PREFIX "Connected");
+
+	if (fp_mode_get() <= FP_MODE_PAIRING_PROCESSING) {
+		return;
+	}
+
+	int set_err = fp_auth_set_pairing(conn);
+	if (set_err) {
+		LOG_ERR(FP_AUTH_LOG_PREFIX "Failed to set pairing for conn %p: %d", (void *)conn,
+			set_err);
+		return;
+	}
+}
+
 // Connection callbacks for disconnect handling
 BT_CONN_CB_DEFINE(fp_auth_conn_callbacks) = {
 	.disconnected = fp_auth_disconnected,
+	.connected = fp_auth_connected,
 };
 
 int fp_auth_set_pairing(struct bt_conn *conn)
@@ -364,8 +447,18 @@ int fp_auth_set_pairing(struct bt_conn *conn)
 	if (!fp_conn_validate(conn)) {
 		return 0;
 	}
-	LOG_DBG("FP: Set pairing for conn %p", (void *)conn);
-	int err = bt_conn_auth_cb_overlay(conn, &fp_auth_pairing_callbacks);
+
+	struct bt_conn_auth_cb *auth_cb = &fp_auth_default_pairing_callbacks;
+	if (fp_mode_get() == FP_MODE_PAIRING_PROCESSING) {
+		// New Fast Pair pairing flow - use full pairing callbacks
+		LOG_DBG("FP: Set pairing callbacks for new FP pairing");
+		auth_cb = &fp_auth_pairing_callbacks;
+	} else {
+		// Already provisioned - use default callbacks (reject new pairings)
+		LOG_DBG("FP: Set default callbacks for provisioned device");
+	}
+
+	int err = bt_conn_auth_cb_overlay(conn, auth_cb);
 	if (err) {
 		LOG_ERR("FP: Failed to register overlay auth callbacks: %d", err);
 		return err;

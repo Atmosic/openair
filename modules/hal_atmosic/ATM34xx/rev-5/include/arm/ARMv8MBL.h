@@ -7,7 +7,7 @@
  ******************************************************************************/
 /*
  * Copyright (c) 2009-2018 Arm Limited. All rights reserved.
- * Copyright (c) 2024 Atmosic Technologies. All rights reserved.
+ * Copyright (c) 2024-2025 Atmosic Technologies. All rights reserved.
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -554,7 +554,11 @@ typedef enum IRQn
 #define __NVIC_PRIO_BITS          4U        /* Number of Bits used for Priority Levels */
 #define __Vendor_SysTickConfig    0U        /* Set to 1 if different SysTick Config is used */
 
+#ifdef CONFIG_ZEPHYR_CMSIS_MODULE
+#include "core_cm33.h"
+#else
 #include "core_armv8mml.h"                  /* Processor and core peripherals */
+#endif
 #include "system_ARMv8MBL.h"                /* System Header */
 
 

@@ -1,6 +1,10 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2025 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
+
+config ATM_HW_CFG_ALLOW_INVALID_ATE
+	bool "Assert on invalid ATE data when false"
+	default y if ATM_IS_FOR_SIM
 
 config ATM_HW_CFG
 	bool "Atmosic Hardware Config module"

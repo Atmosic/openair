@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2022-2025 Atmosic
+ * Copyright (c) 2022-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #if ATM_SPE_SIZE
@@ -52,44 +52,43 @@
 
 		// image 0 primary
 		slot0_partition: partition@ATM_SLOT0_NODE_ID {
+			compatible = "atmosic,tz-fixed-subpartitions", "fixed-subpartitions";
 			label = "image-0";
 			reg = <ATM_SLOT0_OFFSET ATM_SLOT0_SIZE>;
-			partitions {
-				#address-cells = <1>;
-				#size-cells = <1>;
+			#address-cells = <1>;
+			#size-cells = <1>;
 #if ATM_SPE_SIZE
-				spe_partition: partition@ATM_SPE_NODE_ID {
-					label = "spe_partition";
-					secure;
-					reg = <ATM_SPE_OFFSET ATM_SPE_SIZE>;
-				};
+			spe_partition: partition@ATM_SPE_NODE_ID {
+				label = "spe_partition";
+				secure;
+				reg = <ATM_SPE_OFFSET ATM_SPE_SIZE>;
+			};
 #endif
 #ifndef RUN_IN_FLASH
 #if ATM_SPE_SIZE
-				nspe_partition: partition@ATM_NSPE_NODE_ID {
-					label = "nspe_partition";
-					reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
-				};
+			nspe_partition: partition@ATM_NSPE_NODE_ID {
+				label = "nspe_partition";
+				reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
+			};
 #endif
 #if ATM_APP_SIZE
-				app_partition: partition@ATM_APP_NODE_ID {
-					label = "app_partition";
-					reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
-				};
+			app_partition: partition@ATM_APP_NODE_ID {
+				label = "app_partition";
+				reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
+			};
 #endif
 #elif ATM_FAST_CODE_SIZE
-				fast_code_partition: partition@ATM_FAST_CODE_NODE_ID {
-					label = "fast_code_partition";
-					reg = <ATM_FAST_CODE_OFFSET ATM_FAST_CODE_SIZE>;
-				};
+			fast_code_partition: partition@ATM_FAST_CODE_NODE_ID {
+				label = "fast_code_partition";
+				reg = <ATM_FAST_CODE_OFFSET ATM_FAST_CODE_SIZE>;
+			};
 #endif
 #if ATM_SLOT0_TRAILER_RSVD_SIZE
-				slot0_trailer: partition@ATM_SLOT0_TRAILER_NODE_ID {
-					label = "slot_0_trailer";
-					reg = <ATM_SLOT0_TRAILER_RSVD_OFFSET ATM_SLOT0_TRAILER_RSVD_SIZE>;
-				};
-#endif
+			slot0_trailer: partition@ATM_SLOT0_TRAILER_NODE_ID {
+				label = "slot_0_trailer";
+				reg = <ATM_SLOT0_TRAILER_RSVD_OFFSET ATM_SLOT0_TRAILER_RSVD_SIZE>;
 			};
+#endif
 		};
 #if ATM_FACTORY_SIZE
 		factory_partition: partition@ATM_FACTORY_NODE_ID {
@@ -114,30 +113,29 @@
 #ifdef RUN_IN_FLASH
 		// image 1 primary
 		slot2_partition: partition@ATM_SLOT2_NODE_ID {
+			compatible = "fixed-subpartitions";
 			label = "image-2";
 			reg = <ATM_SLOT2_OFFSET ATM_SLOT2_SIZE>;
-			partitions {
-				#address-cells = <1>;
-				#size-cells = <1>;
+			#address-cells = <1>;
+			#size-cells = <1>;
 #if ATM_SPE_SIZE
-				nspe_partition: partition@ATM_NSPE_NODE_ID {
-					label = "nspe_partition";
-					reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
-				};
+			nspe_partition: partition@ATM_NSPE_NODE_ID {
+				label = "nspe_partition";
+				reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
+			};
 #endif
 #if ATM_APP_SIZE
-				app_partition: partition@ATM_APP_NODE_ID {
-					label = "app_partition";
-					reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
-				};
+			app_partition: partition@ATM_APP_NODE_ID {
+				label = "app_partition";
+				reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
+			};
 #endif
 #if ATM_SLOT2_TRAILER_RSVD_SIZE
-				slot2_trailer: partition@ATM_SLOT2_TRAILER_NODE_ID {
-					label = "slot_2_trailer";
-					reg = <ATM_SLOT2_TRAILER_RSVD_OFFSET ATM_SLOT2_TRAILER_RSVD_SIZE>;
-				};
-#endif
+			slot2_trailer: partition@ATM_SLOT2_TRAILER_NODE_ID {
+				label = "slot_2_trailer";
+				reg = <ATM_SLOT2_TRAILER_RSVD_OFFSET ATM_SLOT2_TRAILER_RSVD_SIZE>;
 			};
+#endif
 		};
 #endif
 #if ATM_MCUBOOT_SCRATCH_SIZE

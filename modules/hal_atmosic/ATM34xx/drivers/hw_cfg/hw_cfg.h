@@ -5,7 +5,7 @@
  *
  * @brief Hardware Configuration
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  ******************************************************************************
  */
@@ -19,6 +19,9 @@
  * @{
  */
 
+#include <stdbool.h>
+#include <stdint.h>
+#include "ll.h"
 #include "sec_hw_cfg.h"
 
 #ifdef __cplusplus
@@ -63,6 +66,19 @@ void hw_cfg_swreg_main_init(void);
  * @param[in] enable true/false
  */
 void hw_cfg_set_ldo(bool enable);
+
+/**
+ * @brief Enable/Disable PA LDO and LNA attenuation to generate high current
+ * @param[in] enable true/false
+ */
+void hw_cfg_lna_atten(bool enable);
+
+/*
+ * @brief Calculate VBATT LNA attenuation current
+ * @param[in] vbatt_mv Battery voltage in millivolts
+ * @return Calculated current in uA
+ */
+uint32_t hw_cfg_get_lna_curr(int32_t vbatt_mv);
 
 /**
  * @brief Run VCO calibration

@@ -5,7 +5,7 @@
  *
  * @brief Secure reset driver header file
  *
- * Copyright (C) Atmosic 2022-2024
+ * Copyright (C) Atmosic 2022-2025
  *
  *******************************************************************************
  */
@@ -18,6 +18,8 @@
  * @brief Secure reset driver
  * @{
  */
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

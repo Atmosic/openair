@@ -1,6 +1,6 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (c) 2025 Atmosic
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  */
 
 #pragma once
@@ -45,13 +45,47 @@ int beacon_adv_stop(void);
 int beacon_adv_update_data(const sensor_beacon_data_t *data);
 
 /**
- * @brief Get current device name
+ * @brief Set advertising data
  *
- * Returns the current device name used in advertising data.
+ * Sets the standard advertising data with fixed elements (sensor data only).
+ * This function updates the advertising data for the current advertising set.
  *
- * @return Current device name string
+ * @return 0 on success, negative error code on failure
  */
-const char *beacon_adv_get_device_name(void);
+int beacon_set_adv_data(void);
+
+/**
+ * @brief Update advertising interval
+ *
+ * Stops advertising, updates interval parameters, and restarts advertising.
+ *
+ * @param interval Advertising interval in units of 0.625ms (400-16384)
+ * @return 0 on success, negative error code on failure
+ */
+int beacon_adv_update_interval(uint32_t interval);
+
+/**
+ * @brief Update device name in advertising data
+ *
+ * Updates the device name in both main beacon and connection advertising sets.
+ * Handles stopping/restarting advertising as needed.
+ *
+ * @param name New device name (null-terminated string)
+ * @return 0 on success, negative error code on failure
+ */
+int beacon_adv_update_device_name(const char *name);
+
+/**
+ * @brief Set device name buffer without updating advertising
+ *
+ * Updates only the internal device name buffer without affecting active
+ * advertising. This is intended for use during initialization (e.g., settings
+ * loading) when advertising is not yet active.
+ *
+ * @param name New device name (null-terminated string)
+ * @return 0 on success, negative error code on failure
+ */
+int beacon_adv_set_device_name_buffer(const char *name);
 
 #ifdef __cplusplus
 }

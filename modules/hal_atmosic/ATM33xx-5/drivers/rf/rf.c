@@ -28,7 +28,7 @@
 
 #include "rf_api.h"
 #define RF_INTERNAL_GUARD
-#include "rf_internal.h"
+#include "rf.ih"
 
 #ifndef CMSDK_WRPR
 #define CMSDK_WRPR CMSDK_WRPR0_NONSECURE

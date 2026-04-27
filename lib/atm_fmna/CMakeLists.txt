@@ -5,12 +5,6 @@
 if(CONFIG_ATM_FMNA_LIB)
   zephyr_include_directories(.)
 
-  zephyr_compile_options(
-    -DuECC_ENABLE_VLI_API=1
-    -DuECC_SUPPORT_COMPRESSED_POINT=0
-    -DuECC_SUPPORT_POINT_ADD
-  )
-
   if(CONFIG_USE_UARP)
     set(UARP _uarp)
   endif()

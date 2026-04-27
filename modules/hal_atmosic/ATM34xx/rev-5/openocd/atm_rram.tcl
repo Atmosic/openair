@@ -62,7 +62,7 @@ proc atm_erase_rram_byte { region_start region_size } {
     puts [format "%d bytes erased at address 0x%08x" $region_size $region_start ]
     rram_write_enable
     adapter speed 70
-    mww $region_start 0xff $region_size
+    mwb $region_start 0xff $region_size
     adapter speed $::_SWD_KHZ
     rram_write_disable
 }

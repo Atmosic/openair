@@ -5,7 +5,9 @@
  *
  * @brief Link layer controller sleep
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -77,16 +79,25 @@ bool pc_ctr_sleep_unlock(void);
  * with global interrupts disabled.
  * @param[out] sleep_duration  Remaining sleep time in LPC ticks.
  * @param[in]  disable_deep_sleep  Prevent deep sleep
+ * @param[out] next_timer_ms  Next WsfTimer expiration in milliseconds, or 0.
  * @return     Sleep status of controller.
  */
 enum pc_ctr_sleep_e pc_ctr_sleep(int32_t *sleep_duration,
-    bool disable_deep_sleep);
+    bool disable_deep_sleep, uint32_t *next_timer_ms);
 
 /**
  * @brief Returned from sleep.  Call from main event loop with global
  * interrupts disabled.
  */
 void pc_ctr_awake(void);
+
+/**
+ * @brief Program PSEQ countdown timer for next WsfTimer expiration.
+ * @param[in] next_timer_ms  Next WsfTimer expiration in milliseconds, or 0.
+ * @return    true if timer was programmed (or nothing to program),
+ *            false if HW timer can't be programmed right now.
+ */
+bool pc_ctr_sleep_timer_program(uint32_t next_timer_ms);
 
 /**
  * @brief Recompute ATLC wakeup timing registers

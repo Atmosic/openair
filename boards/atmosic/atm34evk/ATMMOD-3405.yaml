@@ -1,0 +1,27 @@
+identifier: ATMMOD-3405/ATM34xx-5
+name: ATMMOD-3405
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+supported:
+  - adc
+  - atlc
+  - bluetooth
+  - ccbm
+  - channel_sounding
+  - entropy
+  - flash
+  - gpio
+  - i2c
+  - i2c_clock_stretching
+  - ieee802154
+  - mikrobus
+  - pwm
+  - rram
+  - spi
+  - uart
+  - watchdog
+  - wdt
+  - xip
+vendor: atmosic

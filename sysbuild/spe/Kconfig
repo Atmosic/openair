@@ -1,15 +1,8 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
-
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config SPE
 	bool "SPE"
 	help
 	  Include Atmosic spe to use
-
-config OVERRIDE_NO_SPE
-	bool "Override SPE use"
-	help
-	  Manual override of SB_CONFIG_SPE=y defined in a project
-	  .yaml file.  This disables SPE use.

@@ -9,7 +9,7 @@
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
  *
- *  Copyright (c) 2023-2025 Atmosic, Inc. All rights reserved.
+ *  Copyright (c) 2023-2026 Atmosic
  *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
@@ -77,10 +77,11 @@ void PalSysInit(void);
 /*!
  *  \brief      Extended platform initialization.
  *
- *  \param      heapSizeOverride    Override heap size if nonzero heapOverride.
+ *  \param      heapSize            heap size.
+ *  \param      heapStart           heap start address.
  */
 /*************************************************************************************************/
-void PalSysInitExt(uint32_t heapSizeOverride);
+void PalSysInitExt(uint32_t heapSize, void *heapStart);
 
 /*************************************************************************************************/
 /*!
@@ -274,6 +275,13 @@ void PalSysCiExit(void);
  */
 /*************************************************************************************************/
 void PalSysCiSetIrq(void);
+
+/*************************************************************************************************/
+/*!
+ *  \brief     Actually fire critical interrupt section IRQ.
+ */
+/*************************************************************************************************/
+void PalSysCiFireIrq(void);
 
 /*************************************************************************************************/
 /*!

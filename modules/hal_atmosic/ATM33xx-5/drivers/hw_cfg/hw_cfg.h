@@ -5,7 +5,7 @@
  *
  * @brief Hardware Configuration
  *
- * Copyright (C) Atmosic 2021-2022
+ * Copyright (C) Atmosic 2021-2025
  *
  ******************************************************************************
  */
@@ -18,6 +18,10 @@
  * @brief User driver to apply hardware configuration
  * @{
  */
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "ll.h"
 
 #ifdef __cplusplus
 extern "C" {

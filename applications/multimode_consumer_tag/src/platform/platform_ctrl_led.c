@@ -5,7 +5,9 @@
  *
  * @brief Platform control led For Multimode Consumer Tag
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -45,6 +47,8 @@ struct led_blink_param {
 	struct led_blink_pattern pattern[LED_BLINK_PATTERN_MAX];
 };
 
+static K_MUTEX_DEFINE(led_mutex);
+
 static const struct device *const led_dev = DEVICE_DT_GET_ONE(gpio_leds);
 static struct led_blink_param background_param;
 static struct led_blink_param event_param;
@@ -55,6 +59,14 @@ static void led_event_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(led_background_work, led_background_work_handler);
 static K_WORK_DELAYABLE_DEFINE(led_event_work, led_event_work_handler);
 
+static struct led_blink_pattern *led_get_previous_pattern(struct led_blink_param *param)
+{
+	if (!param->pattern_num) {
+		return NULL;
+	}
+	return &param->pattern[(param->pattern_idx + param->pattern_num - 1) % param->pattern_num];
+}
+
 static void led_pattern_process(struct led_blink_param *param, struct k_work *work)
 {
 	struct k_work_delayable *timer_work = k_work_delayable_from_work(work);
@@ -63,9 +75,11 @@ static void led_pattern_process(struct led_blink_param *param, struct k_work *wo
 		return;
 	}
 
-	if (param->pattern_num == 0) {
+	if (!param->pattern_num) {
 		return;
 	}
+
+	k_mutex_lock(&led_mutex, K_FOREVER);
 
 	if (param->pattern[param->pattern_idx].on) {
 		led_on(led_dev, param->pattern[param->pattern_idx].led_idx);
@@ -76,8 +90,9 @@ static void led_pattern_process(struct led_blink_param *param, struct k_work *wo
 	if ((param->pattern_idx + 1) == param->pattern_num && param->count) {
 		// If count is set, we are in event mode
 		param->count--;
-		if (param->count == 0) {
+		if (!param->count) {
 			// Event completed
+			k_mutex_unlock(&led_mutex);
 			return;
 		}
 	}
@@ -86,6 +101,7 @@ static void led_pattern_process(struct led_blink_param *param, struct k_work *wo
 					   K_MSEC(param->pattern[param->pattern_idx].duration_ms));
 
 	param->pattern_idx = (param->pattern_idx + 1) % param->pattern_num;
+	k_mutex_unlock(&led_mutex);
 }
 
 static void led_background_work_handler(struct k_work *work)
@@ -98,30 +114,53 @@ static void led_event_work_handler(struct k_work *work)
 	led_pattern_process(&event_param, work);
 }
 
-static void led_blink_background(struct led_blink_pattern *pattern, uint32_t pattern_num)
+static void led_off_all(void)
+{
+	if (!device_is_ready(led_dev)) {
+		return;
+	}
+	for (int i = 0; i < LED_IDX_MAX; i++) {
+		led_off(led_dev, i);
+	}
+}
+
+static void led_update_pattern(struct led_blink_param *param, struct k_work_delayable *work,
+			       struct led_blink_pattern *pattern, uint32_t pattern_num,
+			       uint32_t count)
 {
 	if (pattern_num > LED_BLINK_PATTERN_MAX) {
 		LOG_ERR("Pattern number:%d exceeds max:%d ", pattern_num, LED_BLINK_PATTERN_MAX);
 		return;
 	}
-	background_param.pattern_num = pattern_num;
-	background_param.pattern_idx = 0;
-	background_param.count = 0; // continue indefinitely
-	memcpy(background_param.pattern, pattern, pattern_num * sizeof(struct led_blink_pattern));
-	atm_work_reschedule_for_app_work_q(&led_background_work, K_NO_WAIT);
+
+	if (!device_is_ready(led_dev)) {
+		return;
+	}
+
+	k_mutex_lock(&led_mutex, K_FOREVER);
+	k_work_cancel_delayable(work);
+
+	struct led_blink_pattern *prev_pattern = led_get_previous_pattern(param);
+	if (prev_pattern && prev_pattern->on) {
+		led_off(led_dev, prev_pattern->led_idx);
+	}
+
+	param->pattern_num = pattern_num;
+	param->pattern_idx = 0;
+	param->count = count;
+	memcpy(param->pattern, pattern, pattern_num * sizeof(struct led_blink_pattern));
+	atm_work_reschedule_for_app_work_q(work, K_NO_WAIT);
+	k_mutex_unlock(&led_mutex);
+}
+
+static void led_blink_background(struct led_blink_pattern *pattern, uint32_t pattern_num)
+{
+	led_update_pattern(&background_param, &led_background_work, pattern, pattern_num, 0);
 }
 
 static void led_blink_event(struct led_blink_pattern *pattern, uint32_t pattern_num, uint32_t count)
 {
-	if (pattern_num > LED_BLINK_PATTERN_MAX) {
-		LOG_ERR("Pattern number:%d exceeds max:%d ", pattern_num, LED_BLINK_PATTERN_MAX);
-		return;
-	}
-	event_param.pattern_num = pattern_num;
-	event_param.pattern_idx = 0;
-	event_param.count = count;
-	memcpy(event_param.pattern, pattern, pattern_num * sizeof(struct led_blink_pattern));
-	atm_work_reschedule_for_app_work_q(&led_event_work, K_NO_WAIT);
+	led_update_pattern(&event_param, &led_event_work, pattern, pattern_num, count);
 }
 
 static void led_blink_blocking(struct led_blink_pattern *pattern, uint32_t pattern_num,
@@ -130,6 +169,8 @@ static void led_blink_blocking(struct led_blink_pattern *pattern, uint32_t patte
 	if (!device_is_ready(led_dev)) {
 		return;
 	}
+
+	led_off_all();
 
 	for (int i = 0; i < count; i++) {
 		for (int j = 0; j < pattern_num; j++) {
@@ -149,12 +190,7 @@ static void led_blink_stop(void)
 	k_work_cancel_delayable(&led_event_work);
 	background_param.pattern_num = 0;
 	event_param.pattern_num = 0;
-	if (!device_is_ready(led_dev)) {
-		return;
-	}
-	for (int i = 0; i < LED_IDX_MAX; i++) {
-		led_off(led_dev, i);
-	}
+	led_off_all();
 }
 #endif
 

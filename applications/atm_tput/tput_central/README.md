@@ -24,6 +24,42 @@ This application uses **UART0** for both the console output and the interactive 
 - Interactive shell command input and output
 - Debug and error messages
 
+## Building and Running
+
+This application is built from `openair/applications/atm_tput/tput_central`.
+
+### Standard Build
+
+```bash
+west build -p always -b <BOARD> openair/applications/atm_tput/tput_central --sysbuild -T applications.atm_tput.tput_central.atm
+```
+
+### Two-Device Auto-Test Build
+
+Use this target when pairing with the matching peripheral auto-test target:
+
+```bash
+west build -p always -b <BOARD> openair/applications/atm_tput/tput_central --sysbuild -T applications.atm_tput.tput_central.atm.two_dev
+```
+
+### MCUboot + Flash XIP Build
+
+```bash
+west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_central --sysbuild -T applications.atm_tput_central.atm.mcuboot.flash_xip
+```
+
+### MCUboot + Flash XIP Overwrite-Only Build
+
+```bash
+west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_central --sysbuild -T applications.atm_tput_central.atm.mcuboot.flash_xip.overwrite
+```
+
+### Flash Command
+
+```bash
+west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+```
+
 ## Configuration
 
 ### Kconfig Options

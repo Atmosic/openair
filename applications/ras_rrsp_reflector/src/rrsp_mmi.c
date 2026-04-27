@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -84,8 +84,7 @@ static void rrsp_mmi_disconnected_cb(struct bt_conn *conn, uint8_t reason)
 	rrsp_mmi_run_event(RRSP_MMI_EVT_BT_DISC);
 }
 
-static void rrsp_mmi_remote_capabilities_cb(struct bt_conn *conn,
-					    uint8_t status,
+static void rrsp_mmi_remote_capabilities_cb(struct bt_conn *conn, uint8_t status,
 					    struct bt_conn_le_cs_capabilities *params)
 {
 	ARG_UNUSED(params);
@@ -94,8 +93,7 @@ static void rrsp_mmi_remote_capabilities_cb(struct bt_conn *conn,
 	}
 }
 
-static void rrsp_mmi_cs_config_created_cb(struct bt_conn *conn,
-					  uint8_t status,
+static void rrsp_mmi_cs_config_created_cb(struct bt_conn *conn, uint8_t status,
 					  struct bt_conn_le_cs_config *config)
 {
 	if (status == BT_HCI_ERR_SUCCESS) {
@@ -112,16 +110,17 @@ static void rrsp_mmi_cs_security_enabled_cb(struct bt_conn *conn, uint8_t status
 	}
 }
 
-static void rrsp_mmi_cs_procedure_enabled_cb(struct bt_conn *conn,
-					     uint8_t status,
+static void rrsp_mmi_cs_procedure_enabled_cb(struct bt_conn *conn, uint8_t status,
 					     struct bt_conn_le_cs_procedure_enable_complete *params)
 {
 	if (status == BT_HCI_ERR_SUCCESS) {
-		LOG_INF("CS procedures enable: %u cnt:%u", params->state, params->procedure_count);
+		LOG_INF("CS procedures enable: %u cnt:%u cfg_id:%u", params->state,
+			params->procedure_count, params->config_id);
 
 		if (params->state) {
 			rrsp_mmi_run_event(RRSP_MMI_EVT_CS_PROC_EN);
 			rrsp_mmi.remaining_cs_cnt = params->procedure_count;
+			rrsp_mmi.cs_cfg = params->config_id;
 		} else {
 			rrsp_mmi_run_event(RRSP_MMI_EVT_CS_PROC_DIS);
 			rrsp_mmi.remaining_cs_cnt = 0;
@@ -142,9 +141,19 @@ static void rrsp_mmi_cs_subevent_result_cb(struct bt_conn *conn,
 	}
 }
 
+#ifdef CONFIG_BT_USER_PHY_UPDATE
+static void rrsp_mmi_le_phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info *param)
+{
+	LOG_INF("PHY updated: TX PHY %u, RX PHY %u", param->tx_phy, param->rx_phy);
+}
+#endif
+
 BT_CONN_CB_DEFINE(rrsp_mmi) = {
 	.connected = rrsp_mmi_connected_cb,
 	.disconnected = rrsp_mmi_disconnected_cb,
+#ifdef CONFIG_BT_USER_PHY_UPDATE
+	.le_phy_updated = rrsp_mmi_le_phy_updated,
+#endif
 	.le_cs_read_remote_capabilities_complete = rrsp_mmi_remote_capabilities_cb,
 	.le_cs_config_complete = rrsp_mmi_cs_config_created_cb,
 	.le_cs_security_enable_complete = rrsp_mmi_cs_security_enabled_cb,

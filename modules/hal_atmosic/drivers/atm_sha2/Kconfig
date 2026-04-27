@@ -1,19 +1,17 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config ATM_SHA2
 	bool "Atmosic SHA2 module"
-	default y if ATM_SHA2_HW || ATM_SHA2_HW_BOOTUTIL
+	default y if ATM_SHA2_HW
 
 config ATM_SHA2_HW
 	bool "Hardware accelerator for SHA256 hash"
 	depends on MBEDTLS_SHA256
 	depends on !USERSPACE
 	select MBEDTLS_USER_CONFIG_ENABLE
-
-config ATM_SHA2_HW_BOOTUTIL
-	bool "Hardware accelerator for SHA256 hash supporting bootutil API (only used by MCUBOOT)"
 
 config ATM_SHA2_KEY_SIDELOAD
 	bool "Enable key sideload for HMAC key"

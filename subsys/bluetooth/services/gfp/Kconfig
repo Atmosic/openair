@@ -1,8 +1,9 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
 rsource "fmdn/Kconfig"
+rsource "dis/Kconfig"
 
 menuconfig ATM_GFPS
     bool "Google Fast Pair Service (GFPS)"
@@ -18,54 +19,71 @@ menuconfig ATM_GFPS
 
 if ATM_GFPS
 
+config HEAP_MEM_POOL_ADD_SIZE_ATM_GFP
+	int "Heap memory pool size for Google Fast Pair service"
+	default 256
+	help
+	  Additional heap memory pool size required by Google Fast Pair Service.
+	  This includes work items for key-based pairing crypto operations.
+
 rsource "Kconfig.logging"
 
 config FAST_PAIR_MAX_ACCOUNT_KEY_COUNT
     int "account key number support"
+    default 64 if FAST_PAIR_FMDN_V2
     default 5
     help
       Maximum number of account keys that can be stored and used for
       Fast Pair authentication. This affects the account key filter
       buffer size in advertising data.
 
+      FHN v2 requires minimum 64 keys to support concurrent bonded devices.
+      Legacy Fast Pair uses 5 keys by default.
+
 config FAST_PAIR_ACCOUNT_KEY_FILTER_MAX_LEN
     int "Maximum account key filter buffer size in bytes"
-    default 27 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 20
-    default 33 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 25
+    default 80 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT >= 64
     default 39 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 30
-    range 4 31
+    default 33 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 25
+    default 27 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 20
+    range 4 255
     help
       Maximum size of the account key filter buffer in advertising data.
       This must be large enough to hold the Bloom filter for all configured
       account keys. The required size is approximately: 1.2 * key_count + 3.
 
-      The range is limited to 31 bytes to fit within BLE advertising payload
-      constraints. If you need more account keys, consider reducing other
-      advertising data or using a more efficient filter algorithm.
+      For FHN v2 with 64 keys: ~80 bytes recommended.
+      For legacy Fast Pair with 5-30 keys: 27-39 bytes.
+
+      Note: Extended advertising may be required for larger filter sizes
+      to fit within BLE advertising payload constraints.
 
 config FAST_PAIR_MODEL_ID
     hex "Google Fast Pair Model ID"
     default 0x1A7331 if SOC_SERIES_ATM33
-    default 0x8FE397 if SOC_SERIES_ATM34
+    default 0x8FE397
 
 config FAST_PAIR_AS_KEY
     string "Google Fast Pair Anti-Spoofing key"
     default "wLhpDl6Z4da3v/s1/AA32ZUtvMUkgtmPTCy5weMIDrs=" if SOC_SERIES_ATM33
-    default "3H/wrAa6A5Bn2IvSq0E6RrNMucXdhEtI/Vv4sKiHtoI=" if SOC_SERIES_ATM34
+    default "3H/wrAa6A5Bn2IvSq0E6RrNMucXdhEtI/Vv4sKiHtoI="
 
 config FAST_PAIR_AS_KEY_TAG
     hex "Google Fast Pair Anti-Spoofing key tag in secure journal"
     default 0xdf
     help
 	Secure journal tag for Google Fast Pair Anti-Spoofing key.
-
-	The fp_as_key_load() function will:
-	1. First try to load 32-byte binary key from secure journal using this tag
-	2. If successful, use the binary key directly (no decoding needed)
-	3. If not found or invalid length, fall back to FAST_PAIR_AS_KEY (Base64 format)
-
 	The secure journal key must be exactly 32 bytes of binary data.
 	This allows production devices to use provisioned keys while maintaining development
+	fallback support.
+
+config FAST_PAIR_MODEL_ID_TAG
+    hex "Google Fast Pair Model ID tag in secure journal"
+    default 0xde
+    help
+	Secure journal tag for Google Fast Pair Model ID.
+	The secure journal Model ID must be exactly 3 bytes of binary data.
+	This allows production devices to use provisioned Model IDs while maintaining development
 	fallback support.
 
 config FAST_PAIR_USER_PAIR_BT_ADDR
@@ -88,12 +106,88 @@ config FAST_PAIR_STORAGE_DEBUG_EN
     bool "enable storage debug"
     default n
 
+config FAST_PAIR_TX_PWR_CALIBRATION_1M
+    int "TX power calibration at 1 meter when CONFIG_MAX_TX_PWR = 0 dBm"
+    default -58
+    range -100 20
+    help
+      Measured RSSI at 1 meter when CONFIG_MAX_TX_PWR = 0 dBm.
+      Used for Fast Pair Advertising (encoded as RSSI@1m + 41).
+
+      Note:
+      - The default value is a reference measured on the Atmosic EVK.
+      - Since antenna gain and signal attenuation vary significantly by
+        PCB layout and mechanical enclosure, customers MUST perform
+        actual measurements on their final product.
+      - Formula: TX_PWR_0M = (Measured RSSI at 1m) + 41 dBm.
+
+      Adjustment of this value is required to ensure compliance with
+      Google Fast Pair specifications.
+
+
+config FAST_PAIR_TX_PWR_CALIBRATION_0M
+    int "TX power calibration at 0 meter when CONFIG_MAX_TX_PWR = 0 dBm"
+    default -38
+    range -100 20
+    help
+      Measured RSSI at 0 meter (contact distance) when CONFIG_MAX_TX_PWR = 0 dBm.
+      Used for FMDN Read Beacon Parameters.
+
+      Google recommends using actual measured values (not estimates) for
+      optimal proximity pairing accuracy.
+
+      Note:
+      - The default value is a reference measured on the Atmosic EVK.
+      - Since antenna gain and signal attenuation vary significantly by
+        PCB layout and mechanical enclosure, customers MUST perform
+        actual measurements on their final product.
+
+      Adjustment of this value is required to ensure compliance with
+      Google Fast Pair specifications.
+
+
 config FAST_PAIR_FMDN
     bool "Find My Device Network extension for Fast Pair"
     default y
     select ATM_FMDN
+    select ATM_GFP_DIS
     help
 	Enable Find My Device Network (FMDN) extension for Fast Pair.
+
+config FAST_PAIR_FMDN_V2
+    bool "Enable FHN v2 (Find Hub Network v2) features"
+    depends on FAST_PAIR_FMDN
+    select BT_KEYS_OVERWRITE_OLDEST
+    select BT_KEYS_SAVE_AGING_COUNTER_ON_PAIRING
+    select BT_SMP_APP_PAIRING_ACCEPT
+    help
+	Enable Find Hub Network v2 (FHN v2) features including:
+	- Secure Beacon Actions GATT characteristic (UUID FE2C1240-8366-4814-8EB0-01DE32100BEA)
+	- Persistent Connection support for power efficiency
+	- Reverse Ringing capability
+	- FIFO eviction for account key storage
+	- Support for up to 64 concurrent bonded devices
+
+	Automatically enables:
+	- BT_KEYS_OVERWRITE_OLDEST: FIFO eviction for bonding keys
+	- BT_KEYS_SAVE_AGING_COUNTER_ON_PAIRING: Persist aging counter on each pairing
+	- BT_SMP_APP_PAIRING_ACCEPT: Application-level pairing acceptance control
+
+config FAST_PAIR_ACCOUNT_KEY_FIFO_EVICTION
+    bool "Enable FIFO eviction for account key storage"
+    depends on FAST_PAIR_FMDN_V2
+    default y
+    help
+	Enable FIFO (First-In-First-Out) eviction policy for account key storage.
+	When storage is full, the oldest key (by timestamp) is automatically evicted
+	to make room for new keys. This is required for FHN v2 to support up to 64
+	concurrent bonded devices.
+
+# Override BT_MAX_PAIRED default when FHN v2 is enabled
+# This ensures 64 bonded devices are supported for FHN v2
+# Using configdefault to safely override the default without weakening dependencies
+configdefault BT_MAX_PAIRED
+    default 64 if FAST_PAIR_FMDN_V2
 
 config FAST_PAIR_FMDN_DULT
     bool "Enable Detecting Unwanted Location Trackers (DULT) support in FMDN"
@@ -106,6 +200,14 @@ config FP_FMDN_PROVISION_EN_FP_ADV
     bool "Enable remaining Fast Pair advertisement after provisioned"
     default n
 
+config FAST_PAIR_FMDN_MERGED_ADV
+    bool "Merge Fast Pair and FMDN provisioned advertising"
+    depends on FAST_PAIR_FMDN && BT_EXT_ADV
+    select FP_FMDN_PROVISION_EN_FP_ADV
+    help
+      Use a single extended advertising set for provisioned Fast Pair and
+      Find My Device Network advertising.
+
 config FP_FMDN_VALIDATOR_TEST
     bool "Enable optimize for EDDYSTONE test cases of Google Fast Pair Validator App"
     default n
@@ -114,7 +216,7 @@ config FP_FMDN_VALIDATOR_TEST
 config FP_BT_ID_NUM
     int "FP BT ID number"
     default 3 if FAST_PAIR_FMDN_DULT && !FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR
-    default 2 if FAST_PAIR_FMDN_DULT && FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR
+    default 2 if (FAST_PAIR_FMDN_DULT && DULT_ADV_SUPPORT) && FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR
     default 1
 
 config FAST_PAIR_RECREATE_ADV_ON_MODE_SWITCH

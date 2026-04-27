@@ -5,7 +5,9 @@
  *
  * @brief Platform control battery For Multimode Consumer Tag
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -21,10 +23,11 @@ static uint8_t last_battery_percentage = 100;
 #ifdef CONFIG_BATT_MODEL
 #include <zephyr/init.h>
 #include "batt_model.h"
-static void platform_ctrl_batt_cb(uint16_t lvl, int32_t mvolt)
+static void platform_ctrl_batt_cb(uint16_t lvl_bp, int32_t mvolt)
 {
-	last_battery_percentage = lvl / 100;
-	LOG_DBG("update last_battery_percentage to %u (lvl: %u)", last_battery_percentage, lvl);
+	last_battery_percentage = lvl_bp / 100;
+	LOG_DBG("update last_battery_percentage to %u (lvl_bp: %u)", last_battery_percentage,
+		lvl_bp);
 }
 
 static int platform_ctrl_batt_init(void)

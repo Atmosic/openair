@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2025 Atmosic
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Test overlay to disable led0 for testing beacon sample
+ * without LED hardware
+ */
+
+&led0 {
+	status = "disabled";
+};

@@ -5,7 +5,7 @@
  *
  * @brief This file contains the Bluetooth LE DTM (Direct Test Mode) definitions
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -88,8 +88,12 @@ extern "C" {
 #define DTM_PARAM_READ_PDU_MAX_RX_OCTETS 0x02
 #define DTM_PARAM_READ_PDU_MAX_RX_TIME   0x03
 
-// CTRL : Get TX power level
-#define DTM_PARAM_GET_TX_PWR_LVL(d) (d)
+// CTRL : Set/Get TX power level
+#define DTM_PARAM_GET_TX_PWR_LVL(d) ((int8_t)(d))
+#define DTM_TX_PWR_LVL_MIN_DBM      -127 // Minimum TX power in dBm
+#define DTM_TX_PWR_LVL_MAX_DBM      20   // Maximum TX power in dBm
+#define DTM_TX_PWR_LVL_MIN_SET      0x7E // Use minimum supported TX power
+#define DTM_TX_PWR_LVL_MAX_SET      0x7F // Use maximum supported TX power
 
 // Test End: CTRL and PARAM field definitions
 #define DTM_END_CTRL_END  0x00

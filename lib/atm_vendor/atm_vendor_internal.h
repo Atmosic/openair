@@ -12,6 +12,19 @@
 
 #pragma once
 
+/**
+ * @addtogroup ATM_BTFM_VEND HCI Vendor Command
+ * @ingroup ATM_BTFM_PROC
+ * @brief HCI Vendor Command
+ *
+ * This module contains the necessary definitions to deal with vendor command
+ * internally.
+ *
+ * @{
+ */
+
+#include <stdint.h>
+
 #ifdef CFG_VND_GADC
 #include "gadc.h"
 #endif
@@ -23,17 +36,6 @@
 #ifdef CFG_VND_XTAL_32K_PIN_OUT
 #include "atm_vendor_drv.h"
 #endif
-
-/**
- * @addtogroup ATM_BTFM_VEND HCI Vendor Command
- * @ingroup ATM_BTFM_PROC
- * @brief HCI Vendor Command
- *
- * This module contains the necessary definitions to deal with vendor command
- * internally.
- *
- * @{
- */
 
 #ifdef __cplusplus
 extern "C" {

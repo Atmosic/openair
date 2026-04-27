@@ -27,10 +27,6 @@ if {[info exists ::env(SYDNEY_SERIAL)]} {
     }
     puts "FTDI serial $_FTDI_SERIAL"
     adapter serial $_FTDI_SERIAL
-} elseif {[info exists ::env(PARIS_SERIAL)]} {
-    set _FTDI_SERIAL [format "%s%s" $::env(PARIS_SERIAL) "USB1"]
-    puts "FTDI serial $_FTDI_SERIAL"
-    adapter serial $_FTDI_SERIAL
 }
 
 ftdi channel 0

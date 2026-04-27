@@ -1,0 +1,16 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+tests:
+  tests.drivers.uart.uart_atm_idle.atm:
+    sysbuild: true
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - PROJECT EXECUTION SUCCESSFUL
+    tags:
+      - uart
+      - gpio
+

@@ -5,7 +5,7 @@
  *
  * @brief Google Fast Pair Service
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -13,9 +13,13 @@
 #pragma once
 
 #include <zephyr/bluetooth/uuid.h>
+#include "fp_common.h"
 #ifdef CONFIG_FAST_PAIR_FMDN
 #include "fp_fmdn_gatt.h"
 #include "fp_fmdn_key.h"
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+#include "fp_fmdn_reverse_ringing.h"
+#endif
 #endif
 #include "fp_mode.h"
 /**
@@ -40,6 +44,10 @@ typedef struct gfps_hdlrs_s {
 	fp_fmdn_ring_action_cb ring_action_cb;
 	/// FP FMDN battery status callback function
 	fp_fmdn_battery_cb battery_status_cb;
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+	/// FP FMDN reverse ringing action callback function
+	fp_fmdn_reverse_ringing_action_cb reverse_ringing_action_cb;
+#endif
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	/// FP FMDN utp owner connected callback function
 	fp_fmdn_utp_owner_conn_cb utp_owner_conn_cb;
@@ -61,14 +69,17 @@ void gfps_handlers_register(gfps_hdlrs_t const *hdlrs);
 
 /**
  * @brief GPFS fast button notify
+ * @param[in] tap_type button tap type
  */
-void gfps_button_notify(void);
+void gfps_button_notify(fp_tap_type_t tap_type);
 
 /**
  * @brief GPFS init
+ * @param fw_version Firmware version string to be used by the DIS service.
  * @return 0 if successful. Otherwise, a (negative) error code is returned.
  */
-int gfps_init(void);
+__NONNULL_ALL
+int gfps_init(const char *fw_version);
 
 /**
  * @brief GPFS deinit

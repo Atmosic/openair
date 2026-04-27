@@ -1,6 +1,6 @@
 # Atmosic UART Configuration
 
-# Copyright (c) 2022 Atmosic
+# Copyright (c) 2022-2026 Atmosic
 # SPDX-License-Identifier: Apache-2.0
 
 config UART_ATM
@@ -12,7 +12,20 @@ config UART_ATM
 	help
 	  This option enables the UART driver for Atmosic
 
+config UART_ATM_HOST_DETECT
+	bool "Enable the UART hosted detection feature"
+	depends on UART_ATM
+	depends on GPIO
+
 if UART_ATM && PM
+
+config UART_ATM_PM_WQ_STACK_SIZE
+	int "TX power management work queue stack size"
+	default 1024
+	help
+	  Stack size for the UART TX power management work queue thread.
+	  This work queue handles delayed TX constraint release to ensure
+	  the shift register has finished transmitting before allowing suspend.
 
 config UART_ATM_PM_RX_THREAD_STACK_SIZE
 	int "Receive power management thread size"

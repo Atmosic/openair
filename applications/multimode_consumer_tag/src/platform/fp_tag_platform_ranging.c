@@ -5,7 +5,9 @@
  *
  * @brief Fast Pair tag ranging platform implementation
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -21,18 +23,7 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
  * Public platform ranging interface
  * ======================================================================== */
 
-/**
- * @brief Handle ranging capability requests
- * @param tech_id Technology ID (UWB/CS)
- * @param capability Capability structure to populate
- * @return 0 on success, negative on error
- *
- * @note Size field handling: Based on actual testing with FHN (Find Hub Network) app,
- *       the size field should contain the full structure size, not the payload size
- *       as suggested in some specification interpretations. This implementation
- *       uses sizeof(struct) which has been verified to work correctly.
- */
-int fp_platform_ranging_capability_cb(rt_id_t tech_id, void *capability)
+int fp_platform_ranging_capability_cb(rt_id_t tech_id, ranging_capability_t *capability)
 {
 	LOG_INF("Platform: Capability request for technology ID 0x%02x", tech_id);
 
@@ -41,7 +32,7 @@ int fp_platform_ranging_capability_cb(rt_id_t tech_id, void *capability)
 	case RT_TECH_ID_UWB: {
 		/* NOTE: In actual testing with FHN app, the size field behavior differs from spec.
 		 * Using full struct size works correctly. */
-		ranging_cap_de_uwb_t *uwb = (ranging_cap_de_uwb_t *)capability;
+		ranging_cap_de_uwb_t *uwb = capability->uwb;
 
 		/* UWB Capability Parameters
 		 *
@@ -77,14 +68,12 @@ int fp_platform_ranging_capability_cb(rt_id_t tech_id, void *capability)
 #endif
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
 	case RT_TECH_ID_CS: {
-		ranging_cap_de_cs_t *cs = (ranging_cap_de_cs_t *)capability;
+		ranging_cap_de_cs_t *cs = capability->cs;
 		*cs = (ranging_cap_de_cs_t){
 			.id = RT_TECH_ID_CS,
 			.size = sizeof(ranging_cap_de_cs_t),
 			.sec_type = CONFIG_FMDN_RANGING_CS_SECURITY_LEVEL,
 			.addr = {0},
-			.appearance = CONFIG_BT_DEVICE_APPEARANCE,
-			.flags = CS_LE_FLAG_GENERAL_DISCOVERY_MODE,
 		};
 		LOG_INF("Constructed CS capabilities");
 		return 0;
@@ -96,14 +85,7 @@ int fp_platform_ranging_capability_cb(rt_id_t tech_id, void *capability)
 	}
 }
 
-/**
- * @brief Handle ranging configuration requests
- * @param tech_id Technology ID being configured
- * @param config Configuration data
- * @param start_immediately Whether to start immediately
- * @return 0 on success, negative on error
- */
-int fp_platform_ranging_config_cb(rt_id_t tech_id, void *config, bool start_immediately)
+int fp_platform_ranging_config_cb(rt_id_t tech_id, ranging_config_t *config, bool start_immediately)
 {
 	LOG_INF("Platform: Configuration request for technology ID 0x%02x", tech_id);
 
@@ -111,7 +93,7 @@ int fp_platform_ranging_config_cb(rt_id_t tech_id, void *config, bool start_imme
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
 	case RT_TECH_ID_UWB: {
 		LOG_INF("Platform: UWB config received");
-		ranging_conf_de_uwb_t *uwb = (ranging_conf_de_uwb_t *)config;
+		ranging_conf_de_uwb_t *uwb = config->uwb;
 		LOG_DBG("Platform: UWB config: session_key_len=0x%02x, config_id=0x%02x, "
 			"channel=0x%02x, role=0x%02x, mode=0x%02x",
 			uwb->session_key_len, uwb->config_id, uwb->channel, uwb->device_role,
@@ -132,7 +114,7 @@ int fp_platform_ranging_config_cb(rt_id_t tech_id, void *config, bool start_imme
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
 	case RT_TECH_ID_CS: {
 		LOG_INF("Platform: CS config received");
-		ranging_conf_de_cs_t *cs = (ranging_conf_de_cs_t *)config;
+		ranging_conf_de_cs_t *cs = config->cs;
 		/* BLE Channel Sounding configuration received.
 		 *
 		 * Per spec: Responder doesn't need to do anything - only initiator calls BLE stack.
@@ -150,11 +132,6 @@ int fp_platform_ranging_config_cb(rt_id_t tech_id, void *config, bool start_imme
 	}
 }
 
-/**
- * @brief Handle ranging start requests
- * @param tech_id Technology ID to start
- * @return 0 on success, negative on error
- */
 int fp_platform_ranging_start_cb(rt_id_t tech_id)
 {
 	LOG_INF("Platform: Start ranging request for technology ID 0x%02x", tech_id);
@@ -189,11 +166,6 @@ int fp_platform_ranging_start_cb(rt_id_t tech_id)
 	}
 }
 
-/**
- * @brief Handle ranging stop requests
- * @param tech_id Technology ID to stop
- * @return 0 on success, negative on error
- */
 int fp_platform_ranging_stop_cb(rt_id_t tech_id)
 {
 	LOG_INF("Platform: Stop ranging request for technology ID 0x%02x", tech_id);

@@ -5,9 +5,9 @@
  *
  * @brief Atmosic ATM33 image partition definitions for use with mcuboot
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -17,6 +17,12 @@
 
 // include the base definitions
 #include <arm/atmosic/ATM33xx_partition_defs.h>
+
+// Enable swap-with-offset by default (Zephyr 4.3+ feature)
+// This can be overridden by defining ATM_MCUBOOT_SWAP_WITH_OFFSET=0
+#ifndef ATM_MCUBOOT_SWAP_WITH_OFFSET
+#define ATM_MCUBOOT_SWAP_WITH_OFFSET 1
+#endif
 
 // override the base definitions
 #undef ATM_SPE_OFFSET
@@ -33,20 +39,20 @@
 // MCUBOOT starts at the beginning of RRAM
 #define ATM_MCUBOOT_OFFSET 0x0
 #ifndef ATM_MCUBOOT_SIZE
-#ifdef USE_ATM_SECURE_DEBUG
 #define ATM_MCUBOOT_SIZE 0xC000
-#else
-#define ATM_MCUBOOT_SIZE 0x8000
-#endif
 #endif // ATM_MCUBOOT_SIZE
 #if ((ATM_MCUBOOT_SIZE % ATM_RRAM_BLOCK_SIZE) != 0)
 #error "MCUBOOT size must be aligned"
 #endif
 
+#if ATM_MCUBOOT_SWAP_WITH_OFFSET
+#define ATM_MCUBOOT_SCRATCH_SIZE 0
+#else
 #ifndef ATM_MCUBOOT_SCRATCH_SIZE
 // larger scratch area for external flash
 #define ATM_MCUBOOT_SCRATCH_SIZE 0x4000
 #endif // ATM_MCUBOOT_SCRATCH_SIZE
+#endif // ATM_MCUBOOT_SWAP_WITH_OFFSET
 
 #if ((ATM_MCUBOOT_SCRATCH_SIZE % ATM_RRAM_BLOCK_SIZE) != 0)
 #error "MCUBOOT scratch size must be aligned"
@@ -96,8 +102,16 @@
 #error "SLOT0 size must be aligned to flash"
 #endif // ATM_SLOT0_SIZE
 
-// MCUBOOT slots must be of equal size
+// MCUBOOT slot sizes depend on swap mechanism
+#if ATM_MCUBOOT_SWAP_WITH_OFFSET
+// For swap-with-offset: secondary slot = primary slot + 1 sector (4K)
+// This allows the swap algorithm to work without a scratch partition
+#define ATM_SLOT1_SIZE (ATM_SLOT0_SIZE + ATM_FLASH_BLOCK_SIZE)
+#else
+// Legacy mode: slots must be of equal size (for swap-with-scratch)
 #define ATM_SLOT1_SIZE ATM_SLOT0_SIZE
+#endif
+
 #if (ATM_SPE_SIZE)
 #define ATM_SPE_OFFSET ATM_SLOT0_OFFSET
 #define ATM_NSPE_OFFSET (ATM_SPE_OFFSET + ATM_SPE_SIZE)

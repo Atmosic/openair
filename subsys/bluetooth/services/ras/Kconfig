@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,6 +8,13 @@ config BT_RAS
 	select APP_WORK_Q
 
 if BT_RAS
+
+config HEAP_MEM_POOL_ADD_SIZE_ATM_RAS
+	int "Heap memory pool size for RAS service"
+	default 256
+	help
+	  Additional heap memory pool size required by Ranging Service.
+	  This includes work items for status and control point responses.
 
 config RAS_MAX_ANTENNA_PATH_NUM
 	int "Maximum Antenna Path Number"

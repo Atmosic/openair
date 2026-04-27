@@ -23,7 +23,7 @@
 #include "pal_radio_rf.h"
 
 #define RF_INTERNAL_GUARD
-#include "rf_internal.h"
+#include "rf.ih"
 
 #ifndef CFG_CONN_TX_PWR
 #define CFG_CONN_TX_PWR 0

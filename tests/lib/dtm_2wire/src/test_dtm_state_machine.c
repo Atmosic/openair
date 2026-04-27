@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -511,6 +511,57 @@ ZTEST(dtm_state_machine, test_control_commands)
 }
 
 /**
+ * @brief Test TX power level setting
+ */
+ZTEST(dtm_state_machine, test_tx_power_level)
+{
+	reset_state_test();
+
+	/* Initialize DTM manager */
+	int ret = dtm_mgr_init();
+	zassert_equal(ret, 0, "DTM manager init should succeed");
+
+	/* Test setting TX power to specific dBm values */
+	const int8_t test_powers[] = {
+		-20,                    /* Low power */
+		0,                      /* Mid power */
+		10,                     /* High power */
+		DTM_TX_PWR_LVL_MIN_SET, /* Minimum supported */
+		DTM_TX_PWR_LVL_MAX_SET  /* Maximum supported */
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(test_powers); i++) {
+		int8_t tx_pwr = test_powers[i];
+
+		/* Set TX power level */
+		uint16_t set_pwr_msg = (DTM_CMD_TEST_SETUP << DTM_CMD_SHIFT) |
+				       (DTM_CTRL_SET_TX_PWR_LVL << DTM_CTRL_SHIFT) |
+				       ((uint8_t)tx_pwr << DTM_PARAM_SHIFT);
+
+		TC_PRINT("Setting TX power to %d dBm (msg: 0x%04x)\n", tx_pwr, set_pwr_msg);
+		dtm_process_message(set_pwr_msg);
+		k_msleep(50);
+
+		/* Start TX test to verify power is applied */
+		uint16_t tx_msg = (DTM_CMD_TX_TEST << DTM_CMD_SHIFT) |
+				  (19 << DTM_CTRL_SHIFT) | /* Channel 19 */
+				  ((37 << DTM_TXRX_TEST_LEN_SHIFT) |
+				   (DTM_PKT_TYPE_PRBS9 << DTM_TXRX_TEST_PKT_SHIFT));
+
+		TC_PRINT("Starting TX test with power %d dBm\n", tx_pwr);
+		dtm_process_message(tx_msg);
+		k_msleep(100);
+
+		/* End test */
+		uint16_t end_msg = (DTM_CMD_TEST_END << DTM_CMD_SHIFT);
+		dtm_process_message(end_msg);
+		k_msleep(50);
+	}
+
+	TC_PRINT("TX power level tests completed\n");
+}
+
+/**
  * @brief Test error handling with invalid DTM parameters
  */
 ZTEST(dtm_state_machine, test_error_handling_invalid_params)
@@ -564,6 +615,15 @@ ZTEST(dtm_state_machine, test_error_handling_invalid_params)
 
 	TC_PRINT("Testing maximum length: 0x%04x\n", invalid_len_msg);
 	dtm_process_message(invalid_len_msg);
+
+	/* Test invalid TX power (out of range) */
+	int8_t invalid_tx_pwr = 50; /* Exceeds DTM_TX_PWR_LVL_MAX (20 dBm) */
+	uint16_t invalid_pwr_msg = (DTM_CMD_TEST_SETUP << DTM_CMD_SHIFT) |
+				   (DTM_CTRL_SET_TX_PWR_LVL << DTM_CTRL_SHIFT) |
+				   ((uint8_t)invalid_tx_pwr << DTM_PARAM_SHIFT);
+
+	TC_PRINT("Testing invalid TX power: %d dBm (0x%04x)\n", invalid_tx_pwr, invalid_pwr_msg);
+	dtm_process_message(invalid_pwr_msg);
 
 	TC_PRINT("Error handling tests completed\n");
 }

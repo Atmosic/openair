@@ -5,11 +5,19 @@
  *
  * @brief Secure UART debug authentication interface driver
  *
- * Copyright (C) Atmosic 2024
+ * Copyright (C) Atmosic 2024-2025
  *
  *******************************************************************************
  */
+
+#pragma once
+
+#include <stdint.h>
 #include "compiler.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @brief Uart interface for debug authentication
@@ -56,3 +64,7 @@ struct uart_debug_auth_intf {
  */
 __NONNULL_ALL
 void uart_debug_auth(const struct uart_debug_auth_intf *uart_interface);
+
+#ifdef __cplusplus
+}
+#endif

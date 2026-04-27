@@ -33,4 +33,4 @@ Flash command:
 
 .. code-block:: bash
 
-    west flash --skip-rebuild --device <DEVICE_ID> --jlink [--fast_load]
+    west flash --no-rebuild --device <DEVICE_ID> --jlink [--fast_load]

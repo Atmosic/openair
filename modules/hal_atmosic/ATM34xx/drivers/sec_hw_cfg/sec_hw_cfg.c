@@ -5,7 +5,7 @@
  *
  * @brief Early and secure hardware configuration
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  *******************************************************************************
  */
@@ -27,7 +27,7 @@
 #include "sec_hw_cfg.h"
 
 #define SEC_HW_CFG_INTERNAL_GUARD
-#include "sec_hw_cfg_internal.h"
+#include "sec_hw_cfg.ih"
 #ifdef SECURE_PROC_ENV
 #include "sec_service.h"
 #endif
@@ -37,6 +37,20 @@
 #define INIT_BP_FREQ DT_PROP(DT_NODELABEL(sysclk), clock_frequency)
 #endif
 #endif // CONFIG_SOC_FAMILY_ATM
+
+#ifdef CONFIG_ATM_VOLT_CHECK_THR
+#define VOLT_CHECK_THR CONFIG_ATM_VOLT_CHECK_THR
+#endif
+
+#ifndef VOLT_CHECK_THR
+#define VOLT_CHECK_THR 20
+#endif
+
+#ifdef IS_FOR_SIM
+#define SKIP_VOLT_CHECK true
+#else
+#define SKIP_VOLT_CHECK false
+#endif
 
 #ifndef INIT_BP_FREQ
 #ifdef IS_FOR_SIM
@@ -95,6 +109,7 @@ __CONSTRUCTOR_PRIO(CONSTRUCTOR_WATCHDOG)
 // NOTE: constructor function must be static for priority to be applied
 static void sec_hw_cfg_construct(void)
 {
+    sec_hw_cfg_core_volt_check(VOLT_CHECK_THR, SKIP_VOLT_CHECK);
 #ifndef ENABLE_FL_RAM
     read_rom_version();
 #endif
@@ -117,6 +132,7 @@ void sec_hw_cfg_init(void)
 #ifdef CONFIG_SOC_FAMILY_ATM
 static int sec_hw_cfg_sys_init(void)
 {
+    sec_hw_cfg_core_volt_check(VOLT_CHECK_THR, SKIP_VOLT_CHECK);
 #ifndef ENABLE_FL_RAM
     read_rom_version();
 #endif

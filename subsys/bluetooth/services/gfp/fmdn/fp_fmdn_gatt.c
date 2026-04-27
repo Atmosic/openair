@@ -6,7 +6,7 @@
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN) extention
  * Gatt Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -24,11 +24,15 @@
 #include "fp_fmdn_gatt.h"
 #include "fp_fmdn_internal.h"
 #include "fp_fmdn_key.h"
+#include "fp_fmdn_persistent_conn.h"
 #include "fp_mode.h"
 #include "fp_storage.h"
 #include "gfp_crypto.h"
 #ifdef CONFIG_FMDN_PRECISION_FINDING
 #include "fp_fhpf_gatt.h"
+#endif
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+#include "fp_fmdn_reverse_ringing.h"
 #endif
 
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
@@ -37,6 +41,12 @@ LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 #define FMDN_CONN_INTERVAL_MAX 800
 #define FMDN_CONN_LATENCY      0
 #define FMDN_CONN_TIMEOUT      800
+
+/// Calibrated RSSI at 0m when CONFIG_MAX_TX_PWR = 0 dBm
+#define FP_CALIBRATED_TX_PWR_0M ((int8_t)CONFIG_FAST_PAIR_TX_PWR_CALIBRATION_0M)
+
+/// FMDN Read Beacon Parameters TX Power (RSSI@0m adjusted for CONFIG_MAX_TX_PWR)
+#define FP_APP_TX_PWR_0M ((uint8_t)(int8_t)(FP_CALIBRATED_TX_PWR_0M + (int8_t)CONFIG_MAX_TX_PWR))
 
 static struct bt_le_conn_param const fmdn_conn_params = BT_LE_CONN_PARAM_INIT(
 	FMDN_CONN_INTERVAL_MIN, FMDN_CONN_INTERVAL_MAX, FMDN_CONN_LATENCY, FMDN_CONN_TIMEOUT);
@@ -53,6 +63,11 @@ static void fp_fmdn_provision_cleanup(void);
 static bool delay_provision_cleanup;
 
 static struct bt_gatt_attr *fmdn_attr;
+
+// Work item for deferred FMDN crypto operations (EID/DULT generation)
+typedef struct {
+	struct k_work work;
+} fp_fmdn_provision_work_item_t;
 
 static int fp_fmdn_bcna_resp_send(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 				  const uint8_t *rsp, uint16_t rsp_len)
@@ -196,6 +211,22 @@ static uint16_t bcna_auth_validate(bcna_conn_ctx_t *conn_context, bcna_write_dat
 		}
 		return bcna_auth_seg_gen_validate(conn_context, req);
 	}
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	/* Per Google FMDN spec: Skip authentication for Precision Finding in UTP mode
+	 * https://developers.google.com/nearby/fast-pair/specifications/extensions/fmdn
+	 * #unwanted_tracking_protection_with_precision_finding
+	 */
+	if (((req->header.data_id == BCNA_OP_RANGING_CAPABILITY) ||
+	     (req->header.data_id == BCNA_OP_RANGING_CAPABILITY_CONFIG) ||
+	     (req->header.data_id == BCNA_OP_RANGING_CAPABILITY_START) ||
+	     (req->header.data_id == BCNA_OP_RANGING_CAPABILITY_STOP)) &&
+	    (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) &&
+	    fp_storage_utp_ignore_ring_auth_get()) {
+		LOG_INF("BCNA UTP ignore Precision Finding auth");
+		return 0;
+	}
+#endif
 	// check with all accout keys
 	conn_context->secret_key_len = FP_ACCOUNT_KEY_LEN;
 	uint8_t account_key_list[FP_ACCOUNT_KEY_CNT * FP_ACCOUNT_KEY_LEN];
@@ -212,11 +243,16 @@ static uint16_t bcna_auth_validate(bcna_conn_ctx_t *conn_context, bcna_write_dat
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 static uint8_t fmdn_dult_id[FP_FMDN_DULT_ID_LEN];
 #endif
-static void fp_fmdn_provision_done(uint8_t const *eidk)
+
+// Deferred FMDN crypto operations (EID/DULT generation)
+/* Apply provisioned state: generate EID/DULT IDs from stored key and start
+ * the periodic clock save. Called both at boot (when already provisioned) and
+ * after runtime provisioning completes.
+ */
+static void fp_fmdn_apply_provisioned_state(void)
 {
-	uint8_t account_key[FP_ACCOUNT_KEY_LEN];
-	fp_storage_cur_account_key_get(account_key);
-	fp_storage_eid_key_save(eidk);
+	uint8_t eidk[FP_FMDN_EID_KEY_LEN];
+	fp_storage_eid_key_get(eidk);
 	fp_fmdn_key_gen_eid(eidk, true);
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	fp_fmdn_key_gen_dult_id(eidk, fmdn_dult_id);
@@ -224,16 +260,65 @@ static void fp_fmdn_provision_done(uint8_t const *eidk)
 		update_id_cb(fmdn_dult_id, FP_FMDN_DULT_ID_LEN);
 	}
 #endif
+	fp_fmdn_key_clock_periodic_save_start();
+}
+
+static void fp_fmdn_provision_work_handler(struct k_work *work)
+{
+	/* Save clock immediately on first provisioning so a power loss before
+	 * the first periodic fire does not lose the clock value.
+	 */
+	fp_fmdn_key_clock_save();
+
+	fp_fmdn_apply_provisioned_state();
+
+	// Finalize provisioning
 	fp_mode_update(FP_MODE_PROVISIONED);
 	LOG_INF("FMDN provisioned");
+
+	fp_fmdn_provision_work_item_t *item =
+		CONTAINER_OF(work, fp_fmdn_provision_work_item_t, work);
+	k_free(item);
+}
+
+static void fp_fmdn_provision_done(uint8_t const *eidk)
+{
+	// Save EID key to storage (fast, non-blocking operation)
+	fp_storage_eid_key_save(eidk);
+
+	// Allocate and schedule deferred crypto work
+	fp_fmdn_provision_work_item_t *work_item = k_malloc(sizeof(*work_item));
+	if (!work_item) {
+		LOG_ERR("FMDN: Failed to allocate work item");
+		return;
+	}
+
+	work_item->work = (struct k_work)Z_WORK_INITIALIZER(fp_fmdn_provision_work_handler);
+	int err = atm_work_submit_to_app_work_q(&work_item->work);
+	if (err < 0) {
+		LOG_ERR("FMDN: Failed to submit work: err=%d", err);
+		k_free(work_item);
+		return;
+	}
 }
 
 static void fp_fmdn_provision_cleanup(void)
 {
 	LOG_INF("FMDN provision cleanup");
 	if (fp_mode_is_provisioned()) {
+		/* Stop the periodic clock save — no longer needed once unprovisioned */
+		fp_fmdn_key_clock_periodic_save_stop();
 		fp_fmdn_adv_recreate(true, true);
 		fp_storage_eid_reset();
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+		/* Delete Client ID from NVS and reset runtime state */
+		fp_storage_pc_client_id_delete();
+		fp_fmdn_persistent_conn_deinit();
+#endif
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+		/* Reset reverse ringing runtime state */
+		fp_fmdn_reverse_ringing_deinit();
+#endif
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 		memset(fmdn_dult_id, 0, FP_FMDN_DULT_ID_LEN);
 		if (update_id_cb) {
@@ -280,23 +365,38 @@ static size_t fp_fmdn_bcna_parameter_read_handle(bcna_conn_ctx_t const *conn_con
 	uint8_t addition_data[BCNA_READ_PARAM_LEN];
 	uint8_t *dst_ptr = addition_data;
 	size_t offset = 0;
-	uint8_t power = FP_APP_TX_PWR;
+	uint8_t power = FP_APP_TX_PWR_0M;
 	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &power, sizeof(power), offset);
 
-	// The current clock value in seconds (big endian).
+	/* The current clock value in seconds (big endian).
+	 * This provides clock synchronization as recommended by FMDN spec.
+	 * The Seeker can use this to synchronize its clock with the Provider.
+	 */
 	uint32_t clock = fp_fmdn_key_clock_read();
-	atm_set_be32(dst_ptr + offset, fp_fmdn_key_clock_read());
+	atm_set_be32(dst_ptr + offset, clock);
 	offset += sizeof(clock);
 	// The elliptic curve being used for encryption
 	uint8_t curve_sel = FP_FMDN_CURVE_SEL;
 	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &curve_sel, sizeof(curve_sel), offset);
-
 	uint8_t components = BCNA_RING_COMPONENTS_ALL;
 	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &components, sizeof(components), offset);
 	uint8_t ring_cap = BCNA_RING_SEL_AVAILABLE;
 	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &ring_cap, sizeof(ring_cap), offset);
-	// Zero padding for AES encryption
-	uint8_t pad[8];
+
+	/* FHN v2: Capabilities bitmap (octet 8)
+	 * Dynamically calculated based on enabled features using FP_FMDN_V2_CAPABILITIES_BITMAP
+	 * Bit 0: Persistent Connection support
+	 * Bit 1: Reverse Ringing support
+	 * Bits 2-7: Reserved (must be zero)
+	 *
+	 * NOTE: Only send capabilities bitmap when protocol version is 0x02
+	 * For v1 compatibility (protocol version 0x01), send 0x00 (padding)
+	 */
+	uint8_t capabilities = (BCNA_MJR_VER == 0x02) ? FP_FMDN_V2_CAPABILITIES_BITMAP : 0x00;
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &capabilities, sizeof(capabilities), offset);
+
+	// Zero padding for AES encryption (octets 9-15)
+	uint8_t pad[7];
 	memset(pad, 0, sizeof(pad));
 	FP_UTIL_MEMCPY_SHIFT(dst_ptr, pad, sizeof(pad), offset);
 	if (BCNA_READ_PARAM_LEN != offset) {
@@ -739,6 +839,11 @@ ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr
 	uint16_t resp_len = 0;
 	switch (bcna_w_req.header.data_id) {
 	case BCNA_OP_READ_PARAMMETERS:
+		if (fp_mode_is_provisioned()) {
+			LOG_INF("BCNA: read params, stop PLR");
+			fp_mode_power_loss_recovery_stop();
+			fp_fmdn_key_clock_save_immediate();
+		}
 		err = fp_fmdn_bcna_parameter_read_handle(conn_context, &bcna_w_req, &resp_len);
 		break;
 	case BCNA_OP_READ_PROVISION_STATE:
@@ -812,9 +917,14 @@ void fp_fmdn_bcna_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t valu
 
 static void fp_fmdn_gatt_conn_invoke_action(struct k_work *work)
 {
-	if (fp_mode_is_provisioned()) {
-		fp_fmdn_adv_recreate(false, false);
-	}
+	ARG_UNUSED(work);
+	/* Do not restart advertising on connect.
+	 *
+	 * In merged mode, starting advertising again while a connection is being
+	 * established can leave the advertising state unstable on some controllers.
+	 * If multiple connections are desired, fp_fmdn_adv.c handles the "restart to
+	 * accept more" policy from the advertising set callback.
+	 */
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	if (utp_owner_conn_cb) {
 		utp_owner_conn_cb(true);
@@ -825,12 +935,24 @@ K_WORK_DEFINE(fp_fmdn_gatt_conn_action, fp_fmdn_gatt_conn_invoke_action);
 
 static void fp_fmdn_gatt_disconn_invoke_action(struct k_work *work)
 {
+	ARG_UNUSED(work);
 	if (delay_provision_cleanup) {
 		delay_provision_cleanup = false;
 		fp_storge_account_key_reset();
 		fp_mode_update(FP_MODE_NONE);
 	} else {
-		fp_fmdn_adv_recreate(false, false);
+		/* BT_LE_ADV_OPT_EXT_ADV is used by merged adv and non-merged adv
+		 * with CONFIG_FMDN_ECC_SECP256R1.  When a connectable extended adv
+		 * set establishes a connection the controller stops it automatically,
+		 * and on disconnect has no way to know the set should resume —
+		 * bt_le_ext_adv_start() on the same handle is unreliable on some
+		 * controllers and the adv becomes invisible.  Delete and recreate
+		 * the set to recover cleanly.  Legacy (non-extended) advertising
+		 * does not have this problem and can simply resume.
+		 */
+		bool use_ext_adv = IS_ENABLED(CONFIG_FAST_PAIR_FMDN_MERGED_ADV) ||
+				   IS_ENABLED(CONFIG_FMDN_ECC_SECP256R1);
+		fp_fmdn_adv_recreate(use_ext_adv, false);
 	}
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	if (utp_owner_conn_cb) {
@@ -875,6 +997,16 @@ static void fp_fmdn_gatt_disconnected(struct bt_conn *conn, uint8_t reason)
 	fp_fhpf_gatt_conn_event(conn, false);
 #endif
 
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+	// Handle persistent connection disconnection
+	fp_fmdn_persistent_conn_disconnected(conn);
+#endif
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+	// Handle reverse ringing disconnection
+	fp_fmdn_reverse_ringing_disconnected(conn);
+#endif
+
 	atm_work_submit_to_app_work_q(&fp_fmdn_gatt_disconn_action);
 }
 
@@ -908,6 +1040,11 @@ static void fp_fmdn_security_changed(struct bt_conn *conn, bt_security_t level,
 		if (fp_mode_is_provisioned()) {
 			bt_conn_le_param_update(conn, &fmdn_conn_params);
 		}
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+		// Handle reverse ringing encryption enabled
+		fp_fmdn_reverse_ringing_encryption_enabled(conn);
+#endif
 	}
 }
 
@@ -954,16 +1091,12 @@ void fp_fmdn_gatt_utp_owner_conn_reg(fp_fmdn_utp_owner_conn_cb const hdlr)
 void fp_fmdn_gatt_init(struct bt_gatt_attr *attr)
 {
 	fmdn_attr = attr;
+
+	/* Initialize FMDN clock from NVM for power-loss recovery */
+	fp_fmdn_key_clock_init();
+
 	if (fp_storage_eid_key_valid()) {
-		uint8_t eidk[FP_FMDN_EID_KEY_LEN];
-		fp_storage_eid_key_get(eidk);
-		fp_fmdn_key_gen_eid(eidk, true);
-#ifdef CONFIG_FAST_PAIR_FMDN_DULT
-		fp_fmdn_key_gen_dult_id(eidk, fmdn_dult_id);
-		if (update_id_cb) {
-			update_id_cb(fmdn_dult_id, FP_FMDN_DULT_ID_LEN);
-		}
-#endif
+		fp_fmdn_apply_provisioned_state();
 	}
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	if (utp_mode_cb) {
@@ -974,6 +1107,9 @@ void fp_fmdn_gatt_init(struct bt_gatt_attr *attr)
 
 void fp_fmdn_gatt_deinit(void)
 {
+	/* Stop periodic clock saving */
+	fp_fmdn_key_clock_periodic_save_stop();
+
 	fp_fmdn_key_clear_eid();
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	memset(fmdn_dult_id, 0, FP_FMDN_DULT_ID_LEN);

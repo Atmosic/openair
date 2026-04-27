@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 common:
   tags:
     - crypto
@@ -6,5 +10,3 @@ common:
 tests:
   tests.subsys.random.rng.atm:
     sysbuild: true
-    tags:
-      - no_mcuboot

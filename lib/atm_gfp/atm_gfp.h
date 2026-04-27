@@ -5,22 +5,12 @@
  *
  * @brief Library For Google Fast Pair
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
 
 #pragma once
-
-#include "compiler.h" // __NONNULL_ALL inline functions
-#include "fp_mode.h"
-#ifdef CONFIG_RANGING_OOB_DE
-#include "ranging_oob_de.h"
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * @defgroup ATM_GFP_API Google Fast Pair API
@@ -42,24 +32,42 @@ extern "C" {
  * @{
  */
 
+#include <stdint.h>
+#include <stdbool.h>
+#include "compiler.h" // __NONNULL_ALL inline functions
+#ifdef CONFIG_ATM_GFPS
+#include "fp_mode.h"
+#endif
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+#ifndef CONFIG_RANGING_OOB_DE
+#error "RANGING_OOB_DE must be enabled for FMDN_PRECISION_FINDING"
+#endif
+#include "ranging_oob_de.h"
+#endif // CONFIG_FMDN_PRECISION_FINDING
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef CONFIG_FMDN_PRECISION_FINDING
 
 /**
  * @brief Callback for ranging capability requests
  * @param tech_id Technology ID (rt_id_t)
- * @param capability Capability structure to populate
+ * @param capability Discriminated union containing capability structure
  * @return 0 on success, negative on error
  */
-typedef int (*atm_gfp_ranging_capability_cb_t)(rt_id_t tech_id, void *capability);
+typedef int (*atm_gfp_ranging_capability_cb_t)(rt_id_t tech_id, ranging_capability_t *capability);
 
 /**
  * @brief Callback for ranging configuration requests
  * @param tech_id Technology ID (rt_id_t)
- * @param config Configuration data
+ * @param config Discriminated union containing configuration data
  * @param start_immediately Whether to start immediately
  * @return 0 on success, negative on error
  */
-typedef int (*atm_gfp_ranging_config_cb_t)(rt_id_t tech_id, void *config, bool start_immediately);
+typedef int (*atm_gfp_ranging_config_cb_t)(rt_id_t tech_id, ranging_config_t *config,
+					   bool start_immediately);
 
 /**
  * @brief Callback for ranging start requests
@@ -88,6 +96,34 @@ typedef struct {
 
 #endif // CONFIG_FMDN_PRECISION_FINDING
 
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+/**
+ * @brief Reverse ringing event types
+ *
+ * Events for reverse ringing (Find My Phone feature) user feedback.
+ * Per FHN v2 spec line 263: "The tag may use indication confirmation to provide
+ * feedback to the user (a specific LED pattern or beep) on successful operation"
+ */
+typedef enum {
+	/**
+	 * @brief Request successfully sent to phone
+	 *
+	 * GATT indication was confirmed (ACKed). Application should show
+	 * feedback to user (LED pattern or beep) that the request was sent.
+	 * Per spec line 263: feedback on "successful operation"
+	 */
+	ATM_GFP_RR_EVENT_STARTED = 0,
+
+	/**
+	 * @brief Reverse ringing stopped
+	 *
+	 * Ringing has stopped for any reason (timeout, user dismissed, etc.).
+	 * Application should turn off any active feedback (LED/beep).
+	 */
+	ATM_GFP_RR_EVENT_STOPPED,
+} atm_gfp_reverse_ringing_event_t;
+#endif
+
 /**
  * @brief Ring operation type
  */
@@ -108,11 +144,28 @@ typedef enum {
 	ATM_GFP_RING_VOL_HIGH = 0x03,
 } atm_gfp_ring_vol_t;
 
+#ifdef CONFIG_ATM_GFPS
+/**
+ * @brief Firmware version callback function
+ *
+ * Called to retrieve the firmware version string to be advertised in the
+ * Device Information Service (DIS). This allows the application to provide
+ * the version string dynamically.
+ *
+ * @return Pointer to firmware version string (must be null-terminated)
+ *         If NULL is returned, uses CONFIG_GFP_DIS_FIRMWARE_VERSION_* values
+ *         Maximum length is determined by CONFIG_GFP_DIS_FW_VERSION_STR_MAX
+ *
+ * @note The returned string must remain valid for the lifetime of the application
+ */
+typedef const char *(*atm_gfp_fw_version_cb_t)(void);
+#endif
+
 /**
  * @brief Google Fast Pair event handlers structure
  *
- * This structure contains callback functions that the application must provide
- * to handle various Fast Pair events and requests from connected devices.
+ * This structure contains callback functions and configuration that the application
+ * must provide to handle various Fast Pair events and requests from connected devices.
  */
 typedef struct atm_gfp_hdlrs_s {
 	/**
@@ -138,6 +191,7 @@ typedef struct atm_gfp_hdlrs_s {
 	void (*sound_action_cb)(bool action, atm_gfp_ring_op_t ring_op,
 				atm_gfp_ring_vol_t ring_vol);
 
+#ifdef CONFIG_ATM_GFPS
 	/**
 	 * @brief Mode state change callback function
 	 *
@@ -148,9 +202,40 @@ typedef struct atm_gfp_hdlrs_s {
 	 */
 	void (*mode_state_cb)(fp_mode_t mode);
 
+	/**
+	 * @brief Firmware version callback function
+	 *
+	 * Retrieves the firmware version string for the Device Information Service (DIS).
+	 * Maximum length is determined by CONFIG_GFP_DIS_FW_VERSION_STR_MAX.
+	 *
+	 * @return Non-NULL pointer to null-terminated firmware version string
+	 *
+	 * @note String must remain valid for the lifetime of the application
+	 */
+	atm_gfp_fw_version_cb_t fw_version_cb;
+#endif
+
 #ifdef CONFIG_FMDN_PRECISION_FINDING
 	/// FMDN ranging handlers for precision finding (optional)
 	atm_gfp_ranging_handler_t const *ranging_handlers;
+#endif
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+	/**
+	 * @brief Reverse ringing event callback function
+	 *
+	 * Called when reverse ringing events occur (e.g., phone started/stopped ringing,
+	 * timeout, etc.). This is for "Find My Phone" functionality where the tag
+	 * triggers the phone to ring.
+	 *
+	 * The application should show appropriate feedback (LED patterns, beeps) based
+	 * on the event. The tag does NOT ring itself during reverse ringing.
+	 *
+	 * @param event Reverse ringing event type
+	 *
+	 * @note This is different from normal ringing where the tag rings
+	 */
+	void (*reverse_ringing_event_cb)(atm_gfp_reverse_ringing_event_t event);
 #endif
 } atm_gfp_hdlrs_t;
 
@@ -162,13 +247,20 @@ typedef struct atm_gfp_hdlrs_s {
  * The handlers structure provides callbacks for battery status, sound
  * actions, and mode state changes.
  *
+ * If CONFIG_FMDN_PRECISION_FINDING is enabled and ranging_handlers are
+ * provided in the handlers structure, they will be automatically registered
+ * with the FMDN layer during initialization.
+ *
  * @param[in] hdlrs Pointer to handlers structure containing callback functions
  *
  * @note This function must be called after Bluetooth initialization
  * @note The handlers structure must remain valid for the lifetime of the
  *       application
+ * @note Ranging handlers (if provided) are automatically registered and must
+ *       remain valid for the application lifetime
  *
  * @see atm_gfp_reset() to deinitialize Fast Pair
+ * @see atm_gfp_ranging_handler_register() for manual registration after init
  */
 __NONNULL_ALL
 void atm_gfp_init(atm_gfp_hdlrs_t const *hdlrs);
@@ -206,6 +298,24 @@ void atm_gfp_reset(void);
  * @note The actual behavior is determined by the Fast Pair state machine
  */
 void atm_gfp_button_notify(void);
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+/**
+ * @brief Trigger Fast Pair button double notification
+ *
+ * Simulates a button double press event for Fast Pair functionality. This is
+ * typically used to trigger reverse ringing or other button-activated Fast
+ * Pair features.
+ *
+ * The exact behavior depends on the current Fast Pair state:
+ * - If not paired: Starts discoverable advertising
+ * - If paired: May trigger sound action or other notifications
+ *
+ * @note This function can be called from button interrupt handlers
+ * @note The actual behavior is determined by the Fast Pair state machine
+ */
+void atm_gfp_button_double_notify(void);
+#endif
 
 /**
  * @brief Stop Fast Pair operations
@@ -273,6 +383,7 @@ bool atm_gfp_is_provisioned(void);
 __NONNULL_ALL
 uint8_t atm_gfp_bt_id_list_get(uint8_t *id_list);
 
+#ifdef CONFIG_ATM_GFPS
 /**
  * @brief Get current Fast Pair mode
  *
@@ -286,12 +397,26 @@ uint8_t atm_gfp_bt_id_list_get(uint8_t *id_list);
  * @note Mode changes are reported via the mode_state_cb callback if configured
  */
 fp_mode_t atm_gfp_fp_mode_get(void);
+#endif
 
 #ifdef CONFIG_FMDN_PRECISION_FINDING
 /**
  * @brief Register FMDN ranging callbacks
- * @param handler Ranging handler structure or NULL to unregister
- * @note Handler must remain valid for application lifetime
+ *
+ * Registers ranging handler callbacks with the FMDN layer. This function is
+ * called automatically by atm_gfp_init() if ranging_handlers are provided in
+ * the handlers structure.
+ *
+ * This function can also be used for manual registration after initialization,
+ * or to replace previously registered handlers.
+ *
+ * @param handler Ranging handler structure containing callback functions
+ *
+ * @note Handler must remain valid for the application lifetime
+ * @note Typically called automatically by atm_gfp_init(); manual calls are
+ *       only needed for dynamic handler replacement after initialization
+ *
+ * @see atm_gfp_init() for automatic registration during initialization
  */
 __NONNULL_ALL
 void atm_gfp_ranging_handler_register(atm_gfp_ranging_handler_t const *handler);
@@ -313,10 +438,28 @@ const char *atm_gfp_ring_op_to_string(atm_gfp_ring_op_t ring_op);
  */
 const char *atm_gfp_ring_vol_to_string(atm_gfp_ring_vol_t ring_vol);
 
+#ifdef CONFIG_FAST_PAIR_FMDN
 /**
- * @}
+ * @brief Save FMDN clock to NVM
+ *
+ * @return 0 if successful, otherwise a (negative) error code is returned
  */
+int atm_gfp_fmdn_clock_save(void);
+
+/**
+ * @brief Reset FMDN clock to 0
+ *
+ * Resets the FMDN clock value to 0 and deletes it from NVM.
+ * This should be called during factory reset so new provisioning
+ * can start with clock value of 0.
+ */
+void atm_gfp_fmdn_clock_reset(void);
+#endif
 
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * @}
+ */

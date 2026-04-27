@@ -8,6 +8,6 @@ tests:
     harness_config:
       type: one_line
       regex:
-        - "LED 0: Using pulse width \\d+%"
-    tags:
-      - no_mcuboot
+        - "Hello World from minimal!"
+    extra_configs:
+      - CONFIG_SAMPLE_DO_OUTPUT=y

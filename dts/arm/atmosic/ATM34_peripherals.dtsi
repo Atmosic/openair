@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2021-2025 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 timer0: timer@0 {
@@ -26,11 +26,20 @@ wdog0: wdog@81000 {
 	compatible = "arm,cmsdk-watchdog";
 	clocks = <&clk_16M>;
 	reg = <0x00081000 0x1000>;
+#ifdef ATM_NS_APP
+	interrupts = <1 2>;
+#endif
+	status = "disabled";
+};
+
+wdog_unified: watchdog-unified {
+	compatible = "atmosic,unified-watchdog";
+	arm-watchdog = <&wdog0>;
 	status = "disabled";
 };
 
 gpio0: gpio@100000 {
-	compatible = "arm,cmsdk-gpio";
+	compatible = "atmosic,atm-gpio";
 	reg = <0x00100000 0x1000>;
 	interrupts = <93 8>;
 	gpio-controller;
@@ -38,7 +47,7 @@ gpio0: gpio@100000 {
 };
 
 gpio1: gpio@101000 {
-	compatible = "arm,cmsdk-gpio";
+	compatible = "atmosic,atm-gpio";
 	reg = <0x00101000 0x1000>;
 	interrupts = <94 8>;
 	gpio-controller;
@@ -46,7 +55,7 @@ gpio1: gpio@101000 {
 };
 
 gpio2: gpio@102000 {
-	compatible = "arm,cmsdk-gpio";
+	compatible = "atmosic,atm-gpio";
 	reg = <0x00102000 0x1000>;
 	interrupts = <58 8>;
 	gpio-controller;
@@ -54,7 +63,7 @@ gpio2: gpio@102000 {
 };
 
 gpio3: gpio@104000 {
-	compatible = "arm,cmsdk-gpio";
+	compatible = "atmosic,atm-gpio";
 	reg = <0x00104000 0x1000>;
 	interrupts = <59 8>;
 	gpio-controller;
@@ -64,8 +73,36 @@ gpio3: gpio@104000 {
 ble: ble@120000 {
 	compatible = "atmosic,ble";
 	reg = <0x00120000 0x10000>;
-	interrupts = <72 4>, <75 8>, <80 8>, <95 2>;
+	interrupts = <95 2>, <72 4>, <16 8>, <17 12>, <22 12>;
+	interrupt-names = "atlc", "frc", "pal_sch", "give", "give_mac";
 	status = "okay";
+};
+
+atlc_tcm: atlc-tcm@128000 {
+	compatible = "atmosic,atlc-tcm";
+	reg = <0x128000 0x800>;
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	/* TX FIFO Descriptor (TFF0) */
+	tff0: tff0@0 {
+		reg = <0x0 0x200>;
+	};
+
+	/* RX FIFO Buffer (RFF0) */
+	rff0: rff0@200 {
+		reg = <0x200 0x200>;
+	};
+
+	/* TX Data Buffer */
+	tx_buffer: tx_buffer@600 {
+		reg = <0x600 0x100>;
+	};
+
+	/* IEEE 802.15.4 ACK Buffer */
+	ack_154: ack_154@700 {
+		reg = <0x700 0x100>;
+	};
 };
 
 ieee802154: mac_154 {
@@ -279,7 +316,8 @@ mdm: mdm@156000 {
 pmu: spi@157000 {
 	compatible = "atmosic,atmx3-pmu";
 	reg = <0x00157000 0x1000>;
-	interrupts = <49 8>;
+	interrupts = <49 8>, <92 2>;
+	interrupt-names = "spi", "pmu";
 };
 
 pseq: pseq@158000 {
@@ -357,7 +395,6 @@ dma3: dma3@170000 {
 
 brownout: brownout {
 	compatible = "atmosic,brownout";
-	interrupts = <92 2>;
 	status = "okay";
 };
 

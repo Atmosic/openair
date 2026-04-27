@@ -2,21 +2,72 @@ sample:
   description: Atmosic HCI vendor sample
   name: Atmosic HCI vendor sample
 common:
+  tags:
+    - bluetooth
+    - role_all
   harness: console
   harness_config:
     type: one_line
     regex:
       - "atm_hci_init done"
+  sysbuild: true
+  extra_configs:
+    - CONFIG_BT_SETTINGS=y
 tests:
-  sample.bluetooth.hci_vendor:
-    tags:
-      - bluetooth
+  samples.bluetooth.hci_vendor.atm.pd50:
     extra_configs:
       - CONFIG_ATMWSTK_PD50=y
   samples.bluetooth.hci_vendor.atm:
-    sysbuild: true
-    tags:
-      - bluetooth
-      - no_mcuboot
     extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.hci_vendor.atm.mcuboot:
+    tags:
+      - mcuboot
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.hci_vendor.atm.mcuboot.pd50:
+    tags:
+      - mcuboot
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+  samples.bluetooth.hci_vendor.atm.mcuboot.sec_debug:
+    tags:
+      - mcuboot
+      - sec_debug
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS='-DUSE_ATM_SECURE_DEBUG'
+      - mcuboot_CONFIG_ATM_MCUBOOT_SECURE_DEBUG=y
+      - mcuboot_CONFIG_ATM_MCUBOOT_UART_DEBUG_AUTH_TIMEOUT_MS=50000
+  samples.bluetooth.hci_vendor.atm.mcuboot.sec_debug.pd50:
+    tags:
+      - mcuboot
+      - sec_debug
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_CONFIG_ATMWSTK_PD50=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS='-DUSE_ATM_SECURE_DEBUG'
+      - mcuboot_CONFIG_ATM_MCUBOOT_SECURE_DEBUG=y
+      - mcuboot_CONFIG_ATM_MCUBOOT_UART_DEBUG_AUTH_TIMEOUT_MS=50000
+  # Legacy configurations for backward compatibility
+  samples.bluetooth.hci_vendor.atm.mcuboot.legacy_scratch:
+    tags:
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

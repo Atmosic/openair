@@ -6,19 +6,61 @@ config RETAINED_MEM_ATM_HIB
 	default y
 	depends on DT_HAS_ATMOSIC_RETAINED_HIB_ENABLED
 	depends on !ATM_SHUB_ENABLED
+	select RETAINED_MEM_BACKEND_SHUB if SOC_SERIES_ATM33 || SOC_SERIES_ATM34 || SOC_SERIES_ATMX2
+	select RETAINED_MEM_BACKEND_EXPANSION if !SOC_SERIES_ATM33 && !SOC_SERIES_ATM34 && !SOC_SERIES_ATMX2
 	help
 	  Enable driver for Atmosic hibernation retained memory support.
-	  This driver uses SHUB (Sensor Hub) registers and PSEQ (Power Sequencer)
-	  persistent registers to provide retained memory functionality across
-	  hibernation and low power modes.
+	  This driver uses PSEQ (Power Sequencer) persistent registers and
+	  optionally SHUB (Sensor Hub) registers (if available) to provide
+	  retained memory functionality across hibernation and low power modes.
 
-	  The driver automatically determines storage capacity based on SOC variant:
-	  - With PERSISTENT6: 222 bytes
-	  - With PERSISTENT5: 218 bytes
-	  - Base configuration: 198 bytes
+	  The driver automatically determines storage capacity based on SOC variant
+	  and available hardware:
+
+	  ATM33/ATM34 platforms (with SHUB hardware):
+	  - With PERSISTENT6: 222 bytes (~178 SHUB + 24 PSEQ)
+	  - With PERSISTENT5: 218 bytes (~178 SHUB + 20 PSEQ)
+	  - Base configuration: 198 bytes (~178 SHUB + 20 PSEQ)
+
+	  ATM33/ATM34 platforms (without SHUB hardware):
+	  - With PERSISTENT6: 24 bytes (6 registers * 4 bytes)
+	  - With PERSISTENT5: 20 bytes (5 registers * 4 bytes)
+
+	  Platforms with persistent expansion (no SHUB):
+	  - Uses persistent expansion mechanism: 64 - 256 bytes
+	  - Different architecture with byte-addressable storage
 
 	  Note: This driver cannot be used when SHUB is enabled for sensor
 	  functionality as it conflicts with the register usage.
+
+if RETAINED_MEM_ATM_HIB
+
+config RETAINED_MEM_ATM_FIXED_OFFSET_0
+	bool "Fix the offset used for save/restore"
+	help
+	  Enable this option for an optimized save and restore operation with the
+	  starting offset assumed to be fixed to 0.  Enable this only if the
+	  application manages all retained operations and does not coordinate use
+	  with other software.  The application must only save and restore starting
+	  at offset 0 up to the maximum capacity of the storage backend. This feature
+	  is EXPERIMENTAL.
+
+config RETAINED_MEM_BACKEND_SHUB
+	bool
+	help
+	  Internal option to select SHUB-based retained memory backend.
+	  This backend uses SHUB hardware combined with PSEQ PERSISTENT
+	  registers for storage. Used on ATM33/ATM34 platforms.
+
+config RETAINED_MEM_BACKEND_EXPANSION
+	bool
+	help
+	  Internal option to select persistent expansion-based retained
+	  memory backend. This backend uses the PSEQ persistent expansion
+	  mechanism for byte-addressable storage. Used on platforms without
+	  SHUB hardware.
+
+endif
 
 config ATM_SHUB_ENABLED
 	bool "Atmosic Sensor Hub (SHUB) functionality enabled"

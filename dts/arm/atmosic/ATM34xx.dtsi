@@ -1,10 +1,11 @@
 /*
- * Copyright (c) 2021-2025 Atmosic
+ * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <arm/atmosic/ATM34.dtsi>
+#include <arm/atmosic/ATM34xx_defs.h>
 #include <zephyr/dt-bindings/memory-attr/memory-attr.h>
 #include <zephyr/dt-bindings/memory-attr/memory-attr-arm.h>
 
@@ -22,7 +23,7 @@
 #define SRAM_SIZE 0x40000
 #endif // SRAM_SIZE
 #else
-#if defined(RUN_IN_FLASH) && (RUN_IN_FLASH == 2)
+#if defined(RUN_IN_FLASH) && (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
 #define SRAM_SIZE 0x1800
 
 #if ATM_SEC_FAULT_STORAGE
@@ -35,7 +36,7 @@
 #if ATM_SEC_FAULT_STORAGE
 #define ATM_SEC_FAULT_STORAGE_NODE 30003FE0
 #endif
-#endif // defined(RUN_IN_FLASH) && (RUN_IN_FLASH == 2)
+#endif // defined(RUN_IN_FLASH) && (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
 
 #if ATM_SEC_FAULT_STORAGE
 #define ATM_SEC_FAULT_STORAGE_SIZE 32
@@ -55,12 +56,17 @@
 #ifndef ATM_NS_APP
 	// define the area for the MPU to catch NULL pointers
 	// NS applications use secure access violations to detect NULL
+	// When ATM_MPC_NULL_POINTER_DETECTION is defined, MPC is used instead
+	// of MPU for NULL pointer detection, so this node should be disabled.
 	rom_null_page: memory@0 {
 		compatible = "zephyr,memory-attr","zephyr,memory-region";
 		zephyr,memory-region = "NULL_PAGE";
 		zephyr,memory-attr = <( DT_MEM_ARM(ATTR_MPU_FLASH) )>;
 		device_type = "memory";
 		reg = <0x0 ROM_NULL_PAGE_SIZE>;
+#ifdef ATM_MPC_NULL_POINTER_DETECTION
+		status = "disabled";
+#endif
 	};
 #endif
 
@@ -201,7 +207,7 @@
 		status = "disabled";
 	};
 
-#if defined(RUN_IN_FLASH) && (RUN_IN_FLASH == 2)
+#if defined(RUN_IN_FLASH) && (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
 	// need a bit more memory taken from the SPE for certain
 	// applications
 	sram0: memory@20001000 {

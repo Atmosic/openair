@@ -5,7 +5,7 @@
  *
  * @brief Brownout Driver
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  ******************************************************************************
  */
@@ -41,7 +41,7 @@ LOG_MODULE_REGISTER(brownout, LOG_LEVEL_INF);
 #endif
 
 #define BROWNOUT_INTERNAL_GUARD
-#include "brwnout_internal.h"
+#include "brwnout.ih"
 
 #ifdef CONFIG_BROWNOUT_THR_VBAT
 #define BRWNOUT_THR_VBAT CONFIG_BROWNOUT_THR_VBAT
@@ -62,6 +62,23 @@ LOG_MODULE_REGISTER(brownout, LOG_LEVEL_INF);
 #endif // BATT_TYPE == BATT_TYPE_RECHARGEABLE
 #endif // BRWNOUT_THR_VSTORE
 
+#define BRWNOUT_THR_VBAT_MAX 31
+
+#ifdef CONFIG_BROWNOUT_THR_VBAT_HYSTERESIS_DELTA
+#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA \
+    CONFIG_BROWNOUT_THR_VBAT_HYSTERESIS_DELTA
+#else
+#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA 10
+#endif
+
+#ifndef MIN
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#endif
+
+#define BRWNOUT_THR_VBAT_WITH_HYSTERESIS \
+    MIN(BRWNOUT_THR_VBAT + BRWNOUT_THR_VBAT_HYSTERESIS_DELTA, \
+	BRWNOUT_THR_VBAT_MAX)
+
 #if (BATT_TYPE != BATT_TYPE_LI_ION)
 #define GOODTOSTART_THR_DEFAULT 0
 #define GOODTOSTART_THR_BRWNOUT 3
@@ -73,15 +90,13 @@ static bool brwnout_disabled;
 static sw_event_id_t brwnout_event_id;
 #endif
 
-#ifdef CONFIG_SOC_FAMILY_ATM
-STATIC_ASSERT(DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off)),
-    "Brownout requires soc_off PM state enabled");
-#endif
-
 static void brwnout_plf_off(void)
 {
+    // Increase VBAT brownout threshold for hysteresis
+    pmu_set_brwnout_thr_vbat(BRWNOUT_THR_VBAT_WITH_HYSTERESIS);
+
     // Set wake_only_if_enough_energy
-#if (BATT_TYPE != BATT_TYPE_LI_ION)
+#if (BATT_TYPE != BATT_TYPE_LI_ION) && !defined(CONFIG_SOC_FAMILY_ATM)
     pmu_set_good2start_thr_vstore(GOODTOSTART_THR_BRWNOUT);
 #endif
 
@@ -90,6 +105,8 @@ static void brwnout_plf_off(void)
 	pmu_status = CMSDK_PSEQ->PMU_STATUS;
     } WRPR_CTRL_POP();
     DEBUG_TRACE("pmu stat: %#" PRIx32, pmu_status);
+
+#ifndef CONFIG_SOC_FAMILY_ATM
     pmu_set_socoff_energy_wakeup(true);
 
 #if (BATT_LEVEL == BATT_LEVEL_LE_1P8V)
@@ -97,20 +114,20 @@ static void brwnout_plf_off(void)
 #endif
 
     // Any non-zero duration should be fine since all we need is for the
-    // timer to wake up the chip from the SOC off state. Since it is in
+    // timer to wake up the chip from the hibernation state. Since it is in
     // response to a brownout event, that gate should already be in place
     // to ensure that the chip will wake up only once enough energy has
     // been accumulated.
 #define WAKEUP_DURATION 10
-#ifndef CONFIG_SOC_FAMILY_ATM
     pseq_soc_off(WAKEUP_DURATION);
-#else
+#else // CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_PM
-    atm_pseq_soc_off(WAKEUP_DURATION);
+    brwnout_set_trigger(2);
+    atm_pseq_hibernate(IDLE_FOREVER);
 #else
     STATIC_ASSERT(false, "CONFIG_PM needs to be set for brownout support");
 #endif
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 }
 
 #ifndef CONFIG_SOC_FAMILY_ATM
@@ -130,32 +147,25 @@ static void brwnout_plf_off_async(struct k_work *work)
 K_WORK_DEFINE(brwnout_event, brwnout_plf_off_async);
 #endif
 
-__FAST void PMU_Handler(void)
+/**
+ * @brief Brownout PMU interrupt handler
+ *
+ * Called by central PMU_Handler() in pmu.c when brownout interrupt fires.
+ * The interrupt source is cleared in pmu_isr_source() before this is called.
+ */
+void brwnout_pmu_handler(void)
 {
-    // Clear brwnout interrupt
-    brwnout_clear_intr();
-
     if (brwnout_disabled) {
 	return;
     }
 
-    NVIC_DisableIRQ(PMU_IRQn);
-
 #ifndef CONFIG_SOC_FAMILY_ATM
-    // Allow any interrupted operation to finish before soc off
+    // Allow any interrupted operation to finish before hibernation
     sw_event_set(brwnout_event_id);
 #else
     k_work_submit(&brwnout_event);
 #endif
 }
-
-#ifdef CONFIG_SOC_FAMILY_ATM
-static void brwnout_isr(void *arg)
-{
-    ARG_UNUSED(arg);
-    PMU_Handler();
-}
-#endif
 
 static void brwnout_set_thresholds(void)
 {
@@ -175,7 +185,9 @@ static void brwnout_set_thresholds(void)
     pmu_set_brwnout_thr_vbat(BRWNOUT_THR_VBAT);
 #if (BATT_TYPE != BATT_TYPE_LI_ION)
     pmu_set_brwnout_thr_vstore(BRWNOUT_THR_VSTORE);
+#ifndef CONFIG_SOC_FAMILY_ATM
     pmu_set_good2start_thr_vstore(GOODTOSTART_THR_DEFAULT);
+#endif
 #endif
 }
 
@@ -193,26 +205,28 @@ static rep_vec_err_t brwnout_appm_init(void)
     return (RV_NEXT);
 }
 
-#ifndef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_SOC_FAMILY_ATM
+static void brwnout_init(void)
+{
+    if (is_boot_reason(BOOT_STATUS_HIB_WKUP_BROWNOUT_RISING)) {
+	brwnout_plf_off();
+    }
+    brwnout_set_thresholds();
+    brwnout_appm_init();
+}
+#else
 __attribute__((constructor))
-#endif
 static void brwnout_init(void)
 {
     if (is_boot_reason(BOOT_STATUS_HIB_WKUP_BROWNOUT)) {
 	brwnout_plf_off();
     }
-
     pmu_set_socoff_energy_wakeup(false);
     brwnout_set_thresholds();
-#ifndef CONFIG_SOC_FAMILY_ATM
     interrupt_install(PMU_IRQn, INTISR_SRC_PMU, IRQ_PRI_UI, PMU_Handler);
     RV_APPM_INIT_ADD(brwnout_appm_init);
-#else
-    IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority), brwnout_isr, DEVICE_DT_INST_GET(0), 0);
-    irq_enable(DT_INST_IRQN(0));
-    brwnout_appm_init();
-#endif
 }
+#endif
 
 __NORETURN void brwnout_force_socoff(void)
 {

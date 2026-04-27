@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Atmosic Technologies
+ * Copyright (c) 2025-2026 Atmosic Technologies
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -137,7 +137,7 @@ ZTEST(gpio_interrupt_basic, test_gpio_rising_edge_interrupt)
 	LOG_INF("✓ GPIO callback initialized");
 
 	/* Step 3: Switch pin to input mode and configure rising edge interrupt */
-	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags);
+	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags | GPIO_PULL_DOWN);
 	zassert_ok(ret, "Failed to configure GPIO pin as input");
 
 	ret = gpio_pin_interrupt_configure(gpio_dev, pin, GPIO_INT_EDGE_RISING);
@@ -209,7 +209,7 @@ ZTEST(gpio_interrupt_basic, test_gpio_level_high_interrupt)
 	LOG_INF("✓ GPIO callback initialized");
 
 	/* Step 3: Switch pin to input mode and configure level high interrupt */
-	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags);
+	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags | GPIO_PULL_DOWN);
 	zassert_ok(ret, "Failed to configure GPIO pin as input");
 
 	ret = gpio_pin_interrupt_configure(gpio_dev, pin, GPIO_INT_LEVEL_HIGH);
@@ -288,7 +288,7 @@ ZTEST(gpio_interrupt_basic, test_gpio_level_low_interrupt)
 	LOG_INF("✓ GPIO callback initialized");
 
 	/* Step 3: Switch pin to input mode and configure level low interrupt */
-	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags);
+	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags | GPIO_PULL_UP);
 	zassert_ok(ret, "Failed to configure GPIO pin as input");
 
 	ret = gpio_pin_interrupt_configure(gpio_dev, pin, GPIO_INT_LEVEL_LOW);
@@ -367,7 +367,7 @@ ZTEST(gpio_interrupt_basic, test_gpio_both_edge_interrupt)
 	LOG_INF("✓ GPIO callback initialized");
 
 	/* Step 3: Switch pin to input mode and configure both edge interrupt */
-	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags);
+	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags | GPIO_PULL_DOWN);
 	zassert_ok(ret, "Failed to configure GPIO pin as input");
 
 	ret = gpio_pin_interrupt_configure(gpio_dev, pin, GPIO_INT_EDGE_BOTH);
@@ -389,7 +389,7 @@ ZTEST(gpio_interrupt_basic, test_gpio_both_edge_interrupt)
 	LOG_INF("✅ GPIO rising edge interrupt triggered (count: %" PRIu32 ")", interrupt_count);
 
 	/* Step 5: Re-enable interrupt and trigger falling edge - drive pin low */
-	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags);
+	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags | GPIO_PULL_UP);
 	zassert_ok(ret, "Failed to configure GPIO pin as input");
 
 	ret = gpio_pin_interrupt_configure(gpio_dev, pin, GPIO_INT_EDGE_BOTH);
@@ -457,7 +457,7 @@ ZTEST(gpio_interrupt_basic, test_gpio_falling_edge_interrupt)
 	LOG_INF("✓ GPIO callback initialized");
 
 	/* Step 3: Switch pin to input mode and configure falling edge interrupt */
-	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags);
+	ret = gpio_pin_configure(gpio_dev, pin, GPIO_INPUT | pin_flags | GPIO_PULL_UP);
 	zassert_ok(ret, "Failed to configure GPIO pin as input");
 
 	ret = gpio_pin_interrupt_configure(gpio_dev, pin, GPIO_INT_EDGE_FALLING);

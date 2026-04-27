@@ -1,6 +1,6 @@
-# Copyright (c) 2022 Atmosic
+# Copyright (c) 2022-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 set(ATM33_VARIANT "normal" "mcuboot" "mcuboot_bl")
 if(DEFINED BOARD_REVISION)

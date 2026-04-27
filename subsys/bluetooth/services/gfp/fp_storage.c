@@ -5,12 +5,13 @@
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Storage Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/settings/settings.h>
@@ -20,23 +21,29 @@
 #ifdef CONFIG_FAST_PAIR_FMDN
 #include "fp_fmdn.h"
 #endif
+#ifdef CONFIG_FAST_PAIR_ACCOUNT_KEY_FIFO_EVICTION
+#include <time.h>
+#endif
 
 LOG_MODULE_DECLARE(gfps, CONFIG_ATM_GFPS_LOG_LEVEL);
 
-#define S_KEY_MAIN             SETTINGS_STORAGE_KEY("gfp")
-#define SS_KEY_ACNT_KEY_LIST   "account_key_list"
-#define SS_KEY_OWNER_KEY       "owner_key"
-#define SS_KEY_EID_KEY         "eid_key"
-#define SS_KEY_UTP_MODE        "utp_mode"
+#define S_KEY_MAIN                  SETTINGS_STORAGE_KEY("gfp")
+#define SS_KEY_ACNT_KEY_LIST        "account_key_list"
+#define SS_KEY_OWNER_KEY            "owner_key"
+#define SS_KEY_EID_KEY              "eid_key"
+#define SS_KEY_UTP_MODE             "utp_mode"
 #define SS_KEY_UTP_IGNORE_RING_AUTH "utp_ignore_ring_auth"
 #define SS_KEY_PERSONALIZED_NAME    "pers_name"
-#define SS_KEY_BT_ID_BASE      "bt_id_base"
-#define FP_STORAGE_KEY(subkey) S_KEY_MAIN "/" subkey
+#define SS_KEY_BT_ID_BASE           "bt_id_base"
+#define SS_KEY_FMDN_CLOCK           "fmdn_clock"
+#define SS_KEY_PC_CLIENT_ID         "pc_client_id"
+#define FP_STORAGE_KEY(subkey)      S_KEY_MAIN "/" subkey
 
 #define ACCOUNT_KEY_CNT CONFIG_FAST_PAIR_MAX_ACCOUNT_KEY_COUNT
 typedef struct {
 	bool in_used;
 	uint8_t account_key[FP_ACCOUNT_KEY_LEN];
+	uint32_t timestamp; // Timestamp for FIFO eviction (seconds since epoch)
 } fp_account_data_t;
 
 static size_t account_key_count;
@@ -56,6 +63,12 @@ static uint8_t owner_key[FP_ACCOUNT_KEY_LEN];
 static bool owner_key_valid;
 static fp_fmdn_utp_mode_t utp_mode = FP_FMDN_UTP_MODE_OFF;
 static uint8_t utp_ignore_ring_auth = false;
+static uint32_t fmdn_clock_value;
+static bool fmdn_clock_valid;
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+static uint8_t pc_client_id;
+static bool pc_client_id_valid;
+#endif // CONFIG_FMDN_PERSISTENT_CONNECTION
 #endif // CONFIG_FAST_PAIR_FMDN
 static uint8_t bt_id_base;
 static bool bt_id_base_valid;
@@ -69,10 +82,40 @@ static void fp_storage_account_key_data_list_update(void)
 		memcpy(account_key_data_list[account_key_count].account_key,
 		       account_key_list + offset, FP_ACCOUNT_KEY_LEN);
 		account_key_data_list[account_key_count].in_used = true;
+#ifdef CONFIG_FAST_PAIR_ACCOUNT_KEY_FIFO_EVICTION
+		// Initialize timestamp to current time when loading from NVS
+		// This ensures loaded keys have a valid timestamp for FIFO eviction
+		account_key_data_list[account_key_count].timestamp = k_uptime_seconds();
+		LOG_DBG("Loaded account key %u with timestamp %" PRIu32, account_key_count,
+			account_key_data_list[account_key_count].timestamp);
+#endif
 		account_key_count++;
 		offset += FP_ACCOUNT_KEY_LEN;
 	}
 }
+
+#ifdef CONFIG_FAST_PAIR_ACCOUNT_KEY_FIFO_EVICTION
+/**
+ * @brief Find the index of the oldest account key by timestamp
+ * @return Index of oldest key, or -1 if no keys are in use
+ */
+static int fp_storage_account_key_find_oldest(void)
+{
+	int oldest_idx = -1;
+	uint32_t oldest_timestamp = UINT32_MAX;
+
+	for (uint8_t i = 0; i < ACCOUNT_KEY_CNT; i++) {
+		if (account_key_data_list[i].in_used) {
+			if (account_key_data_list[i].timestamp < oldest_timestamp) {
+				oldest_timestamp = account_key_data_list[i].timestamp;
+				oldest_idx = i;
+			}
+		}
+	}
+
+	return oldest_idx;
+}
+#endif
 
 static int settings_storage_handle_set(char const *name, size_t len, settings_read_cb read_cb,
 				       void *cb_arg)
@@ -117,7 +160,27 @@ static int settings_storage_handle_set(char const *name, size_t len, settings_re
 		read_cb(cb_arg, &utp_ignore_ring_auth, sizeof(utp_ignore_ring_auth));
 		return 0;
 	}
-#endif
+	if (settings_name_steq(name, SS_KEY_FMDN_CLOCK, &next) && !next) {
+		if (len != sizeof(fmdn_clock_value)) {
+			return -EINVAL;
+		}
+		read_cb(cb_arg, &fmdn_clock_value, sizeof(fmdn_clock_value));
+		fmdn_clock_valid = true;
+		LOG_INF("Loaded FMDN clock value: %" PRIu32 " [s]", fmdn_clock_value);
+		return 0;
+	}
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+	if (settings_name_steq(name, SS_KEY_PC_CLIENT_ID, &next) && !next) {
+		if (len != sizeof(pc_client_id)) {
+			return -EINVAL;
+		}
+		read_cb(cb_arg, &pc_client_id, sizeof(pc_client_id));
+		pc_client_id_valid = true;
+		LOG_INF("Loaded PC client ID: %u", pc_client_id);
+		return 0;
+	}
+#endif // CONFIG_FMDN_PERSISTENT_CONNECTION
+#endif // CONFIG_FAST_PAIR_FMDN
 	if (settings_name_steq(name, SS_KEY_PERSONALIZED_NAME, &next) && !next) {
 		if (len >= sizeof(personalized_name)) {
 			LOG_ERR("Personalized name too long: %zu >= %zu", len,
@@ -260,6 +323,93 @@ static void fp_storage_utp_ignore_ring_auth_delete(void)
 		LOG_ERR("delete utp ignore ring auth failed (err: %d)", err);
 	}
 }
+
+int fp_storage_fmdn_clock_save(uint32_t clock_value)
+{
+	fmdn_clock_value = clock_value;
+	fmdn_clock_valid = true;
+	int err = settings_save_one(FP_STORAGE_KEY(SS_KEY_FMDN_CLOCK), (uint8_t *)&fmdn_clock_value,
+				    sizeof(fmdn_clock_value));
+	if (err) {
+		LOG_ERR("save fmdn clock failed %d", err);
+	} else {
+		LOG_DBG("Saved FMDN clock value: %" PRIu32 " [s]", fmdn_clock_value);
+	}
+	return err;
+}
+
+int fp_storage_fmdn_clock_get(uint32_t *clock_value)
+{
+	if (!fmdn_clock_valid) {
+		*clock_value = 0;
+		return -ENOENT;
+	}
+	*clock_value = fmdn_clock_value;
+	return 0;
+}
+
+static void fp_storage_fmdn_clock_delete(void)
+{
+	fmdn_clock_value = 0;
+	fmdn_clock_valid = false;
+	int err = settings_delete(FP_STORAGE_KEY(SS_KEY_FMDN_CLOCK));
+	if (err) {
+		LOG_ERR("delete fmdn clock failed (err: %d)", err);
+	}
+}
+
+void fp_storage_fmdn_clock_reset(void)
+{
+	fmdn_clock_value = 0;
+	fmdn_clock_valid = false;
+	int err = settings_delete(FP_STORAGE_KEY(SS_KEY_FMDN_CLOCK));
+	if (err && err != -ENOENT) {
+		LOG_ERR("reset fmdn clock failed (err: %d)", err);
+	} else {
+		LOG_INF("FMDN clock reset to 0");
+	}
+}
+
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+void fp_storage_pc_client_id_save(uint8_t client_id)
+{
+	pc_client_id = client_id;
+	pc_client_id_valid = true;
+	int err = settings_save_one(FP_STORAGE_KEY(SS_KEY_PC_CLIENT_ID), &pc_client_id,
+				    sizeof(pc_client_id));
+	if (err) {
+		LOG_ERR("save PC client ID failed %d", err);
+	} else {
+		LOG_INF("Saved PC client ID: %u", pc_client_id);
+	}
+}
+
+int fp_storage_pc_client_id_get(uint8_t *client_id)
+{
+	if (!pc_client_id_valid) {
+		return -ENOENT;
+	}
+	*client_id = pc_client_id;
+	return 0;
+}
+
+bool fp_storage_pc_client_id_valid(void)
+{
+	return pc_client_id_valid;
+}
+
+void fp_storage_pc_client_id_delete(void)
+{
+	pc_client_id = 0;
+	pc_client_id_valid = false;
+	int err = settings_delete(FP_STORAGE_KEY(SS_KEY_PC_CLIENT_ID));
+	if (err) {
+		LOG_ERR("delete PC client ID failed (err: %d)", err);
+	} else {
+		LOG_INF("Deleted PC client ID from NVS");
+	}
+}
+#endif // CONFIG_FMDN_PERSISTENT_CONNECTION
 
 void fp_storage_cur_account_key_clear(void)
 {
@@ -451,30 +601,72 @@ static void fp_storage_account_key_list_reload(void)
 int fp_storage_account_key_save(uint8_t const *account_key)
 {
 	bool is_saved = false;
+	int save_idx = -1;
+
 	memcpy(cur_account_key, account_key, FP_ACCOUNT_KEY_LEN);
 	fp_storage_owner_key_save(account_key);
+
+	// Check if key already exists
 	for (uint8_t i = 0; i < FP_ACCOUNT_KEY_CNT; i++) {
 		if (account_key_data_list[i].in_used) {
 			if (!memcmp(account_key, account_key_data_list[i].account_key,
 				    FP_ACCOUNT_KEY_LEN)) {
-				LOG_DBG("account key has been exist");
+				LOG_DBG("account key already exists at index %u", i);
 				is_saved = true;
+#ifdef CONFIG_FAST_PAIR_ACCOUNT_KEY_FIFO_EVICTION
+				// Update timestamp for existing key
+				account_key_data_list[i].timestamp = k_uptime_seconds();
+				LOG_DBG("Updated timestamp for existing key: %" PRIu32,
+					account_key_data_list[i].timestamp);
+#endif
 				break;
 			}
 		}
 	}
+
+	// If key doesn't exist, find a slot to save it
 	if (!is_saved) {
+		// First, try to find an empty slot
 		for (uint8_t i = 0; i < FP_ACCOUNT_KEY_CNT; i++) {
 			if (!account_key_data_list[i].in_used) {
-				memcpy(account_key_data_list[i].account_key, account_key,
-				       FP_ACCOUNT_KEY_LEN);
-				account_key_data_list[i].in_used = true;
+				save_idx = i;
 				break;
 			}
 		}
+
+#ifdef CONFIG_FAST_PAIR_ACCOUNT_KEY_FIFO_EVICTION
+		// If no empty slot, evict the oldest key
+		if (save_idx == -1) {
+			save_idx = fp_storage_account_key_find_oldest();
+			if (save_idx >= 0) {
+				LOG_WRN("Account key storage full, evicting oldest key at index %d "
+					"(timestamp: %" PRIu32 ")",
+					save_idx, account_key_data_list[save_idx].timestamp);
+			}
+		}
+#endif
+
+		// Save the new key if we have a slot
+		if (save_idx >= 0) {
+			memcpy(account_key_data_list[save_idx].account_key, account_key,
+			       FP_ACCOUNT_KEY_LEN);
+			account_key_data_list[save_idx].in_used = true;
+#ifdef CONFIG_FAST_PAIR_ACCOUNT_KEY_FIFO_EVICTION
+			account_key_data_list[save_idx].timestamp = k_uptime_seconds();
+			LOG_INF("Saved account key at index %d with timestamp %" PRIu32, save_idx,
+				account_key_data_list[save_idx].timestamp);
+#else
+			LOG_DBG("Saved account key at index %d", save_idx);
+#endif
+			is_saved = true;
+		} else {
+			LOG_ERR("Failed to save account key: no storage available and FIFO "
+				"eviction disabled");
+		}
 	}
+
 	fp_storage_account_key_list_reload();
-	return 0;
+	return is_saved ? 0 : -ENOMEM;
 }
 
 int fp_storage_account_key_delete(uint8_t const *account_key)
@@ -528,6 +720,7 @@ void fp_storage_eid_reset(void)
 {
 	fp_storage_utp_mode_delete();
 	fp_storage_utp_ignore_ring_auth_delete();
+	fp_storage_fmdn_clock_delete();
 	fp_storage_eid_key_delete();
 }
 #endif

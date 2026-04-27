@@ -1,0 +1,31 @@
+/**
+ ******************************************************************************
+ *
+ * @file radio_hal_ble.ih
+ *
+ * @brief internal radio hal BLE interfaces
+ *
+ * Copyright (C) Atmosic 2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
+ ******************************************************************************
+ */
+
+#pragma once
+
+#ifndef RADIO_HAL_BLE_INTERNAL_GUARD
+#error "radio_hal_ble.ih should only be included in radio_hal_ble source files"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* internal use only (testing) */
+bool atm_mac_ble_core_fast_adv(void const *hdr, uint8_t hdr_len, void const *payload,
+    uint8_t payload_len, uint8_t ch_mask, int8_t tx_pwr_dbm);
+
+#ifdef __cplusplus
+}
+#endif

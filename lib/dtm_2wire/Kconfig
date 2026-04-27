@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,5 +16,58 @@ if DTM_2WIRE
 module = DTM_2WIRE
 module-str = DTM-2-wire
 source "subsys/logging/Kconfig.template.log_config"
+
+config DTM_2WIRE_E2E
+    bool "Implement full end-to-end DTM processing"
+    default y
+    help
+      The application can disable this option to utilize a minimum
+      set of manager and HCI bridge software interfaces to process
+      DTM messages.
+
+config DTM_2WIRE_USER_DATA_LEN_PROPS
+    bool "Use user provided data len properties"
+    default n
+    help
+      The application can set this to use static default properties.
+      This is useful where a link layer may not implement the
+      HCI_LE_READ_MAX_DATA_LEN opcode.
+
+config DTM_2WIRE_RX_TESTING
+    bool "Support RX testing"
+    default y
+    help
+      The library at a minimum supports transmit testing but can
+      optionally disable RX testing when integrated into transmit
+      only applications
+
+config DTM_2WIRE_EXT
+    bool "Support extended PHY and data length testing"
+    default y
+    help
+      Support for extended testing can be disabled and fall back
+      to legacy 1M PHY with no data length extensions.
+
+if DTM_2WIRE_USER_DATA_LEN_PROPS
+
+# See:  Vol 6, Part B, section 4.5.10
+
+config DTM_2WIRE_USER_DATA_LEN_MAX_TX_OCTETS
+    int "Max TX Octets"
+    default 27
+
+config DTM_2WIRE_USER_DATA_LEN_MAX_TX_TIME
+    int "Max TX Time"
+    default 328
+
+config DTM_2WIRE_USER_DATA_LEN_MAX_RX_OCTETS
+    int "Max RX Octets"
+    default 27
+
+config DTM_2WIRE_USER_DATA_LEN_MAX_RX_TIME
+    int "Max RX Time"
+    default 328
+
+endif # DTM_2WIRE_USER_DATA_LEN_PROPS
 
 endif # DTM_2WIRE

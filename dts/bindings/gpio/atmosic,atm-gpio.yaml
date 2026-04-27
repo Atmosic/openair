@@ -1,0 +1,49 @@
+# Copyright (c) 2025-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  Atmosic GPIO controller with automatic pinmux configuration.
+
+  This driver extends the ARM CMSDK GPIO controller to automatically
+  configure pin multiplexing when a pin is set as GPIO. It is hardware
+  compatible with ARM CMSDK GPIO but adds Atmosic-specific pinmux handling.
+
+  Key features:
+  - Automatic PIN_SELECT() call when configuring GPIO pins
+  - Handles P0/P1 (SWD pins) demux automatically
+  - Package-specific pin validation via PIN_SELECT()
+  - Transparent to application code (uses standard Zephyr GPIO APIs)
+
+  Pin numbering:
+  - gpio0: pins 0-15 map to physical pins P0-P15
+  - gpio1: pins 0-14 map to physical pins P16-P30
+  - gpio2: pins 3-15 map to physical pins P35-P47
+  - gpio3: pins 0-3 map to physical pins P48-P51
+
+  Example usage:
+    gpio0: gpio@100000 {
+        compatible = "atmosic,atm-gpio";
+        reg = <0x00100000 0x1000>;
+        interrupts = <93 8>;
+        gpio-controller;
+        #gpio-cells = <2>;
+    };
+
+compatible: "atmosic,atm-gpio"
+
+include: [gpio-controller.yaml, base.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  "#gpio-cells":
+    const: 2
+
+gpio-cells:
+  - pin
+  - flags
+

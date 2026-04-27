@@ -5,7 +5,7 @@
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Gatt Middleware
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -18,6 +18,7 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/gatt.h>
+#include "app_work_q.h"
 #include "fp_adv.h"
 #include "fp_auth.h"
 #include "fp_common.h"
@@ -29,7 +30,10 @@
 #ifdef CONFIG_FAST_PAIR_FMDN
 #include "fp_fmdn_adv.h"
 #include "fp_fmdn_gatt.h"
+#ifdef CONFIG_FAST_PAIR_FMDN_V2
+#include "fp_fmdn_sba_gatt.h"
 #endif
+#endif // CONFIG_FAST_PAIR_FMDN
 #ifdef CONFIG_ATM_SEC_JRNL_PRESENT
 #include "sec_jrnl.h"
 #endif
@@ -64,14 +68,26 @@ static const struct {
 	{FP_ERR_INSUFFICIENT_DATA, BT_ATT_ERR_INVALID_ATTRIBUTE_LEN},
 };
 
+// Work item for deferred KBP crypto processing
+typedef struct {
+	struct k_work work;
+	struct bt_conn *conn;
+	const struct bt_gatt_attr *attr;
+	uint8_t *enc_req;
+	uint8_t *public_key;
+	uint8_t public_key_len;
+	uint16_t result;
+} fp_kbp_work_item_t;
+
 // Fast Pair data id type.
 enum fp_msg_type {
 	// Key-based Pairing Request
 	FP_MSG_KEY_BASED_PAIRING_REQ = 0x00,
-	// Key-based Pairing Response.
+	// Key-based Pairing Response (standard, Table 1.3)
 	FP_MSG_KEY_BASED_PAIRING_RSP = 0x01,
-	// Seeker's Passkey.
-	FP_MSG_SEEKERS_PASSKEY = 0x02,
+	// Key-based Pairing Extended Response (BLE Device spec)
+	// Note: 0x02 is also used for Seeker's Passkey in Passkey characteristic
+	FP_MSG_KEY_BASED_PAIRING_EXT_RSP = 0x02,
 	// Provider's Passkey.
 	FP_MSG_PROVIDERS_PASSKEY = 0x03,
 	// Action request.
@@ -132,6 +148,8 @@ typedef struct fp_kbp_raw_req_s {
 
 static uint8_t fp_as_key[FP_AS_BASE64_KEY_LEN];
 static bool fp_as_key_loaded;
+static uint8_t fp_model_id[FP_APP_MODEL_ID_LEN];
+static bool fp_model_id_loaded;
 static gfp_crypto_ecp_curve_intf_t ecp_256r1_intf;
 
 /**
@@ -217,15 +235,25 @@ static int fp_handle_key_based_pairing_request(struct bt_conn *conn, struct net_
 	LOG_DBG("FP KBP: Seeker %02x:%02x:%02x:%02x:%02x:%02x", seeker_addr[0], seeker_addr[1],
 		seeker_addr[2], seeker_addr[3], seeker_addr[4], seeker_addr[5]);
 
-// Fast Pair Key-based Pairing Request flags (Table 1.2.1)
-// Bit numbering: Bit 0 = LSB (rightmost bit)
-#define FP_FLAG_DEPRECATED           0x01 // Bit 0: deprecated, ignored by Seeker
-#define FP_FLAG_INITIATE_BONDING     0x02 // Bit 1: Provider shall initiate bonding
-#define FP_FLAG_NOTIFY_EXISTING_NAME 0x04 // Bit 2: Provider shall notify existing name
-#define FP_FLAG_RETROACTIVE_ACCT_KEY 0x08 // Bit 3: Retroactively writing account key
-	// Bits 4-7: reserved for future use
+	// MSB bit numbering helper (Bit 0 = MSB for 8-bit values)
+#define MSBBIT(n) BIT(7 - (n))
 
-	// Process flags according to Fast Pair specification
+	// Key-based Pairing Request flags (Bit 0 = MSB per spec)
+#define FP_FLAG_DEPRECATED           MSBBIT(0) // Bit 0: deprecated
+#define FP_FLAG_INITIATE_BONDING     MSBBIT(1) // Bit 1: initiate bonding
+#define FP_FLAG_NOTIFY_EXISTING_NAME MSBBIT(2) // Bit 2: notify existing name
+#define FP_FLAG_RETROACTIVE_ACCT_KEY MSBBIT(3) // Bit 3: retroactive account key
+#define FP_FLAG_BLE_DEVICE_SUPPORT   MSBBIT(4) // Bit 4: BLE Device spec support
+#define FP_FLAG_LE_AUDIO_SUPPORT     MSBBIT(5) // Bit 5: LE Audio support
+	// MSBBIT(6-7): reserved
+
+	// Reject retroactive pairing
+	if (req->flags & FP_FLAG_RETROACTIVE_ACCT_KEY) {
+		LOG_WRN("FP KBP: Retroactive pairing not supported");
+		return FP_ERR_INVALID_STATE;
+	}
+
+	// Process bonding request
 	if (req->flags & FP_FLAG_INITIATE_BONDING) {
 		LOG_INF("FP KBP: Bonding");
 		err = bt_conn_set_security(conn, BT_SECURITY_L2);
@@ -239,46 +267,61 @@ static int fp_handle_key_based_pairing_request(struct bt_conn *conn, struct net_
 		*do_addi_act = true;
 	}
 
-	if (req->flags & FP_FLAG_RETROACTIVE_ACCT_KEY) {
-		LOG_INF("FP KBP: Retroactive key ignored");
+	// Check BLE Device spec support
+	if (req->flags & FP_FLAG_BLE_DEVICE_SUPPORT) {
+		LOG_INF("FP KBP: Seeker supports BLE Device spec");
+		if (req->flags & FP_FLAG_LE_AUDIO_SUPPORT) {
+			LOG_INF("FP KBP: Seeker supports LE Audio");
+		}
 	}
 
-	// Enable account key writing after successful KBP
+	// Enable account key writing
 	gfp_key.en_acnt_write = true;
-	LOG_DBG("FP KBP: Account key enabled");
 
-	// Generate Key-based Pairing Response (Table 1.3)
-	// Response format: [Message Type][Provider BR/EDR Address][Random Salt]
+	// Build response message type and format-specific fields
+	uint8_t salt_len;
+	if (req->flags & FP_FLAG_BLE_DEVICE_SUPPORT) {
+		// Extended Response: [Type][Flags][Num Addrs][Addr(s)][Salt]
+		net_buf_simple_add_u8(rsp, FP_MSG_KEY_BASED_PAIRING_EXT_RSP);
 
-	// Get connection info for Provider's address
-	struct bt_conn_info conn_info;
-	err = bt_conn_get_info(conn, &conn_info);
-	if (err) {
-		LOG_ERR("FP KBP: Get conn info failed: %d", err);
-		return err;
+		// Extended Response Flags (Bit 0 = MSB per spec)
+#define FP_EXT_FLAG_LE_ONLY          MSBBIT(0) // Bit 0: LE-only device
+#define FP_EXT_FLAG_PREFER_LE        MSBBIT(1) // Bit 1: Prefer LE bonding
+#define FP_EXT_FLAG_SECOND_ADDR_RAND MSBBIT(2) // Bit 2: 2nd addr is Random
+
+		uint8_t ext_flags = FP_EXT_FLAG_LE_ONLY | FP_EXT_FLAG_PREFER_LE;
+		net_buf_simple_add_u8(rsp, ext_flags);
+
+		// Number of addresses
+#define FP_NUM_ADDRS_SINGLE 1 // Single component device
+#define FP_NUM_ADDRS_TWS    2 // TWS/CSIP multi-component device
+
+		net_buf_simple_add_u8(rsp, FP_NUM_ADDRS_SINGLE);
+		salt_len = 7; // 16 - 1(type) - 1(flags) - 1(num) - 6(addr) = 7
+
+		LOG_DBG("FP KBP: Extended Response (LE-only, 1 addr)");
+	} else {
+		// Standard Response: [Type][BR/EDR Addr][Salt]
+		net_buf_simple_add_u8(rsp, FP_MSG_KEY_BASED_PAIRING_RSP);
+		salt_len = 9; // 16 - 1(type) - 6(addr) = 9
+
+		LOG_DBG("FP KBP: Standard Response (legacy)");
 	}
 
-	// Build response according to Table 1.3
-	net_buf_simple_add_u8(rsp, FP_MSG_KEY_BASED_PAIRING_RSP); // Message Type = 0x01
-
-	// Add Provider's BR/EDR address (6 bytes)
-	// For BLE-only devices, use the BLE address as BR/EDR address
+	// Provider's address - use address from Seeker's request (already in display order)
+	// This ensures the response address matches what the Seeker expects (BLE advertisement
+	// address)
 	uint8_t *provider_addr = net_buf_simple_add(rsp, BT_ADDR_SIZE);
-	memcpy(provider_addr, &conn_info.le.local->a.val, BT_ADDR_SIZE);
+	memcpy(provider_addr, req->prov_addr, BT_ADDR_SIZE);
 
-	// Swap byte order for BR/EDR format (big-endian)
-	sys_mem_swap(provider_addr, BT_ADDR_SIZE);
-
-	// Add random salt (9 bytes) to fill remaining space in 16-byte response
-	uint8_t *salt = net_buf_simple_add(rsp, 9);
-	err = sys_csrand_get(salt, 9);
+	// Random salt
+	uint8_t *salt = net_buf_simple_add(rsp, salt_len);
+	err = sys_csrand_get(salt, salt_len);
 	if (err) {
 		LOG_ERR("FP KBP: Salt gen failed: %d", err);
 		return err;
 	}
 
-	LOG_DBG("FP KBP: Response generated");
-	// Set IO Capability to DisplayYesNo for Fast Pair pairing
 	return fp_auth_set_pairing(conn);
 }
 /**
@@ -676,8 +719,7 @@ static ssize_t fp_read_model_id(struct bt_conn *conn, const struct bt_gatt_attr 
 			res, (void *)conn);
 		return res;
 	}
-	static uint8_t const model_id[] = {FP_APP_MODEL_ID};
-	res = bt_gatt_attr_read(conn, attr, buf, len, offset, model_id, sizeof(model_id));
+	res = bt_gatt_attr_read(conn, attr, buf, len, offset, fp_model_id, sizeof(fp_model_id));
 
 	LOG_DBG("Model ID read: res=%zd conn=%p", res, (void *)conn);
 
@@ -688,6 +730,64 @@ enum additional_action {
 	ADDITIONAL_ACTION_NOTIFY_PN_BIT_POS,
 	ADDITIONAL_ACTION_COUNT,
 };
+
+// Deferred KBP crypto processing in app work queue
+static void fp_kbp_work_handler(struct k_work *work)
+{
+	fp_kbp_work_item_t *item = CONTAINER_OF(work, fp_kbp_work_item_t, work);
+	struct bt_conn *conn = item->conn;
+	const struct bt_gatt_attr *attr = item->attr;
+	ssize_t res = item->result;
+
+	if (!fp_conn_validate(conn)) {
+		res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+		goto cleanup;
+	}
+
+	// Process encrypted request
+	fp_kbp_raw_req_t parsed_req;
+	uint8_t *public_key = (item->public_key_len > 0) ? item->public_key : NULL;
+	if (!fp_kbp_process(public_key, item->enc_req, &parsed_req)) {
+		LOG_WRN("FP KBP: Crypto failed");
+		res = fp_map_error(FP_ERR_CRYPTO_FAILED);
+		goto cleanup;
+	}
+
+	// Crypto verified - safe to accept pairing now
+	fp_mode_update(FP_MODE_PAIRING_PROCESSING);
+
+	// Build and send response
+	NET_BUF_SIMPLE_DEFINE(rsp, GFP_CRYPTO_AES_BLOCK_LEN_BYTES);
+	uint8_t do_addi_act;
+	int err = fp_kbp_req_handler(conn, &rsp, &parsed_req, &do_addi_act);
+	if (err) {
+		LOG_WRN("FP KBP: Handler err=%d", err);
+		res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+		goto cleanup;
+	}
+
+	err = fp_gatt_rsp_notify(conn, attr, &rsp);
+	if (err) {
+		res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+		goto cleanup;
+	}
+
+	// Send additional data if requested
+	if (do_addi_act) {
+		fp_notify_device_name(conn);
+	}
+
+	res = item->result;
+
+cleanup:
+	if (res < 0) {
+		fp_drop_keys();
+	}
+	// Free allocated data
+	k_free(item->enc_req);
+	k_free(item->public_key);
+	k_free(item);
+}
 
 static ssize_t fp_kbp_write(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
 			    uint16_t len, uint16_t offset, uint8_t flags)
@@ -709,50 +809,74 @@ static ssize_t fp_kbp_write(struct bt_conn *conn, const struct bt_gatt_attr *att
 		res = fp_map_error(FP_ERR_INVALID_LENGTH);
 		goto finish;
 	}
-	fp_mode_update(FP_MODE_PAIRING_PROCESSING);
+
+	// Allocate work item for deferred crypto processing
+	fp_kbp_work_item_t *work_item = k_malloc(sizeof(*work_item));
+	if (!work_item) {
+		LOG_ERR("FP KBP: Failed to allocate work item");
+		res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+		goto finish;
+	}
+
+	// Extract encrypted request and public key from GATT buffer
 	struct net_buf_simple gatt_write;
 	net_buf_simple_init_with_data(&gatt_write, (void *)buf, len);
 	uint8_t *enc_req = net_buf_simple_pull_mem(&gatt_write, GFP_CRYPTO_AES_BLOCK_LEN_BYTES);
 	uint8_t *public_key = NULL;
+	int actual_public_key_len = 0;
 	if (net_buf_simple_max_len(&gatt_write) == public_key_len) {
 		public_key = net_buf_simple_pull_mem(&gatt_write, public_key_len);
+		actual_public_key_len = public_key_len;
 	}
 
-	fp_kbp_raw_req_t parsed_req;
-	if (!fp_kbp_process(public_key, enc_req, &parsed_req)) {
-		res = fp_map_error(FP_ERR_CRYPTO_FAILED);
-		goto finish;
-	}
-
-	NET_BUF_SIMPLE_DEFINE(rsp, GFP_CRYPTO_AES_BLOCK_LEN_BYTES);
-	uint8_t do_addi_act;
-	int err = fp_kbp_req_handler(conn, &rsp, &parsed_req, &do_addi_act);
-	if (err) {
-		LOG_WRN("Handling request failed: err=%d (Key-based Pairing)", err);
+	// Allocate and copy enc_req
+	work_item->enc_req = k_malloc(GFP_CRYPTO_AES_BLOCK_LEN_BYTES);
+	if (!work_item->enc_req) {
+		LOG_ERR("FP KBP: Failed to allocate enc_req");
+		k_free(work_item);
 		res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 		goto finish;
 	}
+	memcpy(work_item->enc_req, enc_req, GFP_CRYPTO_AES_BLOCK_LEN_BYTES);
 
-	err = fp_gatt_rsp_notify(conn, attr, &rsp);
-	if (err) {
-		LOG_WRN("Failed to send response: err=%d (Key-based Pairing)", err);
-		res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
-		goto finish;
-	}
-
-	if (do_addi_act) {
-		// Send device name notification via Additional Data characteristic
-		err = fp_notify_device_name(conn);
-		if (err) {
-			LOG_WRN("Failed to notify device name: err=%d", err);
-			// Don't fail the entire operation for notification failure
+	// Allocate and copy public_key if present
+	work_item->public_key = NULL;
+	work_item->public_key_len = 0;
+	if (actual_public_key_len > 0) {
+		work_item->public_key = k_malloc(actual_public_key_len);
+		if (!work_item->public_key) {
+			LOG_ERR("FP KBP: Failed to allocate public_key");
+			k_free(work_item->enc_req);
+			k_free(work_item);
+			res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+			goto finish;
 		}
+		memcpy(work_item->public_key, public_key, actual_public_key_len);
+		work_item->public_key_len = actual_public_key_len;
 	}
+
+	work_item->conn = conn;
+	work_item->attr = attr;
+	work_item->result = len;
+
+	// Schedule work to app work queue
+	work_item->work = (struct k_work)Z_WORK_INITIALIZER(fp_kbp_work_handler);
+	int err = atm_work_submit_to_app_work_q(&work_item->work);
+	if (err < 0) {
+		LOG_ERR("FP KBP: Failed to submit work: err=%d", err);
+		k_free(work_item->enc_req);
+		k_free(work_item->public_key);
+		k_free(work_item);
+		res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+		goto finish;
+	}
+
+	return len;
+
 finish:
 	if (res < 0) {
 		fp_drop_keys();
 	}
-	LOG_DBG("Key-based Pairing write done: res=%zd conn=%p", res, (void *)conn);
 	return res;
 }
 
@@ -763,10 +887,17 @@ static ssize_t fp_write_account_key(struct bt_conn *conn, const struct bt_gatt_a
 
 	uint8_t account_key[FP_ACCOUNT_KEY_LEN];
 	ssize_t res = len;
+
+	// Check if account key writing is enabled
+	if (!gfp_key.en_acnt_write) {
+		LOG_WRN("FP: Account key write rejected - not enabled");
+		return BT_GATT_ERR(BT_ATT_ERR_WRITE_NOT_PERMITTED);
+	}
+
 	if (!fp_mode_is_pairing()) {
 		res = BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 		LOG_INF("Account key write: res=%zd conn=%p, "
-			"Return error because Fast Pair is in pairing mode",
+			"Return error because Fast Pair is not in pairing mode",
 			res, (void *)conn);
 		return res;
 	}
@@ -789,6 +920,10 @@ static ssize_t fp_write_account_key(struct bt_conn *conn, const struct bt_gatt_a
 		goto finish;
 	}
 	fp_storage_account_key_save(account_key);
+
+	// SECURITY: Only accept one account key per pairing session
+	gfp_key.en_acnt_write = false;
+
 	fp_mode_update(FP_MODE_PAIRED);
 finish:
 	if (res < 0) {
@@ -937,7 +1072,10 @@ BT_GATT_SERVICE_DEFINE(
 	BT_GATT_CCC(NULL, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 #ifdef CONFIG_FAST_PAIR_FMDN
 	FP_FMDN_BEACON_ACTIONS_CHARACTERISTIC,
+#ifdef CONFIG_FAST_PAIR_FMDN_V2
+	FP_FMDN_SECURE_BEACON_ACTIONS_CHARACTERISTIC,
 #endif
+#endif // CONFIG_FAST_PAIR_FMDN
 );
 
 /**
@@ -1003,6 +1141,15 @@ static struct bt_gatt_attr *fp_gatt_get_attr(const struct bt_uuid *uuid)
 	return bt_gatt_find_by_uuid(fast_pair_svc.attrs, fast_pair_svc.attr_count, uuid);
 }
 
+/**
+ * @brief Load AS Key from secure journal or Kconfig default
+ *
+ * This function will:
+ * 1. First try to load 32-byte binary key from secure journal using
+ *    CONFIG_FAST_PAIR_AS_KEY_TAG
+ * 2. If successful, use the binary key directly
+ * 3. If not found or invalid length, fall back to Kconfig default
+ */
 static void fp_as_key_load(void)
 {
 
@@ -1014,28 +1161,64 @@ static void fp_as_key_load(void)
 		if (len_as_key_sec_jrnl == FP_AS_BASE64_KEY_LEN) {
 			// Binary key - use directly
 			memcpy(fp_as_key, as_key_sec_jrnl, FP_AS_BASE64_KEY_LEN);
-			LOG_INF("Model ID [0x%06X] AS Key loaded from Secure Journal",
-				CONFIG_FAST_PAIR_MODEL_ID);
+			LOG_INF("AS Key loaded from Secure Journal");
 			fp_as_key_loaded = true;
 			return;
 		}
 		LOG_WRN("Invalid secure journal data length: %u ", len_as_key_sec_jrnl);
-		LOG_INF("Using Kconfig fallback");
 	} else {
-		LOG_INF("Secure journal AS Key not found, using Kconfig default");
+		LOG_INF("Secure journal AS Key not found");
 	}
+	LOG_INF("Using Kconfig fallback");
 #endif
 
 	size_t fp_key_len;
 	int ret = base64_decode(fp_as_key, FP_AS_BASE64_KEY_LEN, &fp_key_len,
 				CONFIG_FAST_PAIR_AS_KEY, strlen(CONFIG_FAST_PAIR_AS_KEY));
-
 	if (ret) {
 		LOG_ERR("Failed to decode Base64 from Kconfig default: %d", ret);
 		__ASSERT(0, "Failed to decode Base64 from Kconfig default: %d", ret);
 	}
-	LOG_INF("Model ID [0x%06X] AS Key loaded from Kconfig default", CONFIG_FAST_PAIR_MODEL_ID);
+	LOG_INF("AS Key loaded from Kconfig default");
 	fp_as_key_loaded = true;
+}
+
+/**
+ * @brief Load Model ID from secure journal or Kconfig default
+ *
+ * This function will:
+ * 1. First try to load 3-byte binary Model ID from secure journal using
+ *    CONFIG_FAST_PAIR_MODEL_ID_TAG
+ * 2. If successful, use the binary Model ID directly
+ * 3. If not found or invalid length, fall back to Kconfig default
+ */
+static void fp_model_id_load(void)
+{
+
+#ifdef CONFIG_ATM_SEC_JRNL_PRESENT
+	uint8_t model_id_sec_jrnl[FP_APP_MODEL_ID_LEN];
+	uint16_t len_model_id_sec_jrnl = FP_APP_MODEL_ID_LEN;
+	if (nsc_sec_jrnl_get(CONFIG_FAST_PAIR_MODEL_ID_TAG, &len_model_id_sec_jrnl,
+			     model_id_sec_jrnl) == SEC_JRNL_OK) {
+		if (len_model_id_sec_jrnl == FP_APP_MODEL_ID_LEN) {
+			// Binary Model ID - use directly
+			memcpy(fp_model_id, model_id_sec_jrnl, FP_APP_MODEL_ID_LEN);
+			LOG_INF("Model ID loaded from Secure Journal");
+			fp_model_id_loaded = true;
+			return;
+		}
+		LOG_WRN("Invalid secure journal data length: %u ", len_model_id_sec_jrnl);
+	} else {
+		LOG_INF("Secure journal Model ID not found");
+	}
+	LOG_INF("Using Kconfig fallback");
+#endif
+
+	// Fallback to Kconfig default
+	uint8_t const model_id[] = {FP_APP_MODEL_ID};
+	memcpy(fp_model_id, model_id, FP_APP_MODEL_ID_LEN);
+	LOG_INF("Model ID loaded from Kconfig default");
+	fp_model_id_loaded = true;
 }
 
 void fp_gatt_init(void)
@@ -1043,6 +1226,10 @@ void fp_gatt_init(void)
 	if (!fp_as_key_loaded) {
 		fp_as_key_load();
 	}
+	if (!fp_model_id_loaded) {
+		fp_model_id_load();
+	}
+
 	gfp_crypto_ecp_curve_intf_secp256r1(&ecp_256r1_intf);
 
 	// Initialize GATT attribute references
@@ -1056,7 +1243,10 @@ void fp_gatt_init(void)
 
 #ifdef CONFIG_FAST_PAIR_FMDN
 	fp_fmdn_gatt_init(fp_gatt_get_attr(FP_FMDN_UUID_BEACON_ACTIONS));
+#ifdef CONFIG_FAST_PAIR_FMDN_V2
+	fp_fmdn_sba_gatt_init(fp_gatt_get_attr(FP_FMDN_UUID_SECURE_BEACON_ACTIONS));
 #endif
+#endif // CONFIG_FAST_PAIR_FMDN
 }
 
 void fp_gatt_deinit(void)
@@ -1065,5 +1255,13 @@ void fp_gatt_deinit(void)
 
 #ifdef CONFIG_FAST_PAIR_FMDN
 	fp_fmdn_gatt_deinit();
+#ifdef CONFIG_FAST_PAIR_FMDN_V2
+	fp_fmdn_sba_gatt_deinit();
 #endif
+#endif // CONFIG_FAST_PAIR_FMDN
+}
+
+const uint8_t *fp_gatt_get_model_id(void)
+{
+	return fp_model_id;
 }
