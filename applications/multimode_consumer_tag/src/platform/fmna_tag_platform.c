@@ -16,6 +16,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/reboot.h>
+#include <zephyr/bluetooth/bluetooth.h>
+
 #include "app_work_q.h"
 #include "fmna_api.h"
 #include "fmna_tag_platform.h"
@@ -26,13 +28,23 @@
 LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
 
 #ifdef CONFIG_FMNA_DEV_CUSTOM_BT_ADDR
-#include <zephyr/bluetooth/bluetooth.h>
 static bt_addr_le_t init_addr;
 #endif
 static tag_state_notify_cb fmna_tag_state_notify;
 
+static void fmna_tag_platform_connected(struct bt_conn *conn, uint8_t err)
+{
+	if (err) {
+		LOG_ERR("Connection failed (err 0x%02x)", err);
+		return;
+	}
+	struct bt_conn_info info;
+	bt_conn_get_info(conn, &info);
+	fmna_connected(conn, info.id, info.le.interval);
+}
+
 BT_CONN_CB_DEFINE(conn_callbacks) = {
-	.connected = fmna_connected,
+	.connected = fmna_tag_platform_connected,
 	.disconnected = fmna_disconnected,
 	.security_changed = fmna_security_changed,
 	.le_param_updated = fmna_le_param_updated,
