@@ -133,15 +133,6 @@ static void hw_cfg_init(void)
     }
 }
 
-uint32_t hw_cfg_get_wfi_freq(void)
-{
-    if (CAL_PRESENT(chip_info, spare) &&
-	(chip_info.spare & CHIP_INFO__SPARE_ENABLE_2MHZ_WFI__MASK)) {
-	return 2000000;
-    }
-    return 8000000;
-}
-
 #ifdef CONFIG_SOC_FAMILY_ATM
 static int hw_cfg_sys_init(void)
 {
