@@ -51,6 +51,7 @@ FMNA (Apple Find My Network Accessory)
 ======================================
 - Unpaired: Use the Apple Find My app to add the tag (pairing flow starts automatically on boot).
 - Provisioned: Use the app to play/stop sound; Button2 long-press during reboot to unpair.
+- Enable SN lookup: Short-press Button2 **6 times** to enable the paired-owner serial number readout for **5 minutes**. Required by Apple FindMy certification test #8: the encrypted SN payload is gated (rejected with ``RESPONSE_STATUS_INVALID_STATE``) in normal state and only becomes readable during this 5-minute window. After the window expires the SN is automatically gated again with no further user action.
 - Log MFi token: Short-press Button2 8 times to log the current MFi token for debugging purposes.
 
 FHN (Google Find Hub Network)

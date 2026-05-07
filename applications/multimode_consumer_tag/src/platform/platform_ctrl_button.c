@@ -20,6 +20,9 @@
 #ifdef CONFIG_FHN_TAG
 #include "atm_gfp.h"
 #endif
+#if defined(CONFIG_TAG_BTN_FMNA_SN_LOOKUP) || defined(CONFIG_TAG_BTN_LOG_FMNA_MFI_TOKEN)
+#include "fmna_api.h"
+#endif
 #if APP_STF_MULTI_MODE
 #include "TagBtnCallback.h"
 #include "TagSoundPlayer.h"
@@ -58,6 +61,9 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 #ifdef CONFIG_ATM_CS
 #define CS_UNPAIR_TAP_COUNT 7
 #endif
+#ifdef CONFIG_TAG_BTN_FMNA_SN_LOOKUP
+#define BUTTON_FMNA_SN_LOOKUP_TAP_COUNT 6
+#endif
 #ifdef CONFIG_TAG_BTN_LOG_FMNA_MFI_TOKEN
 extern void fmna_log_mfi_token(void);
 #define BUTTON_LOG_MFI_TOKEN_TAP_COUNT 8
@@ -74,6 +80,10 @@ static void battery_report_handler(void);
 
 #ifdef CONFIG_TAG_BTN_OTA_MODE
 static void ota_mode_enter_handler(void);
+#endif
+
+#ifdef CONFIG_TAG_BTN_FMNA_SN_LOOKUP
+static void fmna_sn_lookup_enable_handler(void);
 #endif
 
 #if APP_STF_MULTI_MODE
@@ -101,6 +111,9 @@ static const struct button_action button_actions[] = {
 #endif
 #ifdef CONFIG_ATM_CS
 	{atm_cs_rrsp_unpair, CS_UNPAIR_TAP_COUNT},
+#endif
+#ifdef CONFIG_TAG_BTN_FMNA_SN_LOOKUP
+	{fmna_sn_lookup_enable_handler, BUTTON_FMNA_SN_LOOKUP_TAP_COUNT},
 #endif
 #ifdef CONFIG_TAG_BTN_LOG_FMNA_MFI_TOKEN
 	{fmna_log_mfi_token, BUTTON_LOG_MFI_TOKEN_TAP_COUNT},
@@ -166,6 +179,14 @@ static void ota_mode_enter_handler(void)
 	LOG_INF("Entering OTA mode (%d taps detected)", OTA_MODE_TAP_COUNT);
 	// Enter OTA mode (will reboot)
 	platform_ctrl_ota_enter();
+}
+#endif
+
+#ifdef CONFIG_TAG_BTN_FMNA_SN_LOOKUP
+static void fmna_sn_lookup_enable_handler(void)
+{
+	LOG_INF("Enable FMNA SN lookup (%d taps detected)", BUTTON_FMNA_SN_LOOKUP_TAP_COUNT);
+	fmna_sn_lookup_enable();
 }
 #endif
 

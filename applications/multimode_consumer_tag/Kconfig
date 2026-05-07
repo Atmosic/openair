@@ -129,6 +129,18 @@ config TAG_BTN_OTA_MODE
 	  Quick press button 10 times to enter OTA mode.
 	  System will reboot and start advertising with device name "Atmosic OTA".
 
+config TAG_BTN_FMNA_SN_LOOKUP
+	bool "Enable FMNA SN lookup with button short press 6 times"
+	depends on FMNA_TAG
+	default y
+	help
+	  Quick press button 6 times to enable the FMNA paired-owner serial
+	  number (SN) readout. Required by Apple FindMy certification test #8:
+	  the encrypted SN payload is non-readable in normal state and only
+	  becomes readable for 5 minutes after this user action. After the
+	  5 minute window the SN is automatically gated again with no further
+	  user action.
+
 config TAG_BTN_LOG_FMNA_MFI_TOKEN
 	bool "Log MFI token with button short press 8 times"
 	depends on FMNA_TAG
