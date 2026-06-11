@@ -5,7 +5,7 @@
  *
  * @brief Atmosic OTP driver
  *
- * Copyright (C) Atmosic 2022-2023
+ * Copyright (C) Atmosic 2022-2026
  *
  *******************************************************************************
  */
@@ -60,6 +60,7 @@ typedef uint64_t atm_otp_t;
 #define ATM_OTP_MASK_RRAM_WRITE_LOCK OTP_MASK(48, 7)
 #define ATM_OTP_MASK_UART1_RX_DISABLE OTP_MASK(56, 1)
 #define ATM_OTP_MASK_SYSRAM_CONFIG OTP_MASK(57, 1)
+#define ATM_OTP_MASK_CS_CONFIG OTP_MASK(58, 1)
 #define ATM_OTP_MASK_SEC_DBG_CONFIG OTP_MASK(60, 2)
 #define ATM_OTP_MASK_RRAM_JTAG_BYPASS OTP_MASK(62, 1)
 #define ATM_OTP_MASK_IEEE_15_4_RADIO_CONFIG OTP_MASK(63, 1)

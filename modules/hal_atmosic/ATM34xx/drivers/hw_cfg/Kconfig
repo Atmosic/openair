@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,3 +13,7 @@ config ATM_HW_CFG
 	default y if ENTROPY_ATM_TRNG
 	default y if PM
 	default y if ATM_BROWNOUT
+
+config ATM_MAX_TX_POWER_DBM
+	int "Maximum TX power possible on this chip, in dBm"
+	default 10

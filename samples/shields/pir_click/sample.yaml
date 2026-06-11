@@ -6,6 +6,8 @@ tests:
     tags:
       - shield
       - sensor
+    depends_on:
+      - mikrobus
     sysbuild: true
     harness: console
     harness_config:

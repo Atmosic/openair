@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -61,17 +61,30 @@ enum ras_c_state {
 #endif
 };
 
+/// CP command tracking node: holds opcode + rsp_cb until RSP_CODE arrives.
+struct ras_cp_cmd_node {
+	sys_snode_t node;
+	uint8_t opcode;                 /* RAS_CP_CMD_OPCODE_* */
+	bt_ras_client_cp_rsp_cb rsp_cb; /* fires on RSP_CODE; NULL allowed */
+};
+
 struct bt_ras_client {
 	struct bt_gatt_subscribe_params subscribe_params[RAS_CHARC_MAX_NUM];
 	bt_ras_client_ranging_data_ready_cb rd_ready_cb;
 	bt_ras_client_ranging_data_overwritten_cb rd_overwritten_cb;
 	// will clean up below parameters when disconnected
 	struct bt_gatt_discover_params discover;
-	bt_ras_client_get_ranging_data_cmpl_cb get_rd_cmpl_cb;
 	int err_status;
 	struct net_buf_simple *ondemand_buf_out;
 	struct bt_conn *conn;
 	struct k_work_delayable timeout_work;
+	/* FIFO of CP cmds awaiting RSP_CODE, in send order. */
+	sys_slist_t cp_q;
+	sys_slist_t cp_free_q; /* free-list backed by cp_pool[] */
+	struct ras_cp_cmd_node cp_pool[CONFIG_RAS_CLIENT_CP_QUEUE_SIZE];
+	/* GET_RD completion cb: fires on COMPLETE_RD_RSP (or on RSP_CODE
+	 * error / disconnect / timeout). Tracked independently of cp_q. */
+	bt_ras_client_get_ranging_data_cmpl_cb get_rd_cmpl_cb;
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
 	bt_ras_client_get_realtime_ranging_data_cmpl_cb get_realtime_rd_cmpl_cb;
 	struct net_buf_simple *realtime_buf_out;
@@ -114,11 +127,121 @@ static void ras_c_realtime_rd_cmpl(struct bt_ras_client *ras_c, int err)
 }
 #endif
 
+static int ras_c_rsp_code_to_err(uint8_t rsp_code)
+{
+	switch (rsp_code) {
+	case RAS_CP_RSP_SUCCESS:
+	case RAS_CP_RSP_SUCCESS_PERSISTED:
+		return 0;
+	case RAS_CP_RSP_OPCODE_NOT_SUPPORTED:
+		return -ENOTSUP;
+	case RAS_CP_RSP_INVALID_PARAMETER:
+		return -EINVAL;
+	case RAS_CP_RSP_PROCEDURE_NOT_COMPLETED:
+		return -ENODATA;
+	case RAS_CP_RSP_ABORT_UNSUCCESSFUL:
+		return -ECANCELED;
+	case RAS_CP_RSP_SERVER_BUSY:
+		return -EBUSY;
+	case RAS_CP_RSP_NO_RECORDS_FOUND:
+		return -ENOENT;
+	case RAS_CP_RSP_RESERVED:
+	default:
+		return -EPROTO;
+	}
+}
+
+static struct ras_cp_cmd_node *ras_c_cp_node_alloc(struct bt_ras_client *ras_c)
+{
+	sys_snode_t *snode = sys_slist_get(&ras_c->cp_free_q);
+	if (!snode) {
+		return NULL;
+	}
+	return CONTAINER_OF(snode, struct ras_cp_cmd_node, node);
+}
+
+static void ras_c_cp_node_free(struct bt_ras_client *ras_c, struct ras_cp_cmd_node *n)
+{
+	sys_slist_append(&ras_c->cp_free_q, &n->node);
+}
+
+/* Fires the GET_RD completion cb (if registered) and resets the GET_RD
+ * tracking state (cb slot, state, timeout). Safe to call when no GET_RD is
+ * pending: it becomes a no-op.
+ */
+static void ras_c_cp_fire_get_rd_cmpl(struct bt_ras_client *ras_c, int err)
+{
+	if (ras_c->state == RAS_C_STATE_GET_RANGING_DATA) {
+		ras_c->state = RAS_C_STATE_ON_DEMAND_MODE;
+	}
+	k_work_cancel_delayable(&ras_c->timeout_work);
+	bt_ras_client_get_ranging_data_cmpl_cb cb = ras_c->get_rd_cmpl_cb;
+	ras_c->get_rd_cmpl_cb = NULL;
+	if (cb) {
+		cb(ras_c->conn, ras_c->ranging_counter, err);
+	}
+}
+
+/* Send a CP command immediately and track (opcode, rsp_cb) at the tail of
+ * cp_q for RSP_CODE matching. The server is expected to indicate responses
+ * in the order it receives the writes.
+ */
+static int ras_c_cp_send(struct bt_ras_client *ras_c, uint8_t opcode, const void *payload,
+			 uint16_t payload_len, bt_ras_client_cp_rsp_cb rsp_cb)
+{
+	struct ras_cp_cmd_node *n = ras_c_cp_node_alloc(ras_c);
+	if (!n) {
+		return -ENOMEM;
+	}
+	int err = bt_gatt_write_without_response(ras_c->conn,
+						 ras_c->subscribe_params[RAS_CHARC_CP].value_handle,
+						 (void *)payload, payload_len, false);
+	if (err) {
+		LOG_ERR("cp op:%u write err:%d", opcode, err);
+		ras_c_cp_node_free(ras_c, n);
+		return err;
+	}
+	n->opcode = opcode;
+	n->rsp_cb = rsp_cb;
+	sys_slist_append(&ras_c->cp_q, &n->node);
+	return 0;
+}
+
+/* Remove (if present) the tracking node for the pending GET_RD's RSP_CODE
+ * from cp_q. Returns the node so the caller can free it.
+ */
+static struct ras_cp_cmd_node *ras_c_cp_remove_get_rd(struct bt_ras_client *ras_c)
+{
+	sys_snode_t *prev = NULL, *cur, *next;
+	SYS_SLIST_FOR_EACH_NODE_SAFE(&ras_c->cp_q, cur, next) {
+		struct ras_cp_cmd_node *n = CONTAINER_OF(cur, struct ras_cp_cmd_node, node);
+		if (n->opcode == RAS_CP_CMD_OPCODE_GET_RD) {
+			sys_slist_remove(&ras_c->cp_q, prev, cur);
+			return n;
+		}
+		prev = cur;
+	}
+	return NULL;
+}
+
+static void ras_c_cp_drain(struct bt_ras_client *ras_c, int err)
+{
+	sys_snode_t *snode;
+	while ((snode = sys_slist_get(&ras_c->cp_q))) {
+		struct ras_cp_cmd_node *n = CONTAINER_OF(snode, struct ras_cp_cmd_node, node);
+		if (n->rsp_cb) {
+			n->rsp_cb(ras_c->conn, n->opcode, 0, err);
+		}
+		ras_c_cp_node_free(ras_c, n);
+	}
+	ras_c_cp_fire_get_rd_cmpl(ras_c, err);
+}
+
 static void timeout_work_handler(struct k_work *work)
 {
 	struct bt_ras_client *ras_c =
 		CONTAINER_OF((struct k_work_delayable *)work, struct bt_ras_client, timeout_work);
-	LOG_DBG("timeout state:%u", ras_c->state);
+	LOG_ERR("timeout state:%u, cnt:%u", ras_c->state, ras_c->ranging_counter);
 	int err;
 	if (ras_c->state == RAS_C_STATE_ON_DEMAND_MODE) {
 		if (!ras_c->rd_ready_cb) {
@@ -126,19 +249,16 @@ static void timeout_work_handler(struct k_work *work)
 		}
 		ras_c->rd_ready_cb(ras_c->conn, 0, -ETIMEDOUT);
 	} else if (ras_c->state == RAS_C_STATE_GET_RANGING_DATA) {
-		ras_c->state = RAS_C_STATE_ON_DEMAND_MODE;
-		if (ras_c->ras_features & RAS_FEAT_ABORT_OP) {
-			NET_BUF_SIMPLE_DEFINE(abort_buf, RAS_CP_OPCODE_LEN);
-			net_buf_simple_add_u8(&abort_buf, RAS_CP_CMD_OPCODE_ABORT_OP);
-			err = bt_gatt_write_without_response(
-				ras_c->conn, ras_c->subscribe_params[RAS_CHARC_CP].value_handle,
-				abort_buf.data, abort_buf.len, false);
-			if (err) {
-				LOG_ERR("abort err:%d", err);
-			}
+		/* If GET_RD's RSP_CODE has not yet popped its tracking node,
+		 * remove it now so a late RSP_CODE doesn't pop the wrong cb. */
+		struct ras_cp_cmd_node *get_rd = ras_c_cp_remove_get_rd(ras_c);
+		if (get_rd) {
+			ras_c_cp_node_free(ras_c, get_rd);
 		}
-		if (ras_c->get_rd_cmpl_cb) {
-			ras_c->get_rd_cmpl_cb(ras_c->conn, ras_c->ranging_counter, -ETIMEDOUT);
+		ras_c_cp_fire_get_rd_cmpl(ras_c, -ETIMEDOUT);
+		err = bt_ras_client_cp_abort(ras_c->conn, NULL);
+		if (err && err != -ENOTSUP) {
+			LOG_ERR("abort err:%d", err);
 		}
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
 	} else if (ras_c->state == RAS_C_STATE_REALTIME_MODE) {
@@ -210,12 +330,11 @@ static void ras_c_disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 	if (ras_c->state == RAS_C_STATE_GET_RANGING_DATA) {
 		LOG_INF("disconn getting rd rc:%u", ras_c->ranging_counter);
-		if (ras_c->get_rd_cmpl_cb) {
-			ras_c->get_rd_cmpl_cb(conn, ras_c->ranging_counter, -ENOTCONN);
-		}
 	}
+	/* dispatch -ENOTCONN to all queued CP commands */
+	ras_c_cp_drain(ras_c, -ENOTCONN);
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
-	else if (ras_c->state == RAS_C_STATE_REALTIME_MODE) {
+	if (ras_c->state == RAS_C_STATE_REALTIME_MODE) {
 		ras_c_realtime_rd_cmpl(ras_c, -ENOTCONN);
 	}
 #endif
@@ -343,7 +462,7 @@ static uint8_t ras_c_ondemand_rd_notify(struct bt_conn *conn,
 					uint16_t length)
 {
 	if (!data) {
-		LOG_DBG("on_demand unsubscribed");
+		LOG_ERR("on_demand unsubscribed");
 		return BT_GATT_ITER_STOP;
 	}
 	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_ON_DEMAND_MODE);
@@ -365,7 +484,7 @@ static uint8_t ras_c_realtime_rd_notify(struct bt_conn *conn,
 {
 	LOG_DBG("%s", __func__);
 	if (!data) {
-		LOG_DBG("realtime unsubscribed");
+		LOG_ERR("realtime unsubscribed");
 		return BT_GATT_ITER_STOP;
 	}
 	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_REALTIME_MODE);
@@ -381,7 +500,7 @@ static uint8_t ras_c_cp_notify(struct bt_conn *conn, struct bt_gatt_subscribe_pa
 			       const void *data, uint16_t length)
 {
 	if (!data) {
-		LOG_DBG("cp unsubscribed");
+		LOG_ERR("cp unsubscribed");
 		return BT_GATT_ITER_STOP;
 	}
 	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
@@ -389,68 +508,70 @@ static uint8_t ras_c_cp_notify(struct bt_conn *conn, struct bt_gatt_subscribe_pa
 		LOG_WRN("w/o context");
 		return BT_GATT_ITER_STOP;
 	}
-	// only need to handle in on-demand mode
-	if (ras_c->state != RAS_C_STATE_GET_RANGING_DATA) {
-		LOG_DBG("cp_notif opcode:%u len:%u", *(uint8_t *)data, length);
-		return BT_GATT_ITER_CONTINUE;
-	}
 	struct net_buf_simple buf;
 	net_buf_simple_init_with_data(&buf, (uint8_t *)data, length);
+	if (buf.len < RAS_CP_OPCODE_LEN) {
+		LOG_WRN("cp_notif too short:%u", length);
+		return BT_GATT_ITER_CONTINUE;
+	}
 	uint8_t opcode = net_buf_simple_pull_u8(&buf);
+
 	switch (opcode) {
 	case RAS_CP_RSP_OPCODE_COMPLETE_RD_RSP: {
+		/* Independent of cp_q: terminates an in-progress GET_RD whose
+		 * RSP_CODE=SUCCESS was already dispatched via the FIFO. */
 		if (buf.len != sizeof(uint16_t)) {
 			LOG_WRN("cp cmp invalid size:%u", buf.len);
 			return BT_GATT_ITER_CONTINUE;
 		}
+		if (ras_c->state != RAS_C_STATE_GET_RANGING_DATA) {
+			LOG_WRN("complete_rd_rsp w/o GET_RD inprog");
+			return BT_GATT_ITER_CONTINUE;
+		}
 		uint16_t ranging_counter = net_buf_simple_pull_le16(&buf);
 		if (ras_c->ranging_counter != ranging_counter) {
-			LOG_WRN("unexpected rc:%u %u or state", ras_c->ranging_counter,
-				ranging_counter);
+			LOG_WRN("unexpected rc:%u %u", ras_c->ranging_counter, ranging_counter);
 			return BT_GATT_ITER_CONTINUE;
 		}
-		NET_BUF_SIMPLE_DEFINE(ack_buf, RAS_CP_OPCODE_LEN + sizeof(uint16_t));
-		net_buf_simple_add_u8(&ack_buf, RAS_CP_CMD_OPCODE_ACK_RD);
-		net_buf_simple_add_le16(&ack_buf, ras_c->ranging_counter);
-		int err = bt_gatt_write_without_response(
-			conn, ras_c->subscribe_params[RAS_CHARC_CP].value_handle, ack_buf.data,
-			ack_buf.len, false);
+		int err = bt_ras_client_cp_ack_rd(conn, ras_c->ranging_counter, NULL);
 		if (err) {
 			LOG_ERR("ack cmd err:%d", err);
-		}
-		ras_c->state = RAS_C_STATE_ON_DEMAND_MODE;
-		if (!ras_c->get_rd_cmpl_cb) {
-			return BT_GATT_ITER_CONTINUE;
 		}
 		err = ras_c->err_status;
 		if (!ras_c->last_seg && !err) {
 			err = -ENODATA;
 		}
-		ras_c->get_rd_cmpl_cb(conn, ras_c->ranging_counter, err);
+		ras_c_cp_fire_get_rd_cmpl(ras_c, err);
+	} break;
+	case RAS_CP_RSP_OPCODE_COMPLETE_LOST_RD_SEG_RSP: {
+		/* Server-side notification that streaming of lost segments has
+		 * finished. The RSP_CODE for RETRIEVE_LOST_RD_SEGMENTS already
+		 * fired its rsp_cb via the FIFO; nothing to dispatch here. */
+		LOG_DBG("complete_lost_rd_seg_rsp");
 	} break;
 	case RAS_CP_RSP_OPCODE_RSP_CODE: {
 		if (buf.len != sizeof(uint8_t)) {
 			LOG_WRN("rsp code invalid size:%u", buf.len);
 			return BT_GATT_ITER_CONTINUE;
 		}
-		// only consider get rd rsp
 		uint8_t rsp_code = net_buf_simple_pull_u8(&buf);
-		int err = 0;
-		if (rsp_code == RAS_CP_RSP_PROCEDURE_NOT_COMPLETED) {
-			err = -ENODATA;
-		} else if (rsp_code == RAS_CP_RSP_RESERVED) {
-			LOG_WRN("rsp code reserved");
-		} else if (rsp_code != RAS_CP_RSP_SUCCESS) {
-			err = -ENOENT;
-		}
-		if (!err) {
-			// wait for RAS_CP_RSP_OPCODE_COMPLETE_RD_RSP
+		sys_snode_t *snode = sys_slist_get(&ras_c->cp_q);
+		if (!snode) {
+			LOG_WRN("rsp_code:%u w/o pending", rsp_code);
 			return BT_GATT_ITER_CONTINUE;
 		}
-		ras_c->state = RAS_C_STATE_ON_DEMAND_MODE;
-		if (ras_c->get_rd_cmpl_cb) {
-			ras_c->get_rd_cmpl_cb(conn, ras_c->ranging_counter, err);
+		struct ras_cp_cmd_node *n = CONTAINER_OF(snode, struct ras_cp_cmd_node, node);
+		int err = ras_c_rsp_code_to_err(rsp_code);
+		/* GET_RD failure: COMPLETE_RD_RSP will not arrive; fire the
+		 * dedicated completion cb here so the application doesn't hang
+		 * waiting for ranging data. */
+		if (n->opcode == RAS_CP_CMD_OPCODE_GET_RD && err) {
+			ras_c_cp_fire_get_rd_cmpl(ras_c, err);
 		}
+		if (n->rsp_cb) {
+			n->rsp_cb(ras_c->conn, n->opcode, rsp_code, err);
+		}
+		ras_c_cp_node_free(ras_c, n);
 	} break;
 	default: {
 		LOG_WRN("unexpected opcode:%u", opcode);
@@ -512,6 +633,12 @@ static void ras_c_discovery_cmpl(struct bt_conn *conn, int err)
 		}
 		ras_c->conn = conn;
 		k_work_init_delayable(&ras_c->timeout_work, timeout_work_handler);
+		sys_slist_init(&ras_c->cp_q);
+		sys_slist_init(&ras_c->cp_free_q);
+		for (uint8_t i = 0; i < CONFIG_RAS_CLIENT_CP_QUEUE_SIZE; i++) {
+			sys_slist_append(&ras_c->cp_free_q, &ras_c->cp_pool[i].node);
+		}
+		ras_c->get_rd_cmpl_cb = NULL;
 		static struct bt_gatt_read_params params = {
 			.func = ras_c_gatt_read_cb,
 			.handle_count = 1,
@@ -952,31 +1079,98 @@ int bt_ras_client_cp_get_ranging_data(struct bt_conn *conn, uint16_t ranging_cou
 	if (!ras_c) {
 		return -EINVAL;
 	}
+	/* Only one GET_RD procedure may be active at a time */
 	if (ras_c->state == RAS_C_STATE_GET_RANGING_DATA) {
 		return -EBUSY;
 	}
 	NET_BUF_SIMPLE_DEFINE(get_rd_buf, RAS_CP_OPCODE_LEN + sizeof(uint16_t));
 	net_buf_simple_add_u8(&get_rd_buf, RAS_CP_CMD_OPCODE_GET_RD);
 	net_buf_simple_add_le16(&get_rd_buf, ranging_counter);
-	int err = bt_gatt_write_without_response(conn,
-						 ras_c->subscribe_params[RAS_CHARC_CP].value_handle,
-						 get_rd_buf.data, get_rd_buf.len, false);
-	if (err) {
-		LOG_ERR("get_rd cmd err:%d", err);
-		return err;
-	}
-	ras_c->state = RAS_C_STATE_GET_RANGING_DATA;
+
 	ras_c->ondemand_buf_out = ranging_data_out;
-	ras_c->get_rd_cmpl_cb = cb;
 	ras_c->ranging_counter = ranging_counter;
 	ras_c->err_status = 0;
 	ras_c->next_seg_cnt = 0;
 	ras_c->last_seg = false;
+	ras_c->get_rd_cmpl_cb = cb;
 
+	int err = ras_c_cp_send(ras_c, RAS_CP_CMD_OPCODE_GET_RD, get_rd_buf.data, get_rd_buf.len,
+				NULL);
+	if (err) {
+		ras_c->get_rd_cmpl_cb = NULL;
+		return err;
+	}
+	ras_c->state = RAS_C_STATE_GET_RANGING_DATA;
 	atm_work_reschedule_for_app_work_q(
 		&ras_c->timeout_work,
 		K_SECONDS(CONFIG_RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC));
-	return err;
+	return 0;
+}
+
+int bt_ras_client_cp_set_filter(struct bt_conn *conn, uint8_t mode, uint16_t filter_mask,
+				const bt_ras_client_cp_rsp_cb cb)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
+	if (!ras_c || mode >= RAS_FILTER_MODE_NUM) {
+		return -EINVAL;
+	}
+	if (!(ras_c->ras_features & RAS_FEAT_FILTER_RD)) {
+		return -ENOTSUP;
+	}
+	ras_cp_t cp_cmd;
+	cp_cmd.opcode = RAS_CP_CMD_OPCODE_SET_FILTER;
+	cp_cmd.para.rd_filter.mode = mode;
+	cp_cmd.para.rd_filter.mask = filter_mask;
+
+	return ras_c_cp_send(ras_c, RAS_CP_CMD_OPCODE_SET_FILTER, &cp_cmd,
+			     RAS_CP_OPCODE_LEN + sizeof(ras_cp_filter_t), cb);
+}
+
+int bt_ras_client_cp_abort(struct bt_conn *conn, const bt_ras_client_cp_rsp_cb cb)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
+	if (!ras_c) {
+		return -EINVAL;
+	}
+	if (!(ras_c->ras_features & RAS_FEAT_ABORT_OP)) {
+		return -ENOTSUP;
+	}
+	uint8_t payload[RAS_CP_OPCODE_LEN] = {RAS_CP_CMD_OPCODE_ABORT_OP};
+	return ras_c_cp_send(ras_c, RAS_CP_CMD_OPCODE_ABORT_OP, payload, sizeof(payload), cb);
+}
+
+int bt_ras_client_cp_retrieve_lost_segments(struct bt_conn *conn, uint16_t ranging_counter,
+					    uint8_t start_seg, uint8_t end_seg,
+					    const bt_ras_client_cp_rsp_cb cb)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
+	if (!ras_c || start_seg > end_seg) {
+		return -EINVAL;
+	}
+	if (!(ras_c->ras_features & RAS_FEAT_RETRIEVE_LOST_RD_SEG)) {
+		return -ENOTSUP;
+	}
+	ras_cp_t cp_cmd;
+	cp_cmd.opcode = RAS_CP_CMD_OPCODE_RETRIEVE_LOST_RD_SEGMENTS;
+	cp_cmd.para.rd_segmt.ranging_cnt = ranging_counter;
+	cp_cmd.para.rd_segmt.start_segmt = start_seg;
+	cp_cmd.para.rd_segmt.end_segmt = end_seg;
+
+	return ras_c_cp_send(ras_c, RAS_CP_CMD_OPCODE_RETRIEVE_LOST_RD_SEGMENTS, &cp_cmd,
+			     RAS_CP_OPCODE_LEN + sizeof(ras_cp_rd_segment_t), cb);
+}
+
+int bt_ras_client_cp_ack_rd(struct bt_conn *conn, uint16_t ranging_counter,
+			    const bt_ras_client_cp_rsp_cb cb)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn_state(conn, RAS_C_STATE_READ_FEATURES_DONE);
+	if (!ras_c) {
+		return -EINVAL;
+	}
+	NET_BUF_SIMPLE_DEFINE(ack_buf, RAS_CP_OPCODE_LEN + sizeof(uint16_t));
+	net_buf_simple_add_u8(&ack_buf, RAS_CP_CMD_OPCODE_ACK_RD);
+	net_buf_simple_add_le16(&ack_buf, ranging_counter);
+	return ras_c_cp_send(ras_c, RAS_CP_CMD_OPCODE_ACK_RD, ack_buf.data, ack_buf.len, cb);
 }
 
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD

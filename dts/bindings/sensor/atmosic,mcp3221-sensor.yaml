@@ -1,0 +1,17 @@
+# Copyright (c) 2023-2026, Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  Atmosic sensor-API binding for the Microchip MCP3221 Low-Power 12-Bit A/D
+  Converter with I2C Interface.  See
+  https://www.microchip.com/en-us/product/mcp3221.
+
+  The "microchip,mcp3221" compatible string is claimed upstream by an
+  ADC-controller binding (zephyr/dts/bindings/adc/microchip,mcp3221.yaml).
+  This Atmosic-specific compatible exposes the same chip through the
+  Zephyr sensor API instead.
+
+compatible: "atmosic,mcp3221-sensor"
+
+include: [sensor-device.yaml, i2c-device.yaml]

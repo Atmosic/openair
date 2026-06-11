@@ -211,7 +211,7 @@ static int i2s_config_convert(struct device const *dev, const struct i2s_config 
 		LOG_ERR("Unsupported word size");
 		return -EINVAL;
 	}
-	trx->mstr_sckws = !(cfg->options & I2S_OPT_FRAME_CLK_SLAVE);
+	trx->mstr_sckws = !(cfg->options & I2S_OPT_FRAME_CLK_TARGET);
 
 #define I2S_16M_CLK 0
 #define I2S_32M_CLK 1

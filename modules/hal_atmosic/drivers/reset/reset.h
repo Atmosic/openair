@@ -39,6 +39,14 @@ typedef enum {
     TYPE_RESET,
 } boot_type_t;
 
+/// Power on reason
+typedef enum {
+    /// Power on.
+    POWER_ON_RESET,
+    /// Power on triggered by RF wake.
+    POWER_ON_RFWAKE,
+} boot_power_on_reason_t;
+
 /// Reset reason
 typedef enum {
     /// System reset.
@@ -97,6 +105,8 @@ typedef enum {
     HIB_BROWNOUT_RISING,
     /// Boot from hibernation by BROWNOUT falling edge (brownout cleared).
     HIB_BROWNOUT_FALLING,
+    /// Boot from hibernation by RF wake
+    HIB_RFWAKE,
 } boot_hib_reason_t;
 
 /// SOC off wakeup reason
@@ -115,6 +125,10 @@ typedef enum {
     SOC_RESET_PSEQ_WDOG,
     /// SOC reset by PMU watchdog
     SOC_RESET_PMU_WDOG,
+    /// SOC reset by watchdog
+    SOC_RESET_WDOG,
+    /// SOC reset by SW request
+    SOC_RESET_SW,
 } boot_soc_reset_reason_t;
 
 /// Generate reason mask
@@ -127,13 +141,23 @@ typedef enum {
 /// of boot_*_reason_t.
 typedef enum {
     /// Reset was cold
-    BOOT_STATUS_POWER_ON = BOOT_STATUS(TYPE_POWER_ON, 0),
+    BOOT_STATUS_POWER_ON = BOOT_STATUS(TYPE_POWER_ON,
+	BOOT_MASK(POWER_ON_RESET)),
+    /// Power on triggered by RF wake
+    BOOT_STATUS_POWER_ON_RFWAKE = BOOT_STATUS(TYPE_POWER_ON,
+	BOOT_MASK(POWER_ON_RFWAKE)),
     /// SOC reset by PSEQ watchdog
     BOOT_STATUS_SOC_RESET_PSEQ_WDOG = BOOT_STATUS(TYPE_SOC_RESET,
 	BOOT_MASK(SOC_RESET_PSEQ_WDOG)),
     /// SOC reset by PMU watchdog
     BOOT_STATUS_SOC_RESET_PMU_WDOG = BOOT_STATUS(TYPE_SOC_RESET,
 	BOOT_MASK(SOC_RESET_PMU_WDOG)),
+    /// SOC reset by watchdog
+    BOOT_STATUS_SOC_RESET_WDOG = BOOT_STATUS(TYPE_SOC_RESET,
+	BOOT_MASK(SOC_RESET_WDOG)),
+    /// SOC reset by SW
+    BOOT_STATUS_SOC_RESET_SW = BOOT_STATUS(TYPE_SOC_RESET,
+	BOOT_MASK(SOC_RESET_SW)),
     /// System reset.
     BOOT_STATUS_RESET_SYS = BOOT_STATUS(TYPE_RESET, BOOT_MASK(RESET_SYS)),
     /// Reset by watchdog.
@@ -142,9 +166,9 @@ typedef enum {
     BOOT_STATUS_RESET_SWDOG = BOOT_STATUS(TYPE_RESET, BOOT_MASK(RESET_SWDOG)),
     /// Reset by LOCKUP cases.
     BOOT_STATUS_RESET_LOCKUP = BOOT_STATUS(TYPE_RESET, BOOT_MASK(RESET_LOCKUP)),
-    /// Reset by LOCKUP cases.
+    /// Reset by SW request.
     BOOT_STATUS_RESET_SW = BOOT_STATUS(TYPE_RESET, BOOT_MASK(RESET_SW)),
-    /// Reset by LOCKUP cases.
+    /// Reset by external request.
     BOOT_STATUS_RESET_EXT = BOOT_STATUS(TYPE_RESET, BOOT_MASK(RESET_EXT)),
     /// Wake up from SOC off by pin.
     BOOT_STATUS_SOCOFF_WKUP_PIN = BOOT_STATUS(TYPE_SOCOFF,
@@ -204,6 +228,8 @@ typedef enum {
     /// Boot from hibernation by BROWNOUT falling edge (brownout cleared)
     BOOT_STATUS_HIB_WKUP_BROWNOUT_FALLING = BOOT_STATUS(TYPE_HIB,
 	BOOT_MASK(HIB_BROWNOUT_FALLING)),
+    /// Boot from hibernation by RF wake
+    BOOT_STATUS_HIB_WKUP_RF = BOOT_STATUS(TYPE_HIB, BOOT_MASK(HIB_RFWAKE)),
 } boot_status_t;
 
 /**
@@ -233,6 +259,18 @@ __STATIC_FORCEINLINE bool is_boot_type(boot_type_t typ)
 __STATIC_FORCEINLINE bool is_boot_reason(boot_status_t sts)
 {
     return ((boot_status() & sts) == sts);
+}
+
+/**
+ * @brief Determine if the system is booting from a state where memory is
+ * unretained.
+ *
+ * @return True if unretained boot.
+ */
+__STATIC_FORCEINLINE bool is_boot_unretained(void)
+{
+    return (is_boot_type(TYPE_POWER_ON) || is_boot_type(TYPE_SOCOFF) ||
+	is_boot_type(TYPE_SOC_RESET) || is_boot_type(TYPE_RESET));
 }
 
 /**

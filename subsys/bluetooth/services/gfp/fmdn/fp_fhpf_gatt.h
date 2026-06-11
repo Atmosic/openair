@@ -6,7 +6,7 @@
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN)
  *        Find Hub Precision Finding (FHPF) header
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -56,6 +56,21 @@ typedef int (*fp_fmdn_ranging_start_cb)(rt_id_t tech_id);
 typedef int (*fp_fmdn_ranging_stop_cb)(rt_id_t tech_id);
 
 /**
+ * @brief Raw motion snapshot getter supplied by the platform when motion is enabled.
+ * @return Current tilt angle in whole degrees (0–90), sampled at call time.
+ *         Threshold classification and peak tracking are done by the caller.
+ */
+typedef uint8_t (*fp_fmdn_ranging_motion_get_status_t)(void);
+
+/**
+ * @brief Callback for motion detect requests
+ * @param get_status  non-NULL to enable (platform writes its getter here);
+ *                    NULL to disable motion detection
+ * @return 0 on success, negative on error
+ */
+typedef int (*fp_fmdn_ranging_motion_cb)(fp_fmdn_ranging_motion_get_status_t *get_status);
+
+/**
  * @brief FMDN ranging callback handler structure
  * Contains callbacks for ranging operations. NULL callbacks are ignored.
  */
@@ -64,7 +79,29 @@ typedef struct {
 	fp_fmdn_ranging_config_cb config_cb;         ///< Configuration events
 	fp_fmdn_ranging_start_cb start_cb;           ///< Start events
 	fp_fmdn_ranging_stop_cb stop_cb;             ///< Stop events
+	fp_fmdn_ranging_motion_cb motion_cb;         ///< Motion detection events
 } fp_fmdn_ranging_handler_t;
+
+/**
+ * @brief Function type for sending motion status GATT notifications
+ *
+ * @param conn         Bluetooth connection to notify
+ * @param nego_version OOB DE version negotiated for this session
+ * @param seq_num      Strictly-increasing sequential number (Table 8 octet 10)
+ * @param st           Motion status to report
+ */
+typedef void (*fp_fhpf_motion_notify_fn_t)(struct bt_conn *conn, uint8_t nego_version,
+					   uint8_t seq_num, ranging_de_motion_status_t st);
+
+/**
+ * @brief Register the motion status GATT notification sender
+ *
+ * Called by fp_fmdn_gatt to provide the BCNA notification send function.
+ * fp_fhpf_gatt uses this to send motion status notifications to the seeker.
+ *
+ * @param fn Notification sender function, or NULL to unregister
+ */
+void fp_fhpf_gatt_motion_notify_fn_reg(fp_fhpf_motion_notify_fn_t fn);
 
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
 /**

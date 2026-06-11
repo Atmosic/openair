@@ -7,5 +7,7 @@ common:
     - drivers
     - ccbm
     - battery
+  depends_on:
+    - ccbm
 tests:
   tests.drivers.ccbm.atm: {}

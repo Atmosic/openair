@@ -1,0 +1,11 @@
+common:
+  tags:
+    - entropy
+    - drivers
+  depends_on:
+    - entropy
+  sysbuild: true
+  expect_reboot: true
+
+tests:
+  tests.drivers.entropy.warm_reset.atm: {}

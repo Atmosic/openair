@@ -18,7 +18,6 @@ tests:
       - "fmna: Advertising successfully started"
       - "fp: FP Discoverable Advertising successfully started"
       - "advP:"
-
   applications.multimode_consumer_tag.atm.default_storage_size:
     extra_args:
       - EXTRA_CONF_FILE="stf_tag.conf"
@@ -95,27 +94,6 @@ tests:
     harness_config:
       type: multi_line
       regex:
-      - "fp: FP Discoverable Advertising successfully started"
-      - "advP:"
-  applications.multimode_consumer_tag.atm.mcuboot.ota:
-    tags:
-      - mcuboot
-      - large_ram_required
-    extra_args:
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
-      - EXTRA_CONF_FILE="basic_ota_bt.conf;stf_tag.conf"
-    extra_configs:
-      - CONFIG_ATM_FP_LOG_LEVEL_INF=y
-      - CONFIG_ATM_PLF_DEBUG=n
-      - CONFIG_LOG_DEFAULT_LEVEL=1
-      - CONFIG_ATM_FMNA_LIB_DEBUG=n
-    harness_config:
-      type: multi_line
-      regex:
-      - "fmna: Advertising successfully started"
       - "fp: FP Discoverable Advertising successfully started"
       - "advP:"
   applications.multimode_consumer_tag.atm.fhn_only.mcuboot.ota:
@@ -211,7 +189,8 @@ tests:
   applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.ota:
     tags:
       - mcuboot
-      - large_ram_required
+    depends_on:
+      - atlc
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -243,10 +222,126 @@ tests:
       regex:
       - "fp: FP Discoverable Advertising successfully started"
       - "advP:"
-  applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.ota:
+  applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.overwrite.ota:
+    tags:
+      - mcuboot
+      - overwrite
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SCRATCH_SIZE=0;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - EXTRA_CONF_FILE="basic_ota_bt.conf"
+    extra_configs:
+      - CONFIG_STF_TAG=n
+      - CONFIG_ATM_FMNA_LIB_DEBUG=n
+    harness_config:
+      type: multi_line
+      regex:
+      - "fmna: Advertising successfully started"
+      - "fp: FP Discoverable Advertising successfully started"
+  applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.legacy_scratch.ota:
+    tags:
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - EXTRA_CONF_FILE="basic_ota_bt.conf"
+    extra_configs:
+      - CONFIG_STF_TAG=n
+      - CONFIG_ATM_FMNA_LIB_DEBUG=n
+    harness_config:
+      type: multi_line
+      regex:
+      - "fmna: Advertising successfully started"
+      - "fp: FP Discoverable Advertising successfully started"
+  applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.overwrite.ota:
+    tags:
+      - mcuboot
+      - overwrite
+    depends_on:
+      - atlc
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SCRATCH_SIZE=0;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - EXTRA_CONF_FILE="basic_ota_bt.conf;stf_tag.conf"
+    extra_configs:
+      - CONFIG_FHN_TAG=n
+      - CONFIG_ATM_FMNA_LIB_DEBUG=n
+    harness_config:
+      type: multi_line
+      regex:
+      - "fmna: Advertising successfully started"
+      - "advP:"
+  applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.legacy_scratch.ota:
+    tags:
+      - mcuboot
+      - legacy
+    depends_on:
+      - atlc
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - EXTRA_CONF_FILE="basic_ota_bt.conf;stf_tag.conf"
+    extra_configs:
+      - CONFIG_FHN_TAG=n
+      - CONFIG_ATM_FMNA_LIB_DEBUG=n
+    harness_config:
+      type: multi_line
+      regex:
+      - "fmna: Advertising successfully started"
+      - "advP:"
+  applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.overwrite.ota:
+    tags:
+      - mcuboot
+      - overwrite
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SCRATCH_SIZE=0;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - EXTRA_CONF_FILE="basic_ota_bt.conf;stf_tag.conf"
+    extra_configs:
+      - CONFIG_FMNA_TAG=n
+      - CONFIG_GEN_TAG_DATA_BIN_FILE=n
+    harness_config:
+      type: multi_line
+      regex:
+      - "fp: FP Discoverable Advertising successfully started"
+      - "advP:"
+  applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.legacy_scratch.ota:
+    tags:
+      - mcuboot
+      - legacy
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - EXTRA_CONF_FILE="basic_ota_bt.conf;stf_tag.conf"
+    extra_configs:
+      - CONFIG_FMNA_TAG=n
+      - CONFIG_GEN_TAG_DATA_BIN_FILE=n
+    harness_config:
+      type: multi_line
+      regex:
+      - "fp: FP Discoverable Advertising successfully started"
+      - "advP:"
+  applications.multimode_consumer_tag.atm.mcuboot.flash_xip.ota:
     tags:
       - mcuboot
       - flash_xip
+    depends_on: &flash_xip_depends
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -260,11 +355,12 @@ tests:
       - "fmna: Advertising successfully started"
       - "fp: FP Discoverable Advertising successfully started"
       - "advP:"
-  applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.overwrite.ota:
+  applications.multimode_consumer_tag.atm.mcuboot.flash_xip.overwrite.ota:
     tags:
       - mcuboot
       - flash_xip
       - overwrite
+    depends_on: *flash_xip_depends
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -279,11 +375,12 @@ tests:
       - "fmna: Advertising successfully started"
       - "fp: FP Discoverable Advertising successfully started"
       - "advP:"
-  applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.legacy_scratch.ota:
+  applications.multimode_consumer_tag.atm.mcuboot.flash_xip.legacy_scratch.ota:
     tags:
       - mcuboot
       - flash_xip
       - legacy
+    depends_on: *flash_xip_depends
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -297,26 +394,10 @@ tests:
       - "fmna: Advertising successfully started"
       - "fp: FP Discoverable Advertising successfully started"
       - "advP:"
-  applications.multimode_consumer_tag.atm.fhn_cs_tag:
+  applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo:
     tags:
       - channel_sounding
-    extra_args:
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
-      - EXTRA_CONF_FILE="basic_cs_pd50.conf"
-    extra_configs:
-      - CONFIG_STF_TAG=n
-      - CONFIG_FMNA_TAG=n
-      - CONFIG_GEN_TAG_DATA_BIN_FILE=n
-      - CONFIG_ATM_CS=y
-      - CONFIG_BT_CHANNEL_SOUNDING=y
-      - CONFIG_BT_RAS=y
-    harness_config:
-      type: one_line
-      regex:
-      - "Press button to start pairing"
-      - "CS reflector advertising started successfully"
-  applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag:
-    tags:
+    depends_on:
       - channel_sounding
     extra_args:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
@@ -331,31 +412,11 @@ tests:
       regex:
       - "fmna: Advertising successfully started"
       - "fp: FP Discoverable Advertising successfully started"
-  applications.multimode_consumer_tag.atm.fhn_cs_tag.mcuboot.ota:
+  applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo.mcuboot.ota:
     tags:
       - mcuboot
       - channel_sounding
-    extra_args:
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
-      - EXTRA_CONF_FILE="basic_ota_bt.conf;basic_cs_pd50.conf"
-    extra_configs:
-      - CONFIG_STF_TAG=n
-      - CONFIG_FMNA_TAG=n
-      - CONFIG_GEN_TAG_DATA_BIN_FILE=n
-      - CONFIG_ATM_CS=y
-      - CONFIG_BT_CHANNEL_SOUNDING=y
-      - CONFIG_BT_RAS=y
-    harness_config:
-      type: one_line
-      regex:
-      - "Press button to start pairing"
-      - "CS reflector advertising started successfully"
-  applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag.mcuboot.ota:
-    tags:
-      - mcuboot
+    depends_on:
       - channel_sounding
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
@@ -374,8 +435,76 @@ tests:
       regex:
       - "fmna: Advertising successfully started"
       - "fp: FP Discoverable Advertising successfully started"
+  applications.multimode_consumer_tag.atm.fhn_fmna_tag.oob_de.cs.mcuboot.flash_xip.uarp.ota:
+    tags:
+      - mcuboot
+      - flash_xip
+      - channel_sounding
+    depends_on:
+      - channel_sounding
+      - flash
+      - rram
+      - xip
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_STORAGE_SIZE=0x2000;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - EXTRA_CONF_FILE="basic_ota_bt.conf;basic_cs_pd50.conf"
+    extra_configs:
+      - CONFIG_STF_TAG=n
+      - CONFIG_ATM_FMNA_LIB_DEBUG=n
+      - CONFIG_USE_UARP=y
+      - CONFIG_BT_CHANNEL_SOUNDING=y
+      - CONFIG_BT_RAS=y
+      - CONFIG_FMDN_PRECISION_FINDING=y
+      - CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN=n
+      - CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN=y
+    harness_config:
+      type: multi_line
+      regex:
+      - "fmna: Advertising successfully started"
+      - "fp: FP Discoverable Advertising successfully started"
+  applications.multimode_consumer_tag.atm.fhn_fmna_tag.v2.oob_de.cs.mcuboot.flash_xip.uarp.ota:
+    tags:
+      - mcuboot
+      - flash_xip
+      - channel_sounding
+    depends_on:
+      - channel_sounding
+      - flash
+      - rram
+      - xip
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_STORAGE_SIZE=0x3000;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - EXTRA_CONF_FILE="basic_ota_bt.conf;basic_cs_pd50.conf"
+    extra_configs:
+      - CONFIG_STF_TAG=n
+      - CONFIG_ATM_FMNA_LIB_DEBUG=n
+      - CONFIG_USE_UARP=y
+      - CONFIG_BT_CHANNEL_SOUNDING=y
+      - CONFIG_BT_RAS=y
+      - CONFIG_FAST_PAIR_FMDN_V2=y
+      - CONFIG_BT_MAX_PAIRED=16
+      - CONFIG_SYSTEM_WORKQUEUE_STACK_SIZE=4096
+      - CONFIG_BT_RX_STACK_SIZE=4096
+      - CONFIG_FMDN_PRECISION_FINDING=y
+      - CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN=n
+      - CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN=y
+    harness_config:
+      type: multi_line
+      regex:
+      - "fmna: Advertising successfully started"
+      - "fp: FP Discoverable Advertising successfully started"
   applications.multimode_consumer_tag.atm.fhn_only.oob_de:
     tags:
+      - channel_sounding
+    depends_on:
       - channel_sounding
     extra_args:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
@@ -393,6 +522,41 @@ tests:
       type: one_line
       regex:
       - "Press button to start pairing"
+  applications.multimode_consumer_tag.atm.fhn_only.oob_de.cs:
+    tags:
+      - channel_sounding
+    depends_on:
+      - channel_sounding
+    extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
+      - EXTRA_CONF_FILE="basic_cs_pd50.conf"
+    extra_configs:
+      - CONFIG_STF_TAG=n
+      - CONFIG_FMNA_TAG=n
+      - CONFIG_GEN_TAG_DATA_BIN_FILE=n
+      - CONFIG_BT_CHANNEL_SOUNDING=y
+      - CONFIG_BT_RAS=y
+      - CONFIG_FMDN_PRECISION_FINDING=y
+      - CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN=n
+      - CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN=y
+    harness_config:
+      type: one_line
+      regex:
+      - "Press button to start pairing"
+  applications.multimode_consumer_tag.atm.fhn_only.oob_de.uwb:
+    extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
+    extra_configs:
+      - CONFIG_STF_TAG=n
+      - CONFIG_FMNA_TAG=n
+      - CONFIG_GEN_TAG_DATA_BIN_FILE=n
+      - CONFIG_FMDN_PRECISION_FINDING=y
+      - CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN=y
+      - CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN=n
+    harness_config:
+      type: one_line
+      regex:
+      - "Press button to start pairing"
   applications.multimode_consumer_tag.atm.fhn_only.v2:
     extra_args:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x2000"
@@ -401,7 +565,7 @@ tests:
       - CONFIG_FMNA_TAG=n
       - CONFIG_GEN_TAG_DATA_BIN_FILE=n
       - CONFIG_FAST_PAIR_FMDN_V2=y
-      - CONFIG_BT_MAX_PAIRED=64
+      - CONFIG_BT_MAX_PAIRED=16
       - CONFIG_SYSTEM_WORKQUEUE_STACK_SIZE=4096
       - CONFIG_BT_RX_STACK_SIZE=4096
     harness_config:
@@ -420,3 +584,39 @@ tests:
       type: one_line
       regex:
       - "Press button to start pairing"
+  applications.multimode_consumer_tag.atm.mcuboot.flash_xip.at_cmd:
+    tags:
+      - mcuboot
+      - flash_xip
+      - at_cmd
+      - pytest
+    depends_on:
+      - flash
+      - rram
+      - xip
+    timeout: 300
+    harness: pytest
+    harness_config:
+      pytest_root:
+        - pytest/test_at_cmd_tag.py
+      pytest_dut_scope: session
+      pytest_args:
+        - "-v"
+        # For two-port mode, add: --at-cmd-serial=<port>
+        # e.g. via twister: --pytest-args="--at-cmd-serial=COM23"
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - EXTRA_CONF_FILE="basic_ota_bt.conf;stf_tag.conf"
+      - EXTRA_DTC_OVERLAY_FILE="at_cmd.overlay"
+    extra_configs:
+      - CONFIG_FAST_PAIR_FMDN_V2=y
+      - CONFIG_ATM_AT_CMD=y
+      - CONFIG_AT_CMD_SET=y
+      - CONFIG_AT_CMD_TAG_SET=y
+      - CONFIG_TAG_LED_IND=n
+      - CONFIG_TAG_BUZZER=n
+      - CONFIG_TAG_BUTTON=n

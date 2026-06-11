@@ -123,6 +123,9 @@ enum rreq_smf_action {
 #endif
 	RREQ_SMF_BT_SET_SEC,
 	RREQ_SMF_GATT_EXCH_MTU,
+#ifdef CONFIG_ENABLE_CS_REF_IPT
+	RREQ_SMF_GET_EXTFEAT,
+#endif
 	RREQ_SMF_RAS_DISCOVER,
 	RREQ_SMF_RAS_SUBSCRIBE,
 	RREQ_SMF_CS_SETUP_READ_LOCAL_CAP,
@@ -160,8 +163,12 @@ typedef struct rreq_smf_ctrl {
 	uint16_t action_mask;
 	enum rreq_smf_evt evt;
 	uint8_t n_ap;
+	bool cs_ipt_reflector;
 #ifdef CONFIG_ATM_BT_PHY_UPDATE
 	uint8_t retry_count;
+#endif
+#ifdef CONFIG_RREQ_SET_RAS_FILTER
+	uint16_t mode2_mask;
 #endif
 } rreq_smf_ctrl_t;
 
@@ -264,10 +271,24 @@ static void rreq_dump_log_init_work_handler(struct k_work *work)
 	info->logged_len += data_len;
 }
 
+#ifndef CONFIG_RREQ_DISABLE_RD_SUB
 static void rreq_dump_log_ref_work_handler(struct k_work *work)
 {
 	struct dump_log_work_info *info = CONTAINER_OF(work, struct dump_log_work_info, work);
-	LOG_INF("Ref Procedure: len: %d rc: %d", info->len, info->ranging_counter);
+#define DEFAULT_I_Q_BITS 12
+	uint8_t i_bits = DEFAULT_I_Q_BITS;
+	uint8_t q_bits = DEFAULT_I_Q_BITS;
+
+#ifdef CONFIG_RREQ_SET_RAS_FILTER
+	uint16_t mode2_mask = rreq_smf_ctl.mode2_mask;
+	if (!(mode2_mask & RAS_FILTER_MODE_2_BIT_PHASE_CORR)) {
+		i_bits = q_bits = 0;
+	}
+#else
+	uint16_t mode2_mask = BT_RAS_CP_FILTER_MASK;
+#endif
+	LOG_INF("Ref Procedure: len: %d rc: %d, I-b:%d Q-b:%d mask:0x%04x", info->len,
+		info->ranging_counter, i_bits, q_bits, mode2_mask);
 	log_hexdump("R", info->step_data, info->len);
 	uint8_t *end = info->step_data + info->len;
 	if (end != latest_peer_steps.data) {
@@ -291,6 +312,7 @@ static void rreq_submit_ref_log_work(uint16_t ranging_counter, uint8_t *step_dat
 	info->step_data = step_data;
 	k_work_submit_to_queue(&log_dump_work_q, &info->work);
 }
+#endif // CONFIG_RREQ_DISABLE_RD_SUB
 
 #ifdef CONFIG_READ_RSSI
 static void read_conn_rssi(uint16_t handle, int8_t *rssi)
@@ -403,7 +425,7 @@ static void rreq_security_changed(struct bt_conn *conn, bt_security_t level,
 static void rreq_cs_remote_capabilities(struct bt_conn *conn, uint8_t status,
 					struct bt_conn_le_cs_capabilities *params)
 {
-	LOG_DBG("CS cap exchange cmpl");
+	LOG_INF("CS cap exchange cmpl-%d", params->cs_ipt_reflector ? 1 : 0);
 	if (status == BT_HCI_ERR_SUCCESS) {
 		rreq_smf_ctl.action_mask |= BIT(RREQ_SMF_CS_SETUP_READ_REMOTE_CAP);
 		// set the bit that will not read FAE table
@@ -414,6 +436,7 @@ static void rreq_cs_remote_capabilities(struct bt_conn *conn, uint8_t status,
 		if (params->num_antennas_supported < PREF_PEER_ANTENNA_NUM) {
 			cs_preferred_peer_antenna = BT_LE_CS_PROCEDURE_PREFERRED_PEER_ANTENNA_1;
 		}
+		rreq_smf_ctl.cs_ipt_reflector = params->cs_ipt_reflector;
 		atm_work_submit_to_app_work_q(&rreq_smf_work);
 	}
 }
@@ -473,7 +496,11 @@ static void rreq_cs_subevent_result(struct bt_conn *conn,
 	static uint8_t subevt_idx;
 	if (!subevt_idx) {
 		rreq_smf_ctl.n_ap = result->header.num_antenna_paths;
+#ifdef CONFIG_RREQ_DISABLE_RD_SUB
+		LOG_INF("Procedure start: nAP: %d (no rd sub)", rreq_smf_ctl.n_ap);
+#else
 		LOG_INF("Procedure start: nAP: %d", rreq_smf_ctl.n_ap);
+#endif
 	}
 
 	if (result->header.subevent_done_status == BT_HCI_LE_CS_SUBEVENT_DONE_STATUS_ABORTED) {
@@ -660,6 +687,16 @@ static void rreq_le_phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info
 }
 #endif
 
+#ifdef CONFIG_ENABLE_CS_REF_IPT
+static void
+rreq_read_all_remote_feat_complete(struct bt_conn *conn,
+				   const struct bt_conn_le_read_all_remote_feat_complete *params)
+{
+	LOG_INF("read all remote feat cmpl status:%u max_remote_page:%u max_valid_page:%u",
+		params->status, params->max_remote_page, params->max_valid_page);
+}
+#endif
+
 BT_CONN_CB_DEFINE(conn_cb) = {
 	.connected = rreq_connected,
 	.disconnected = rreq_disconnected,
@@ -670,6 +707,9 @@ BT_CONN_CB_DEFINE(conn_cb) = {
 #ifdef CONFIG_BT_TRANSMIT_POWER_CONTROL
 	.tx_power_report = rreq_tx_power_report,
 #endif
+#ifdef CONFIG_ENABLE_CS_REF_IPT
+	.read_all_remote_feat_complete = rreq_read_all_remote_feat_complete,
+#endif
 	.le_cs_read_remote_capabilities_complete = rreq_cs_remote_capabilities,
 	.le_cs_read_remote_fae_table_complete = rreq_cs_remote_fae_table,
 	.le_cs_config_complete = rreq_cs_config_created,
@@ -678,6 +718,7 @@ BT_CONN_CB_DEFINE(conn_cb) = {
 	.le_cs_subevent_data_available = rreq_cs_subevent_result,
 };
 
+#ifndef CONFIG_RREQ_DISABLE_RD_SUB
 static void get_rd_cmpl_mode(struct bt_conn *conn, uint16_t ranging_counter, int err, bool realtime)
 {
 	if (err) {
@@ -754,6 +795,18 @@ static void rd_overwritten_cb(struct bt_conn *conn, uint16_t ranging_counter)
 		reset_rd_info(BOTH_ROLE_MASK);
 	}
 }
+#endif // CONFIG_RREQ_DISABLE_RD_SUB
+
+#ifdef CONFIG_RREQ_SET_RAS_FILTER
+static void rreq_cp_set_filter_rsp_cb(struct bt_conn *conn, uint8_t cmd_opcode, uint8_t rsp_code,
+				      int err)
+{
+	if (err) {
+		rreq_smf_ctl.mode2_mask = BT_RAS_CP_FILTER_MASK;
+	}
+	LOG_INF("set filter rsp opcode:%u rsp:%u err:%d", cmd_opcode, rsp_code, err);
+}
+#endif
 
 static int cs_proc_enable(enum bt_conn_le_cs_procedure_enable_state state)
 {
@@ -765,7 +818,7 @@ static int cs_proc_enable(enum bt_conn_le_cs_procedure_enable_state state)
 	return bt_le_cs_procedure_enable(rreq_smf_ctl.curr_conn, &param);
 }
 
-#ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
+#if defined(CONFIG_RAS_CLIENT_REAL_TIME_RD) && !defined(CONFIG_RREQ_DISABLE_RD_SUB)
 static void get_rt_rd_cmpl_cb(struct bt_conn *conn, int err)
 {
 	get_rd_cmpl_mode(conn, 0, err, true);
@@ -934,6 +987,19 @@ static void rreq_smf_work_handler(struct k_work *work)
 	LOG_DBG("next_action:%d", next_action);
 	int err = 0;
 	switch (next_action) {
+#ifdef CONFIG_ENABLE_CS_REF_IPT
+	case RREQ_SMF_GET_EXTFEAT: {
+#define CS_ENHANCEMENT_1_FEAT_PAGE 1
+		/* Read extend feature */
+		err = bt_conn_le_read_all_remote_features(rreq_smf_ctl.curr_conn,
+							  CS_ENHANCEMENT_1_FEAT_PAGE);
+		if (err) {
+			LOG_ERR("Failed to read remote feature: %d", err);
+		}
+		rreq_smf_ctl.action_mask |= BIT(RREQ_SMF_GET_EXTFEAT);
+		atm_work_submit_to_app_work_q(&rreq_smf_work);
+	} break;
+#endif
 #ifdef CONFIG_BT_TRANSMIT_POWER_CONTROL
 	case RREQ_SMF_ENABLE_POWER_REPORTING: {
 		/* Enable power reporting for both local and remote TX power changes */
@@ -987,6 +1053,20 @@ static void rreq_smf_work_handler(struct k_work *work)
 			LOG_ERR("rd cp subs err:%d", err);
 			return;
 		}
+#ifdef CONFIG_RREQ_SET_RAS_FILTER
+		/* Mode 2 filter mask from Kconfig; cleared bits drop the
+		 * corresponding fields from the ranging data.
+		 */
+		rreq_smf_ctl.mode2_mask = CONFIG_RREQ_RAS_FILTER_MODE_2_MASK;
+		err = bt_ras_client_cp_set_filter(rreq_smf_ctl.curr_conn, RAS_FILTER_MODE_2,
+						  rreq_smf_ctl.mode2_mask,
+						  rreq_cp_set_filter_rsp_cb);
+		if (err) {
+			LOG_WRN("rd cp set filter-%x err:%d", rreq_smf_ctl.mode2_mask, err);
+			rreq_smf_ctl.mode2_mask = BT_RAS_CP_FILTER_MASK;
+		}
+#endif
+#ifndef CONFIG_RREQ_DISABLE_RD_SUB
 		/* Try real-time subscription first if supported, fallback to on-demand mode */
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
 		err = bt_ras_client_realtime_ranging_data_subscribe(
@@ -1019,6 +1099,7 @@ static void rreq_smf_work_handler(struct k_work *work)
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
 		}
 #endif
+#endif // CONFIG_RREQ_DISABLE_RD_SUB
 
 		rreq_smf_ctl.action_mask |= BIT(RREQ_SMF_RAS_SUBSCRIBE);
 		rreq_run_event(RREQ_SMF_EVT_BT_RAS_SUBSCRIBED);
@@ -1066,7 +1147,17 @@ static void rreq_smf_work_handler(struct k_work *work)
 			.channel_selection_type = CREATE_CHANNEL_SELECTION_TYPE,
 			.ch3c_shape = CREATE_CH3C_SHAPE,
 			.ch3c_jump = CREATE_CH3C_JUMP,
+			.cs_enhancements_1 = 0,
 		};
+#ifdef CONFIG_ENABLE_CS_REF_IPT
+#ifndef CONFIG_FORCE_DISABLE_IPT
+		if (rreq_smf_ctl.cs_ipt_reflector) {
+#define CS_ENHANCE_REF_IPT_ENABLE_MASK 1
+			params.cs_enhancements_1 |= CS_ENHANCE_REF_IPT_ENABLE_MASK;
+			LOG_INF("CS Config: Enable REF ipt");
+		}
+#endif
+#endif // CONFIG_ENABLE_CS_REF_IPT
 		bt_le_cs_set_valid_chmap_bits(params.channel_map);
 		err = bt_le_cs_create_config(rreq_smf_ctl.curr_conn, &params,
 					     BT_LE_CS_CREATE_CONFIG_CONTEXT_LOCAL_AND_REMOTE);
@@ -1094,8 +1185,13 @@ static void rreq_smf_work_handler(struct k_work *work)
 			.config_id = CREATE_CONFIG_ID,
 			.max_procedure_len = MAX_PROC_LEN_IN_625US,
 			.max_procedure_count = MAX_PROC_COUNT,
+#ifdef CONFIG_ATM_CS_QUICK_TEST
+			.min_subevent_len = (MIN_SUBEVENT_LEN_IN_US >> 1),
+			.max_subevent_len = (MIN_SUBEVENT_LEN_IN_US >> 1),
+#else
 			.min_subevent_len = MIN_SUBEVENT_LEN_IN_US,
 			.max_subevent_len = MAX_SUBEVENT_LEN_IN_US,
+#endif
 			.tone_antenna_config_selection = CONFIG_CS_PROC_ANT_CFG_SEL,
 #ifdef CONFIG_TX_PHY_CS_REF
 			.phy = cs_phy,
@@ -1107,8 +1203,14 @@ static void rreq_smf_work_handler(struct k_work *work)
 			.snr_control_initiator = SNR_CONTROL_INITIATOR,
 			.snr_control_reflector = SNR_CONTROL_REFLECTOR,
 		};
+#ifdef CONFIG_ATM_CS_QUICK_TEST
+#define DEFAULT_PROC_INTERVAL_CONN_INT 6
+#define LONG_PROC_INTERVAL_CONN_INT    6
+#else
 #define DEFAULT_PROC_INTERVAL_CONN_INT 12
 #define LONG_PROC_INTERVAL_CONN_INT    16
+#endif
+
 		if (current_tx_phy == BT_GAP_LE_PHY_2M) {
 			param.min_procedure_interval = DEFAULT_PROC_INTERVAL_CONN_INT;
 			param.max_procedure_interval = DEFAULT_PROC_INTERVAL_CONN_INT;

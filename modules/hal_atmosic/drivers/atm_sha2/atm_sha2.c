@@ -123,6 +123,51 @@ static inline atm_sha256_res_t sha2_clock_enable(void)
     return ATM_SHA256_RES_SUCCESS;
 }
 
+#if (ATM_SHA2_API == SHA_SINGLE_CTXT)
+static void atm_sha256_recover(void)
+{
+#ifdef WRPRPINS_SOC_MISC_CTRL__SHA_RESET__SET
+    // Pulse SHA_RESET to clear any residual state left over from a prior
+    // op (HMAC key registers, mode bits, IV, length counters) before the
+    // new CONTROL value is committed. Mirrors the pulse used at the top
+    // of start_controller in store_partial_block. Without this, single-
+    // mode reuses can inherit stale HW state across operations.
+    WRPRPINS_SOC_MISC_CTRL__SHA_RESET__SET(
+	CMSDK_WRPR0_NONSECURE->SOC_MISC_CTRL);
+    WRPRPINS_SOC_MISC_CTRL__SHA_RESET__CLR(
+	CMSDK_WRPR0_NONSECURE->SOC_MISC_CTRL);
+#else
+    // No per-block reset on Paris: force completion of any in-flight
+    // or aborted op to release cfg_block (the latch that gates
+    // HASH_START and KEY_* writes). HASH_START and HASH_PROCESS are
+    // issued together so the sequence works in either state: if
+    // cfg_block is set, HASH_START is gated by HW and HASH_PROCESS
+    // drains the FSM; if cfg_block is clear, HASH_START opens a
+    // fresh empty-message hash that HASH_PROCESS immediately
+    // completes. SHA_EN must be high for the pulses to advance the
+    // FSM; prior HMAC_EN is preserved to avoid tripping
+    // ValidHmacEnConditionAssert.
+    AT_SHA2_CONTROL__SHA_EN__SET(CMSDK_SHA2->CONTROL);
+
+    // drop any stale HMAC_DONE latched from a prior op
+    CMSDK_SHA2->RESET_INTERRUPT = AT_SHA2_INTERRUPT_STATUS__HMAC_DONE__MASK;
+    CMSDK_SHA2->RESET_INTERRUPT = 0;
+
+    AT_SHA2_INTERRUPT_MASK__HMAC_DONE__SET(CMSDK_SHA2->INTERRUPT_MASK);
+    CMSDK_SHA2->CMD = AT_SHA2_CMD__HASH_START__WRITE(1) |
+	AT_SHA2_CMD__HASH_PROCESS__WRITE(1);
+    while (!(CMSDK_SHA2->INTERRUPT_STATUS &
+	AT_SHA2_INTERRUPT_STATUS__HMAC_DONE__MASK)) {
+	YIELD();
+    }
+    AT_SHA2_INTERRUPT_MASK__HMAC_DONE__CLR(CMSDK_SHA2->INTERRUPT_MASK);
+
+    // clear DIGEST and disable the engine
+    CMSDK_SHA2->CONTROL = 0;
+#endif
+}
+#endif // SHA_SINGLE_CTXT
+
 static inline atm_sha256_res_t sha2_clock_disable(void)
 {
 #if (ATM_SHA2_API == SHA_MULTI_CTXT)
@@ -135,9 +180,11 @@ static inline atm_sha256_res_t sha2_clock_disable(void)
 	// stay on
 	return ATM_SHA256_RES_SUCCESS;
     }
+    CMSDK_SHA2->CONTROL = 0;
+#else
+    atm_sha256_recover();
 #endif
     // disable clock to sha2 block
-    CMSDK_SHA2->CONTROL = 0;
     CLKRSTGEN_USER_CLK_GATE_CTRL__SHA_HCLK__MODIFY(CMSDK_CLKRSTGEN_NONSECURE
 						       ->USER_CLK_GATE_CTRL,
 	0);
@@ -240,9 +287,17 @@ start_controller:
 	CMSDK_SHA2->SHA_TXCOUNT_HI = ctxt->sha_txcount_bits >> 32;
 	CMSDK_SHA2->TXCOUNT_LO = (uint32_t)ctxt->txcount_bits;
 	CMSDK_SHA2->TXCOUNT_HI = ctxt->txcount_bits >> 32;
+	// Restore intermediate digest. The DIGEST register write port applies
+	// digest_swizzle as an address-reverse (writing addr k lands in
+	// digest[7-k]); the read port applies it as a byte-swap only. Disable
+	// the swizzle around the write loop so each int_digest[i] lands in
+	// digest[i], then restore ctxt->control so the caller-requested
+	// swizzle is in effect for the eventual final-digest read.
+	AT_SHA2_CONTROL__DIGEST_SWIZZLE__CLR(CMSDK_SHA2->CONTROL);
 	for (uint32_t i = 0; i < SHA256_DIG_WORDS; i++) {
 	    *(&CMSDK_SHA2->DIGEST0 + i) = ctxt->int_digest[i];
 	}
+	CMSDK_SHA2->CONTROL = ctxt->control;
 	// this is a continuation after a context is restored
 	cmd = AT_SHA2_CMD__HASH_CONTINUE__MASK | AT_SHA2_CMD__HASH_START__MASK;
 	DEBUG_TRACE_COND(ATM_SHA2_DEBUG, "SHA2 (%p) reload-ctxt-%s", ctxt,
@@ -336,13 +391,44 @@ static atm_sha256_res_t sha2_save_context(atm_sha2_ctxt_t *ctxt,
 	CMSDK_SHA2->TXCOUNT_LO, 0);
     // save our progress
     ctxt->msg_len_bytes = ctxt->msg_len_bits >> 3;
-    // save intermediate digest for the next load
+    // Save intermediate digest for the next load. The DIGEST register read
+    // port applies digest_swizzle as a byte-swap of digest[i] at address i;
+    // disable the swizzle so int_digest[] always holds the raw H0..H7
+    // words. The matching write port in sha2_load_context() applies the
+    // swizzle as an address-reverse (a write to addr k lands in
+    // digest[7-k]), so it must also be disabled around the load to round-
+    // trip the state. ctxt->control was captured above and still carries
+    // the caller-requested swizzle for the eventual final-digest read.
+    AT_SHA2_CONTROL__DIGEST_SWIZZLE__CLR(CMSDK_SHA2->CONTROL);
     for (uint32_t i = 0; i < SHA256_DIG_WORDS; i++) {
 	ctxt->int_digest[i] = *(&CMSDK_SHA2->DIGEST0 + i);
     }
 #if ATM_SHA2_DEBUG
     dump_sha2_context(ctxt, "saved");
 #endif
+    return ATM_SHA256_RES_SUCCESS;
+}
+
+atm_sha256_res_t atm_sha256_clone_ctxt(atm_sha2_ctxt_t const *src,
+    atm_sha2_ctxt_t *dst)
+{
+    if (src->magic != SHA2_ID) {
+	DEBUG_TRACE("SHA2 src ctxt not init!");
+	return ATM_SHA256_RES_INVALID_CTXT;
+    }
+    if (dst->magic == SHA2_ID) {
+	DEBUG_TRACE("SHA2 dst ctxt already init");
+	return ATM_SHA256_RES_INVALID_CTXT;
+    }
+    // Take a fresh clock-enable refcount for the new in-flight context;
+    // the matching release happens in the cloned context's final_ctxt or
+    // disable_ctxt. The memcpy then duplicates all per-context state
+    // (magic, flags, length counters, control, params, partial buffer).
+    atm_sha256_res_t retv = sha2_clock_enable();
+    if (retv != ATM_SHA256_RES_SUCCESS) {
+	return retv;
+    }
+    memcpy(dst, src, sizeof(*dst));
     return ATM_SHA256_RES_SUCCESS;
 }
 
@@ -386,6 +472,8 @@ atm_sha256_init(atm_sha256_params_t const *params)
     ctxt->params = params;
     ctxt->partial_len = 0;
 #else
+    atm_sha256_recover();
+
     // enable SHA and set endianess
     // system is little endian, standard vectors and most hash generators
     // operate on big-endian words enable byte swizzle to swap in hardware
@@ -462,7 +550,11 @@ static atm_sha256_res_t push_data_dma(void const *input, uint32_t num_bytes)
 	}
 	int_status = CMSDK_AT_DMA_NONSECURE->INTERRUPT_STATUS;
 	GLOBAL_INT_RESTORE();
-	if (int_status & AT_DMA_INTERRUPT_STATUS__DMA_ERR__MASK) {
+	if (CMSDK_AT_DMA_NONSECURE->ERR_STAT ||
+	    (int_status & AT_DMA_INTERRUPT_STATUS__DMA_ERR__MASK)) {
+	    DEBUG_TRACE("atm_sha2: DMA_ERR in push_data_dma "
+		"(int_status=0x%08" PRIx32 " num_bytes_remaining=%" PRIu32
+		" dma_bytes=%" PRIu32 ")", int_status, num_bytes, dma_bytes);
 	    return ATM_SHA256_RES_DMA_ERR;
 	}
     }
@@ -582,13 +674,13 @@ uint8_t *atm_sha256_final(uint8_t digest[SHA256_DIG_LEN])
 #if (ATM_SHA2_API == SHA_MULTI_CTXT)
     atm_sha256_res_t retv = sha2_load_context(ctxt, NULL, NULL, push_data_pio);
     if (retv != ATM_SHA256_RES_SUCCESS) {
+	(void) atm_sha256_disable_ctxt(ctxt);
 	return retv;
     }
     // sync before triggering hash process
     sync_controller_ctxt();
 #endif
-    AT_SHA2_INTERRUPT_MASK__HMAC_DONE__SET(
-	CMSDK_SHA2->INTERRUPT_MASK);
+    AT_SHA2_INTERRUPT_MASK__HMAC_DONE__SET(CMSDK_SHA2->INTERRUPT_MASK);
     CMSDK_SHA2->CMD = AT_SHA2_CMD__HASH_PROCESS__WRITE(1);
 
     DEBUG_TRACE_COND(ATM_SHA2_DEBUG, "SHA2 wait for hash done");
@@ -596,12 +688,9 @@ uint8_t *atm_sha256_final(uint8_t digest[SHA256_DIG_LEN])
 	AT_SHA2_INTERRUPT_STATUS__HMAC_DONE__MASK)) {
 	YIELD();
     }
-    CMSDK_SHA2->RESET_INTERRUPT |=
-	AT_SHA2_INTERRUPT_STATUS__HMAC_DONE__MASK;
-    CMSDK_SHA2->RESET_INTERRUPT &=
-	~AT_SHA2_INTERRUPT_STATUS__HMAC_DONE__MASK;
-    AT_SHA2_INTERRUPT_MASK__HMAC_DONE__CLR(
-	CMSDK_SHA2->INTERRUPT_MASK);
+    CMSDK_SHA2->RESET_INTERRUPT = AT_SHA2_INTERRUPT_STATUS__HMAC_DONE__MASK;
+    CMSDK_SHA2->RESET_INTERRUPT = 0;
+    AT_SHA2_INTERRUPT_MASK__HMAC_DONE__CLR(CMSDK_SHA2->INTERRUPT_MASK);
 
     if (IS_ALIGNED(digest, sizeof(uint32_t))) {
 	uint32_t *word_digest = (uint32_t *)digest;
@@ -627,7 +716,9 @@ uint8_t *atm_sha256_final(uint8_t digest[SHA256_DIG_LEN])
 #if (ATM_SHA2_API == SHA_MULTI_CTXT)
     ctxt->flags |= SHA2_CTXT_FLAGS_FINI;
     DEBUG_TRACE_COND(ATM_SHA2_DEBUG, "SHA2 (%p) finalized", ctxt);
-    return ATM_SHA256_RES_SUCCESS;
+    // Releases the clock-enable refcount taken by init_ctxt / clone_ctxt
+    // so a balanced final_ctxt + abort sequence isn't required of callers.
+    return atm_sha256_disable_ctxt(ctxt);
 #else
     return digest;
 #endif
@@ -643,13 +734,19 @@ atm_sha256_digest_by_mode(atm_sha256_params_t const *params, void const *input,
     if (ret != ATM_SHA256_RES_SUCCESS) {
 	return ret;
     }
-    if (pio) {
-	ret = atm_sha256_update_pio(input, input_len);
-    } else {
-	ret = atm_sha256_update(input, input_len);
-    }
-    if (ret != ATM_SHA256_RES_SUCCESS) {
-	goto digest_done;
+    // atm_sha256_update[_pio] rejects num_bytes==0 outright. Skip the
+    // update call for an empty message so init's HASH_START followed by
+    // final's HASH_PROCESS produces the well-known SHA-256("") digest
+    // (per the empty-message path documented in atm_sha256_recover).
+    if (input_len != 0) {
+	if (pio) {
+	    ret = atm_sha256_update_pio(input, input_len);
+	} else {
+	    ret = atm_sha256_update(input, input_len);
+	}
+	if (ret != ATM_SHA256_RES_SUCCESS) {
+	    goto digest_done;
+	}
     }
     atm_sha256_final(digest);
     ret = ATM_SHA256_RES_SUCCESS;

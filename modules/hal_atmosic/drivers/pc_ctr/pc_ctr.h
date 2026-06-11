@@ -49,6 +49,13 @@ bool pc_ctr_schedule(void);
  */
 uint8_t *pc_ctr_ll_heap_alloc(void);
 
+/**
+ * @brief Config bt version.
+ *
+ * @param[in] bt_ver The bt version.
+ */
+void pc_ctr_bt_ver_config(uint8_t bt_ver);
+
 #ifdef __cplusplus
 }
 #endif

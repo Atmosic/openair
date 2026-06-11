@@ -16,6 +16,7 @@ via ZEPHYR_UART0 environment variable.
 import logging
 import os
 
+import serial
 from twister_harness import DeviceAdapter  # pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
@@ -39,23 +40,24 @@ def test_uart_passthrough(dut: DeviceAdapter):
     dut.readlines_until(regex="Waiting for external test data", timeout=120)
     logger.info("Device ready for external test data")
 
-    # Configure serial port (raw mode, 115200 baud)
-    os.system(f'stty -F "{uart0_device}" raw 115200')
+    # Open serial port at 115200 baud
+    with serial.Serial(uart0_device, baudrate=115200, timeout=1) as ser:
+        # Log UART0 configuration
+        logger.info(
+            "UART0 config: port=%s baudrate=%d bytesize=%d parity=%s stopbits=%s",
+            ser.port,
+            ser.baudrate,
+            ser.bytesize,
+            ser.parity,
+            ser.stopbits,
+        )
 
-    # Log UART0 configuration
-    logger.info("UART0 config: %s", os.popen(f'stty -F "{uart0_device}" -a').read())
-
-    # Send test string to UART0
-    logger.info("Sending to UART0 (%s): %s", uart0_device, TEST_STRING)
-    logger.info(
-        "echo 1: %s", os.popen(f'echo "{TEST_STRING}" >> "{uart0_device}" 2>&1').read()
-    )
-    logger.info(
-        "echo 2: %s", os.popen(f'echo "{TEST_STRING}" >> "{uart0_device}" 2>&1').read()
-    )
-    logger.info(
-        "echo 3: %s", os.popen(f'echo "{TEST_STRING}" >> "{uart0_device}" 2>&1').read()
-    )
+        payload = (TEST_STRING + "\n").encode()
+        logger.info("Sending to UART0 (%s): %s", uart0_device, TEST_STRING)
+        for i in range(1, 4):
+            ser.write(payload)
+            ser.flush()
+            logger.info("echo %d: sent %r", i, payload)
 
     # Wait for test string to appear on console (UART1)
     # Data sent to UART0 is forwarded via uart_poll_out to UART1

@@ -131,6 +131,25 @@ atm_aes_res_t atm_aes_update(uint8_t *dest, uint8_t const *src,
 atm_aes_res_t atm_aes_ecb(uint8_t *dest, uint8_t const *src,
     atm_aes_params_t const *params);
 
+/**
+ * @brief One-shot encrypt/decrypt of an arbitrary-length buffer
+ *
+ * Convenience wrapper that performs atm_aes_init(), atm_aes_update(), and
+ * atm_aes_disable() under the same internal mutex used by atm_aes_ecb(),
+ * so callers do not need to coordinate HW access themselves.
+ *
+ * @note Length restrictions for the selected mode (e.g. ECB, CBC, OFB
+ *       require a multiple of 16 bytes) are enforced inside atm_aes_update().
+ *
+ * @param[out] dest      Pointer to write the data after processing
+ * @param[in]  src       Pointer to the data to be processed
+ * @param[in]  num_bytes Length of the input data, in bytes
+ * @param[in]  params    AES parameters (mode, key, IV, etc.)
+ * @return atm_aes_res_t result
+ */
+atm_aes_res_t atm_aes_op(uint8_t *dest, uint8_t const *src, size_t num_bytes,
+    atm_aes_params_t const *params);
+
 #ifdef __cplusplus
 }
 #endif

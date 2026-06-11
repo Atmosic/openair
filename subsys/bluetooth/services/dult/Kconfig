@@ -17,7 +17,9 @@ config HEAP_MEM_POOL_ADD_SIZE_ATM_DULT
 	default 256
 	help
 	  Additional heap memory pool size required by DULT Service.
-	  This includes responses and sound indication work items.
+	  Covers GATT response buffers and GATT-initiated sound indication
+	  work items.  Motion detection (CONFIG_DULT_MOTION_DETECT) does not
+	  add heap usage — its work items are statically allocated in BSS.
 
 module = ATM_DULT
 module-str = dult
@@ -64,9 +66,18 @@ config DULT_PROTOCOL_IMPLEMENTATION_VERSION
     hex "DULT implementation version"
     default 0x00010000
 
+config DULT_MOTION_DETECT
+	bool "DULT motion detector UT support"
+	help
+	  Enable motion detector Unwanted Tracker (UT) behavior defined in
+	  the DULT specification. Requires a motion detector (e.g. accelerometer)
+	  capable of detecting an orientation change of +-10 degrees along any
+	  two axes of the accessory.
+
 config DULT_ACCESSORY_CAPABILITIES
     hex "The capability value from DULT specification the accessory most closely resembles"
-    default 0x9 # Supports play sound (REQUIRED) and upports identifier lookup by BLE
+    default 0xB if DULT_MOTION_DETECT  # play sound + motion detector UT + BLE lookup
+    default 0x9                        # play sound + BLE lookup (no motion detector)
     help
 	See https://www.ietf.org/archive/id/draft-detecting-unwanted-location-trackers-01.html#name-accessory-category-value for specific category value.
 

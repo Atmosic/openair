@@ -36,21 +36,29 @@
 LOG_MODULE_REGISTER(retained_mem_hib, CONFIG_RETAINED_MEM_LOG_LEVEL);
 
 struct retained_mem_hib_data {
+#ifdef CONFIG_RETAINED_MEM_MUTEXES
 	struct k_mutex lock;
+#else
+	uint8_t rsvd_unused;
+#endif
 };
 
 static void retained_mem_hib_lock_take(const struct device *dev)
 {
+#ifdef CONFIG_RETAINED_MEM_MUTEXES
 	struct retained_mem_hib_data *data = dev->data;
 
 	k_mutex_lock(&data->lock, K_FOREVER);
+#endif
 }
 
 static void retained_mem_hib_lock_release(const struct device *dev)
 {
+#ifdef CONFIG_RETAINED_MEM_MUTEXES
 	struct retained_mem_hib_data *data = dev->data;
 
 	k_mutex_unlock(&data->lock);
+#endif
 }
 
 static ssize_t retained_mem_hib_size(const struct device *dev)
@@ -165,11 +173,12 @@ static int retained_mem_hib_clear(const struct device *dev)
 
 static int retained_mem_hib_init(const struct device *dev)
 {
+#ifdef CONFIG_RETAINED_MEM_MUTEXES
 	struct retained_mem_hib_data *data = dev->data;
 
 	k_mutex_init(&data->lock);
-
-	if (is_boot_type(TYPE_POWER_ON)) {
+#endif
+	if (is_boot_unretained()) {
 		/* Initialize hardware backend on cold boot */
 		return retained_mem_backend_init(dev);
 	}

@@ -21,7 +21,7 @@ config ATM_ENA_LL_FEAT_PEER_FILT
 
 config ATM_ENA_LL_FEAT_ENC_PRIV
 	bool "When available, enable encryption and privacy"
-	default y if (BT_PRIVACY || BT_SMP || BT_HCI_RAW || BT_EXT_ADV)
+	default y if (BT_PRIVACY || BT_SMP || BT_HCI_RAW || BT_EXT_ADV || BT_OBSERVER)
 	depends on ATM_ENA_LL_FEAT_PEER_FILT
 	help
 	   Enable encryption and privacy support if used by
@@ -57,6 +57,12 @@ config ATM_ENA_LL_FEAT_CS
 	bool "When available, enable LL channel sounding feature"
 	default n if (ATMWSTK_PD50 || ATMWSTK_CPD200)
 	default y if (BT_CHANNEL_SOUNDING || BT_HCI_RAW)
+
+config ATM_ENA_LL_FEAT_CS_ENH1
+	bool "When available, enable LL channel sounding enhancement 1 feature"
+	depends on ATM_ENA_LL_FEAT_CS
+	select ATM_ENA_LL_FEAT_EXT
+	default y if ATMWSTK_FULL
 
 config ATM_ENA_LL_FEAT_CS_TEST
 	bool "When available, enable LL channel sounding test feature"
@@ -102,6 +108,10 @@ config ATM_ENA_LL_FEAT_FSU
 	bool "When available, enable LL FSU (Frame Space Update) feature"
 	default y if ATMWSTK_FULL
 
+config ATM_ENA_LL_FEAT_ECU
+	bool "When available, enable LL Connection Subrating feature"
+	default y if (ATMWSTK_FULL || BT_SUBRATING)
+
 config ATM_BLE_CS_NUM_ANTENNAS
 	int "Number of BLE CS antennas supported"
 	range 1 4
@@ -117,5 +127,12 @@ config ATM_DTM_SUPPORT
 	bool "Support LE directed test mode"
 	default y if (BT_HCI_RAW || DTM_2WIRE)
 	depends on !ATM_LCROM_IFACE || (ATM_LCROM_IFACE && (ATM_ENA_LL_FEAT_PERIPHERAL || ATM_ENA_LL_FEAT_CENTRAL))
+
+config ATM_ENA_EMULATE_WHITELIST
+	bool "Enable emulate whitelist support"
+
+config ATM_ENA_LL_RX
+	bool "Enable LL Rx support"
+	default y
 
 endif # ATM_PC_LL_CFG

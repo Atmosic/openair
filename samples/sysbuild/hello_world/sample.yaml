@@ -40,6 +40,10 @@ tests:
   samples.sysbuild.hello_world.atm.spe.flash_xip:
     tags:
       - flash_xip
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_SPE=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"

@@ -8,7 +8,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (C) Atmosic 2026
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -392,6 +394,9 @@ extern "C" {
 #define HCI_OCF_LE_READ_MON_ADV_LIST_SIZE            0x9B
 #define HCI_OCF_LE_ENABLE_MON_ADV                    0x9C
 #define HCI_OCF_LE_FRAME_SPACE_UPDATE                0x9D
+/* Version 6.3 */
+#define HCI_OCF_LE_CS_READ_LOCAL_SUP_CAP_V2          0xA5
+#define HCI_OCF_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2   0xA6
 /**@}*/
 
 /** \name Opcode manipulation macros
@@ -600,6 +605,9 @@ extern "C" {
 #define HCI_OPCODE_LE_READ_MON_ADV_LIST_SIZE         HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_READ_MON_ADV_LIST_SIZE)
 #define HCI_OPCODE_LE_ENABLE_MON_ADV                 HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_ENABLE_MON_ADV)
 #define HCI_OPCODE_LE_FRAME_SPACE_UPDATE             HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_FRAME_SPACE_UPDATE)
+/* Version 6.3 */
+#define HCI_OPCODE_LE_CS_READ_LOCAL_SUP_CAP_V2       HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_CS_READ_LOCAL_SUP_CAP_V2)
+#define HCI_OPCODE_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2 HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2)
 /**@}*/
 
 /** \name Packetcraft Vendor Specific
@@ -794,6 +802,9 @@ extern "C" {
 #define HCI_LEN_LE_LE_LE_CLEAR_MON_ADV_LIST          0
 #define HCI_LEN_LE_LE_LE_READ_MON_ADV_LIST_SIZE      0
 #define HCI_LEN_LE_LE_LE_ENABLE_MON_ADV              1
+/* Version 6.3 */
+#define HCI_LEN_LE_CS_READ_LOCAL_SUP_CAP_V2          0
+#define HCI_LEN_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2   32
 
 /* Vendor Specific */
 #define HCI_LEN_VS_PAWR_EXT_ENABLE                   1
@@ -887,6 +898,8 @@ extern "C" {
 #define HCI_LE_CS_TEST_END_CMPL_EVT                  0x33
 #define HCI_LE_MON_ADV_REPORT_EVT                    0x34
 #define HCI_LE_FRAME_SPACE_UPDATE_CMPL_EVT           0x35
+/* Version 6.3 */
+#define HCI_LE_CS_READ_REMOTE_SUP_CAP_CMPL_EVT_V2   0x38
 /**@}*/
 
 /** \name Event parameter lengths
@@ -966,6 +979,8 @@ extern "C" {
 #define HCI_LEN_LE_CS_TEST_END_CMPL_EVT              2       /*!< Channel sounding test end complete event. */
 #define HCI_LEN_LE_MON_ADV_REPORT_EVT                9       /*!< Monitored Advertisers report event. */
 #define HCI_LEN_LE_FSU_CMPL_EVT                      10      /*!< Frame space update complete event. */
+/* Version 6.3 */
+#define HCI_LEN_LE_CS_READ_REMOTE_SUP_CAP_CMPL_EVT_V2  38   /*!< Channel sounding read remote supported capabilities complete event length (version 2). */
 /**@}*/
 
 /** \name Supported commands
@@ -1160,6 +1175,9 @@ extern "C" {
 #define HCI_SUP_LE_READ_MON_ADV_LIST_SIZE            0x01U    /*!< Byte 48 */
 #define HCI_SUP_LE_ENABLE_MON_ADV                    0x80U    /*!< Byte 28 */
 #define HCI_SUP_LE_FRAME_SPACE_UPDATE                0x02U    /*!< Byte 48 */
+/* Version 6.3 */
+#define HCI_SUP_LE_CS_READ_LOCAL_SUP_CAP_V2          0x04U    /*!< Byte 49 */
+#define HCI_SUP_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2   0x08U    /*!< Byte 49 */
 
 #define HCI_SUP_CMD_LEN                              64      /*!< Byte length of support cmd field. */
 /**@}*/
@@ -1250,6 +1268,8 @@ extern "C" {
 #define HCI_EVT_MASK_LE_CS_TEST_END_CMPL_EVT                0x04U    /*!< Byte 6 */
 #define HCI_EVT_MASK_LE_MON_ADV_REPORT_EVT                  0x08U    /*!< Byte 6 */
 #define HCI_EVT_MASK_LE_FSU_CMPL_EVT                        0x10U    /*!< Byte 6 */
+/* Version 6.3 */
+#define HCI_EVT_MASK_LE_CS_READ_REMOTE_SUP_CAP_CMPL_EVT_V2  0x80U    /*!< Byte 6 (Bit 55) */
 /**@}*/
 
 /** \name LE supported features

@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 

@@ -10,4 +10,14 @@ common:
     - atm_buzzer
 
 tests:
-  tests.drivers.buzzer.atm: {}
+  tests.drivers.buzzer.atm: &base_config {}
+
+  tests.drivers.buzzer.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="atm_buzzer.c"

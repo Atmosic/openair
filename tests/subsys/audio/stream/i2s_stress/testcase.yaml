@@ -3,8 +3,18 @@
 ## SPDX-License-Identifier: LicenseRef-Atmosic
 #
 tests:
-  tests.subsys.audio.stream.i2s_stress.atm:
+  tests.subsys.audio.stream.i2s_stress.atm: &base_config
     sysbuild: true
     timeout: 100
     tags:
       - audio
+
+  tests.subsys.audio.stream.i2s_stress.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="i2s_atm.c"

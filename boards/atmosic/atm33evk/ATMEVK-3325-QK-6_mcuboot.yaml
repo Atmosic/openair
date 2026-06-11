@@ -8,6 +8,7 @@ supported:
   - adc
   - bluetooth
   - entropy
+  - gcov_capable
   - gpio
   - i2c
   - pwm

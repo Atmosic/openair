@@ -145,6 +145,9 @@ typedef struct ras_ctrl_s {
 #endif
 	ras_rd_trans_work_info_t ras_trs_work;
 	ras_timeout_work_info_t ras_timeout_work;
+#ifdef CONFIG_RAS_FILTER_RD
+	uint16_t filter[RAS_FILTER_MODE_NUM];
+#endif
 } ras_ctrl_t;
 
 static ras_ctrl_t ras;
@@ -392,9 +395,34 @@ static ssize_t ras_write_control_point(struct bt_conn *conn, struct bt_gatt_attr
 		ras_timeout_evt_work_cancel(cp_cmd->para.ranging_cnt);
 
 	} break;
-	case RAS_CP_CMD_OPCODE_RETRIEVE_LOST_RD_SEGMENTS:
-	case RAS_CP_CMD_OPCODE_ABORT_OP:
 	case RAS_CP_CMD_OPCODE_SET_FILTER: {
+#ifdef CONFIG_RAS_FILTER_RD
+		if (len != (sizeof(cp_cmd->para.rd_filter) + sizeof(cp_cmd->opcode))) {
+			ras_cp_rsp_work_put(conn, RAS_CP_RSP_WORK_TYPE_CODE_RSP,
+					    RAS_CP_RSP_INVALID_PARAMETER);
+			break;
+		}
+		if (cp_cmd->para.rd_filter.mode != RAS_FILTER_MODE_2 ||
+		    ((cp_cmd->para.rd_filter.mask & RAS_FILTER_MODE_2_BIT_UNSUPPORT) !=
+		     RAS_FILTER_MODE_2_BIT_UNSUPPORT)) {
+			LOG_ERR("Unsupported mode: %u - %x", cp_cmd->para.rd_filter.mode,
+				cp_cmd->para.rd_filter.mask);
+			ras_cp_rsp_work_put(conn, RAS_CP_RSP_WORK_TYPE_CODE_RSP,
+					    RAS_CP_RSP_OPCODE_NOT_SUPPORTED);
+			break;
+		}
+		ras.filter[cp_cmd->para.rd_filter.mode] = cp_cmd->para.rd_filter.mask;
+		LOG_INF("Set filter: mode:%u mask:0x%x", cp_cmd->para.rd_filter.mode,
+			cp_cmd->para.rd_filter.mask);
+		ras_cp_rsp_work_put(conn, RAS_CP_RSP_WORK_TYPE_CODE_RSP, RAS_CP_RSP_SUCCESS);
+#else
+		LOG_WRN("Unsupport command");
+		ras_cp_rsp_work_put(conn, RAS_CP_RSP_WORK_TYPE_CODE_RSP,
+				    RAS_CP_RSP_OPCODE_NOT_SUPPORTED);
+#endif
+	} break;
+	case RAS_CP_CMD_OPCODE_RETRIEVE_LOST_RD_SEGMENTS:
+	case RAS_CP_CMD_OPCODE_ABORT_OP: {
 		LOG_WRN("Unsupport command");
 		ras_cp_rsp_work_put(conn, RAS_CP_RSP_WORK_TYPE_CODE_RSP,
 				    RAS_CP_RSP_OPCODE_NOT_SUPPORTED);
@@ -407,6 +435,19 @@ static ssize_t ras_write_control_point(struct bt_conn *conn, struct bt_gatt_attr
 	}
 
 	return len;
+}
+
+static ssize_t ras_cp_ccc_write_cfm(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+				    uint16_t value)
+{
+	LOG_INF("cp wr ccc:%u", value);
+
+	if (!ras.curr_conn || ras.curr_conn != conn) {
+		LOG_INF("cp: Update connect");
+		ras.curr_conn = conn;
+	}
+
+	return sizeof(value);
 }
 
 static void ras_cp_ccc_changed(const struct bt_gatt_attr *attr, uint16_t value)
@@ -460,7 +501,10 @@ BT_GATT_SERVICE_DEFINE(
 	BT_GATT_CHARACTERISTIC(BT_UUID_RAS_CP,
 			       BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_INDICATE,
 			       BT_GATT_PERM_WRITE_ENCRYPT, NULL, ras_write_control_point, NULL),
-	BT_GATT_CCC(ras_cp_ccc_changed, BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT),
+	BT_GATT_CCC_MANAGED(((struct bt_gatt_ccc_managed_user_data[]){
+				    BT_GATT_CCC_MANAGED_USER_DATA_INIT(
+					    ras_cp_ccc_changed, ras_cp_ccc_write_cfm, NULL)}),
+			    BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT),
 	BT_GATT_CHARACTERISTIC(BT_UUID_RAS_RD_READY,
 			       BT_GATT_CHRC_READ | BT_GATT_CHRC_INDICATE | BT_GATT_CHRC_NOTIFY,
 			       BT_GATT_PERM_READ_ENCRYPT, ras_read_rd_ready, NULL,
@@ -515,7 +559,7 @@ static int ras_cp_indicate(struct bt_conn *conn, uint16_t len)
 		ras.ras_cp_para.func = ras_cp_ind_cmp_cb;
 		int err = bt_gatt_indicate(conn, &ras.ras_cp_para);
 		if (err) {
-			LOG_DBG("Failed to send ind:%x (err %d)\n", ras.ras_cp_rsp.opcode, err);
+			LOG_ERR("Failed to send ind:%x (err %d)\n", ras.ras_cp_rsp.opcode, err);
 		}
 		return err;
 	}
@@ -526,13 +570,13 @@ static int ras_cp_indicate(struct bt_conn *conn, uint16_t len)
 
 static void ras_rd_seg_notify_cmp_cb(struct bt_conn *conn, void *user_data)
 {
-	LOG_DBG("seg notify complete");
+	LOG_DBG("RD seg notify complete");
 }
 
 static void ras_rd_seg_ind_cmp_cb(struct bt_conn *conn, struct bt_gatt_indicate_params *params,
 				  uint8_t err)
 {
-	LOG_DBG("error %u", err);
+	LOG_DBG("RD seg ind completed: error %u", err);
 }
 
 static int ras_rd_seg_notify_or_indicate(struct bt_conn *conn, const struct bt_uuid *uuid,
@@ -555,7 +599,7 @@ static int ras_rd_seg_notify_or_indicate(struct bt_conn *conn, const struct bt_u
 		};
 		int err = bt_gatt_notify_cb(conn, &notify_param);
 		if (err) {
-			LOG_DBG("Failed to send ind (err %d)\n", err);
+			LOG_ERR("RD Failed to send nrf (err %d)\n", err);
 		}
 		return err;
 	} else if (bt_gatt_is_subscribed(conn, attr, BT_GATT_CCC_INDICATE)) {
@@ -565,7 +609,7 @@ static int ras_rd_seg_notify_or_indicate(struct bt_conn *conn, const struct bt_u
 		ras.ras_trs_work.ras_rd_trans_para.func = ras_rd_seg_ind_cmp_cb;
 		int err = bt_gatt_indicate(conn, &ras.ras_trs_work.ras_rd_trans_para);
 		if (err) {
-			LOG_DBG("Failed to send ind (err %d)\n", err);
+			LOG_ERR("RD Failed to send ind (err %d)\n", err);
 		}
 		return err;
 	}
@@ -634,7 +678,7 @@ static void ras_rd_seg_trans_work_handler(struct k_work *work)
 
 	/* Check if work was cancelled while running */
 	if (info->event == RAS_TRANS_WORK_EVT_INVALID) {
-		LOG_DBG("Work was cancelled, exiting");
+		LOG_WRN("Work was cancelled, exiting");
 		info->pending_cnt -= 1;
 		info->event = 0; /* Clear the invalid state */
 		return;
@@ -717,7 +761,7 @@ static void ras_rd_sts_notify_cmp_cb(struct bt_conn *conn, void *user_data)
 static void ras_rd_sts_ind_cmp_cb(struct bt_conn *conn, struct bt_gatt_indicate_params *params,
 				  uint8_t err)
 {
-	LOG_DBG("error %u", err);
+	LOG_INF("sts ind completed: error %u", err);
 }
 
 static int ras_rd_sts_notify_or_indicate(struct bt_conn *conn, const struct bt_uuid *uuid,
@@ -738,7 +782,7 @@ static int ras_rd_sts_notify_or_indicate(struct bt_conn *conn, const struct bt_u
 		ras.ras_rd_sts_para.func = ras_rd_sts_ind_cmp_cb;
 		int err = bt_gatt_indicate(conn, &ras.ras_rd_sts_para);
 		if (err) {
-			LOG_DBG("Failed to send ind (err %d)\n", err);
+			LOG_ERR("STS Failed to send ind (err %d)\n", err);
 		}
 		return err;
 	} else if (bt_gatt_is_subscribed(conn, attr, BT_GATT_CCC_NOTIFY)) {
@@ -750,7 +794,7 @@ static int ras_rd_sts_notify_or_indicate(struct bt_conn *conn, const struct bt_u
 		};
 		int err = bt_gatt_notify_cb(conn, &notify_param);
 		if (err) {
-			LOG_DBG("Failed to send ind (err %d)\n", err);
+			LOG_ERR("STS Failed to send nrf (err %d)\n", err);
 		}
 		return err;
 	}
@@ -851,6 +895,7 @@ static void ras_cp_rsp_work_handler(struct k_work *work)
 			ras_timeout_evt_work_put(RAS_TIMEOUT_WORK_EVT_WAIT_ACK,
 						 info->para.ranging_counter,
 						 RAS_CP_ACK_DATA_TIMEOUT);
+			LOG_INF("Wait for ACK for ranging data: %u", info->para.ranging_counter);
 		} else {
 			LOG_ERR("ras_cp_indicate failed: %d", err);
 		}
@@ -1006,6 +1051,10 @@ static void ras_disconnected(struct bt_conn *conn, uint8_t reason)
 	ras_clear_work();
 	// Clear all data buf
 	ras_rdbuf_free_all_buf();
+#ifdef CONFIG_RAS_FILTER_RD
+	// Reset filter to default: all bits set, i.e. include all fields (no filtering).
+	memset(ras.filter, 0xFF, sizeof(ras.filter));
+#endif
 }
 
 static void ras_security_changed(struct bt_conn *conn, bt_security_t level,
@@ -1049,6 +1098,72 @@ static void ras_cs_procedure_enabled_cb(struct bt_conn *conn, uint8_t status,
 		}
 	}
 }
+
+#ifdef CONFIG_RAS_FILTER_RD
+// Filter step data per ras.filter[mode]; bit=0 means the field is filtered out.
+// Mode 2 bits: 0 antenna_permutation_index, 1 phase_correction_term,
+//              2 quality_indicator and extension_indicator.
+static uint16_t ras_filter_step_data(uint8_t mode, uint8_t *dst, uint8_t const *src,
+				     uint16_t src_len)
+{
+	uint16_t dst_len = 0;
+	uint16_t mask;
+
+	if (!dst || !src) {
+		LOG_ERR("Invalid buffer: dst:%p src:%p", dst, src);
+		return 0;
+	}
+
+	if (mode >= RAS_FILTER_MODE_NUM) {
+		LOG_ERR("Invalid mode:%u", mode);
+		return 0;
+	}
+
+	mask = ras.filter[mode];
+
+	switch (mode) {
+	case RAS_FILTER_MODE_2: {
+		if (src_len < sizeof(struct bt_hci_le_cs_step_data_mode_2)) {
+			LOG_ERR("Mode 2 invalid src_len:%u", src_len);
+			return 0;
+		}
+
+		// antenna_permutation_index
+		if (mask & RAS_FILTER_MODE_2_BIT_ANT_PERM_IDX) {
+			dst[dst_len++] = src[0];
+		}
+
+		uint16_t tone_off = sizeof(struct bt_hci_le_cs_step_data_mode_2);
+		uint16_t num_tones =
+			(src_len - tone_off) / sizeof(struct bt_hci_le_cs_step_data_tone_info);
+
+		for (uint16_t i = 0; i < num_tones; i++) {
+			struct bt_hci_le_cs_step_data_tone_info const *tone =
+				(struct bt_hci_le_cs_step_data_tone_info const *)&src
+					[tone_off +
+					 i * sizeof(struct bt_hci_le_cs_step_data_tone_info)];
+
+			if (mask & RAS_FILTER_MODE_2_BIT_PHASE_CORR) {
+				memcpy(&dst[dst_len], tone->phase_correction_term,
+				       sizeof(tone->phase_correction_term));
+				dst_len += sizeof(tone->phase_correction_term);
+			}
+			if (mask & RAS_FILTER_MODE_2_BIT_QUAL_EXT_IND) {
+				dst[dst_len++] = ((
+					uint8_t const *)tone)[sizeof(tone->phase_correction_term)];
+			}
+		}
+	} break;
+
+	default:
+		memcpy(dst, src, src_len);
+		dst_len = src_len;
+		break;
+	}
+
+	return dst_len;
+}
+#endif /* CONFIG_RAS_FILTER_RD */
 
 static void ras_rdbuf_update_data(struct bt_conn_le_cs_subevent_result *result)
 {
@@ -1116,7 +1231,14 @@ static void ras_rdbuf_update_data(struct bt_conn_le_cs_subevent_result *result)
 				return;
 			}
 			ras_step->mode = step->step_mode;
+#ifdef CONFIG_RAS_FILTER_RD
+			uint16_t flt_len =
+				ras_filter_step_data(step->step_mode, ras_step->data,
+						     step->step_data, step->step_data_length);
+			buf->data_offset -= (step->step_data_length - flt_len);
+#else
 			memcpy(ras_step->data, step->step_data, step->step_data_length);
+#endif
 			step_offset += (sizeof(struct bt_hci_evt_le_cs_subevent_result_step) +
 					step->step_data_length);
 		}
@@ -1124,7 +1246,8 @@ static void ras_rdbuf_update_data(struct bt_conn_le_cs_subevent_result *result)
 
 	if (result->header.procedure_done_status != BT_CONN_LE_CS_PROCEDURE_INCOMPLETE) {
 		buf->status = RAS_BUF_DONE;
-		LOG_INF("Update Proc:%u done.Len:%u", buf->ranging_cnt, buf->data_offset);
+		LOG_INF("CS procedure%u done:0x%x Len:%u", buf->ranging_cnt,
+			result->header.procedure_done_status, buf->data_offset);
 	}
 }
 
@@ -1141,8 +1264,6 @@ static void ras_cs_subevent_result_cb(struct bt_conn *conn,
 	if (result->header.procedure_done_status != BT_CONN_LE_CS_PROCEDURE_INCOMPLETE) {
 		ras.ras_rd_ready_cnt = result->header.procedure_counter;
 		ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY);
-		LOG_INF("CS procedure%u done:0x%x", result->header.procedure_counter,
-			result->header.procedure_done_status);
 		if (result->header.procedure_done_status == BT_CONN_LE_CS_PROCEDURE_ABORTED) {
 			LOG_ERR("CS Procedure abort:  %u %u", result->header.procedure_counter,
 				result->header.procedure_abort_reason);
@@ -1165,6 +1286,12 @@ static int bt_ras_init(void)
 
 #if CONFIG_RAS_REAL_TIME_RD
 	ras.ras_feature |= RAS_FEAT_REALTIME_RD;
+#endif
+
+#ifdef CONFIG_RAS_FILTER_RD
+	ras.ras_feature |= RAS_FEAT_FILTER_RD;
+	// Default: all bits set, i.e. include all fields (no filtering).
+	memset(ras.filter, 0xFF, sizeof(ras.filter));
 #endif
 
 #if RAS_CONN_WORK_EVT_INVALID > 0

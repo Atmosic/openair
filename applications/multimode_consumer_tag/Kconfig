@@ -6,6 +6,11 @@ module = MULTIMODE_CONSUMER_TAG
 module-str = multimode_consumer_tag
 source "subsys/logging/Kconfig.template.log_config"
 
+module = AT_CMD_UART
+parent-module = MULTIMODE_CONSUMER_TAG
+module-str = at_cmd_uart
+source "subsys/logging/Kconfig.template.log_config_inherit"
+
 config FMNA_TAG
 	bool "Enable FMNA Tag"
 	select ATM_FMNA
@@ -101,10 +106,20 @@ config FHN_FW_VERSION
 	  fp_tag_get_fw_version() function and used in FP tag operations.
 	  The maximum length is (CONFIG_GFP_DIS_FW_VERSION_STR_MAX - 1).
 
+config FHN_MOTION_DETECT_SUPPORT
+	bool
+	default y if TAG_MOTION_DETECT
+	select DULT_MOTION_DETECT
+
 endif # FHN_TAG
+
+config TAG_BUTTON
+	bool "Enable physical button control"
+	default y
 
 config TAG_BTN_POWER_CTRL
 	bool "Enable button power on/off control"
+	depends on TAG_BUTTON
 	select PM
 	help
 	  Enable button control for power on/off functionality.
@@ -112,6 +127,7 @@ config TAG_BTN_POWER_CTRL
 
 config TAG_BTN_FACTORY_RESET
 	bool "Enable factory reset with long press button"
+	depends on TAG_BUTTON
 	help
 	  Long press button for 10 secs to trigger factory reset in power on
 	  state. Pressing 2 secs would trigger power off key first and keep
@@ -119,19 +135,43 @@ config TAG_BTN_FACTORY_RESET
 
 config TAG_BTN_BATT_REPORT
 	bool "Enable battery level detection with button"
+	depends on TAG_BUTTON
 	help
 	  Quick press button 5 times to show battery level with LED indication.
 
 config TAG_BTN_OTA_MODE
 	bool "Enable OTA mode entry with button"
+	depends on TAG_BUTTON
 	default y if BOOTLOADER_MCUBOOT && MCUMGR_TRANSPORT_BT
 	help
 	  Quick press button 10 times to enter OTA mode.
 	  System will reboot and start advertising with device name "Atmosic OTA".
 
+config TAG_BTN_OTA_LONG_PRESS
+	bool "Enable OTA mode entry via 7-second button hold"
+	depends on TAG_BTN_OTA_MODE
+	default y if !TAG_BTN_FACTORY_RESET
+	help
+	  Hold the button for 7 seconds to enter OTA mode.
+	  Cannot be enabled together with TAG_BTN_FACTORY_RESET: since
+	  platform_ctrl_ota_enter() reboots the device, the 10-second factory
+	  reset threshold would never be reached.
+
+config TAG_BTN_FMNA_SN_LOOKUP
+	bool "Enable FMNA SN lookup with button short press 6 times"
+	depends on TAG_BUTTON && FMNA_TAG
+	default y
+	help
+	  Quick press button 6 times to enable the FMNA paired-owner serial
+	  number (SN) readout. Required by Apple FindMy certification test #8:
+	  the encrypted SN payload is non-readable in normal state and only
+	  becomes readable for 5 minutes after this user action. After the
+	  5 minute window the SN is automatically gated again with no further
+	  user action.
+
 config TAG_BTN_LOG_FMNA_MFI_TOKEN
 	bool "Log MFI token with button short press 8 times"
-	depends on FMNA_TAG
+	depends on TAG_BUTTON && FMNA_TAG
 	default y
 	help
 	  Log MFI token with button short press 8 times.
@@ -159,11 +199,35 @@ config TAG_SOC_OFF_TIMEOUT
 	  Timeout in seconds to enter SOC_off mode when in pairing mode.
 	  Set to 0 to disable timeout.
 
+config TAG_BUZZER
+	bool "Enable buzzer hardware support"
+	default $(dt_nodelabel_enabled,pwm_buzzer0)
+
 config TAG_AUDIO_FEEDBACK
 	bool "Enable audio feedback for factory reset"
 	select ATM_BUZZER
+	depends on TAG_BUZZER
 	help
 	  Enable audio feedback when factory reset is triggered.
+
+choice TAG_MOTION_SENSOR_TYPE
+	prompt "Motion detection type"
+	default TAG_MOTION_SENSOR_TYPE_LIS2DH if DT_HAS_ST_LIS2DH_ENABLED
+	default TAG_MOTION_SENSOR_TYPE_NONE
+
+config TAG_MOTION_SENSOR_TYPE_LIS2DH
+	bool "LIS2DH motion sensor"
+	select LIS2DH
+	select SENSOR
+
+config TAG_MOTION_SENSOR_TYPE_NONE
+	bool "No motion detection"
+
+endchoice
+
+config TAG_MOTION_DETECT
+	bool
+	default y if !TAG_MOTION_SENSOR_TYPE_NONE || AT_CMD_TAGMOTIONRPT
 
 config ATM_LL_HEAP_SIZE
 	int "Override LL heap size"

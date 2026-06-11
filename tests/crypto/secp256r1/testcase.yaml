@@ -1,0 +1,58 @@
+# Wraps zephyr/tests/crypto/secp256r1, which exercises a secp256r1
+# keygen + ECDH key agreement via the Mbed TLS PSA Crypto API.
+#
+# The .atm variant routes ECDSA through the Atmosic uECC PSA driver
+# (CONFIG_ATM_UECC_PSA).
+common:
+  sysbuild: true
+  tags:
+    - mbedtls
+    - psa
+    - crypto
+  extra_args:
+    - EXTRA_CONF_FILE=mbedtls.conf
+  extra_configs:
+    # Use the Atmosic uECC PSA driver rather than the p256-m driver
+    # selected by the upstream mbedtls.conf.
+    - CONFIG_MBEDTLS_PSA_P256M_DRIVER_ENABLED=n
+    - CONFIG_ATM_UECC_PSA=y
+    # The upstream test only exercises ECDH, which needs no hash; the
+    # openair-local ECDSA(SHA-256) sign/verify case in src/main_atm.c
+    # does, and psa_sign_verify_check_alg() rejects unsupported hashes
+    # with PSA_ERROR_NOT_SUPPORTED before reaching the dispatcher.
+    - CONFIG_PSA_WANT_ALG_SHA_256=y
+    # Route SHA-256 through the Atmosic HW accelerator's PSA driver.
+    - CONFIG_ATM_SHA2_HW=y
+
+tests:
+  tests.crypto.secp256r1.atm: {}
+  # Same coverage but with the bootloader-flavoured "no software fallback"
+  # build of the uECC PSA driver, which additionally wraps
+  # mbedtls_psa_ecp_import_key().
+  tests.crypto.secp256r1.atm.no_fallback:
+    extra_configs:
+      - CONFIG_ATM_UECC_PSA_NO_FALLBACK=y
+  # Coverage twin of the default scenario: instrument the uECC PSA driver
+  # glue (openair/lib/micro-ecc/psa_ecc.c) so the sign/verify/import paths
+  # exercised by src/main_atm.c are reported by the gcov aggregation job.
+  tests.crypto.secp256r1.atm.gcov:
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="psa_ecc.c"
+  # Coverage twin of the no_fallback scenario: same instrumentation as
+  # tests.crypto.secp256r1.atm.gcov but with the NO_FALLBACK build, so the
+  # additionally-wrapped mbedtls_psa_ecp_import_key() and the
+  # PSA_ERROR_NOT_SUPPORTED fallback branches are reported by gcov.
+  tests.crypto.secp256r1.atm.no_fallback.gcov:
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_ATM_UECC_PSA_NO_FALLBACK=y
+      - CONFIG_UU_TEST_OPENAIR="psa_ecc.c"

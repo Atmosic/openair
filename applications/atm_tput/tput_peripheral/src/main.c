@@ -113,7 +113,8 @@ static void connected_cb(struct bt_conn *conn, uint8_t conn_err)
 		return;
 	}
 
-	uint32_t interval_ms_x100 = info.le.interval * INTERVAL_UNIT_TO_MS_X100;
+	uint32_t interval_ms_x100 =
+		(info.le.interval_us / BT_HCI_LE_INTERVAL_UNIT_US) * INTERVAL_UNIT_TO_MS_X100;
 	uint16_t timeout_ms = info.le.timeout * TIMEOUT_UNIT_TO_MS;
 
 	LOG_INF("Current conn params: interval %" PRIu32 ".%02" PRIu32 " ms, latency %" PRIu16

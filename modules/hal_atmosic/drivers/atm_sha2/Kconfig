@@ -6,19 +6,22 @@
 config ATM_SHA2
 	bool "Atmosic SHA2 module"
 	default y if ATM_SHA2_HW
+	depends on $(dt_nodelabel_enabled,sha2)
 
 config ATM_SHA2_HW
 	bool "Hardware accelerator for SHA256 hash"
-	depends on MBEDTLS_SHA256
+	depends on $(dt_nodelabel_enabled,sha2)
+	depends on PSA_WANT_ALG_SHA_256
 	depends on !USERSPACE
-	select MBEDTLS_USER_CONFIG_ENABLE
+
+if ATM_SHA2
 
 config ATM_SHA2_KEY_SIDELOAD
 	bool "Enable key sideload for HMAC key"
 	depends on TRUSTED_EXECUTION_SECURE
 	depends on ATM_KEY_SIDELOAD
 
-choice
+choice ATM_SHA2_API
     prompt "ATM SHA2 API mode"
     default ATM_SHA2_API_SINGLE
     help
@@ -30,3 +33,64 @@ config ATM_SHA2_API_SINGLE
 config ATM_SHA2_API_MULTI
     bool "Multiple context mode"
 endchoice
+
+endif # ATM_SHA2
+
+if ATM_SHA2_HW
+
+choice ATM_SHA2_HW_DATA_PATH
+	prompt "ATM SHA-2 HW data path"
+	default ATM_SHA2_HW_DATA_PATH_PIO
+	help
+	  Select how the PSA wrapper feeds input bytes to the Atmosic
+	  SHA-2 engine: via DMA (DMA channel 0) or via CPU FIFO writes
+	  (PIO).
+
+config ATM_SHA2_HW_DATA_PATH_DMA
+	bool "DMA"
+
+config ATM_SHA2_HW_DATA_PATH_PIO
+	bool "PIO"
+endchoice
+
+config ATM_SHA2_HW_VERIFY_WITH_SW
+	bool "Verify HW SHA-256 results against software"
+	depends on ATM_SHA2_API_SINGLE
+	help
+	  For every hash operation dispatched to the SHA-2 hardware,
+	  run a parallel software SHA-256 through the Mbed TLS PSA
+	  fallback and compare the two digests at finish. On mismatch,
+	  log the operation pointer and both digests. The wrapper still
+	  returns the HW digest so downstream code observes the same
+	  bytes it would without shadowing. Useful for diagnosing
+	  HW-vs-SW divergences; leave disabled in normal builds because
+	  of the significant per-op cost.
+
+config ATM_SHA2_HW_MAX_CONTEXTS
+	int "Maximum number of concurrent SHA-256 HW contexts"
+	depends on ATM_SHA2_API_MULTI
+	default 4
+	help
+	  Size of the static pool of Atmosic SHA-2 hardware contexts used by
+	  the PSA driver wrapper in multi-context mode. Each entry holds one
+	  in-flight SHA-256 operation's intermediate state. Operations beyond
+	  this limit either fall back to the software implementation or fail,
+	  depending on ATM_SHA2_HW_FALLBACK_ON_EXHAUSTION.
+
+config ATM_SHA2_HW_FALLBACK_ON_EXHAUSTION
+	bool "Fall back to software when SHA-256 HW resources are exhausted"
+	default y
+	help
+	  When the Atmosic SHA-2 hardware cannot accept a new in-flight
+	  operation -- because the multi-context pool is full
+	  (ATM_SHA2_HW_MAX_CONTEXTS) or, in single-context mode, because the
+	  HW is already in use by another operation -- transparently route
+	  the new operation to the Mbed TLS software implementation instead
+	  of returning PSA_ERROR_INSUFFICIENT_MEMORY. Disable to surface the
+	  error to the caller (useful for diagnosing under-provisioned pools).
+
+module = ATM_SHA2_PSA
+module-str = atm_sha2_psa
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ATM_SHA2_HW

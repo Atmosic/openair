@@ -54,6 +54,7 @@ void ATLC_FRC_Handler(void)
 	    frc_callbacks[ATM_MAC_FRC_TIMER0]();
 	}
     }
+#ifdef ATLC_FRC_CTRL__TO1_ARM__CLR
     if (ATLC_LC_FRC_IRQ__TO1__READ(CMSDK_ATLC_NONSECURE->LC_FRC_IRQ)) {
 	// un-arm timeout
 	ATLC_FRC_CTRL__TO1_ARM__CLR(CMSDK_ATLC_NONSECURE->FRC_CTRL);
@@ -66,6 +67,8 @@ void ATLC_FRC_Handler(void)
 	    frc_callbacks[ATM_MAC_FRC_TIMER1]();
 	}
     }
+#endif
+#ifdef ATLC_FRC_CTRL__TO2_ARM__CLR
     if (ATLC_LC_FRC_IRQ__TO2__READ(CMSDK_ATLC_NONSECURE->LC_FRC_IRQ)) {
 	// un-arm timeout
 	ATLC_FRC_CTRL__TO2_ARM__CLR(CMSDK_ATLC_NONSECURE->FRC_CTRL);
@@ -78,15 +81,20 @@ void ATLC_FRC_Handler(void)
 	    frc_callbacks[ATM_MAC_FRC_TIMER2]();
 	}
     }
+#endif
     atm_mac_prof_latency_update(&frc_prof, latency);
 }
 
 // asserts to ensure IRQ TOn bits are contiguous and start at bit 0
 STATIC_ASSERT(ATLC_LC_FRC_IRQ__TO0__MASK == 0x1, "FRC_IRQ TO0 bit is not 0x1");
+#ifdef ATLC_LC_FRC_IRQ__TO1__MASK
 STATIC_ASSERT(ATLC_LC_FRC_IRQ__TO0__MASK << 1 == ATLC_LC_FRC_IRQ__TO1__MASK,
     "FRC_IRQ TO1 bit is not contiguous");
+#endif
+#ifdef ATLC_LC_FRC_IRQ__TO2__MASK
 STATIC_ASSERT(ATLC_LC_FRC_IRQ__TO0__MASK << 2 == ATLC_LC_FRC_IRQ__TO2__MASK,
     "FRC_IRQ TO2 bit is not contiguous");
+#endif
 static bool atm_mac_frc_get_timer_pending(atm_mac_frc_timer_t timer)
 {
     return (CMSDK_ATLC_NONSECURE->LC_FRC_IRQ) &
@@ -148,10 +156,14 @@ atm_mac_frc_error_t atm_mac_frc_get_next_expiration(uint32_t current_time_us,
 // asserts to ensure TOn_ARM bits are contiguous and start at bit 0
 STATIC_ASSERT(ATLC_FRC_CTRL__TO0_ARM__MASK == 0x1,
     "FRC_CTRL TO0_ARM bit is not 0x1");
+#ifdef ATLC_FRC_CTRL__TO1_ARM__MASK
 STATIC_ASSERT(ATLC_FRC_CTRL__TO0_ARM__MASK << 1 == ATLC_FRC_CTRL__TO1_ARM__MASK,
     "FRC_CTRL TO1_ARM bit is not contiguous");
+#endif
+#ifdef ATLC_FRC_CTRL__TO2_ARM__MASK
 STATIC_ASSERT(ATLC_FRC_CTRL__TO0_ARM__MASK << 2 == ATLC_FRC_CTRL__TO2_ARM__MASK,
     "FRC_CTRL TO2_ARM bit is not contiguous");
+#endif
 bool atm_mac_frc_get_timer_active(atm_mac_frc_timer_t timer)
 {
     // Invalid to read when ATLC is asleep
@@ -177,12 +189,16 @@ atm_mac_frc_error_t atm_mac_frc_get_timer_expiration(atm_mac_frc_timer_t timer,
 	case ATM_MAC_FRC_TIMER0:
 	    *timeout_us = ATLC_FRC_TO0__VL__READ(CMSDK_ATLC_NONSECURE->FRC_TO0);
 	    break;
+#ifdef ATLC_FRC_TO1__VL__READ
 	case ATM_MAC_FRC_TIMER1:
 	    *timeout_us = ATLC_FRC_TO1__VL__READ(CMSDK_ATLC_NONSECURE->FRC_TO1);
 	    break;
+#endif
+#ifdef ATLC_FRC_TO2__VL__READ
 	case ATM_MAC_FRC_TIMER2:
 	    *timeout_us = ATLC_FRC_TO2__VL__READ(CMSDK_ATLC_NONSECURE->FRC_TO2);
 	    break;
+#endif
 	case ATM_MAC_FRC_NUM_TIMERS:
 	default:
 	    return ATM_MAC_FRC_ERROR_INVALID;
@@ -244,16 +260,20 @@ atm_mac_frc_error_t atm_mac_frc_set_timer(atm_mac_frc_timer_t timer,
 	    ATLC_FRC_CTRL__TO0_ARM__SET(CMSDK_ATLC_NONSECURE->FRC_CTRL);
 	    ATLC_LC_FRC_IRQM__TO0__SET(CMSDK_ATLC_NONSECURE->LC_FRC_IRQM);
 	    break;
+#ifdef ATLC_FRC_TO1__VL__MODIFY
 	case ATM_MAC_FRC_TIMER1:
 	    ATLC_FRC_TO1__VL__MODIFY(CMSDK_ATLC_NONSECURE->FRC_TO1, timeout_us);
 	    ATLC_FRC_CTRL__TO1_ARM__SET(CMSDK_ATLC_NONSECURE->FRC_CTRL);
 	    ATLC_LC_FRC_IRQM__TO1__SET(CMSDK_ATLC_NONSECURE->LC_FRC_IRQM);
 	    break;
+#endif
+#ifdef ATLC_FRC_TO2__VL__MODIFY
 	case ATM_MAC_FRC_TIMER2:
 	    ATLC_FRC_TO2__VL__MODIFY(CMSDK_ATLC_NONSECURE->FRC_TO2, timeout_us);
 	    ATLC_FRC_CTRL__TO2_ARM__SET(CMSDK_ATLC_NONSECURE->FRC_CTRL);
 	    ATLC_LC_FRC_IRQM__TO2__SET(CMSDK_ATLC_NONSECURE->LC_FRC_IRQM);
 	    break;
+#endif
 	case ATM_MAC_FRC_NUM_TIMERS:
 	default:
 	    break;
@@ -265,12 +285,16 @@ atm_mac_frc_error_t atm_mac_frc_set_timer(atm_mac_frc_timer_t timer,
 	    case ATM_MAC_FRC_TIMER0:
 		ATLC_LC_FRC_IRQS__TO0__SET(CMSDK_ATLC_NONSECURE->LC_FRC_IRQS);
 		break;
+#ifdef ATLC_LC_FRC_IRQS__TO1__SET
 	    case ATM_MAC_FRC_TIMER1:
 		ATLC_LC_FRC_IRQS__TO1__SET(CMSDK_ATLC_NONSECURE->LC_FRC_IRQS);
 		break;
+#endif
+#ifdef ATLC_LC_FRC_IRQS__TO2__SET
 	    case ATM_MAC_FRC_TIMER2:
 		ATLC_LC_FRC_IRQS__TO2__SET(CMSDK_ATLC_NONSECURE->LC_FRC_IRQS);
 		break;
+#endif
 	    case ATM_MAC_FRC_NUM_TIMERS:
 	    default:
 		break;
@@ -289,18 +313,22 @@ void atm_mac_frc_stop_timer(atm_mac_frc_timer_t timer)
 	    ATLC_LC_FRC_IRQM__TO0__CLR(CMSDK_ATLC_NONSECURE->LC_FRC_IRQM);
 	    GLOBAL_INT_RESTORE();
 	    break;
+#ifdef ATLC_FRC_CTRL__TO1_ARM__CLR
 	case ATM_MAC_FRC_TIMER1:
 	    GLOBAL_INT_DISABLE();
 	    ATLC_FRC_CTRL__TO1_ARM__CLR(CMSDK_ATLC_NONSECURE->FRC_CTRL);
 	    ATLC_LC_FRC_IRQM__TO1__CLR(CMSDK_ATLC_NONSECURE->LC_FRC_IRQM);
 	    GLOBAL_INT_RESTORE();
 	    break;
+#endif
+#ifdef ATLC_FRC_CTRL__TO2_ARM__CLR
 	case ATM_MAC_FRC_TIMER2:
 	    GLOBAL_INT_DISABLE();
 	    ATLC_FRC_CTRL__TO2_ARM__CLR(CMSDK_ATLC_NONSECURE->FRC_CTRL);
 	    ATLC_LC_FRC_IRQM__TO2__CLR(CMSDK_ATLC_NONSECURE->LC_FRC_IRQM);
 	    GLOBAL_INT_RESTORE();
 	    break;
+#endif
 	case ATM_MAC_FRC_NUM_TIMERS:
 	default:
 	    break;

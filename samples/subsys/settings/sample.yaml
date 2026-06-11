@@ -19,4 +19,13 @@ common:
     - atm_test_with_spe
     - introduction
 tests:
-  samples.subsys.settings.atm: {}
+  samples.subsys.settings.atm: &base_config {}
+  samples.subsys.settings.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="atm_settings_backend.c;atm_settings_init.c;atm_settings_nvs.c;atm_settings.c"

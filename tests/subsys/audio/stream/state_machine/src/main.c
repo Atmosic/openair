@@ -32,7 +32,7 @@ static struct i2s_config test_i2s_config = {
 	.format = I2S_FMT_DATA_FORMAT_I2S,
 	.frame_clk_freq = SAMPLE_FREQUENCY,
 	.timeout = TIMEOUT,
-	.options = I2S_OPT_FRAME_CLK_MASTER | I2S_OPT_BIT_CLK_MASTER,
+	.options = I2S_OPT_FRAME_CLK_CONTROLLER | I2S_OPT_BIT_CLK_CONTROLLER,
 };
 
 static struct audio_stream_config test_audio_config = {.i2s_dev = NULL,   /* Will be set in setup */

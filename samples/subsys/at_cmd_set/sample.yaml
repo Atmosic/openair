@@ -1,0 +1,210 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+sample:
+  description: AT Command sample
+  name: AT Command
+  # Pytest Options:
+  #   --cmd-timeout <seconds>   : Timeout for AT command responses (default: 5.0)
+  #   --at-cmd-serial <port>    : Serial port for AT commands (uart0), e.g., COM4
+  #   --at-cmd-baud <rate>      : Baud rate for AT command port (default: 115200)
+  #   -T, --adv-timeout <seconds>: Timeout in seconds to wait while advertising before disabling (default: 60)
+  #   --dev-b-serial <port>      : Serial port for device B (central) in two-device tests, e.g., COM6
+  #   --dev-b-baud <rate>        : Baud rate for device B serial port (default: 115200)
+  #   --funcpin-out-pin <pin>   : gpio0 pin for SYSFUNCPIN output tests (default: 10)
+  #   --funcpin-in-pin <pin>    : gpio0 pin for SYSFUNCPIN input tests  (default:  9)
+  #
+  # Hardware Configuration:
+  #   - uart0: AT command input/output (configured in app.overlay)
+  #   - uart1: Console/debug output (board default)
+  #
+  # Single-port mode (same port for console and AT commands):
+  #   twister ... --device-serial COM3
+  #
+  # Two-port mode (separate ports for console and AT commands):
+  #   twister ... --device-serial COM3 --pytest-args="--at-cmd-serial=COM4"
+  #
+  # Two-device mode (devA=dut peripheral, devB=central via --dev-b-serial):
+  #   twister ... --device-serial COM3 --pytest-args="--at-cmd-serial=COM4 --dev-b-serial=COM6"
+common:
+  sysbuild: true
+tests:
+  samples.subsys.at_cmd_set.atm:
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Ready for AT commands"
+  samples.subsys.at_cmd_set.atm.mcuboot:
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Ready for AT commands"
+    tags:
+      - mcuboot
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+  samples.subsys.at_cmd_set.atm.pytest:
+    harness: pytest
+    timeout: 300
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: class
+      pytest_args:
+        - "-m"
+        - "basic"
+        - "-v"
+        # For two-port mode, add: --at-cmd-serial=<port>
+    extra_configs:
+      - CONFIG_ATM_AT_CMDTEST=y
+  samples.subsys.at_cmd_set.atm.pytest.adv:
+    harness: pytest
+    timeout: 300
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: class
+      pytest_args:
+        - "-m"
+        - "adv"
+        - "-v"
+        - "-T"
+        - "5"
+  samples.subsys.at_cmd_set.atm.pytest.system:
+    harness: pytest
+    timeout: 300
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: session
+      pytest_args:
+        - "-m"
+        - "system"
+        - "-v"
+    extra_configs:
+      - CONFIG_AT_CMD_SYSFUNCPIN=y
+      - CONFIG_AT_CMD_SYSPM=y
+      - CONFIG_AT_CMD_SYSUARTBR=y
+      - CONFIG_AT_CMD_SYSUARTFC=y
+      - CONFIG_AT_CMD_SYSUARTRAW=y
+  samples.subsys.at_cmd_set.atm.pytest.scan_conn:
+    harness: pytest
+    timeout: 300
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_AT_CMD_CENTRAL=y
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: session
+      pytest_args:
+        - "-m"
+        - "scan_conn"
+        - "-v"
+  samples.subsys.at_cmd_set.atm.pytest.gatt:
+    harness: pytest
+    timeout: 600
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: session
+      pytest_args:
+        - "-m"
+        - "gatt"
+        - "-v"
+  samples.subsys.at_cmd_set.atm.pytest.gatt_dyn:
+    harness: pytest
+    timeout: 600
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: session
+      pytest_args:
+        - "-m"
+        - "gatt_dyn"
+        - "-v"
+  samples.subsys.at_cmd_set.atm.pytest.gatt_client:
+    harness: pytest
+    timeout: 300
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_AT_CMD_CENTRAL=y
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: class
+      pytest_args:
+        - "-m"
+        - "gatt_client"
+        - "-v"
+  samples.subsys.at_cmd_set.atm.two_dev.central:
+    tags:
+      - two_dev
+    harness: pytest
+    timeout: 300
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_AT_CMD_PERIPHERAL=n
+      - CONFIG_AT_CMD_CENTRAL=y
+      - CONFIG_VND_API_SET_CON_TX_POWER=y
+      - CONFIG_BT_EXT_ADV=y
+      - CONFIG_BT_L2CAP_TX_MTU=247
+      - CONFIG_BT_BUF_ACL_RX_SIZE=251
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: session
+      pytest_args:
+        - "-m"
+        - "two_dev"
+        - "-v"
+        # Two-device mode requires --dev-b-serial=<port> in --pytest-args:
+        #   west twister ... --pytest-args="--at-cmd-serial=COM4 --dev-b-serial=COM6"
+  samples.subsys.at_cmd_set.atm.two_dev.gatt:
+    tags:
+      - two_dev
+    harness: pytest
+    timeout: 900
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_AT_CMD_PERIPHERAL=n
+      - CONFIG_AT_CMD_CENTRAL=y
+      - CONFIG_BT_EXT_ADV=y
+      - CONFIG_BT_L2CAP_TX_MTU=247
+      - CONFIG_BT_BUF_ACL_RX_SIZE=251
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: session
+      pytest_args:
+        - "-m"
+        - "gatt_two_dev"
+        - "-v"
+        # Two-device mode requires --dev-b-serial=<port> in --pytest-args:
+        #   west twister ... --pytest-args="--at-cmd-serial=<port> --dev-b-serial=<port>"
+  samples.subsys.at_cmd_set.atm.two_dev.smp:
+    tags:
+      - two_dev
+    harness: pytest
+    timeout: 300
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_AT_CMD_PERIPHERAL=n
+      - CONFIG_AT_CMD_CENTRAL=y
+      - CONFIG_BT_EXT_ADV=y
+      - CONFIG_BT_L2CAP_TX_MTU=247
+      - CONFIG_BT_BUF_ACL_RX_SIZE=251
+      - CONFIG_BT_SMP_SC_PAIR_ONLY=n
+      - CONFIG_BT_SMP_ALLOW_UNAUTH_OVERWRITE=y
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: session
+      pytest_args:
+        - "-m"
+        - "two_dev_smp"
+        - "-v"
+        # At runtime, Twister must pass:
+        #   --pytest-args="--at-cmd-serial=<UART0_A>"
+        #   --pytest-args="--dev-b-serial=<UART0_B>"

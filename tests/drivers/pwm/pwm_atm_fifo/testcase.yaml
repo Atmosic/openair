@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
 tests:
-  tests.drivers.pwm.pwm_atm_fifo.atm:
+  tests.drivers.pwm.pwm_atm_fifo.atm: &base_config
     sysbuild: true
     harness: console
     harness_config:
@@ -12,3 +12,13 @@ tests:
         - PROJECT EXECUTION SUCCESSFUL
     extra_args:
       - SB_CONFIG_ATMWSTK_PD50=y
+
+  tests.drivers.pwm.pwm_atm_fifo.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="pwm_atm.c"

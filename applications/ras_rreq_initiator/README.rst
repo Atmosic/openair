@@ -156,6 +156,113 @@ Example configurations:
 .. important::
    **Reflector Configuration Requirement**: When testing with a reflector device (e.g., :ref:`ras_rrsp_reflector <ras_rrsp_reflector-application>`), the reflector must disable auto phy ``CONFIG_BT_AUTO_PHY_UPDATE=n``. If not, PHY mismatches may occur during the connection, potentially affecting Channel Sounding performance and range measurements.
 
+CS Reflector Inline PCT (IPT)
+=============================
+
+To enable CS (Channel Sounding) reflector Inline PCT (Phase Correction Term) support, add the following configuration option to your project configuration file (``prj.conf``):
+
+.. code-block:: bash
+
+   CONFIG_ENABLE_CS_REF_IPT=y
+
+This option enables:
+
+- Detection of CS Enhancement 1 (IPT) capability on the remote reflector by reading its extended feature pages
+- Automatic activation of the Inline PCT flag (``cs_enhancements_1``) in the CS configuration when the reflector supports it
+- Logging of IPT enablement status during CS configuration
+
+The following dependencies are automatically selected when this option is enabled:
+
+- ``BT_LE_EXTENDED_FEAT_SET`` — enables reading of extended LL feature pages from the remote peer
+- ``ATM_ENA_LL_FEAT_CS_ENH1`` — enables local CS Enhancement 1 (IPT) support at the link layer
+
+.. note::
+   On **ATM34** devices, only a 1×1 antenna configuration is supported with CS reflector IPT. ``CONFIG_CS_PROC_ANT_CFG_SEL=0`` (1 TX / 1 RX antenna) is mandatory when using this feature on ATM34:
+
+   .. code-block:: bash
+
+      CONFIG_ENABLE_CS_REF_IPT=y
+      CONFIG_CS_PROC_ANT_CFG_SEL=0
+
+.. important::
+   **Reflector Requirement**: The paired reflector device must also have CS Enhancement 1 support enabled (e.g., ``CONFIG_ATM_ENA_LL_FEAT_CS_ENH1=y`` on the reflector side). The initiator reads the reflector's extended features after connection and only enables IPT in the CS config if the reflector advertises support.
+
+Reduce RAS Data from Reflector
+==============================
+
+Two configuration options are provided to reduce the amount of ranging data
+reported by the reflector.
+
+.. note::
+   These options are particularly recommended when CS reflector Inline PCT (IPT)
+   is enabled (``CONFIG_ENABLE_CS_REF_IPT=y``), because the Q (imaginary) part
+   of the reflector's ranging data is always zero in that case and carrying it
+   wastes bandwidth.
+
+Disable Ranging Data Subscriptions
+-----------------------------------
+
+To skip all ranging data subscriptions and receive only the RAS Control Point
+notifications, add the following option to your project configuration file
+(``prj.conf``):
+
+.. code-block:: bash
+
+   CONFIG_RREQ_DISABLE_RD_SUB=y
+
+When enabled, the initiator skips all ranging data subscriptions in the
+``RREQ_SMF_RAS_SUBSCRIBE`` state. This covers:
+
+- The real-time ranging data subscription (when ``RAS_CLIENT_REAL_TIME_RD`` is
+  enabled)
+- The on-demand ranging data subscriptions (ranging data overwritten, ranging
+  data ready, and on-demand ranging data)
+
+Only the RAS Control Point subscription is kept.
+
+Set RAS Mode 2 Ranging Data Filter
+------------------------------------
+
+To filter out selected Mode 2 fields from ranging data reported by the
+reflector, add the following options to your project configuration file
+(``prj.conf``):
+
+.. code-block:: bash
+
+   CONFIG_RREQ_SET_RAS_FILTER=y
+   CONFIG_RREQ_RAS_FILTER_MODE_2_MASK=0x3FF8
+
+When ``CONFIG_RREQ_SET_RAS_FILTER`` is enabled, the initiator sends a **Set
+Filter CP** command with Mode 2 and the mask value configured by
+``CONFIG_RREQ_RAS_FILTER_MODE_2_MASK`` after subscribing to the RAS Control
+Point and before subscribing to ranging data.
+
+**CONFIG_RREQ_RAS_FILTER_MODE_2_MASK**: 14-bit mask (``0x0000``–``0x3FFF``)
+that controls which Mode 2 fields are kept in the ranging data. A **set** bit
+retains the corresponding field; a **cleared** bit filters it out.
+
+.. list-table:: Mode 2 Mask Bit Assignments
+   :header-rows: 1
+   :widths: 15 85
+
+   * - Bit(s)
+     - Field
+   * - 0
+     - Antenna Permutation Index
+   * - 1
+     - Phase Correction Term
+   * - 2
+     - Quality Indicator and Extension Indicator
+   * - 3–6
+     - Antenna Path 1~3 unsupported indication
+
+The default value ``0x3FF8`` clears all step data for Mode 2.
+
+.. note::
+   ``CONFIG_RREQ_RAS_FILTER_MODE_2_MASK`` depends on
+   ``CONFIG_RREQ_SET_RAS_FILTER`` and has no effect unless the filter is
+   enabled.
+
 Building and Running
 ********************
 

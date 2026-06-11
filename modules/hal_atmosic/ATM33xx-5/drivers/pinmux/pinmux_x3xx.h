@@ -5,7 +5,7 @@
  *
  * @brief Pinmux driver interface for x3xx silicon
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
  *
  *******************************************************************************
  */
@@ -76,6 +76,11 @@ extern "C" {
     GPIO_GET_BASE(inst)->OUTENSET = GPIO_BIT_POS_MSK(inst); \
     GPIO_SET_LOW(inst); \
 } while (0)
+
+#define GPIO_READ_DATA(inst) \
+    (GPIO_GET_BASE(inst)->DATA & GPIO_BIT_POS_MSK(inst))
+
+#define PIN_READ_GPIO_DATA(pin) GPIO_READ_DATA(PIN2GPIO(pin))
 
 #define PIN_SELECT_GPIO(pin) PIN_SELECT(pin, GPIO)
 

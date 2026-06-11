@@ -8,7 +8,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (C) Atmosic 2026
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -44,6 +46,9 @@ extern "C" {
 #define LL_VER_BT_CORE_SPEC_5_3     0x0C    /*!< Bluetooth core specification 5.3 */
 #define LL_VER_BT_CORE_SPEC_5_4     0x0D    /*!< Bluetooth core specification 5.4 */
 #define LL_VER_BT_CORE_SPEC_6_0     0x0E    /*!< Bluetooth core specification 6.0 */
+#define LL_VER_BT_CORE_SPEC_6_1     0x0F    /*!< Bluetooth core specification 6.1 */
+#define LL_VER_BT_CORE_SPEC_6_2     0x10    /*!< Bluetooth core specification 6.2 */
+#define LL_VER_BT_CORE_SPEC_6_3     0x11    /*!< Bluetooth core specification 6.3 */
 
 /*** Common ***/
 
@@ -396,6 +401,7 @@ enum
 #define LL_FEATURE_EXT_PDU_LEN        27      /*!< Extended feature request/response PDU length. */
 #define LL_CS_SEC_LEN                 21      /*< CS security request/response PDU length. */
 #define LL_CS_CAPABILITIES_LEN        26      /*< CS capabilities request/response PDU length.*/
+#define LL_CS_CAPABILITIES_LEN_V2     32      /*< CS capabilities PDU length with CS Enhancement 1 extension.*/
 #define LL_CS_CONFIG_REQ_LEN          28      /*< CS configuration request PDU length. */
 #define LL_CS_CONFIG_RSP_LEN          2       /*< CS configuration response PDU length. */
 #define LL_CS_REQ_LEN                 29      /*< CS request PDU length. */
@@ -983,10 +989,18 @@ enum
 
 /*! \} */    /* LL_API_EXT_FEAT */
 
-#define LL_CS_OPT_SUB_FEAT_COMPANION_SIG  (1 << 0)
+#define LL_CS_OPT_SUB_FEAT_COMPANION_SIG  (1 << 0)  /*!< RFU. */
 #define LL_CS_OPT_SUB_FEAT_ZERO_FREQ_ERR  (1 << 1)
 #define LL_CS_OPT_SUB_FEAT_ALGO_3C        (1 << 2)
 #define LL_CS_OPT_SUB_FEAT_SS_RANGING     (1 << 3)
+#define LL_CS_OPT_SUB_FEAT_IPT_REFLECTOR  (1 << 4)  /*!< CS IPT in the CS reflector. */
+#define LL_CS_OPT_SUB_FEAT_RTT_ACCURACY_PER_PHY  (1 << 5)  /*!< CS RTT accuracy specified on a per PHY basis. */
+#define LL_CS_OPT_SUB_FEAT_ENH1_SUP      (LL_CS_OPT_SUB_FEAT_IPT_REFLECTOR | LL_CS_OPT_SUB_FEAT_RTT_ACCURACY_PER_PHY)  /*!< CS Enhancement 1 required subfeatures. */
+#define LL_CS_OPT_SUB_FEAT_ALL_SUP       (LL_CS_OPT_SUB_FEAT_ZERO_FREQ_ERR        | \
+                                          LL_CS_OPT_SUB_FEAT_ALGO_3C               | \
+                                          LL_CS_OPT_SUB_FEAT_SS_RANGING            | \
+                                          LL_CS_OPT_SUB_FEAT_IPT_REFLECTOR         | \
+                                          LL_CS_OPT_SUB_FEAT_RTT_ACCURACY_PER_PHY) /*!< All supported optional subfeatures (bit 0 RFU). */
 /*! \addtogroup LL_API_FSU
  *  \{ */
 

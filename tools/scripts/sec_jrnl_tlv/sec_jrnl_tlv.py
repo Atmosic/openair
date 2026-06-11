@@ -92,6 +92,7 @@ class TLV:
         0xB9: "CHIP_INFO",
         0xBC: "MISC_CAL",
         0xC2: "XTAL_CAL",
+        0xC6: "RES_CAL",
     }
 
     # Reverse mapping: name -> tag number
@@ -136,6 +137,11 @@ class TLV:
         0xC2: [  # xtal_cal_s
             ("xtal_bits1", "I", None),
             ("xtal_bits0", "I", None),
+        ],
+        0xC6: [  # res_cal_s
+            ("version", "B", None),
+            ("rsvd", "B", 3),
+            ("words", "I", 4),
         ],
     }
 

@@ -14,6 +14,7 @@ common:
     - drivers
     - wurx
     - samples
-
+  depends_on:
+    - wurx
 tests:
   samples.drivers.wurx.atm: {}

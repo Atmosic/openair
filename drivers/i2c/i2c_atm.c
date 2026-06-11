@@ -153,19 +153,31 @@ static void i2c_atm_pm_constraint_release(const struct device *dev)
 static inline void i2c_atm_enter_transfer_session(struct device const *dev)
 {
 	struct i2c_atm_data *data = dev->data;
+
+	/*
+	 * sem_take must come before pm_constraint_set, so that only one thread
+	 * operates on pm_constraint_on at a time. This prevents the race
+	 * condition on the plain bool flag and the risk of a second thread
+	 * starting an I2C transfer without setting the PM lock.
+	 */
+	k_sem_take(&data->xfer_sem, K_FOREVER);
 #ifdef CONFIG_PM
 	i2c_atm_pm_constraint_set(dev);
 #endif
-	k_sem_take(&data->xfer_sem, K_FOREVER);
 }
 
 static inline void i2c_atm_exit_transfer_session(struct device const *dev)
 {
 	struct i2c_atm_data *data = dev->data;
-	k_sem_give(&data->xfer_sem);
+
+	/*
+	 * pm_constraint_release must come before sem_give, otherwise the next
+	 * thread may start a transfer after the PM lock has been released.
+	 */
 #ifdef CONFIG_PM
 	i2c_atm_pm_constraint_release(dev);
 #endif
+	k_sem_give(&data->xfer_sem);
 }
 
 static void i2c_atm_isr(const struct device *dev)
@@ -563,6 +575,7 @@ static int i2c_atm_init(struct device const *dev)
 	PINCTRL_DT_INST_DEFINE(n);                                                                   \
 	static void i2c_atm_enable_clocks_##n(void)                                                  \
 	{                                                                                            \
+		WRPR_CTRL_SET(I2C_BASE(n), WRPR_CTRL__SRESET);                                       \
 		WRPR_CTRL_SET(I2C_BASE(n), WRPR_CTRL__CLK_ENABLE);                                   \
 	}                                                                                            \
 	IF_ENABLED(I2C_GPIO_REQUIRED, (                                                            \

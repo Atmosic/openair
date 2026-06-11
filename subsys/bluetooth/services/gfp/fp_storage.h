@@ -172,6 +172,41 @@ bool fp_storage_pc_client_id_valid(void);
 void fp_storage_pc_client_id_delete(void);
 #endif // CONFIG_FMDN_PERSISTENT_CONNECTION
 
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+/**
+ * @brief Save reverse ringing enabled flag to NVS
+ * @param[in] enabled true to enable reverse ringing, false to disable
+ *
+ * Persists the Seeker-controlled reverse ringing enable across power cycles
+ * so the Seeker does not have to reconfigure on every reboot.
+ */
+void fp_storage_rr_enabled_save(bool enabled);
+
+/**
+ * @brief Get saved reverse ringing enabled flag
+ * @param[out] enabled Pointer to store the flag value
+ *
+ * @return 0 if successful, -ENOENT if no value is saved
+ */
+__NONNULL_ALL
+int fp_storage_rr_enabled_get(bool *enabled);
+
+/**
+ * @brief Check if reverse ringing enabled flag is saved
+ *
+ * @return true if the flag is saved in NVS
+ */
+bool fp_storage_rr_enabled_valid(void);
+
+/**
+ * @brief Delete saved reverse ringing enabled flag
+ *
+ * Called during factory reset / unprovisioning to clear the persisted
+ * configuration.
+ */
+void fp_storage_rr_enabled_delete(void);
+#endif // CONFIG_FMDN_REVERSE_RINGING
+
 /**
  * @brief Save personalized name received via Fast Pair Additional Data
  * @param[in] name Personalized name string (null-terminated)

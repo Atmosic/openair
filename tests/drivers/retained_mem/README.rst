@@ -32,7 +32,7 @@ These tests run only on cold boot using the ZTEST framework:
 Hibernation Tests (Multi-Cycle ZTEST)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The **z_test_hibernation_cycle** ZTEST runs **5 hibernation cycles**, with each cycle testing different data sizes:
+The **test_zz_hibernation_cycle** ZTEST runs **5 hibernation cycles**, with each cycle testing different data sizes:
 
 - **Cycle 1 - Simple Test**: 32 bytes with pattern 0xA5 ^ index
 - **Cycle 2 - Small Data**: 16 bytes with pattern 0x55 ^ index
@@ -40,8 +40,9 @@ The **z_test_hibernation_cycle** ZTEST runs **5 hibernation cycles**, with each 
 - **Cycle 4 - Large Data**: 128 bytes with deterministic pseudo-random pattern
 - **Cycle 5 - Max Data**: Maximum test data size (~190 bytes) with pattern 0x55 ^ index
 
-**Note**: The hibernation test is named with 'z_' prefix to ensure it runs last alphabetically,
-allowing all basic tests to complete before hibernation begins.
+**Note**: The hibernation test is named with the 'test_zz_' prefix to ensure it runs last
+alphabetically (after every other ``test_*`` including ``test_zero_data``), allowing all
+basic tests to complete before hibernation begins.
 
 Test Design
 -----------
@@ -50,12 +51,14 @@ The test follows a **ZTEST-based multi-cycle hibernation approach**:
 
 **Phase 1: Basic Tests (Cold Boot Only)**
    - **ZTEST Execution**: All basic tests run using ZTEST framework
-   - **Boot Type Check**: Tests skip automatically on hibernation wakeup using ``ztest_test_skip()``
+   - **Boot Type Check**: Tests execute on cold boot only; on hibernation wakeups they
+     report PASS based on a per-test bitmask persisted in retained memory (and only
+     SKIP if no prior cold-boot pass is recorded)
    - **Comprehensive Coverage**: Tests initialization, basic operations, edge cases, and capacity limits
    - **Structured Reporting**: ZTEST provides standardized pass/fail reporting
 
 **Phase 2: Multi-Cycle Hibernation Testing (ZTEST)**
-   - **Single ZTEST Function**: ``z_test_hibernation_cycle`` handles both cold boot and hibernation wakeup
+   - **Single ZTEST Function**: ``test_zz_hibernation_cycle`` handles both cold boot and hibernation wakeup
    - **Cycle Management**: Uses persistent retained memory to track test progress across hibernations
    - **Test Sequence**: Runs 5 different hibernation tests, one per wake cycle
    - **Data Layout**: Saves combined cycle state + test data in retained memory using packed structures
@@ -208,7 +211,7 @@ Expected Output
    Testing zero data preservation...
     PASS - test_zero_data in 0.003 seconds
    ===================================================================
-   START - z_test_hibernation_cycle
+   START - test_zz_hibernation_cycle
    === Cold Boot: Starting Hibernation Test Cycle ===
    Will run 5 hibernation tests across multiple wake cycles:
    1. Simple Test (32 bytes)
@@ -228,16 +231,16 @@ Expected Output
    Boot type: HIBERNATION (woke up from hibernation)
    Running TESTSUITE retained_mem
    ===================================================================
-    - SKIP - [retained_mem.test_basic_save_restore] duration = 0.001 seconds
-    - SKIP - [retained_mem.test_retained_mem_capacity] duration = 0.001 seconds
-    - SKIP - [retained_mem.test_magic_values_preservation] duration = 0.001 seconds
-    - SKIP - [retained_mem.test_max_size_data] duration = 0.001 seconds
-    - SKIP - [retained_mem.test_multiple_cycles] duration = 0.001 seconds
-    - SKIP - [retained_mem.test_single_byte] duration = 0.001 seconds
-    - SKIP - [retained_mem.test_size_validation] duration = 0.001 seconds
-    - SKIP - [retained_mem.test_zero_data] duration = 0.001 seconds
+    PASS - [retained_mem.test_basic_save_restore] duration = 0.001 seconds
+    PASS - [retained_mem.test_retained_mem_capacity] duration = 0.001 seconds
+    PASS - [retained_mem.test_magic_values_preservation] duration = 0.001 seconds
+    PASS - [retained_mem.test_max_size_data] duration = 0.001 seconds
+    PASS - [retained_mem.test_multiple_cycles] duration = 0.001 seconds
+    PASS - [retained_mem.test_single_byte] duration = 0.001 seconds
+    PASS - [retained_mem.test_size_validation] duration = 0.001 seconds
+    PASS - [retained_mem.test_zero_data] duration = 0.001 seconds
    ===================================================================
-   START - z_test_hibernation_cycle
+   START - test_zz_hibernation_cycle
    === Hibernation Wakeup: Running Simple Test ===
    SUCCESS: Simple hibernation test PASSED!
 
@@ -276,4 +279,6 @@ If tests fail:
 4. Check that SHUB driver is not enabled
 5. Confirm running on supported Atmosic hardware
 6. Check for sufficient power supply during hibernation
-7. If basic tests are skipped, ensure system boots with TYPE_POWER_ON first
+7. If basic tests show SKIP on a hibernation wakeup, the cold-boot pass bitmask
+   was not preserved in retained memory; ensure the suite first ran cleanly
+   from TYPE_POWER_ON

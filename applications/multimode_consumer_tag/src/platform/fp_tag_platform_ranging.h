@@ -14,14 +14,14 @@
 
 #pragma once
 
-#ifdef CONFIG_FMDN_PRECISION_FINDING
-
-#include "compiler.h"
-#include "ranging_oob_de.h"
+#include "atm_gfp.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+#include "compiler.h"
 
 /**
  * @brief Handle ranging capability requests
@@ -57,7 +57,7 @@ int fp_platform_ranging_start_cb(rt_id_t tech_id);
  */
 int fp_platform_ranging_stop_cb(rt_id_t tech_id);
 
-#endif // CONFIG_FMDN_PRECISION_FINDING
+#endif /* CONFIG_FMDN_PRECISION_FINDING */
 
 #ifdef __cplusplus
 }

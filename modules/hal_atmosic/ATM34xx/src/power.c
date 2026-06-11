@@ -251,7 +251,7 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 }
 #endif // power_states/soc_off
 
-#ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#if DT_PROP(DT_NODELABEL(systick), external_clock_source)
 #define PSEQ_USE_FSM
 #define BP_DOUBLER_FREQ 32000000U
 
@@ -483,7 +483,7 @@ __ramfunc static void pseq_rram_nap_slow_wfi(uint32_t bp_freq, uint32_t slow_fre
 		WRPR_CTRL_POP();
 	}
 }
-#endif // CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#endif // systick external_clock_source
 
 /*
  * Locate in RAM - avoid waking RRAM from nap
@@ -525,7 +525,7 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 
 	SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 
-#ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#if DT_PROP(DT_NODELABEL(systick), external_clock_source)
 	static uint32_t bp_freq;
 	bp_freq = pseq_get_system_freq();
 #endif
@@ -534,7 +534,7 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	ICACHE_DISABLE();
 #endif
 
-#ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#if DT_PROP(DT_NODELABEL(systick), external_clock_source)
 	if (bp_freq > ATM_BP_XTAL_FREQ) {
 #ifdef PSEQ_USE_FSM
 		// SW in, FSM doubler out
@@ -547,14 +547,14 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 
 		pseq_prep_for_xtal_pd();
 	}
-#else // CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#else // systick external_clock_source
 	uint32_t bp_freq = at_clkrstgen_get_bp();
 	if (bp_freq > ATM_BP_XTAL_FREQ) {
 		// Get off PLL/doubler before xtal is powered down
 		at_clkrstgen_set_bp(ATM_BP_XTAL_FREQ);
 		CMSDK_CLKRSTGEN_NONSECURE->PLL_CTRL = 0;
 	}
-#endif // CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#endif // systick external_clock_source
 
 	/*
 	 * Hibernate and soc_off will die inside WFI and
@@ -572,7 +572,7 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	// Retention powered down ROMC and reset RRAM config
 	rram_adjust_timing(bp_freq / 1000000);
 
-#ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#if DT_PROP(DT_NODELABEL(systick), external_clock_source)
 #ifdef PSEQ_USE_FSM
 	pseq_set_pll_when_ready(bp_freq, true);
 	pseq_reset_fsm();
@@ -583,11 +583,11 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 		pseq_set_pll_when_ready(bp_freq, false);
 	}
 #endif
-#else // CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#else // systick external_clock_source
 	if (bp_freq > ATM_BP_XTAL_FREQ) {
 		at_clkrstgen_set_bp(bp_freq);
 	}
-#endif // CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#endif // systick external_clock_source
 
 #ifndef PSEQ_RETAIN_ICACHE
 	ICACHE_ENABLE();
@@ -651,7 +651,7 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 	case PM_STATE_SUSPEND_TO_IDLE:
 		__disable_irq();
 		SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-#ifdef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#if DT_PROP(DT_NODELABEL(systick), external_clock_source)
 		static uint32_t bp_sleep_freq = 0;
 		if (!bp_sleep_freq) {
 			bp_sleep_freq = hw_cfg_get_wfi_freq();
@@ -811,14 +811,14 @@ static int atm_power_init(void)
 	}
 	WRPR_CTRL_POP();
 
-#ifndef CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF
+#if DT_PROP(DT_NODELABEL(systick), external_clock_source)
+	ASSERT_INFO(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC == 16000000,
+		    CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC, 0);
+#else
 	// SysTick is tied to BP frequency
 	__UNUSED uint32_t bp_freq = at_clkrstgen_get_bp();
 	ASSERT_INFO(bp_freq == CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC, bp_freq,
 		    CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC);
-#else
-	ASSERT_INFO(CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC == 16000000,
-		    CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC, 0);
 #endif
 
 #ifdef CONFIG_PM

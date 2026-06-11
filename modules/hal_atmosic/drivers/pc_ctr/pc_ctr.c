@@ -98,6 +98,65 @@
 static BbRtCfg_t pc_ctr_bb_rt_cfg;
 static LlRtCfg_t pc_ctr_ll_rt_cfg;
 
+#ifdef BT_VER_OVERRIDE
+static uint8_t bt_ver_cfg = BT_VER_OVERRIDE;
+#else
+static uint8_t bt_ver_cfg = BT_VER;
+#endif
+
+#ifdef CONFIG_ATM_LCROM_IFACE
+#include "lcrom_iface.h"
+#include "string.h"
+#include "vectors.h"
+extern void ChciTrInit(uint16_t maxAclLen, uint16_t maxIsoSduLen);
+extern void ChciTrWrite(uint8_t prot, uint8_t type, uint16_t len,
+    uint8_t *pData);
+#include "radio_hal_frc.h"
+#include "radio_hal_ble_cte.h"
+#include "radio_hal_ble_cs.h"
+#include "uECC_ll.h"
+
+// Compile in stub functions for debugging when not building debug
+#if !PLF_DEBUG
+static void assert_err(const char *condition, const char *file, int line)
+{
+}
+
+static void assert_param(int param0, int param1, const char *file, int line)
+{
+}
+
+static __PRINTF(1, 2) int debug_trace(const char *format, ...)
+{
+    return 0;
+}
+#endif
+
+#define __DECLARE_LCROM_ARRAYS
+#include "libblell.h"
+
+#define NUM_IRQ (EXPIRQn_128 + NVIC_USER_IRQ_OFFSET) // 128 synthesised IRQs
+__attribute__((section(".data_text")))
+__aligned(0x200) uint32_t ram_vector_table[NUM_IRQ];
+
+void pc_ctr_early_init(void)
+{
+    // Initialize LCROM's GOT before it is marked read-only by the MPU
+    memcpy((void *)LCROM_GOT_BASE, &lcrom_got, sizeof(lcrom_got));
+    // Initialize LCROM's BSS and DATA
+    lcrom_iface_init(lcrom_abs);
+
+    // Copy all interrupt handlers into RAM when using the LCROM
+    memcpy(ram_vector_table, (uint32_t *)SCB->VTOR, sizeof(ram_vector_table));
+    SCB->VTOR = (uint32_t)ram_vector_table;
+}
+#endif
+
+void pc_ctr_bt_ver_config(uint8_t bt_ver)
+{
+    bt_ver_cfg = bt_ver;
+}
+
 static void pc_ctr_load_config(void)
 {
     PalBbCfg_t *pc_ctr_pal_bb_cfg = (PalBbCfg_t *)&pc_ctr_bb_rt_cfg;
@@ -163,8 +222,7 @@ static void pc_ctr_load_config(void)
 	(sizeof(LlRtCfg_t) - offsetof(LlRtCfg_t, maxAdvSets)));
     PalCfgLoadData(PAL_CFG_ID_CTE, &pc_ctr_ll_rt_cfg.cteUnused,
 	(sizeof(LlRtCfg_t) - offsetof(LlRtCfg_t, cteUnused)));
-
-    pc_ctr_ll_rt_cfg.btVer = BT_VER;
+    pc_ctr_ll_rt_cfg.btVer = bt_ver_cfg;
 #define ATM_COMP_ID 0x0A24
     pc_ctr_ll_rt_cfg.compId = ATM_COMP_ID;
 #ifdef PC_HIGH_THD
@@ -191,7 +249,13 @@ static void pc_ctr_load_config(void)
 #ifdef CONFIG_ATM_BLE_CS_NUM_ANTENNAS
     pc_ctr_ll_rt_cfg.csNumAntSup = CONFIG_ATM_BLE_CS_NUM_ANTENNAS;
 #endif
-
+#if !defined(ENA_LL_FEAT_CENTRAL) && !defined(ENA_LL_FEAT_PERIPHERAL) && \
+    !defined(ENA_LL_FEAT_EXT_ADV)
+    // We don't support 2M and Coded PHY if we support neither connection nor
+    // ext-adv feature
+    pc_ctr_ll_rt_cfg.phy2mSup = false;
+    pc_ctr_ll_rt_cfg.phyCodedSup = false;
+#endif
     // Configure Channel Sounding Sync PHY support
     // csOptCsSyncPhysSup bit definitions:
     // bit 0: 1M PHY (always supported, not configurable)
@@ -209,6 +273,10 @@ static void pc_ctr_load_config(void)
 #ifdef ATM_BLE_CS_NUM_CONFIG_SUP
     pc_ctr_ll_rt_cfg.csNumConfigSup = ATM_BLE_CS_NUM_CONFIG_SUP;
 #endif
+#if defined(CONFIG_ATM_ENA_LL_FEAT_CS_ENH1) && !defined(CONFIG_ATM_LCROM_IFACE)
+    pc_ctr_ll_rt_cfg.csOptSubfeatSup |= LL_CS_OPT_SUB_FEAT_IPT_REFLECTOR |
+	LL_CS_OPT_SUB_FEAT_RTT_ACCURACY_PER_PHY;
+#endif
 #ifdef DIS_SCAN_RANDOM_BACKOFF
     pc_ctr_ll_rt_cfg.defaultOpModeFlags &= ~LL_OP_MODE_FLAG_ENA_SCAN_BACKOFF;
 #endif
@@ -218,6 +286,13 @@ static void pc_ctr_load_config(void)
 #ifdef BLE_CS_TEST_UNSYNC_MODE
     pc_ctr_ll_rt_cfg.defaultOpModeFlags |=
 	LL_OP_MODE_FLAG_ENA_CS_TEST_UNSYNC_MODE;
+#endif
+#ifndef ENA_LL_RX
+    pc_ctr_ll_rt_cfg.defaultOpModeFlags |= LL_OP_MODE_FLAG_DIS_RX;
+#endif
+#ifdef DIS_CONN_PARAM_REQ_PROC
+    pc_ctr_ll_rt_cfg.defaultOpModeFlags |=
+	LL_OP_MODE_FLAG_DIS_CONN_PARAM_REQ_PROC;
 #endif
 }
 
@@ -338,54 +413,6 @@ static void pc_ctr_wsf_init(void)
 #endif
 }
 
-#ifdef CONFIG_ATM_LCROM_IFACE
-#include "lcrom_iface.h"
-#include "string.h"
-#include "vectors.h"
-extern void ChciTrInit(uint16_t maxAclLen, uint16_t maxIsoSduLen);
-extern void ChciTrWrite(uint8_t prot, uint8_t type, uint16_t len,
-    uint8_t *pData);
-#include "radio_hal_frc.h"
-#include "radio_hal_ble_cte.h"
-#include "radio_hal_ble_cs.h"
-#include "uECC_ll.h"
-
-// Compile in stub functions for debugging when not building debug
-#if !PLF_DEBUG
-static void assert_err(const char *condition, const char *file, int line)
-{
-}
-
-static void assert_param(int param0, int param1, const char *file, int line)
-{
-}
-
-static __PRINTF(1, 2) int debug_trace(const char *format, ...)
-{
-    return 0;
-}
-#endif
-
-#define __DECLARE_LCROM_ARRAYS
-#include "libblell.h"
-
-#define NUM_IRQ (EXPIRQn_128 + NVIC_USER_IRQ_OFFSET) // 128 synthesised IRQs
-__attribute__((section(".data_text")))
-__aligned(0x200) uint32_t ram_vector_table[NUM_IRQ];
-
-void pc_ctr_early_init(void)
-{
-    // Initialize LCROM's GOT before it is marked read-only by the MPU
-    memcpy((void *)LCROM_GOT_BASE, &lcrom_got, sizeof(lcrom_got));
-    // Initialize LCROM's BSS and DATA
-    lcrom_iface_init(lcrom_abs);
-
-    // Copy all interrupt handlers into RAM when using the LCROM
-    memcpy(ram_vector_table, (uint32_t *)SCB->VTOR, sizeof(ram_vector_table));
-    SCB->VTOR = (uint32_t)ram_vector_table;
-}
-#endif
-
 static void pc_ctr_assert_fail_crit(uint32_t assert_addr)
 {
 #if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_ASSERT)
@@ -418,8 +445,7 @@ void pc_ctr_main(void)
     if (PalSysRegisterAssertFailCb) {
 	PalSysRegisterAssertFailCb(pc_ctr_assert_fail_crit);
     }
-#ifdef CONFIG_ATM_LCROM_IFACE
-    // TODO: Once LCROM respin, we can remove legacy usage.
+#ifdef CONFIG_SOC_ATM5XXX_2
     PalSysInitExt(LL_HEAP_SIZE);
 #else
     PalSysInitExt(LL_HEAP_SIZE, pc_ctr_ll_heap_alloc());
@@ -478,8 +504,14 @@ void pc_ctr_main(void)
 #ifdef CONFIG_ATM_ENA_LL_FEAT_MONADV
 	    | LL_FEATURE_INIT_MONADV
 #endif
-#if defined(CONFIG_ATM_ENA_LL_FEAT_FSU) && !defined(CONFIG_ATM_LCROM_IFACE)
+#if defined(CONFIG_ATM_ENA_LL_FEAT_FSU) && !defined(CONFIG_SOC_ATM5XXX_2)
 	    | LL_FEATURE_INIT_FSU
+#endif
+#if defined(CONFIG_ATM_ENA_LL_FEAT_ECU) && !defined(CONFIG_SOC_ATM5XXX_2)
+	    | LL_FEATURE_INIT_ECU
+#endif
+#ifdef CONFIG_ATM_ENA_LL_FEAT_PC
+	    | LL_FEATURE_INIT_PC
 #endif
 #else // CONFIG_SOC_FAMILY_ATM
 	.featureEn = LL_FEATURE_INIT_ALL

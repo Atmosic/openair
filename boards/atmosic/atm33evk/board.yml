@@ -1,5 +1,6 @@
 boards:
 - name: ATMEVK-3330-QN-6
+  full_name: ATMEVK-3330-QN-6
   vendor: atmosic
   revision:
     format: custom
@@ -12,6 +13,7 @@ boards:
     - name: ATM33xx-5
 
 - name: ATMEVK-3330e-QN-6
+  full_name: ATMEVK-3330e-QN-6
   vendor: atmosic
   revision:
     format: custom
@@ -24,6 +26,7 @@ boards:
     - name: ATM33xx-5
 
 - name: ATMEVK-3330e-QN-7
+  full_name: ATMEVK-3330e-QN-7
   vendor: atmosic
   revision:
     format: custom
@@ -36,6 +39,7 @@ boards:
     - name: ATM33xx-5
 
 - name: ATMEVK-3325-CM-6
+  full_name: ATMEVK-3325-CM-6
   vendor: atmosic
   revision:
     format: custom
@@ -48,6 +52,7 @@ boards:
     - name: ATM33xx-5
 
 - name: ATMEVK-3325-QK-6
+  full_name: ATMEVK-3325-QK-6
   vendor: atmosic
   revision:
     format: custom
@@ -60,6 +65,7 @@ boards:
     - name: ATM33xx-5
 
 - name: ATMEVK-3325-LQK-6
+  full_name: ATMEVK-3325-LQK-6
   vendor: atmosic
   revision:
     format: custom

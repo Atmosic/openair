@@ -1,0 +1,43 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_VENDOR_DFU
+	bool "Atmosic vendor-protocol DFU helper"
+	depends on FLASH
+	depends on FLASH_MAP
+	help
+	  Shared DFU helper consumed by vendor OTA protocols (Samsung TagSDK,
+	  Apple FMNA UARP, ...) so each vendor port can call a single uniform
+	  API without having to know the local MCUboot / partition layout.
+
+	  Behaviour is selected at compile time from devicetree:
+
+	    * If both slot1_partition and slot3_partition exist, the helper
+	      runs in dual-image mode: a 32-byte "ATMX" header at the start
+	      of the stream selects the per-image sizes, Image 0 is routed
+	      to slot1_partition and Image 1 to slot3_partition. The combined
+	      binary is produced offline by scripts/pack_combined_image.py.
+
+	    * If only slot1_partition exists, the helper runs in single-image
+	      mode: incoming bytes are streamed directly into slot1_partition
+	      with no header parsing.
+
+	    * If slot1_partition is missing, every API call returns -ENOTSUP
+	      with a warning so vendor protocols built without MCUboot still
+	      link and run cleanly.
+
+	  When CONFIG_MCUBOOT_BOOTLOADER_MODE_SWAP_USING_OFFSET is enabled,
+	  the helper shifts each slot write by the first sector size so
+	  MCUboot can accept the secondary-slot images. Upgrade requests are
+	  forwarded to MCUboot via boot_request_upgrade_multi() when
+	  CONFIG_MCUBOOT_IMG_MANAGER is enabled, and otherwise return
+	  -ENOSYS.
+
+if ATM_VENDOR_DFU
+
+module = ATM_VENDOR_DFU
+module-str = atm_vendor_dfu
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # ATM_VENDOR_DFU

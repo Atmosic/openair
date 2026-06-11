@@ -25,10 +25,31 @@
 
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 
+/* ── SBA TLV write frame layouts ───────────────────────────────────────── */
+
+struct __packed sba_pc_req {
+	uint8_t data_id;
+	uint8_t length;
+	uint8_t flags;
+	uint8_t client_id;
+	uint8_t conn_type;
+};
+
+struct __packed sba_rr_config_req {
+	uint8_t data_id;
+	uint8_t length;
+	uint8_t flags;
+};
+
+struct __packed sba_rr_state_req {
+	uint8_t data_id;
+	uint8_t length;
+	uint8_t state;
+};
+
 /// Per-connection context for Secure Beacon Actions
 typedef struct {
 	struct bt_conn *conn;
-	bool notify_enabled;
 	bool indicate_enabled;
 } sba_conn_ctx_t;
 
@@ -46,15 +67,18 @@ ssize_t fp_fmdn_sba_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, 
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
 	}
 
-	/* Read returns: [Protocol version (0x02), Client ID] */
-	uint8_t client_id = 0;
-
+	/* Read returns: [Protocol version (0x02), Client ID]
+	 * client_id reflects the current ownership state:
+	 *   PC_CLIENT_ID_NONE (0xFF) - no persistent connection in use
+	 *   PC_CLIENT_ID_OEM  (0xFE) - OEM companion app owns persistent connection
+	 *   other             - active Find Hub Seeker client ID
+	 */
 #ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
 	const fp_fmdn_persistent_conn_state_t *pc_state = fp_fmdn_persistent_conn_get_state();
-	if (pc_state && (pc_state->is_active)) {
-		client_id = pc_state->client_id;
-		LOG_DBG("SBA: Read returning current client ID: %u", client_id);
-	}
+	uint8_t client_id = pc_state ? pc_state->client_id : PC_CLIENT_ID_NONE;
+	LOG_DBG("SBA: Read returning client ID: 0x%02x", client_id);
+#else
+	uint8_t client_id = PC_CLIENT_ID_NONE;
 #endif
 
 	uint8_t rsp[2] = {
@@ -84,30 +108,28 @@ ssize_t fp_fmdn_sba_write(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 
 	LOG_DBG("SBA Data ID: 0x%02x", data_id);
 
-#if (defined(CONFIG_FMDN_PERSISTENT_CONNECTION) || defined(CONFIG_FMDN_REVERSE_RINGING))
-	int err;
-#endif
 	switch (data_id) {
 #ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
 	case SBA_DATA_ID_PERSISTENT_CONNECTION: {
 		LOG_INF("SBA: Persistent Connection request");
 
-		/* Request format: [data_id, flags, client_id, conn_type] */
-		if (len < 4) {
-			LOG_WRN("SBA: Invalid PC request length: %u", len);
+		const struct sba_pc_req *req = (const struct sba_pc_req *)data;
+		if (len < sizeof(*req) || req->length != 3) {
+			LOG_WRN("SBA: Invalid PC request length: %u (payload_len=%u)", len,
+				(len >= 2) ? req->length : 0);
 			return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 		}
-		uint8_t flags = data[1];
-		uint8_t client_id = data[2];
-		uint8_t conn_type = data[3];
 
-		pc_result_t result =
-			fp_fmdn_persistent_conn_configure(conn, flags, client_id, conn_type);
+		pc_result_t result = fp_fmdn_persistent_conn_configure(
+			conn, req->flags, req->client_id, req->conn_type);
 
-		uint8_t response[2] = {SBA_DATA_ID_PERSISTENT_CONNECTION, (uint8_t)result};
-		err = bt_gatt_notify(conn, attr, response, sizeof(response));
-		if (err) {
-			LOG_ERR("SBA: Failed to send PC response: %d", err);
+		if (result == PC_RESULT_OEM_OWNS) {
+			LOG_WRN("SBA: PC configure rejected - OEM app owns connection");
+			return BT_GATT_ERR(SBA_PC_ERR_OEM_APP_OWNS);
+		}
+		if (result != PC_RESULT_SUCCESS) {
+			LOG_WRN("SBA: PC configure failed: result=%u", (uint8_t)result);
+			return BT_GATT_ERR(SBA_PC_ERR_ANOTHER_SEEKER_OWNS);
 		}
 		break;
 	}
@@ -116,66 +138,37 @@ ssize_t fp_fmdn_sba_write(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 	case SBA_DATA_ID_REVERSE_RINGING_CONFIG: {
 		LOG_INF("SBA: Reverse Ringing Configuration");
 
-		/* Validate request length: minimum 2 bytes (data_id, flags)
-		 * Format per spec:
-		 * Byte 0: Data ID (0x11)
-		 * Byte 1: Flags (bit 0=enable/disable, 0xFF=ignore)
+		/* Format: [data_id(0x11), length(0x01), flags]
+		 * flags: bit 0 = enable/disable, 0xFF = ignore
 		 */
-		if (len < 2) {
-			LOG_WRN("SBA: Invalid RR config request length: %u", len);
+		const struct sba_rr_config_req *req = (const struct sba_rr_config_req *)data;
+		if (len < sizeof(*req) || req->length != 1) {
+			LOG_WRN("SBA: Invalid RR config request length: %u (payload_len=%u)", len,
+				(len >= 2) ? req->length : 0);
 			return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 		}
 
-		uint8_t flags = data[1];
-		err = fp_fmdn_reverse_ringing_configure(conn, flags);
+		int err = fp_fmdn_reverse_ringing_configure(conn, req->flags);
 		if (err) {
 			LOG_ERR("SBA: Failed to configure RR: %d", err);
-			return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+			return BT_GATT_ERR(SBA_RR_ERR_UNAVAILABLE);
 		}
 
-		/* Send response via GATT notification
-		 * Response format: Data ID 0x11 + current configuration byte
-		 */
-		const fp_fmdn_reverse_ringing_state_t *rr_state =
-			fp_fmdn_reverse_ringing_get_state();
-		uint8_t response[2] = {SBA_DATA_ID_REVERSE_RINGING_CONFIG,
-				       rr_state->enabled ? 0x01 : 0x00};
-		err = bt_gatt_notify(conn, attr, response, sizeof(response));
-		if (err) {
-			LOG_ERR("SBA: Failed to send RR config response: %d", err);
-		}
 		break;
 	}
 
 	case SBA_DATA_ID_REVERSE_RINGING: {
 		LOG_INF("SBA: Reverse Ringing state update from Seeker");
 
-		/* Validate request length: minimum 2 bytes (data_id, state)
-		 * Format per spec line 264:
-		 * "Seeker sends GATT write requests with data ID 0x12 to communicate
-		 * the updated ringing state"
-		 * Byte 0: Data ID (0x12)
-		 * Byte 1: Ringing state (0x00-0x04)
-		 */
-		if (len < 2) {
-			LOG_WRN("SBA: Invalid RR state update length: %u", len);
+		/* Format: [data_id(0x12), length(0x01), state(0x00-0x04)] */
+		const struct sba_rr_state_req *req = (const struct sba_rr_state_req *)data;
+		if (len < sizeof(*req) || req->length != 1) {
+			LOG_WRN("SBA: Invalid RR state update length: %u (payload_len=%u)", len,
+				(len >= 2) ? req->length : 0);
 			return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 		}
 
-		uint8_t state = data[1];
-
-		/* Process the reverse ringing state update from Seeker
-		 * Per spec line 264: "Whenever the Seeker starts or stops ringing --
-		 * whether triggered by reverse ringing termination request, a timeout
-		 * or a manual user action on Seeker's side -- it sends GATT write
-		 * requests with data ID 0x12 to communicate the updated ringing state."
-		 *
-		 * This will:
-		 * 1. Validate the state value (0x00-0x04)
-		 * 2. Update internal tracking
-		 * 3. Notify application via event callback
-		 */
-		err = fp_fmdn_reverse_ringing_state_update(conn, state);
+		int err = fp_fmdn_reverse_ringing_state_update(conn, req->state);
 		if (err) {
 			LOG_ERR("SBA: Failed to process RR state update: %d", err);
 			return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
@@ -192,11 +185,8 @@ ssize_t fp_fmdn_sba_write(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 
 void fp_fmdn_sba_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 {
-	LOG_DBG("SBA CCC changed: value=0x%04x", value);
-
-	LOG_INF("SBA Notify: %s, Indicate: %s",
-		(value & BT_GATT_CCC_NOTIFY) ? "enabled" : "disabled",
-		(value & BT_GATT_CCC_INDICATE) ? "enabled" : "disabled");
+	ARG_UNUSED(attr);
+	LOG_INF("SBA Indicate: %s", (value & BT_GATT_CCC_INDICATE) ? "enabled" : "disabled");
 }
 
 void fp_fmdn_sba_gatt_init(struct bt_gatt_attr *attr)

@@ -48,6 +48,10 @@ tests:
       - two_dev
       - flash_xip
       - atm_test_with_spe
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

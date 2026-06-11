@@ -21,7 +21,7 @@
 	clock-frequency = <I2C_BITRATE_FAST>;
 
 	mcp3221: mcp3221@4d {
-		compatible = "microchip,mcp3221";
+		compatible = "atmosic,mcp3221-sensor";
 		reg = <0x4d>;
 		label = "PIR_I2C_ADC";
 		status = "okay";

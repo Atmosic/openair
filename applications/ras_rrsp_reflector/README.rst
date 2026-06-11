@@ -66,6 +66,52 @@ Requirements
        status = "okay";
       };
 
+Configuration Options
+*********************
+
+CS Enhancement 1 (IPT) Support
+===============================
+
+To enable CS (Channel Sounding) Enhancement 1 support, which allows the reflector to advertise
+Inline PCT (Phase Correction Term / IPT) capability to the initiator, add the following
+configuration option to your project configuration file (``prj.conf``):
+
+.. code-block:: bash
+
+   CONFIG_ATM_ENA_LL_FEAT_CS_ENH1=y
+
+This option enables CS Enhancement 1 (IPT) at the link layer, allowing the initiator to detect
+and activate IPT in the CS configuration when both sides support it.
+
+Filter Ranging Data
+===================
+
+To enable filtering of ranging data reported by the RAS server, add the following configuration
+option to your project configuration file (``prj.conf``):
+
+.. code-block:: bash
+
+   CONFIG_RAS_FILTER_RD=y
+
+This option enables:
+
+- Support for the RAS Set Filter control point command
+- Filtering of Mode 2 ranging data fields, including:
+
+  - Antenna Permutation Index (bit 0)
+  - Phase Correction Term (bit 1)
+  - Quality Indicator and Extension Indicator (bit 2)
+
+.. note::
+   ``CONFIG_RAS_FILTER_RD=y`` is typically paired with ``CONFIG_ATM_ENA_LL_FEAT_CS_ENH1=y``
+   when using CS reflector IPT, so that the initiator can request filtering of the Phase
+   Correction Term from the ranging data:
+
+   .. code-block:: bash
+
+      CONFIG_ATM_ENA_LL_FEAT_CS_ENH1=y
+      CONFIG_RAS_FILTER_RD=y
+
 Building and Running
 ********************
 

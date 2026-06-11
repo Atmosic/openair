@@ -11,7 +11,7 @@ set(OA_APP_DIR tests/drivers/adc/adc_api)
 cmake_path(CONVERT "$ENV{ZEPHYR_BASE}" TO_CMAKE_PATH_LIST OA_ZEPHYR_BASE)
 set(APPLICATION_CONFIG_DIR ${OA_ZEPHYR_BASE}/${OA_APP_DIR})
 
-set(KCONFIG_ROOT $ENV{ZEPHYR_BASE}/${OA_APP_DIR}/Kconfig)
+set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 set(DTC_OVERLAY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/app.overlay)
 set(EXTRA_CONF_FILE ${CMAKE_CURRENT_SOURCE_DIR}/app.conf)
 
@@ -19,3 +19,7 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(adc_api)
 
 add_subdirectory(${ZEPHYR_BASE}/${OA_APP_DIR} ${OA_APP_DIR})
+
+if(CONFIG_TEST_ATM_ADC_API)
+	target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/test_atm_adc_api.c)
+endif()

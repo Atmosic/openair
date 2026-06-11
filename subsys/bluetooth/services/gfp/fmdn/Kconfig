@@ -48,25 +48,27 @@ config FMDN_MAX_CONN
     int "FMDN maximum concurrent connected client"
     default 2
 
-choice FMDN_RING_COMP
-    prompt "Ringing component selection"
-    default FMDN_RING_COMP_NONE
+config FMDN_RING_COMPONENTS
+    hex "Number of ringing-capable components"
+    default 0x01
+    range 0x00 0x03
     help
-	Select the number of components capable of ringing.
+	Number of components capable of ringing, as reported to the Seeker
+	in the Read Beacon Parameters response (FMDN spec byte 6):
+	  0x00 - Not capable of ringing
+	  0x01 - Single component (e.g. consumer tag or left earbud)
+	  0x02 - Left and right earbuds can ring independently
+	  0x03 - Left earbud, right earbud, and case can all ring independently
 
-config FMDN_RING_COMP_NONE
-    bool "No component capable of ringing"
-
-config FMDN_RING_COMP_ONE
-    bool "Single component capable of ringing"
-
-config FMDN_RING_COMP_TWO
-    bool "Two components (left and right buds) capable of ringing"
-
-config FMDN_RING_COMP_THREE
-    bool "Three components (left and right buds and case) capable of ringing"
-
-endchoice
+config FMDN_RING_VOL_SEL
+    bool "Ringing volume selection available"
+    default y
+    depends on FMDN_RING_COMPONENTS != 0
+    help
+	When enabled, the Provider advertises ringing volume selection support
+	and must accept and handle 3 volume levels (low, medium, high) as
+	indicated in the Ring operation.
+	When disabled, only the default volume level is used.
 
 # Power-loss recovery advertising
 
@@ -114,6 +116,23 @@ config FMDN_PERSISTENT_CONNECTION
 	Persistent Connection allows longer connection intervals to save power,
 	with acceptable latency for Find/Ring/Reverse Ringing operations.
 	This feature is reported in the capabilities bitmap (bit 0).
+
+config FMDN_PC_NEGO_WATCHDOG_CE_COUNT
+    int "Connection parameter negotiation watchdog CE count"
+    depends on FMDN_PERSISTENT_CONNECTION
+    default 16
+    range 10 50
+    help
+	Number of connection events to wait before treating a connection
+	parameter negotiation as failed.
+
+	Worst-case sequential CE breakdown:
+	  2 CE  - request handshake (request + response)
+	  7 CE  - ongoing channel map update, collision case
+	  7 CE  - connection update indication delay (instant offset)
+
+	  LLCP (LL_CONNECTION_PARAM_REQ): 2 + 7 + 7 = 16 CE (default 16)
+	  L2CAP (Connection Parameter Update): 3 + 7 + 7 = 17 CE (default 17)
 
 config FMDN_REVERSE_RINGING
     bool "Enable Reverse Ringing support"

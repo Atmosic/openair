@@ -6,6 +6,7 @@
 config ATM_RADIO_HAL_BLE_CS
 	bool "Atmosic radio_hal_ble_cs module"
 	depends on ATM_ATLC
+	select ATM_OTP if TRUSTED_EXECUTION_SECURE
 	default y if ATM_BLE
 
 config ATM_RF_DELAY_ONE_EIGHTH_NS
@@ -13,7 +14,7 @@ config ATM_RF_DELAY_ONE_EIGHTH_NS
 	depends on ATM_RADIO_HAL_BLE_CS
 	default $(dt_nodelabel_int_prop,atm_antenna,rf-delay-one-eighth-ns) if $(dt_nodelabel_enabled,atm_antenna)
 	default 22
-	range 0 255
+	range 0 1024
 
 config ATM_REF_PHS_CORR_SUPP
 	bool "Atmosic reflector phase correction"

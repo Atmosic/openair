@@ -32,12 +32,26 @@
 #include "sec_reset.h"
 #include "pseq_status.h"
 
-#ifdef SYS_CTRL_REG
+#if defined(CMSDK_SYSCON) || defined(SYS_CTRL_REG)
 static uint32_t reset_syndrome;
 #endif
 
 boot_status_t boot_status(void)
 {
+#ifdef CMSDK_SYSCON
+    if (reset_syndrome & CMSDK_SYSCON_RSTINFO_LOCKUPRESET_Msk) {
+	return BOOT_STATUS_RESET_LOCKUP;
+    }
+
+    if (reset_syndrome & CMSDK_SYSCON_RSTINFO_WDOGRESETREQ_Msk) {
+	return BOOT_STATUS_RESET_WDOG;
+    }
+
+    if (reset_syndrome & CMSDK_SYSCON_RSTINFO_SYSRESETREQ_Msk) {
+	return BOOT_STATUS_RESET_SYS;
+    }
+#endif
+
 #ifdef SYS_CTRL_REG
     if (reset_syndrome & (SYS_CTRL_REG_SSE200_RESET_SYNDROME_LOCKUP0_Msk |
 	SYS_CTRL_REG_SSE200_RESET_SYNDROME_LOCKUP1_Msk)) {
@@ -75,11 +89,17 @@ boot_status_t boot_status(void)
 #ifdef PSEQ_STATUS__BROWNOUT_TRIGGERED__MASK
     uint32_t pseq_ctrl1;
 #endif
+#ifdef __PSEQ_WDOG_STATUS_MACRO__
+    uint32_t pseq_wdog_status;
+#endif
     WRPR_CTRL_SET(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE);
     {
 	pseq_boot_status = CMSDK_PSEQ->STATUS & PSEQ_STATUS__POWER_ON_REASONS;
 #ifdef PSEQ_STATUS__BROWNOUT_TRIGGERED__MASK
 	pseq_ctrl1 = CMSDK_PSEQ->CTRL1;
+#endif
+#ifdef __PSEQ_WDOG_STATUS_MACRO__
+	pseq_wdog_status = CMSDK_PSEQ->WDOG_STATUS;
 #endif
     }
     WRPR_CTRL_SET(CMSDK_PSEQ, WRPR_CTRL__CLK_DISABLE);
@@ -94,9 +114,11 @@ boot_status_t boot_status(void)
 	    ASSERT_ERR(reset_syndrome &
 		SYS_CTRL_REG_SSE200_RESET_SYNDROME_PoR_Msk);
 #endif
+#ifdef PMU_PMU_RB5__SOC_WDOG_RESET__READ
 	    if (pmu_get_soc_wdog_reset()) {
 		return BOOT_STATUS_SOC_RESET_PSEQ_WDOG;
 	    }
+#endif
 #ifdef __PMU_PMU_WDOG_CTRL_MACRO__
 	    if (pmu_get_pmu_wdog_reset()) {
 		return BOOT_STATUS_SOC_RESET_PMU_WDOG;
@@ -117,6 +139,26 @@ boot_status_t boot_status(void)
 	return BOOT_STATUS_POWER_ON;
 #endif // !CONFIG_SOC_FAMILY_ATM || CONFIG_ATM_PMU
     } else {
+#ifdef PSEQ_STATUS__BTIME_PWD_LOW_TRIGGERED__READ
+	if (pseq_boot_status & (PSEQ_STATUS__BTIME_PWD_LOW_TRIGGERED__MASK |
+	    PSEQ_STATUS__BTIME_RFWAKE_TRIGGERED__MASK)) {
+	    uint8_t src = PSEQ_WDOG_STATUS__SRC__READ(pseq_wdog_status);
+	    if (src & PSEQ_WDOG_STATUS__SRC__WDOG) {
+		return BOOT_STATUS_SOC_RESET_WDOG;
+	    }
+	    if (src & PSEQ_WDOG_STATUS__SRC__PSEQ_WDOG) {
+		return BOOT_STATUS_SOC_RESET_PSEQ_WDOG;
+	    }
+	    if (src & PSEQ_WDOG_STATUS__SRC__SW) {
+		return BOOT_STATUS_SOC_RESET_SW;
+	    }
+
+	    if (PSEQ_STATUS__BTIME_RFWAKE_TRIGGERED__READ(pseq_boot_status)) {
+		return BOOT_STATUS_POWER_ON_RFWAKE;
+	    }
+	    return BOOT_STATUS_POWER_ON;
+	}
+#endif
 #ifdef PSEQ_STATUS__TIMER_TRIGGERED__MASK
 	if (pseq_boot_status & PSEQ_STATUS__TIMER_TRIGGERED__MASK) {
 	    status |= BOOT_STATUS_HIB_WKUP_TIMER;
@@ -215,6 +257,11 @@ boot_status_t boot_status(void)
 	    status |= BOOT_STATUS_HIB_WKUP_PMU_WDOG_WARN;
 	}
 #endif
+#ifdef PSEQ_STATUS__RFWAKE_TRIGGERED__READ
+	if (PSEQ_STATUS__RFWAKE_TRIGGERED__READ(pseq_boot_status)) {
+	    return BOOT_STATUS_HIB_WKUP_RF;
+	}
+#endif
     }
 
 #ifdef SYS_CTRL_REG
@@ -229,6 +276,7 @@ boot_status_t boot_status(void)
 #ifndef CONFIG_SOC_FAMILY_ATM
 __CONSTRUCTOR_PRIO(CONSTRUCTOR_RESET)
 #endif
+#if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_RESET_PRINT)
 static void reset_print(void)
 {
 #if !defined(CONFIG_SOC_FAMILY_ATM) && defined(SYS_CTRL_REG)
@@ -239,16 +287,20 @@ static void reset_print(void)
 
     if (is_boot_type(TYPE_POWER_ON)) {
 	DEBUG_TRACE("Cold boot");
-	DEBUG_TRACE_COND(is_boot_type(TYPE_POWER_ON), " Power on Reset");
+	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_POWER_ON),
+	    " Power on Reset");
+	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_POWER_ON_RFWAKE),
+	    " RF wake");
     }
     if (is_boot_type(TYPE_SOC_RESET)) {
 	DEBUG_TRACE("SOC reset");
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_SOC_RESET_PSEQ_WDOG),
 	    " PSEQ WDOG");
-#ifdef __PMU_PMU_WDOG_CTRL_MACRO__
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_SOC_RESET_PMU_WDOG),
 	    " PMU WDOG");
-#endif
+	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_SOC_RESET_WDOG), " WDOG");
+	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_SOC_RESET_SW),
+	    " SW Request");
     }
     if (is_boot_type(TYPE_RESET)) {
 	DEBUG_TRACE("CPU reset");
@@ -295,6 +347,7 @@ static void reset_print(void)
 	    "brownout_rising");
 	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_HIB_WKUP_BROWNOUT_FALLING),
 	    "brownout_falling");
+	DEBUG_TRACE_COND(is_boot_reason(BOOT_STATUS_HIB_WKUP_RF), "RF wake");
 	DEBUG_TRACE("triggered Hiberation wakeup");
     }
     if (is_boot_type(TYPE_SOCOFF)) {
@@ -307,10 +360,16 @@ static void reset_print(void)
 	DEBUG_TRACE("SOC off wakeup");
     }
 }
+#endif // !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_RESET_PRINT)
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 static int reset_sys_init(void)
 {
+#ifdef CMSDK_SYSCON
+    reset_syndrome = CMSDK_SYSCON->RSTINFO;
+    CMSDK_SYSCON->RSTINFO = reset_syndrome;
+#endif
+
 #ifdef SYS_CTRL_REG
 #ifdef CONFIG_MCUBOOT
     reset_syndrome = secure_reset_get_syndrome();

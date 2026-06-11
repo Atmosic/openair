@@ -1,5 +1,6 @@
 boards:
 - name: ATMEVK-3405-PQK-5
+  full_name: ATMEVK-3405-PQK-5
   vendor: atmosic
   revision:
     format: custom
@@ -12,6 +13,7 @@ boards:
     - name: ATM34xx-5
 
 - name: ATMEVK-3430e-YQN-5
+  full_name: ATMEVK-3430e-YQN-5
   vendor: atmosic
   revision:
     format: custom
@@ -24,6 +26,7 @@ boards:
     - name: ATM34xx-5
 
 - name: ATMEVK-3405-YBV-5
+  full_name: ATMEVK-3405-YBV-5
   vendor: atmosic
   revision:
     format: custom
@@ -36,6 +39,7 @@ boards:
     - name: ATM34xx-5
 
 - name: ATMBTCSTAG-3405
+  full_name: ATMBTCSTAG-3405
   vendor: atmosic
   revision:
     format: custom
@@ -48,6 +52,7 @@ boards:
     - name: ATM34xx-5
 
 - name: ATMMOD-3405
+  full_name: ATMMOD-3405
   vendor: atmosic
   revision:
     format: custom
@@ -60,6 +65,7 @@ boards:
     - name: ATM34xx-5
 
 - name: ATMEVK-3405-WQK-5
+  full_name: ATMEVK-3405-WQK-5
   vendor: atmosic
   revision:
     format: custom
@@ -72,6 +78,7 @@ boards:
     - name: ATM34xx-5
 
 - name: ATMEVK-3405-PBV-5
+  full_name: ATMEVK-3405-PBV-5
   vendor: atmosic
   revision:
     format: custom

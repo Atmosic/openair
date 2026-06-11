@@ -13,8 +13,11 @@
 
 LOG_MODULE_REGISTER(beacon, CONFIG_ATM_BEACON_LOG_LEVEL);
 
-#if CONFIG_SOFT_OFF
+#ifdef CONFIG_PM
 #include <zephyr/pm/pm.h>
+#endif
+
+#ifdef CONFIG_SOFT_OFF
 #include <zephyr/pm/policy.h>
 #include "power.h"
 #endif
@@ -216,8 +219,20 @@ static struct bt_data const data_ad[] = {
 };
 #endif
 
+#if defined(CONFIG_ATM_TEST_UTIL)
+#if defined(CONFIG_ATM_IS_FOR_SIM)
+#define INDEFINITE_NUM_EVENTS 10
+#else
+#define INDEFINITE_NUM_EVENTS 40
+#endif
+#else
+#define INDEFINITE_NUM_EVENTS 0
+#endif
+
 #if defined(CONFIG_REFBCN_SIMPLE_BEACON) || defined(CONFIG_REFBCN_SIMPLE_HARV_BEACON)
-static struct bt_le_ext_adv_start_param const indefinite;
+static struct bt_le_ext_adv_start_param const indefinite = {
+	.num_events = INDEFINITE_NUM_EVENTS,
+};
 #endif
 static struct bt_le_ext_adv_start_param const ext_adv_start_param = {
 	.timeout = CONFIG_ADV_TOUT,
@@ -244,7 +259,7 @@ static void adv_sent_cb(struct bt_le_ext_adv *adv, struct bt_le_ext_adv_sent_inf
 	LOG_INF("Waiting for WuRx wake-up signal...");
 #endif
 
-#if CONFIG_SOFT_OFF
+#ifdef CONFIG_SOFT_OFF
 #ifndef CONFIG_SOFT_OFF_SUBID
 #define CONFIG_SOFT_OFF_SUBID PM_ALL_SUBSTATES
 #endif

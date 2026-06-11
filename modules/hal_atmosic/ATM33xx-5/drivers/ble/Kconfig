@@ -10,6 +10,7 @@ config ATM_BLE
     select ATM_EUI
     select ATM_BTHCI_UTILS
     select MBEDTLS
+    select MBEDTLS_PSA_CRYPTO_C
 
 config ATM_RWLC
     bool "Atmosic RWLC driver"

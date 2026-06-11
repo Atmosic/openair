@@ -1,3 +1,4 @@
+/* AUTO-POPULATED HEADER. DO NOT EDIT - changes will be overwritten. */
 /**
  *******************************************************************************
  *
@@ -5,7 +6,7 @@
  *
  * @brief Main Procedure For FMNA
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -222,11 +223,18 @@ void fmna_main_start_pairing_adv(void);
 void fmna_main_init(struct fmna_init_params const *params);
 
 /**
- * @brief FMNA connected callback
- * @param conn New connection object.
- * @param err HCI error. Zero for success, non-zero otherwise.
+ * @brief FMNA connected callback.
+ *
+ * Must be invoked by the application from its BT_CONN_CB connected handler
+ * after a successful connection. The application is responsible for filtering
+ * out failed connections and for resolving @p id and @p interval from the
+ * Zephyr bt_conn_info.
+ *
+ * @param conn      New connection object.
+ * @param id        Local identity used by this connection (info.id).
+ * @param interval  Connection interval in 1.25 ms units (info.le.interval).
  */
-void fmna_connected(struct bt_conn *conn, uint8_t err);
+void fmna_connected(struct bt_conn *conn, uint8_t id, uint16_t interval);
 
 /**
  * @brief FMNA disconnected callback
@@ -253,6 +261,33 @@ void fmna_security_changed(struct bt_conn *conn, bt_security_t level,
  */
 void fmna_le_param_updated(struct bt_conn *conn, uint16_t interval,
     uint16_t latency, uint16_t timeout);
+
+/**
+ * @brief Enable Serial Number (SN) lookup over BLE.
+ *
+ * In normal state SN lookup is disabled and the FMNA paired-owner
+ * GET_SERIAL_NUMBER opcode is rejected with an INVALID_STATE response,
+ * even when the device is FMNA paired. This API must be invoked by the
+ * application in response to an explicit user action (e.g. a button
+ * press sequence) to make the SN readable.
+ *
+ * Once enabled the SN remains readable for 5 minutes, after which it
+ * is automatically disabled again. Calling this API while already
+ * enabled restarts the 5 minute window.
+ */
+void fmna_sn_lookup_enable(void);
+
+/**
+ * @brief Get the FMNA advertising address.
+ *
+ * Retrieves the Bluetooth LE address of the active FMNA advertising set via
+ * bt_le_ext_adv_get_info. Returns -ENODEV if advertising is not currently
+ * active. Intended for debugging purposes in multimode tag applications.
+ *
+ * @param[out] addr Output buffer to store the advertising address.
+ * @return 0 on success, -ENODEV if not advertising, negative errno otherwise.
+ */
+int fmna_get_adv_addr(bt_addr_le_t *addr);
 
 #ifdef __cplusplus
 }

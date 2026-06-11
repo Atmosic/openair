@@ -17,9 +17,18 @@ tests:
   samples.bluetooth.hci_vendor.atm.pd50:
     extra_configs:
       - CONFIG_ATMWSTK_PD50=y
-  samples.bluetooth.hci_vendor.atm:
+  samples.bluetooth.hci_vendor.atm: &base_config
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.hci_vendor.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="atm_vendor.c;atm_hci_uart.c"
   samples.bluetooth.hci_vendor.atm.mcuboot:
     tags:
       - mcuboot

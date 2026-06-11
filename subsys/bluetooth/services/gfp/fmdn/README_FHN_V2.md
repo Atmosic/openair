@@ -12,7 +12,7 @@ FHN v2 (Find Hub Network version 2) is an update to the Fast Pair Find My Device
 - **Persistent Connection** - Allows Seekers to maintain long-term connections with Providers
 - **Reverse Ringing** - Enables Providers to initiate ringing on Seekers (e.g., via button press)
 - **Enhanced Security** - Client ID ownership protection across power cycles
-- **Improved Scalability** - Support for up to 64 account keys (vs 5 in v1)
+- **Improved Scalability** - Support for up to 16 account keys (vs 5 in v1)
 
 Protocol Version
 ****************
@@ -54,7 +54,7 @@ Core FHN v2 Files
 ### Enable FHN v2
 ```kconfig
 CONFIG_FAST_PAIR_FMDN_V2=y                    # Enable FHN v2 features
-CONFIG_FAST_PAIR_MAX_ACCOUNT_KEY_COUNT=64     # Support up to 64 account keys
+CONFIG_FAST_PAIR_MAX_ACCOUNT_KEY_COUNT=16     # Support up to 16 account keys
 ```
 
 ### Persistent Connection
@@ -160,10 +160,34 @@ FHN v2 adds the following NVS storage:
 | `eid_key` | EID key | ✅ Yes |
 | `utp_mode` | Unwanted Tracking Protection mode | ✅ Yes |
 
+### Flash Partition Sizing
+
+NVS reserves one full sector for garbage collection, so the **usable** space is always
+`ATM_STORAGE_SIZE − one_sector`. Atmosic devices use 1 KB NVS sectors (0x400 bytes each).
+
+| Configuration | ATM_STORAGE_SIZE | Usable NVS | Rationale |
+|---|---|---|---|
+| FHN v2 only (16 bonds) | `0x2000` (8 KB) | 7 KB (7 of 8 sectors) | ~3.4 KB required; 3.7 KB headroom |
+| FHN v2 + FMNA combined (16 bonds) | `0x3000` (12 KB) | 11 KB (11 of 12 sectors) | ~4.6 KB required (FHN ~3.4 KB + FMNA ~1.2 KB); 6.4 KB headroom |
+
+**Storage footprint breakdown for FHN v2 with 16 bonds:**
+
+| Component | Size |
+|---|---|
+| BT bond keys (16 × 121 B) | ~1.9 KB |
+| CCC blobs (16 × 57 B) | ~0.9 KB |
+| Account key list (16 × 16 B + overhead) | ~302 B |
+| Fixed overhead (EID key, IRK, clock, PC client ID, etc.) | ~276 B |
+| **Total required** | **~3.4 KB** |
+
+`0x2000` provides 7 KB usable (7 of 8 sectors), leaving ~3.7 KB of headroom over the worst-case
+16-bond footprint. In practice, 16 concurrent bonds is unlikely, making this budget more than
+sufficient.
+
 ### Factory Reset
 
 Factory reset (`atm_gfp_reset()`) clears:
-- ✅ All 64 account keys
+- ✅ All 16 account keys
 - ✅ Persistent connection client ID
 - ✅ FMDN clock
 - ✅ EID key
@@ -184,7 +208,7 @@ CONFIG_FAST_PAIR_MAX_ACCOUNT_KEY_COUNT=5      # v1 limit
 ```kconfig
 CONFIG_ATM_FMDN=y
 CONFIG_FAST_PAIR_FMDN_V2=y                    # Enable v2 features
-CONFIG_FAST_PAIR_MAX_ACCOUNT_KEY_COUNT=64     # v2 limit
+CONFIG_FAST_PAIR_MAX_ACCOUNT_KEY_COUNT=16     # v2 limit
 CONFIG_FMDN_PERSISTENT_CONNECTION=y           # Optional: Enable persistent connection
 CONFIG_FMDN_REVERSE_RINGING=y                 # Optional: Enable reverse ringing
 ```
@@ -194,7 +218,7 @@ CONFIG_FMDN_REVERSE_RINGING=y                 # Optional: Enable reverse ringing
 **No code changes required** - The implementation is backward compatible:
 - v1 Seekers will work with v2 Providers (when `BCNA_MJR_VER=0x01`)
 - v2 features are only enabled when `CONFIG_FAST_PAIR_FMDN_V2=y`
-- Account key storage automatically handles up to 64 keys
+- Account key storage automatically handles up to 16 keys
 
 ### Testing Checklist
 

@@ -24,12 +24,20 @@ tests:
   tests.drivers.flash.common.atm.ruid.spe.flash_xip:
     tags:
       - flash_xip
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_SPE=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DTEST_STORAGE_IN_FLASH;-DCONFIG_FLASH_ATM_RUID=y"
   tests.drivers.flash.common.atm.ruid.mcuboot.flash_xip:
     tags:
       - flash_xip
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -39,5 +47,8 @@ tests:
   tests.drivers.flash.common.atm.wo_ext_flash:
     tags:
       - wo_ext_flash
+    depends_on:
+      - flash
+      - rram
     extra_args:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DFLASH_SIZE=0;-DATM_ALLOW_FLASH_DISABLE"

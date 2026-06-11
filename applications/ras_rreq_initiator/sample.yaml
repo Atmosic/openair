@@ -11,10 +11,23 @@ common:
   tags:
     - bluetooth
     - channel_sounding
+  depends_on:
+    - channel_sounding
 tests:
   applications.ras_rreq_initiator.atm:
     extra_args:
       - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
+  applications.ras_rreq_initiator.atm.ipt:
+    extra_args:
+      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
+    extra_configs:
+      - CONFIG_ENABLE_CS_REF_IPT=y
+  applications.ras_rreq_initiator.atm.ipt.no_rd_sub:
+    extra_args:
+      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
+    extra_configs:
+      - CONFIG_ENABLE_CS_REF_IPT=y
+      - CONFIG_RREQ_DISABLE_RD_SUB=y
   applications.ras_rreq_initiator.atm.ras_c_shell:
     extra_configs:
       - CONFIG_RAS_CLIENT_SHELL=y
@@ -31,6 +44,10 @@ tests:
     tags:
       - mcuboot
       - flash_xip
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -42,6 +59,10 @@ tests:
       - mcuboot
       - flash_xip
       - legacy
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -53,6 +74,10 @@ tests:
       - mcuboot
       - flash_xip
       - overwrite
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -72,3 +97,17 @@ tests:
     timeout: 600
     harness_config:
       pytest_root: ["pytest"]
+  applications.ras_rreq_initiator.atm.two_dev.quick:
+    tags:
+      - two_dev
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=no_button.overlay
+      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
+    extra_configs:
+      - CONFIG_BT_LOG_SNIFFER_INFO=y
+      - CONFIG_ATM_CS_QUICK_TEST=y
+    timeout: 720
+    harness_config:
+      type: one_line
+      regex:
+        - "Init Proc:3000"

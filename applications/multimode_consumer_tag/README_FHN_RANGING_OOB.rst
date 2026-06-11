@@ -7,15 +7,17 @@ FMDN Precision Finding - Ranging OOB Guide
 Overview
 ========
 
-This document provides a comprehensive guide for implementing and using the Find My Device Network (FMDN) Precision Finding feature with Ranging Out-of-Band (OOB) Data Elements. The implementation currently supports Ultra-Wideband (UWB) ranging technology with framework support for BLE Channel Sounding (BLE CS) integration.
+This document provides a comprehensive guide for implementing and using the Find My Device Network (FMDN) Precision Finding feature with Ranging Out-of-Band (OOB) Data Elements. The implementation supports Ultra-Wideband (UWB) and BLE Channel Sounding (BLE CS) ranging technologies, with full OOB DE v3 support including motion notification.
 
 Features
 ========
 
 * **UWB and BLE CS Ranging Support**: Ultra-Wideband and BLE Channel Sounding ranging support
+* **Protocol Version Negotiation**: Automatic negotiation between v1, v2, and v3 peers
+* **Protocol v2 Support**: Technology transition type and device type fields in capability responses
+* **Protocol v3 Support**: Motion Notification — asynchronous motion status reporting to the seeker
 * **Security Integration**: Configurable security levels for ranging operations
 * **Platform Abstraction**: Clean separation between protocol and hardware layers
-* **Optimized Performance**: Memory and CPU optimized implementation
 * **Google FMDN Compatible**: Full compliance with Google's Find My Device Network specification
 
 Architecture
@@ -54,6 +56,7 @@ Kconfig Options
    CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN=y      # Enable UWB ranging
    CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN=y   # Enable BLE Channel Sounding
 
+
 **UWB Capability Parameters:**
 
 See ``openair/subsys/bluetooth/services/gfp/fmdn/Kconfig.fhpf_uwb`` for detailed UWB configuration options:
@@ -75,6 +78,8 @@ See ``openair/subsys/bluetooth/services/gfp/fmdn/Kconfig.fhpf`` for BLE CS optio
 Additional library configuration in ``openair/lib/ranging_oob_de/Kconfig``:
 
 - ``CONFIG_RANGING_OOB_DE_TYPE_BLE_CS_CONFIG_SEC_TYPE`` - Include security type in CS config
+- ``CONFIG_RANGING_OOB_DE_TECH_TRANS_TYPE`` - Technology transition type (v2: 0x00=Break-before-make, 0x01=Make-before-break, default: 0x01)
+- ``CONFIG_RANGING_OOB_DE_DEV_TYPE`` - Device type reported in capability response (v2: Tag=0x03, default: 0x03)
 
 Dependencies
 ------------
@@ -114,6 +119,7 @@ Core Data Structures
        atm_gfp_ranging_config_cb_t config_cb;          // Configuration requests
        atm_gfp_ranging_start_cb_t start_cb;            // Start requests
        atm_gfp_ranging_stop_cb_t stop_cb;              // Stop requests
+       atm_gfp_ranging_motion_cb_t motion_cb;          // Motion notification (v3 only)
    } atm_gfp_ranging_handler_t;
 
 Callback Functions
@@ -156,6 +162,101 @@ Callback Functions
    //   - tech_id: Technology to start/stop
    // Returns: 0 on success, negative on error
 
+**Motion Callback (OOB DE v3, optional):**
+
+.. code-block:: c
+
+   typedef ranging_de_motion_status_t (*atm_gfp_ranging_motion_get_status_t)(void);
+   typedef int (*atm_gfp_ranging_motion_cb_t)(atm_gfp_ranging_motion_get_status_t *get_status);
+
+See `Motion Detection`_ below for full behavioral specification.
+
+Motion Detection
+----------------
+
+Motion Notification is an OOB DE v3 feature. The protocol layer requests motion data
+from the seeker via the ``ranging_de_conf_motion_data_t`` field in the Ranging Configuration
+message. The responder (tag) sends unsolicited BCNA notifications at a fixed interval.
+
+**Activation**
+
+``motion_cb`` is only invoked at runtime when both peers negotiate OOB DE v3.
+The ``get_status`` argument signals intent:
+
+* ``get_status != NULL`` — enable: platform initialises the sensor (once) and writes
+  its getter function pointer into ``*get_status``.
+* ``get_status == NULL`` — disable: platform stops the sensor. If the sensor was never
+  started this is a no-op.
+
+**Polling interval**
+
+The protocol layer (``fp_fhpf_gatt.c``) owns the notification interval. It calls the
+getter every **2 seconds** (``MOTION_NOTIFY_INTERVAL_MS``), as recommended by the spec.
+The platform does not need to schedule any timers.
+
+**Getter contract**
+
+Each time the getter is called the platform must:
+
+1. Return the **highest-severity** motion status detected since the previous call.
+2. **Reset** its internal accumulator so the next polling window starts clean.
+
+This ensures that brief high-severity events are not missed between polls.
+
+**Suppression**
+
+``RANGING_MOTION_NOT_DETECTED`` notifications are normally **not transmitted** to the
+seeker. However, there is one exception:
+
+When a previous notification indicated movement (any status other than
+``RANGING_MOTION_NOT_DETECTED``), at least **3 follow-up notifications** with
+``RANGING_MOTION_NOT_DETECTED`` **must be sent** before suppression resumes. This gives
+the seeker a hard signal that the peripheral has returned to a stationary state, rather
+than leaving the seeker uncertain about whether motion has stopped.
+
+The sequential number is only incremented on actual transmissions (including the
+mandatory ``RANGING_MOTION_NOT_DETECTED`` follow-ups).
+
+**Sequential number**
+
+Each transmitted notification carries a 1-byte sequential number (starting at 0)
+that is strictly increasing within a session. The seeker validates that each received
+value is greater than the previous. The number wraps at 255 — the seeker handles the
+wrap gracefully. In practice this boundary is never reached because a session is
+limited to 5 minutes maximum, allowing at most 150 notifications at the 2-second
+polling interval.
+
+**Authentication (base nonce)**
+
+Motion notifications are unsolicited (no preceding nonce read). Both peers use the
+nonce read before the **first** Ranging Configuration in the session as the base nonce
+for HMAC-SHA256. Since OOB v2 introduced technology transitioning, multiple Set
+Configuration messages are possible within a single session, but the base nonce must
+always come from the nonce read preceding the first one and must not be updated by
+any subsequent Set Configuration messages in the same session.
+
+**Motion status values**
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 15 45
+
+   * - Constant
+     - Value
+     - Orientation change threshold
+   * - ``RANGING_MOTION_NOT_DETECTED``
+     - 0x00
+     - < 5° (not transmitted)
+   * - ``RANGING_MOTION_SLIGHT_MOVEMENT``
+     - 0x01
+     - 5° – 7°
+   * - ``RANGING_MOTION_MODERATE_MOVEMENT``
+     - 0x02
+     - 7° – 10°
+   * - ``RANGING_MOTION_LARGE_MOVEMENT``
+     - 0x03
+     - > 10°
+
 Protocol Version Compatibility
 ===============================
 
@@ -167,17 +268,25 @@ Version Compatibility Matrix
 
 .. list-table:: Protocol Version Support
    :header-rows: 1
-   :widths: 20 20 20 40
+   :widths: 10 15 25 50
 
    * - Version
-     - Status
+     - Kconfig flag
      - Features
      - Compatibility Notes
    * - 0x01
+     - Supported
+     - UWB ranging, BLE CS framework, full OOB support
+     - Legacy; negotiated down to when peer advertises v1
+   * - 0x02
+     - Supported
+     - Technology transition type, device type fields added to capability response
+     - Negotiated when peer advertises v2 but not v3
+   * - 0x03
      - Current
-     - UWB ranging, BLE CS framework, Full OOB support
-     - Fully supported, recommended version
-   * - 0x02-0xFF
+     - Motion Notification support added (``RANGING_MSG_ID_MOTION_NOTIFICATION``)
+     - Recommended version; ``RANGING_PROTOCOL_VERSION_CURRENT``
+   * - 0x04+
      - Future
      - Reserved for future enhancements
      - Forward compatibility via version negotiation
@@ -185,14 +294,13 @@ Version Compatibility Matrix
 Version Negotiation
 -------------------
 
-The implementation automatically handles version negotiation:
+The implementation automatically handles version negotiation using ``RANGING_OOB_DE_SUPPORT_VERSION()``:
 
-* **Current Version**: ``RANGING_PROTOCOL_VERSION_CURRENT = 0x01``
-* **Minimum Supported**: ``RANGING_PROTOCOL_VERSION_MIN = 0x01``
-* **Maximum Supported**: ``RANGING_PROTOCOL_VERSION_MAX = 0x01``
+* **Current Version**: ``RANGING_PROTOCOL_VERSION_CURRENT = 0x03``
 
 When a peer requests a higher version than supported, the implementation automatically
-falls back to the highest supported version using the ``RANGING_OOB_DE_SUPPORT_VERSION()`` macro.
+falls back to the highest supported version. When a peer requests v1 or v2, the
+implementation responds with the negotiated version and omits features from newer versions.
 
 Implementation Guide
 ====================
@@ -205,12 +313,15 @@ The multimode_consumer_tag application provides a complete platform implementati
 * ``src/platform/fp_tag_platform_ranging.h`` - Platform interface definitions
 * ``src/platform/fp_tag_platform_ranging.c`` - Complete callback implementations
 
-The platform layer implements four key callbacks:
+The platform layer implements the following callbacks:
 
 * **Capability callback** - Reports device ranging capabilities (UWB/CS parameters)
 * **Configuration callback** - Applies ranging configuration from peer device
 * **Start callback** - Initiates ranging operations
 * **Stop callback** - Terminates ranging operations
+* **Motion callback** *(optional, OOB DE v3)* - Enables/disables motion detection and delivers
+  status changes to the seeker via BCNA notification. Only invoked at runtime when both peers
+  negotiate OOB DE v3; leaving the field ``NULL`` silently disables motion reporting.
 
 For custom hardware integration, modify the TODO sections in the platform callbacks to interface with your actual ranging hardware drivers.
 
@@ -230,9 +341,10 @@ during ``atm_gfp_init()`` if provided in the handlers structure:
    // Define ranging handler structure
    static const atm_gfp_ranging_handler_t ranging_handlers = {
        .capability_cb = fp_platform_ranging_capability_cb,
-       .config_cb = fp_platform_ranging_config_cb,
-       .start_cb = fp_platform_ranging_start_cb,
-       .stop_cb = fp_platform_ranging_stop_cb,
+       .config_cb     = fp_platform_ranging_config_cb,
+       .start_cb      = fp_platform_ranging_start_cb,
+       .stop_cb       = fp_platform_ranging_stop_cb,
+       .motion_cb     = fp_platform_ranging_motion_cb,
    };
 
    int main(void)
@@ -350,6 +462,52 @@ This test item configuration automatically enables:
 **Note:** BLE CS ranging is currently in framework/testing phase. Full functionality
 requires compatible peer devices and complete CS implementation in the Bluetooth stack.
 
+Build with OOB DE v3 Motion Notification Support
+-------------------------------------------------
+
+OOB DE v3 is negotiated automatically at runtime via ``RANGING_OOB_DE_SUPPORT_VERSION()``.
+No Kconfig option is required — enable precision finding and at least one ranging technology:
+
+.. code-block:: kconfig
+
+   CONFIG_FMDN_PRECISION_FINDING=y
+   CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN=y
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD>//ns openair/applications/multimode_consumer_tag \
+       -- -DCONFIG_FMDN_PRECISION_FINDING=y \
+          -DCONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN=y
+
+Motion Detection Thresholds
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The platform reference implementation in ``fp_tag_platform_ranging.c`` converts raw
+sensor data to the four OOB DE v3 motion status levels:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 20 45
+
+   * - Status
+     - Value
+     - Orientation change threshold
+   * - ``RANGING_MOTION_NOT_DETECTED``
+     - 0x00
+     - < 5° along any two axes
+   * - ``RANGING_MOTION_SLIGHT_MOVEMENT``
+     - 0x01
+     - 5° – 7°
+   * - ``RANGING_MOTION_MODERATE_MOVEMENT``
+     - 0x02
+     - 7° – 10°
+   * - ``RANGING_MOTION_LARGE_MOVEMENT``
+     - 0x03
+     - > 10°
+
+The single constant ``MOTION_RAW_PER_DEG`` in ``fp_tag_platform_ranging.c`` maps raw
+sensor units to degrees. Tune this value for your sensor before production.
+
 
 Performance Optimizations
 =========================
@@ -370,17 +528,20 @@ Key files in the implementation:
 .. code-block::
 
    openair/
-   ├── applications/fp_tag/src/platform/
-   │   ├── fp_tag_platform_ranging.h      # Platform interface
-   │   └── fp_tag_platform_ranging.c      # Platform implementation
+   ├── applications/multimode_consumer_tag/src/platform/
+   │   ├── fp_tag_platform_ranging.h      # Platform interface (capability/config/start/stop/motion)
+   │   └── fp_tag_platform_ranging.c      # Platform implementation incl. motion polling (v3)
    ├── lib/atm_gfp/
-   │   ├── atm_gfp.h                      # Main API
-   │   └── atm_gfp.c                      # Implementation
+   │   ├── atm_gfp.h                      # Main API (atm_gfp_ranging_handler_t, motion types)
+   │   └── atm_gfp.c                      # Implementation (wrapper + motion forwarding)
    ├── lib/ranging_oob_de/
-   │   ├── ranging_oob_de.h               # Data structures
+   │   └── ranging_oob_de.h               # Data structures, message IDs, version enum
    └── subsys/bluetooth/services/gfp/fmdn/
-       ├── fp_fmdn_gatt.h                 # GATT service
-       ├── fp_fmdn_gatt.c                 # GATT implementation
+       ├── fp_fhpf_gatt.h                 # FHPF interface (motion notify fn registration)
+       ├── fp_fhpf_gatt.c                 # FHPF implementation (config parsing, motion dispatch)
+       ├── fp_fmdn_gatt.h                 # BCNA GATT service interface
+       ├── fp_fmdn_gatt.c                 # BCNA GATT implementation (motion notification send)
+       ├── fp_fmdn_internal.h             # Internal BCNA opcodes and data structures
        └── Kconfig                        # Configuration options
 
 Component Descriptions

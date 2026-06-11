@@ -52,8 +52,8 @@ extern "C" {
 #endif
 /// Length of FMDN Beacon Action read response
 #define BCNA_READ_RESP_LEN    (BCNA_MJR_VER_LEN + BCNA_RNDM_NONCE_LEN)
-/// Maximum Length of FMDN Beacon Action additional data
-#define BCNA_ADD_DATA_MAX_LEN 40
+/// Maximun Length of FMDN Beacon Action additional data
+#define BCNA_ADD_DATA_MAX_LEN 64
 /// Length of FMDN Beacon Action authentication data
 #define BCNA_AUTH_DATA_LEN    128
 /// Length of FMDN Beacon Action read parameter
@@ -64,14 +64,6 @@ extern "C" {
 #define BCNA_AUTH_KEY_MAX_LEN 16
 /// Length of FMDN EID key
 #define BCNA_EID_KEY_AUTH_LEN (FP_FMDN_EID_KEY_LEN + BCNA_RNDM_NONCE_LEN)
-
-/// Ring components bitmap for single component (e.g., consumer tag)
-#define BCNA_RING_COMPONENTS_SINGLE 0x01
-/// Ring components bitmap for TWS earbuds (Right bud + Left bud + Case)
-#define BCNA_RING_COMPONENTS_ALL 0x03
-/// 0x01: Ringing volume selection available. If set, the Provider must accept
-/// and handle 3 volume levels as indicated in Ring operation
-#define BCNA_RING_SEL_AVAILABLE  0x01
 
 /// Gatt Beacon Action operation id
 typedef enum {
@@ -102,6 +94,8 @@ typedef enum {
 	BCNA_OP_RANGING_CAPABILITY_START,
 	/// ranging capability stop request
 	BCNA_OP_RANGING_CAPABILITY_STOP,
+	/// ranging motion notification
+	BCNA_OP_RANGING_MOTION_NOTIFICATION,
 #endif
 } bcna_operation_id_t;
 
@@ -135,6 +129,9 @@ typedef enum {
 	FP_FMDN_AUTH_DATA_EID_READ_REQ,
 	/// Response data
 	FP_FMDN_AUTH_DATA_RES,
+	/// Motion notification: same format as RES but uses the base nonce captured
+	/// at Ranging Configuration time rather than the most-recently-read nonce
+	FP_FMDN_AUTH_DATA_MOTION_NOTI,
 } fp_fmdn_auth_data_type_t;
 
 /// FP FMDN provision state
@@ -181,6 +178,13 @@ typedef enum {
 typedef struct {
 	/// randon nonce
 	uint8_t random_nonce[BCNA_RNDM_NONCE_LEN];
+	/// Base nonce captured from the 1st Ranging Configuration in a session,
+	/// used for all motion notification HMAC-SHA256 authentication. Subsequent
+	/// Set Configuration messages (possible in OOB v2+ due to technology
+	/// transitioning) must not overwrite this.
+	uint8_t motion_base_nonce[BCNA_RNDM_NONCE_LEN];
+	/// true once motion_base_nonce has been captured for this session
+	bool motion_base_nonce_set;
 	/// challenge valid
 	bool is_challenge_valid;
 	/// secret key

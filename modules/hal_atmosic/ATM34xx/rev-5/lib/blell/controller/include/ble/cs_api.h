@@ -6,7 +6,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (C) Atmosic 2026
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -73,6 +75,18 @@ uint8_t LlCsReadRemoteSupCap(uint16_t connHandle);
  */
 /*************************************************************************************************/
 uint8_t LlCsWriteCachRemoteSupCap(uint16_t connHandle, LlCsSupParams_t *pCsSupCap);
+
+/*************************************************************************************************/
+/*!
+ *  \brief     Write CS cached remote supported capabilities (version 2)
+ *
+ *  \param     connHandle        Connection handle.
+ *  \param     pCsSupCap         Supported capabilities.
+ *
+ *  \return    Status error code.
+ */
+/*************************************************************************************************/
+uint8_t LlCsWriteCachRemoteSupCapV2(uint16_t connHandle, LlCsSupParams_t *pCsSupCap);
 
 /*************************************************************************************************/
 /*!

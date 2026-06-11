@@ -17,6 +17,18 @@ config UART_ATM_HOST_DETECT
 	depends on UART_ATM
 	depends on GPIO
 
+config UART_ATM_DELAY_INIT
+	bool "Initialize non-console UARTs as part of POST_KERNEL, instead of default PRE_KERNEL_1"
+	depends on UART_ATM
+	help
+	  This option is used to minimize the latency of kernel initialization, in the cases
+	  where critical operations happen during, or immediately after, kernel initialization.
+	  If a UART is chosen as the zephyr_console, it will still be initialized as part of
+	  PRE_KERNEL_1. Note that writes to UARTs will fail if they are not yet initialized.
+
+config UART_ATM_TX_GLITCH
+	bool "Fix a glitch on the UART TX line around sleep"
+
 if UART_ATM && PM
 
 config UART_ATM_PM_WQ_STACK_SIZE

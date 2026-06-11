@@ -18,6 +18,7 @@
 #include <zephyr/bluetooth/gap.h>
 #include "fp_fmdn_reverse_ringing_adv.h"
 #include "fp_fmdn_reverse_ringing.h"
+#include "fp_fmdn_persistent_conn.h"
 #include "fp_fmdn_key.h"
 #include "fp_storage.h"
 #include "gfp_crypto.h"
@@ -31,7 +32,7 @@ LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 /// Reverse Ringing advertisement service data (Eddystone format)
 typedef struct adv_ringing_svc_data_s {
 	uint16_t uuid;                                ///< Eddystone UUID (0xFEAA)
-	uint8_t frame_type;                           ///< Frame Type (0xC0)
+	uint8_t frame_type;                           ///< Frame Type (ADV_RINGING_FRAME_TYPE)
 	uint8_t nonce;                                ///< Action nonce
 	uint8_t action_type;                          ///< Action type (0x01)
 	uint8_t signature[ADV_RINGING_SIGNATURE_LEN]; ///< HMAC-SHA256 signature (first 8 bytes)
@@ -44,16 +45,12 @@ static struct bt_data adv_ringing_ad[] = {
 		sizeof(adv_ringing_svc_data_t)),
 };
 
-static fp_fmdn_reverse_ringing_adv_state_t adv_ringing_state = {
-	.active = false,
-	.current_nonce = 0,
-	.start_time_ms = 0,
-};
+static fp_fmdn_reverse_ringing_adv_state_t adv_ringing_state;
 
 /* Track EID for nonce validity (nonce must be unique per EID) */
-static uint8_t current_eid[FP_FMDN_STATE_EID_LEN] = {0};
+static uint8_t current_eid[FP_FMDN_STATE_EID_LEN];
 
-static struct bt_le_ext_adv *adv_ringing_set = NULL;
+static struct bt_le_ext_adv *adv_ringing_set;
 static struct bt_le_adv_param adv_ringing_param = {
 	.id = 0,
 	.sid = 1,
@@ -133,7 +130,7 @@ static int fp_fmdn_reverse_ringing_adv_data(void)
 	hmac_offset += FP_FMDN_STATE_EID_LEN;
 	hmac_input[hmac_offset++] = adv_ringing_state.current_nonce;
 	hmac_input[hmac_offset++] = action_type;
-	hmac_input[hmac_offset++] = 0x00; /* Client ID */
+	hmac_input[hmac_offset++] = PC_CLIENT_ID_NONE;
 
 	/* Compute HMAC-SHA256 signature */
 	uint8_t hmac_full[GFP_CRYPTO_SHA256_DIG_LEN];
@@ -144,7 +141,7 @@ static int fp_fmdn_reverse_ringing_adv_data(void)
 
 	/* Build service data structure */
 	adv_ringing_svc_data.uuid = EDDYSTONE_UUID_SERVICE;
-	adv_ringing_svc_data.frame_type = 0xC0; /* Accessory-Initiated Action */
+	adv_ringing_svc_data.frame_type = ADV_RINGING_FRAME_TYPE;
 	adv_ringing_svc_data.nonce = adv_ringing_state.current_nonce;
 	adv_ringing_svc_data.action_type = action_type;
 	memcpy(adv_ringing_svc_data.signature, hmac_full, ADV_RINGING_SIGNATURE_LEN);
@@ -229,7 +226,7 @@ static void fp_fmdn_reverse_ringing_adv_adv_stop(void)
 	if (!adv_ringing_set) {
 		return;
 	}
-	LOG_INF("RR_ADV: Advertising Stop");
+	LOG_DBG("RR_ADV: Advertising Stop");
 	bt_le_ext_adv_stop(adv_ringing_set);
 	fp_fmdn_reverse_ringing_adv_release_adv();
 }
@@ -238,7 +235,7 @@ int fp_fmdn_reverse_ringing_adv_start(void)
 {
 	int err;
 
-	LOG_INF("RR_ADV: Starting advertisement-based ringing");
+	LOG_INF("RR_ADV: Starting Reverse Ringing advertisement");
 
 	if (adv_ringing_state.active) {
 		LOG_WRN("RR_ADV: Already active");
@@ -290,7 +287,7 @@ void fp_fmdn_reverse_ringing_adv_stop(void)
 		return;
 	}
 
-	LOG_INF("RR_ADV: Stopping advertisement-based ringing");
+	LOG_INF("RR_ADV: Stopping Reverse Ringing advertisement");
 	fp_fmdn_reverse_ringing_adv_adv_stop();
 
 	adv_ringing_state.active = false;

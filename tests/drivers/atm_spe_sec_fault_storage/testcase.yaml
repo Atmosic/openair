@@ -44,6 +44,32 @@ tests:
     extra_configs:
       - CONFIG_LOG_MODE_IMMEDIATE=y
       - CONFIG_ATM_SPE_FAULT_STORAGE=y
+  tests.drivers.atm_spe_sec_fault_storage.atm.mcuboot.flash_xip:
+    tags:
+      - mcuboot
+      - flash_xip
+    depends_on:
+      - flash
+      - rram
+      - xip
+    harness: console
+    harness_config:
+      type: multi_line
+      regex:
+        - "=== SPE SECURE FAULT DETECTED ==="
+        - "SPE SECURE FAULT"
+        - "Fault Reason: [0-9]+"
+      ordered: true
+    extra_args:
+      - SB_CONFIG_SPE=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_SEC_FAULT_STORAGE;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+    extra_configs:
+      - CONFIG_LOG_MODE_IMMEDIATE=y
+      - CONFIG_ATM_SPE_FAULT_STORAGE=y
   tests.drivers.atm_spe_sec_fault_storage.atm.log_panic:
     harness: console
     harness_config:

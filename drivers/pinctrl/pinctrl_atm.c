@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2024-2025 Atmosic
+ * Copyright (c) 2024-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,6 +14,15 @@
 #include "at_wrpr.h"
 #include "at_pinmux.h"
 #include "pinmux.h"
+
+/*
+ * PIN_LATCH_OPEN / PIN_LATCH_CLOSE are defined in at_wrpr.h for chips that
+ * replace the glitchless mux with software-controlled per-GPIO latches
+ */
+#ifndef PIN_LATCH_OPEN
+#define PIN_LATCH_OPEN(pin)  ((void)(pin))
+#define PIN_LATCH_CLOSE(pin) ((void)(pin))
+#endif
 
 static int pinctrl_configure_pin(uint8_t pin, uint8_t signal, uint8_t pupd, uint8_t pdsn)
 {
@@ -52,7 +61,9 @@ static int pinctrl_configure_pin(uint8_t pin, uint8_t signal, uint8_t pupd, uint
 				PIN_PULLDOWN(pin);                                                 \
 			}                                                                          \
 		}                                                                                  \
+		PIN_LATCH_OPEN(pin);                                                               \
 		PIN_SEL(pin, MODIFY)(WRPR_REG->PIN2REG(pin), signal);                              \
+		PIN_LATCH_CLOSE(pin);                                                              \
 	} break;
 
 #define GET_NUMBER(n, _) n

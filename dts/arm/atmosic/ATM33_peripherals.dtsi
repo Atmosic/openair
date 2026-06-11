@@ -45,6 +45,10 @@ gpio1: gpio@101000 {
 	#gpio-cells = <2>;
 };
 
+sha2: sha2@103000 {
+	reg = <0x00103000 0x1000>;
+};
+
 ble: ble@120000 {
 	compatible = "atmosic,ble";
 	reg = <0x00120000 0x10000>;
@@ -313,6 +317,10 @@ i2s: i2s@165000 {
 	interrupts = <60 2>;
 	clocks = <&sysclk>;
 	status = "disabled";
+};
+
+aes: aes@167000 {
+	reg = <0x00167000 0x1000>;
 };
 
 dma3: dma3@170000 {

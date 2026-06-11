@@ -27,6 +27,11 @@
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
 #endif
+#if DT_PROP(DT_NODELABEL(systick), external_clock_source)
+#define CORTEX_M_SYSTICK_EXTERNAL_REF 1
+#else
+#undef CORTEX_M_SYSTICK_EXTERNAL_REF
+#endif
 #endif // CONFIG_SOC_FAMILY_ATM
 
 #include "arch.h"
@@ -773,7 +778,7 @@ dma_exit_retention(void)
 #endif // !CONFIG_SOC_FAMILY_ATM
 
 #if !defined(CONFIG_SOC_FAMILY_ATM) || \
-    (defined(CONFIG_PM) && defined(CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF))
+    (defined(CONFIG_PM) && defined(CORTEX_M_SYSTICK_EXTERNAL_REF))
 #ifdef CONFIG_ATM_DMA_RELOC_SRAM
 __ramfunc
 #endif
@@ -867,7 +872,7 @@ static void dma_constructor(void)
 #endif // !CONFIG_SOC_FAMILY_ATM
 
 #if !defined(CONFIG_SOC_FAMILY_ATM) || \
-    (defined(CONFIG_PM) && defined(CONFIG_CORTEX_M_SYSTICK_EXTERNAL_REF))
+    (defined(CONFIG_PM) && defined(CORTEX_M_SYSTICK_EXTERNAL_REF))
     RV_PLF_BP_THROTTLE_ADD(dma_bp_throttle);
 #endif
 

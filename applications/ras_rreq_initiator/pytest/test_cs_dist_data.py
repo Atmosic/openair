@@ -82,8 +82,11 @@ class TestCsDistData:
         self, unlaunched_dut: DeviceAdapter, cs_dist_script: str
     ) -> tuple:
         """Log device configuration and return device parameters."""
-        port = unlaunched_dut.device_config.serial
-        baud = unlaunched_dut.device_config.baud
+        # Zephyr 4.4 moved per-UART serial config into device_config.serial_configs[].
+        serial_configs = getattr(unlaunched_dut.device_config, "serial_configs", None)
+        primary = serial_configs[0] if serial_configs else None
+        port = primary.port if primary else None
+        baud = primary.baud if primary else None
 
         logger.info("Device configuration from unlaunched_dut fixture:")
         logger.info("  Port: %s", port)

@@ -26,6 +26,10 @@ tests:
       - two_dev
       - flash_xip
       - atm_test_with_spe
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_SPE=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"

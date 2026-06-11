@@ -30,9 +30,10 @@ LOG_MODULE_DECLARE(fp, CONFIG_ATM_FP_LOG_LEVEL);
 
 struct fp_auth_conn_data {
 	struct bt_conn *conn;
-	uint32_t passkey: 20;  // 20 bits for passkey (max 999999)
-	uint32_t valid: 1;     // 1 bit for validity flag
-	uint32_t reserved: 11; // 11 bits reserved for future use
+	uint32_t passkey: 20;     // 20 bits for passkey (max 999999)
+	uint32_t valid: 1;        // 1 bit for validity flag
+	uint32_t kbp_verified: 1; // 1 bit: KBP crypto verified on this connection
+	uint32_t reserved: 10;    // 10 bits reserved for future use
 };
 
 static struct fp_auth_conn_data fp_auth_connections[FP_AUTH_MAX_CONNECTIONS];
@@ -73,6 +74,7 @@ static struct fp_auth_conn_data *fp_auth_get_conn_data(struct bt_conn *conn)
 			fp_auth_connections[i].conn = bt_conn_ref(conn);
 			fp_auth_connections[i].passkey = 0;
 			fp_auth_connections[i].valid = 0;
+			fp_auth_connections[i].kbp_verified = 0;
 			LOG_DBG(FP_AUTH_LOG_PREFIX "Created slot %d for %p", i, (void *)conn);
 			return &fp_auth_connections[i];
 		}
@@ -106,6 +108,7 @@ static void fp_auth_cleanup_conn_data(struct bt_conn *conn)
 			fp_auth_connections[i].conn = NULL;
 			fp_auth_connections[i].passkey = 0;
 			fp_auth_connections[i].valid = 0;
+			fp_auth_connections[i].kbp_verified = 0;
 			return;
 		}
 	}
@@ -312,10 +315,14 @@ static void fp_auth_cancel(struct bt_conn *conn)
 
 #if defined(CONFIG_BT_SMP_APP_PAIRING_ACCEPT)
 /**
- * @brief Pairing accept callback for Fast Pair pairing flow
+ * @brief Unified pairing accept callback for all Fast Pair connections
  *
- * Only accepts pairing when Fast Pair Key-based Pairing is in progress.
- * This ensures normal Bluetooth pairing is rejected per FMDN specification.
+ * Accepts SMP pairing only when KBP has been successfully verified on this
+ * specific connection.  This covers both initial pairing (mode==PAIRING_PROCESSING)
+ * and subsequent pairing (mode==PROVISIONED) without requiring the overlay to be
+ * re-registered after KBP completes.
+ *
+ * Re-encryption of existing bonds does NOT trigger this callback.
  */
 static enum bt_security_err fp_auth_pairing_accept(struct bt_conn *conn,
 						   const struct bt_conn_pairing_feat *const feat)
@@ -324,35 +331,15 @@ static enum bt_security_err fp_auth_pairing_accept(struct bt_conn *conn,
 		return BT_SECURITY_ERR_SUCCESS;
 	}
 
-	// Check if Fast Pair pairing is in progress via mode state machine
-	if (fp_mode_get() != FP_MODE_PAIRING_PROCESSING) {
-		// No Fast Pair session active - reject normal Bluetooth pairing
-		LOG_WRN(FP_AUTH_LOG_PREFIX "Reject normal BT pairing (mode=%d)", fp_mode_get());
+	struct fp_auth_conn_data *data = fp_auth_find_conn_data(conn);
+	if (!data || !data->kbp_verified) {
+		LOG_WRN(FP_AUTH_LOG_PREFIX "Reject pairing: KBP not verified (mode=%d)",
+			fp_mode_get());
 		return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
 	}
 
-	// Fast Pair pairing session is active - accept
-	LOG_DBG(FP_AUTH_LOG_PREFIX "Accept Fast Pair pairing");
+	LOG_DBG(FP_AUTH_LOG_PREFIX "Accept pairing: KBP verified for conn %p", (void *)conn);
 	return BT_SECURITY_ERR_SUCCESS;
-}
-
-/**
- * @brief Pairing accept callback for already-provisioned devices
- *
- * For provisioned devices, we reject all NEW pairing attempts.
- * Re-encryption of existing bonds does NOT trigger this callback.
- */
-static enum bt_security_err
-fp_auth_default_pairing_accept(struct bt_conn *conn, const struct bt_conn_pairing_feat *const feat)
-{
-	if (!fp_conn_validate(conn)) {
-		return BT_SECURITY_ERR_SUCCESS;
-	}
-
-	// Already provisioned - reject any new pairing attempts
-	// Re-encryption of existing bonds does NOT trigger pairing_accept
-	LOG_WRN(FP_AUTH_LOG_PREFIX "Reject new pairing on provisioned device");
-	return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
 }
 #endif /* CONFIG_BT_SMP_APP_PAIRING_ACCEPT */
 
@@ -373,20 +360,16 @@ void fp_auth_bond_deleted(uint8_t id, const bt_addr_le_t *peer)
 	}
 }
 
+// Single unified auth callback set for all FP connections.
+// pairing_accept gates on the per-connection kbp_verified flag, so it handles
+// both initial pairing and subsequent pairing without needing to re-register.
 static struct bt_conn_auth_cb fp_auth_pairing_callbacks = {
 #ifdef CONFIG_BT_SMP_APP_PAIRING_ACCEPT
-	.pairing_accept = fp_auth_pairing_accept, // Reject normal BT pairing
+	.pairing_accept = fp_auth_pairing_accept,
 #endif
-	// Fast Pair requires DisplayYesNo IO capability for proper passkey verification
-	.passkey_display = fp_auth_passkey_display, // Display passkey to user
-	.passkey_confirm = fp_auth_passkey_confirm, // Confirm passkey matches
-	.cancel = fp_auth_cancel,
-};
-
-static struct bt_conn_auth_cb fp_auth_default_pairing_callbacks = {
-#ifdef CONFIG_BT_SMP_APP_PAIRING_ACCEPT
-	.pairing_accept = fp_auth_default_pairing_accept, // Reject new pairing if provisioned
-#endif
+	// Fast Pair requires DisplayYesNo IO capability for passkey confirmation
+	.passkey_display = fp_auth_passkey_display,
+	.passkey_confirm = fp_auth_passkey_confirm,
 	.cancel = fp_auth_cancel,
 };
 
@@ -424,15 +407,13 @@ static void fp_auth_connected(struct bt_conn *conn, uint8_t err)
 
 	LOG_DBG(FP_AUTH_LOG_PREFIX "Connected");
 
-	if (fp_mode_get() <= FP_MODE_PAIRING_PROCESSING) {
-		return;
-	}
-
-	int set_err = fp_auth_set_pairing(conn);
-	if (set_err) {
-		LOG_ERR(FP_AUTH_LOG_PREFIX "Failed to set pairing for conn %p: %d", (void *)conn,
-			set_err);
-		return;
+	// Register the overlay once at connect time (one-shot per connection).
+	// pairing_accept gates on kbp_verified at runtime, handling both initial
+	// and subsequent pairing without needing a second overlay call after KBP.
+	int overlay_err = bt_conn_auth_cb_overlay(conn, &fp_auth_pairing_callbacks);
+	if (overlay_err) {
+		LOG_ERR(FP_AUTH_LOG_PREFIX "Failed to register overlay for conn %p: %d",
+			(void *)conn, overlay_err);
 	}
 }
 
@@ -442,28 +423,20 @@ BT_CONN_CB_DEFINE(fp_auth_conn_callbacks) = {
 	.connected = fp_auth_connected,
 };
 
-int fp_auth_set_pairing(struct bt_conn *conn)
+void fp_auth_allow_pairing(struct bt_conn *conn)
 {
 	if (!fp_conn_validate(conn)) {
-		return 0;
+		return;
 	}
 
-	struct bt_conn_auth_cb *auth_cb = &fp_auth_default_pairing_callbacks;
-	if (fp_mode_get() == FP_MODE_PAIRING_PROCESSING) {
-		// New Fast Pair pairing flow - use full pairing callbacks
-		LOG_DBG("FP: Set pairing callbacks for new FP pairing");
-		auth_cb = &fp_auth_pairing_callbacks;
-	} else {
-		// Already provisioned - use default callbacks (reject new pairings)
-		LOG_DBG("FP: Set default callbacks for provisioned device");
+	struct fp_auth_conn_data *data = fp_auth_get_conn_data(conn);
+	if (!data) {
+		LOG_ERR(FP_AUTH_LOG_PREFIX "Failed to get conn data for pairing accept");
+		return;
 	}
 
-	int err = bt_conn_auth_cb_overlay(conn, auth_cb);
-	if (err) {
-		LOG_ERR("FP: Failed to register overlay auth callbacks: %d", err);
-		return err;
-	}
-	return 0;
+	data->kbp_verified = 1;
+	LOG_DBG(FP_AUTH_LOG_PREFIX "Pairing accepted for conn %p", (void *)conn);
 }
 
 int fp_auth_init(void)
@@ -502,6 +475,7 @@ void fp_auth_deinit(void)
 			fp_auth_connections[i].conn = NULL;
 			fp_auth_connections[i].passkey = 0;
 			fp_auth_connections[i].valid = 0;
+			fp_auth_connections[i].kbp_verified = 0;
 		}
 	}
 

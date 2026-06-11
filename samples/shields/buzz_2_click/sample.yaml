@@ -7,6 +7,8 @@ tests:
       - shield
       - pwm
       - buzzer
+    depends_on:
+      - mikrobus
     sysbuild: true
     harness: console
     harness_config:

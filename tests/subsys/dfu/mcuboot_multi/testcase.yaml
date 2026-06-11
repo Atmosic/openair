@@ -9,13 +9,17 @@ common:
     - flash
     - dfu_mcuboot
     - flash_xip
+  depends_on:
+    - flash
+    - rram
+    - xip
   extra_args:
-      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
-      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
-      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
-      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
-      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
-      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+    - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+    - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+    - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+    - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
 tests:
   tests.subsys.dfu.mcuboot_multi.atm.mcuboot.flash_xip: {}
   tests.subsys.dfu.mcuboot_multi.atm.mcuboot.flash_xip.overwrite:

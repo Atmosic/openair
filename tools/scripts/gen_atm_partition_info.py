@@ -206,10 +206,18 @@ def parse_args():
         help="Image does not use a SPE, default is false",
     )
 
+    gen_parser.add_argument(
+        "-use_mcuboot_swap_offset",
+        "--use_mcuboot_swap_offset",
+        required=False,
+        action="store_true",
+        help="USE_MCUBOOT_SWAP_OFFSET enabled, default is false",
+    )
+
     return parser.parse_args()
 
 
-class AtmPartInfo:  # pylint: disable=too-many-instance-attributes,too-few-public-methods
+class AtmPartInfo:  # pylint: disable=too-many-instance-attributes,too-few-public-methods,invalid-name
     """Atmosic Partition Table Info"""
 
     def __init__(self):  # pylint: disable=too-many-statements
@@ -233,6 +241,9 @@ class AtmPartInfo:  # pylint: disable=too-many-instance-attributes,too-few-publi
         self.OTA_STAGING_START = None
         self.OTA_STAGING_OFFSET = None
         self.OTA_STAGING_SIZE = None
+        self.OTA_STAGING_SWAP_START = None
+        self.OTA_STAGING_SWAP_OFFSET = None
+        self.OTA_STAGING_SWAP_SIZE = None
         self.STORAGE_DATA_START = None
         self.STORAGE_DATA_OFFSET = None
         self.STORAGE_DATA_SIZE = None
@@ -266,6 +277,7 @@ class AtmPartInfo:  # pylint: disable=too-many-instance-attributes,too-few-publi
         self.RRAM_SIZE = None
         self.USE_MCUBOOT = None
         self.USE_MCUBOOT_OVERWRITE = None
+        self.USE_MCUBOOT_SWAP_OFFSET = None
         self.MCUBOOT_MAX_IMG_SECTORS = None
         self.MERGE_SPE_NSPE = None
         self.EXT_FLASH_START = None
@@ -276,12 +288,21 @@ class AtmPartInfo:  # pylint: disable=too-many-instance-attributes,too-few-publi
         self.EXT_FLASH_OTA_STAGING_START = None
         self.EXT_FLASH_OTA_STAGING_OFFSET = None
         self.EXT_FLASH_OTA_STAGING_SIZE = None
+        self.EXT_FLASH_OTA_STAGING_SWAP_START = None
+        self.EXT_FLASH_OTA_STAGING_SWAP_OFFSET = None
+        self.EXT_FLASH_OTA_STAGING_SWAP_SIZE = None
         self.EXT_FLASH_NSPE_STAGING_START = None
         self.EXT_FLASH_NSPE_STAGING_OFFSET = None
         self.EXT_FLASH_NSPE_STAGING_SIZE = None
+        self.EXT_FLASH_NSPE_STAGING_SWAP_START = None
+        self.EXT_FLASH_NSPE_STAGING_SWAP_OFFSET = None
+        self.EXT_FLASH_NSPE_STAGING_SWAP_SIZE = None
         self.EXT_FLASH_APP_STAGING_START = None
         self.EXT_FLASH_APP_STAGING_OFFSET = None
         self.EXT_FLASH_APP_STAGING_SIZE = None
+        self.EXT_FLASH_APP_STAGING_SWAP_START = None
+        self.EXT_FLASH_APP_STAGING_SWAP_OFFSET = None
+        self.EXT_FLASH_APP_STAGING_SWAP_SIZE = None
         self.EXT_FLASH_UNUSED_START = None
         self.EXT_FLASH_UNUSED_SIZE = None
         self.EXT_FLASH_USER_DATA_START = None
@@ -380,6 +401,7 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
             self.board = args.board
         self.use_mcuboot = args.use_mcuboot
         self.use_mcuboot_overwrite = args.use_mcuboot_overwrite
+        self.use_mcuboot_swap_offset = args.use_mcuboot_swap_offset
         self.mcuboot_secondary_ext_flash = args.mcuboot_secondary_ext_flash
         self.merge_spe_nspe = args.merge_spe_nspe
         self.part_info = None
@@ -450,6 +472,8 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
             self.part_info.ATM_SPLIT_IMG = self.split_img
         if self.no_spe:
             self.part_info.ATM_NO_SPE = 1
+        if self.use_mcuboot_swap_offset:
+            self.part_info.USE_MCUBOOT_SWAP_OFFSET = 1
 
     def debug_print(self, msg):
         """Debug print"""
@@ -546,6 +570,24 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
         """Parse storage_partition and factory_partition."""
         self._parse_known_partition(parent_node, "storage_partition", base_addr)
         self._parse_known_partition(parent_node, "factory_partition", base_addr)
+
+    def _reserve_swap_offset_block(self, erase_block_size, part_name_prefix):
+        """Reserve the first erase block of a staging partition for mcuboot swap-with-offset.
+
+        The first erase block is carved out as a swap area:
+          {prefix}_SWAP_OFFSET / _SWAP_SIZE  -- the reserved swap block
+          {prefix}_OFFSET / _SIZE / _START   -- adjusted to skip the swap block
+        """
+        ebs = dtlib.to_nums(erase_block_size.value)[0]
+        orig_offset = int(getattr(self.part_info, f"{part_name_prefix}_OFFSET"), 16)
+        orig_size = int(getattr(self.part_info, f"{part_name_prefix}_SIZE"), 16)
+        orig_start = int(getattr(self.part_info, f"{part_name_prefix}_START"), 16)
+        setattr(self.part_info, f"{part_name_prefix}_SWAP_START", hex(orig_start))
+        setattr(self.part_info, f"{part_name_prefix}_SWAP_OFFSET", hex(orig_offset))
+        setattr(self.part_info, f"{part_name_prefix}_SWAP_SIZE", hex(ebs))
+        setattr(self.part_info, f"{part_name_prefix}_OFFSET", hex(orig_offset + ebs))
+        setattr(self.part_info, f"{part_name_prefix}_SIZE", hex(orig_size - ebs))
+        setattr(self.part_info, f"{part_name_prefix}_START", hex(orig_start + ebs))
 
     def update_data(self):
         """Append key/value to output file"""
@@ -696,6 +738,13 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
             self.part_info.ERASE_BLOCK_SIZE = hex(
                 dtlib.to_nums(erase_block_size.value)[0]
             )
+            # adjust staging area for mcuboot swap_offset
+            if (
+                self.use_mcuboot
+                and self.use_mcuboot_swap_offset
+                and self.part_info.OTA_STAGING_OFFSET
+            ):
+                self._reserve_swap_offset_block(erase_block_size, "OTA_STAGING")
         # partition info from input arguments
         if self.user_data_offset:
             self.part_info.USER_DATA_START = hex(self.user_data_offset + rram0_start)
@@ -791,13 +840,27 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
             self._parse_known_partition(flash0, "app_partition", flash0_start)
         # settings and factory data from storage_partition and factory_partition
         self._parse_storage_and_factory(flash0, flash0_start)
-        if self.part_info.PLATFORM_FAMILY not in ("atm33", "atm34"):
-            # erase block size from erase-block-size
-            erase_block_size = flash0.props.get("erase-block-size", "Not found")
-            if erase_block_size:
+        # erase block size from erase-block-size
+        erase_block_size = flash0.props.get("erase-block-size", "Not found")
+        if erase_block_size:
+            if self.part_info.PLATFORM_FAMILY not in ("atm33", "atm34"):
                 self.part_info.ERASE_BLOCK_SIZE = hex(
                     dtlib.to_nums(erase_block_size.value)[0]
                 )
+            # adjust staging area for mcuboot swap_offset
+            if self.use_mcuboot and self.use_mcuboot_swap_offset:
+                if self.part_info.EXT_FLASH_OTA_STAGING_OFFSET:
+                    self._reserve_swap_offset_block(
+                        erase_block_size, "EXT_FLASH_OTA_STAGING"
+                    )
+                if self.part_info.EXT_FLASH_NSPE_STAGING_OFFSET:
+                    self._reserve_swap_offset_block(
+                        erase_block_size, "EXT_FLASH_NSPE_STAGING"
+                    )
+                if self.part_info.EXT_FLASH_APP_STAGING_OFFSET:
+                    self._reserve_swap_offset_block(
+                        erase_block_size, "EXT_FLASH_APP_STAGING"
+                    )
 
     def parsing_ext_flash(
         self,
@@ -823,9 +886,9 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
         self.debug_print(
             f"flash0_start = {hex(flash0_start)}, " f"flash0_size = {hex(flash0_size)}"
         )
-        self.part_info.FLASH_START = hex(flash0_start)
-        self.part_info.FLASH_SIZE = hex(flash0_size)
-        self.part_info.FLASH_TOTAL = hex(flash0_size)
+        self.part_info.EXT_FLASH_START = hex(flash0_start)
+        self.part_info.EXT_FLASH_SIZE = hex(flash0_size)
+
         # MCUBOOT from boot_partition
         self._parse_partition(
             flash0, "boot_partition", flash0_start, "mcuboot", "MCUBOOT"
@@ -835,13 +898,19 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
             flash0,
             "scratch_partition",
             flash0_start,
-            "rram0 scratch",
+            "flash0 scratch",
             "MCUBOOT_SCRATCH",
         )
-        # PRIMARY image from slot0_partition
-        found, _, _ = self._parse_partition(
-            flash0, "slot0_partition", flash0_start, "primary", "PRIMARY_IMG"
-        )
+        if self.use_mcuboot:
+            # PRIMARY image from app_partition
+            found, _, _ = self._parse_partition(
+                flash0, "app_partition", flash0_start, "primary", "PRIMARY_IMG"
+            )
+        else:
+            # APP image from app_partition
+            found, _, _ = self._parse_partition(
+                flash0, "app_partition", flash0_start, "nspe/app", "APP"
+            )
         if not found:
             return
         # OTA_STAGING from slot1_partition
@@ -856,6 +925,13 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
             self.part_info.ERASE_BLOCK_SIZE = hex(
                 dtlib.to_nums(erase_block_size.value)[0]
             )
+            # adjust staging area for mcuboot swap_offset
+            if (
+                self.use_mcuboot
+                and self.use_mcuboot_swap_offset
+                and self.part_info.OTA_STAGING_OFFSET
+            ):
+                self._reserve_swap_offset_block(erase_block_size, "OTA_STAGING")
 
     def parsing_sec_jrnl_and_key(self):
         """Parse Secure Journal and Key"""

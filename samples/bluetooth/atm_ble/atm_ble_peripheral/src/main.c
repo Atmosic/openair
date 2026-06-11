@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -175,7 +175,8 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	} else {
 		LOG_INF("connection parameters: type = %d, role = %d, id = %d", conn_info.type,
 			conn_info.role, conn_info.id);
-		LOG_INF("interval = %d, latency = %d, timeout = %d", conn_info.le.interval,
+		LOG_INF("interval = %d, latency = %d, timeout = %d",
+			conn_info.le.interval_us / BT_HCI_LE_INTERVAL_UNIT_US,
 			conn_info.le.latency, conn_info.le.timeout);
 	}
 
@@ -253,7 +254,7 @@ int main(void)
 #else
 	bt_gatt_cb_register(&gatt_callbacks);
 
-#if CONFIG_SOC_SERIES_ATM34
+#if defined(CONFIG_SOC_SERIES_ATM34) || defined(CONFIG_SOC_SERIES_ATM53)
 	err = atm_vendor_set_adv_tx_power(CONFIG_ATM_ADV_TX_POWER_DBM);
 	if (err) {
 		LOG_ERR("Failed to set adv TX power level %d", CONFIG_ATM_ADV_TX_POWER_DBM);

@@ -97,7 +97,8 @@ static void rrsp_mmi_cs_config_created_cb(struct bt_conn *conn, uint8_t status,
 					  struct bt_conn_le_cs_config *config)
 {
 	if (status == BT_HCI_ERR_SUCCESS) {
-		LOG_INF("CS config creation complete. ID: %d", config->id);
+		LOG_INF("CS config creation complete. ID: %d enhance:%x", config->id,
+			config->cs_enhancements_1);
 		rrsp_mmi.cs_cfg = config->id;
 	}
 }

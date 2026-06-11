@@ -10,6 +10,7 @@ supported:
   - entropy
   - gpio
   - i2c
+  - lis2dh
   - pwm
   - rram
   - spi

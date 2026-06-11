@@ -106,7 +106,11 @@ static bool batt_dry_gadc_sample(void (*cb)(uint16_t, int32_t))
     gadc_sample_channel(PORT1_SINGLE_ENDED_1, batt_dry_calc_lvl,
 	PORT1_SINGLE_ENDED_1_GEXT_DEFAULT, NULL);
 #else
+#ifdef CONFIG_BATT_MODEL_ADC_32_BITS
     int32_t m_sample_buffer[ADC_BUFFER_SIZE];
+#else
+    int16_t m_sample_buffer[ADC_BUFFER_SIZE];
+#endif
     struct adc_sequence const sequence = {
 	.channels = BIT(ADC_CHANNEL_ID),
 	.buffer = m_sample_buffer,

@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <zephyr/sys/util.h>
 
 /* Include hardware register definitions for capacity detection */
 #include "arch.h"
@@ -71,25 +72,32 @@
 
 /* SHUB backend - capacity depends on available PERSISTENT registers */
 #ifdef __PSEQ_PERSISTENT6_MACRO__
-#define RETAINED_MEM_BACKEND_CAPACITY (SHUB_CAPACITY + PERSIST_1_6_CAPACITY)
+#define _PHYSICAL_MEM_BACKEND_CAPACITY (SHUB_CAPACITY + PERSIST_1_6_CAPACITY)
 #elif defined(__PSEQ_PERSISTENT5_MACRO__)
-#define RETAINED_MEM_BACKEND_CAPACITY (SHUB_CAPACITY + PERSIST_1_5_CAPACITY)
+#define _PHYSICAL_MEM_BACKEND_CAPACITY (SHUB_CAPACITY + PERSIST_1_5_CAPACITY)
 #elif defined(__PSEQ_PERSISTENT1_MACRO__)
-#define RETAINED_MEM_BACKEND_CAPACITY (SHUB_CAPACITY + PERSIST_1_4_CAPACITY)
+#define _PHYSICAL_MEM_BACKEND_CAPACITY (SHUB_CAPACITY + PERSIST_1_4_CAPACITY)
 #else
-#define RETAINED_MEM_BACKEND_CAPACITY (SHUB_CAPACITY)
+#define _PHYSICAL_MEM_BACKEND_CAPACITY (SHUB_CAPACITY)
 #endif // __PSEQ_PERSISTENT6_MACRO__
 #elif defined(__PSEQ_PERSISTENT_EXPANSION_CTRL_MACRO__)
 /* Expansion backend */
 #ifdef __PSEQ_PERSISTENT_EXPANSION_WDATA_MACRO__
-#define RETAINED_MEM_BACKEND_CAPACITY                                                              \
+#define _PHYSICAL_MEM_BACKEND_CAPACITY                                                             \
 	((1 << PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__WIDTH) * 4)
 #else
-#define RETAINED_MEM_BACKEND_CAPACITY (1 << PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__WIDTH)
+#define _PHYSICAL_MEM_BACKEND_CAPACITY (1 << PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__WIDTH)
 #endif // __PSEQ_PERSISTENT_EXPANSION_WDATA_MACRO__
 #else
 #error "No retained memory backend available - neither SHUB nor persistent expansion detected"
 #endif // CMSDK_SHUB_BASE
+
+#ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+// word aligned access can limit the final capacity
+#define RETAINED_MEM_BACKEND_CAPACITY ROUND_DOWN(_PHYSICAL_MEM_BACKEND_CAPACITY, sizeof(uint32_t))
+#else
+#define RETAINED_MEM_BACKEND_CAPACITY _PHYSICAL_MEM_BACKEND_CAPACITY
+#endif
 
 /**
  * @brief Save data to retained memory hardware

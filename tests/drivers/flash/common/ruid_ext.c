@@ -11,7 +11,7 @@
 #include <zephyr/storage/flash_map.h>
 
 #ifdef CONFIG_FLASH_ATM_RUID
-#define TEST_AREA_DEVICE	FIXED_PARTITION_DEVICE(storage_partition)
+#define TEST_AREA_DEVICE	PARTITION_DEVICE(storage_partition)
 static const struct device *const flash_dev = TEST_AREA_DEVICE;
 #include <zephyr/drivers/flash/atm_flash_api_extensions.h>
 
