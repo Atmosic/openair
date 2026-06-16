@@ -95,10 +95,10 @@ as such rather than the "J-Link driver".  (In Device Manager, expand the categor
 Programming and Debugging
 *************************
 
-It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.4 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
+It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 1.0.1 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
 
  export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
- export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-0.16.4
+ export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-1.0.1
 
 Applications for the Atmosic EVK boards can be built, flashed, and debugged using the familiar `west build` and `west flash`.
 
