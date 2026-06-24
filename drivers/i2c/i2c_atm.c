@@ -78,6 +78,12 @@ struct i2c_atm_data {
 	uint32_t config;
 	struct k_sem xfer_sem;
 	struct k_sem completion_sem;
+#ifdef CONFIG_PM
+	/* Per-instance: must NOT be shared across I2C controllers, so each
+	 * controller manages its own PM lifecycle.
+	 */
+	bool pm_constraint_on;
+#endif
 };
 
 typedef void (*set_callback_t)(void);
@@ -130,11 +136,12 @@ static int i2c_atm_set_speed(struct device const *dev, uint32_t speed)
 }
 
 #ifdef CONFIG_PM
-static bool pm_constraint_on;
 static void i2c_atm_pm_constraint_set(const struct device *dev)
 {
-	if (!pm_constraint_on) {
-		pm_constraint_on = true;
+	struct i2c_atm_data *data = dev->data;
+
+	if (!data->pm_constraint_on) {
+		data->pm_constraint_on = true;
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -142,8 +149,10 @@ static void i2c_atm_pm_constraint_set(const struct device *dev)
 
 static void i2c_atm_pm_constraint_release(const struct device *dev)
 {
-	if (pm_constraint_on) {
-		pm_constraint_on = false;
+	struct i2c_atm_data *data = dev->data;
+
+	if (data->pm_constraint_on) {
+		data->pm_constraint_on = false;
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -156,9 +165,10 @@ static inline void i2c_atm_enter_transfer_session(struct device const *dev)
 
 	/*
 	 * sem_take must come before pm_constraint_set, so that only one thread
-	 * operates on pm_constraint_on at a time. This prevents the race
-	 * condition on the plain bool flag and the risk of a second thread
-	 * starting an I2C transfer without setting the PM lock.
+	 * operates on this instance's pm_constraint_on at a time and its get is
+	 * issued before its matching put. Together with the flag being
+	 * per-instance (see i2c_atm_pm_constraint_set), this keeps the PM lock
+	 * get/put balanced even when multiple I2C buses run concurrently.
 	 */
 	k_sem_take(&data->xfer_sem, K_FOREVER);
 #ifdef CONFIG_PM

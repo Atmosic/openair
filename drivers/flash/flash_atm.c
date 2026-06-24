@@ -424,15 +424,13 @@ static uint8_t break_in_suspend_us;
 
 static K_SEM_DEFINE(flash_atm_break_sem, 0, 1);
 
-static bool in_exception;
-
 // wait for the outstanding operation allowing break in to complete
 #if EXECUTING_IN_PLACE
 __ramfunc
 #endif
 static int flash_atm_wait_break_in_op_done(const char *desc, off_t offset)
 {
-	if (in_exception) {
+	if (atm_soc_in_exception()) {
 		if (!QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__READ \
 		    (CMSDK_QSPI->REMOTE_AHB_SETUP_4))
 		{
@@ -477,8 +475,14 @@ static uint32_t flash_min_freq;
 
 static void external_flash_enable_breakin(void)
 {
+	// In exception context we skip the PM lock (and the break-in setup).
+	// enable/disable always run in the same context (same function,
+	// straight-line), so disable can re-query atm_soc_in_exception() and get
+	// the same answer instead of caching it in a shared flag - this keeps the
+	// get/put balanced and is reentrant-safe for nested exception operations.
+	// NOTE: if a future change ever splits enable and disable across different
+	// contexts, this must become a per-operation nesting-safe flag again.
 	if (atm_soc_in_exception()) {
-		in_exception = true;
 		return;
 	}
 #ifdef CONFIG_PM
@@ -500,8 +504,9 @@ static void external_flash_enable_breakin(void)
 
 static void external_flash_disable_breakin(void)
 {
-	if (in_exception) {
-		in_exception = false;
+	// Mirror external_flash_enable_breakin(): re-query the same condition
+	// rather than reading a cached flag (see note there).
+	if (atm_soc_in_exception()) {
 		return;
 	}
 	QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__CLR(CMSDK_QSPI->REMOTE_AHB_SETUP_4);

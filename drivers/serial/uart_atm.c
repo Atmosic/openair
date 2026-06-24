@@ -294,7 +294,14 @@ static void uart_atm_pm_rx_start(const struct device *dev)
 		uart_atm_pm_rx_activity(dev);
 		k_thread_start(dev_data->pm_rx_tid);
 	}
+	/*
+	 * rx_start runs from the public uart_irq_rx_enable / uart_configure paths,
+	 * which can race with the pm_rx thread's set/release. irq_lock() serializes
+	 * the constraint update against that thread; see uart_atm_pm_rx_constraint_set.
+	 */
+	unsigned int key = irq_lock();
 	uart_atm_pm_rx_constraint_set(dev);
+	irq_unlock(key);
 }
 
 static void uart_atm_pm_rx_stop(const struct device *dev)
@@ -306,7 +313,12 @@ static void uart_atm_pm_rx_stop(const struct device *dev)
 		dev_data->pm_rx_stopped = true;
 		k_timer_stop(dev_data->pm_rx_timer);
 	}
+	/* rx_stop runs from public uart_irq_rx_disable; serialize against the
+	 * pm_rx thread as in rx_start.
+	 */
+	unsigned int key = irq_lock();
 	uart_atm_pm_rx_constraint_release(dev);
+	irq_unlock(key);
 }
 
 static void uart_atm_pm_rx_timeout(struct k_timer *timer)
@@ -342,10 +354,16 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 		dev_cfg->uart->HW_FLOW_OVRD &= ~(CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk |
 						 CMSDK_UART_HW_FLOW_OVRD_NRTS_VAL_Msk);
 
+		/* Fold the constraint set into the existing critical section so it
+		 * is serialized against rx_start/rx_stop without an extra irq_lock.
+		 * Keep the original order: acquire the PM constraint before clearing
+		 * pm_rx_sleeping, so there is no window where the flag says "awake"
+		 * while nothing holds the constraint (the PM state_exit notifier reads
+		 * pm_rx_sleeping to decide whether to re-post EVT_WAKE).
+		 */
+		unsigned int key = irq_lock();
 		uart_atm_pm_rx_constraint_set(dev);
 		dev_data->pm_rx_sleeping = false;
-
-		unsigned int key = irq_lock();
 		dev_data->pm_rx_events &= ~EVT_TIMEOUT;
 		k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_WAKE_MS),
 			      K_NO_WAIT);
@@ -376,7 +394,10 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 			dev_cfg->uart->HW_FLOW_OVRD &= ~(CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk |
 							 CMSDK_UART_HW_FLOW_OVRD_NRTS_VAL_Msk);
 
+			/* Serialize the constraint set against rx_start/rx_stop. */
+			unsigned int key = irq_lock();
 			uart_atm_pm_rx_constraint_set(dev);
+			irq_unlock(key);
 			dev_data->pm_rx_sleeping = false;
 			k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_WAKE_MS),
 				      K_NO_WAIT);
@@ -427,7 +448,10 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 		ATM_TIMER_WHILE_LPC_DELAY(lpc_ticks);
 #endif
 
+		/* Serialize the constraint release against rx_start/rx_stop. */
+		unsigned int key = irq_lock();
 		uart_atm_pm_rx_constraint_release(dev);
+		irq_unlock(key);
 		dev_data->pm_rx_sleeping = true;
 		dev_data->pm_rx_sleeping_when_set = atm_get_sys_time();
 		k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_MAX_SLEEP_MS),
