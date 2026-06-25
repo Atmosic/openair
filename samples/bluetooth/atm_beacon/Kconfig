@@ -266,17 +266,23 @@ config REFBCN_SIMPLE_BEACON_INTV
 	  This parameter is specified in units of 1 ms, rather than 0.625 ms.
 	  However, the final value will be rounded to the nearest multiple of 0.625 ms.
 
+# ATM5 SOC series has more caps on the power, so to see true power draw
+# consumption during sleep modes, increase adv interval beyond 1 second
+# Keeping default adv interval as 2 sec for ATM5; 1 sec for others
 # for Create
 config ADV_INTV
 	hex "Advertising interval in 0.625ms units"
-	range 0x20 0x640
+	range 0x20 0x4000
 	default 0x320 if REFBCN_EXTENDED_SCN || REFBCN_EXTENDED_ADV || REFBCN_EXTENDED_CON # 500ms
+	default 0xC80 if SOC_SERIES_ATM53 && (REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON || REFBCN_WURX_BEACON || \
+			 REFBCN_SIMPLE_HARV_BEACON || REFBCN_2M_SECONDARY) # 2s
 	default 0x640 if REFBCN_POWER_PROFILE || REFBCN_SOCOFF_BEACON || REFBCN_WURX_BEACON || \
 			 REFBCN_SIMPLE_HARV_BEACON || REFBCN_2M_SECONDARY # 1s
+
 	default 0x20
 	help
 	  Configures the advertising interval in units of 0.625ms.
-	  Range: 0x20 (32ms) to 0x640 (1600ms).
+	  Range: 0x20 (20ms) to 0x4000 (10240ms).
 
 config ADV_MAX_EVT
 	int "Maximum number of advertising events"
