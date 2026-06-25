@@ -95,15 +95,25 @@ This sample is built from ``openair/samples/bluetooth/atm_beacon``.
 
 Build command:
 
+For default base power profile:
+
 .. code-block:: bash
 
    west build -p always -b <BOARD> openair/samples/bluetooth/atm_beacon --sysbuild -T samples.bluetooth.atm_beacon.atm
+
+For button controlled simple beacon mode along with default base power profile:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/samples/bluetooth/atm_beacon --sysbuild -T samples.bluetooth.atm_beacon.atm.sbcn
 
 Flash command:
 
 .. code-block:: bash
 
    west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+
+Look at sample.yaml for additional build targets
 
 Configuration
 *************
