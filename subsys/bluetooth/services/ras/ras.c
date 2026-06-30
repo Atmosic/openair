@@ -74,6 +74,7 @@ typedef enum ras_sts_work_evt_e {
 typedef struct ras_sts_work_info_s {
 	struct k_work work;
 	ras_sts_work_evt_t event;
+	uint16_t ranging_cnt;
 } ras_sts_work_info_t;
 
 typedef enum ras_cp_rsp_work_type_e {
@@ -687,14 +688,25 @@ static void ras_rd_seg_trans_work_handler(struct k_work *work)
 	if (!ras.curr_conn || !info->rd_buf) {
 		LOG_ERR("Link is disconnect or data miss");
 		info->pending_cnt -= 1;
+		info->event = RAS_TRANS_WORK_EVT_INVALID;
 		return;
 	}
 
 	struct bt_uuid const *uuid =
 		info->is_on_demand ? BT_UUID_RAS_ONDEMAND_RD : BT_UUID_RAS_REALTIME_RD;
 
-	// Get max size
-	uint16_t seg_max = bt_gatt_get_mtu(ras.curr_conn) - RAS_SEG_DATA_GATT_HDR;
+	// Get max size; guard against MTU=0 when ATT channel detaches before work runs
+	uint16_t mtu = bt_gatt_get_mtu(ras.curr_conn);
+	if (mtu <= RAS_SEG_DATA_GATT_HDR) {
+		LOG_ERR("Invalid MTU %u during RD transfer, abort", mtu);
+		info->pending_cnt -= 1;
+		info->event = RAS_TRANS_WORK_EVT_INVALID;
+		return;
+	}
+	uint16_t seg_max = mtu - RAS_SEG_DATA_GATT_HDR;
+	if (seg_max > RAS_SEG_DATA_MAX_LEN) {
+		seg_max = RAS_SEG_DATA_MAX_LEN; /* cap to seg_buf.seg_data size */
+	}
 	int16_t unsend_len = info->rd_buf->data_offset - info->sent_len;
 
 	if (unsend_len < 0) {
@@ -821,25 +833,27 @@ static void ras_sts_work_handler(struct k_work *work)
 #if CONFIG_RAS_REAL_TIME_RD
 		if (ras_ind_notify_is_enable(ras.curr_conn, BT_UUID_RAS_REALTIME_RD)) {
 			ras_transit_evt_work_put(RAS_TRANS_WORK_EVT_START, false,
-						 ras.ras_rd_ready_cnt);
+						 info->ranging_cnt);
 		} else
 #endif
 		{
 			ras_rd_sts_notify_or_indicate(ras.curr_conn, BT_UUID_RAS_RD_READY,
-						      ras.ras_rd_ready_cnt);
+						      info->ranging_cnt);
 		}
 	} break;
 	case RAS_STS_WORK_EVT_RD_OVRWRT: {
 		// Stop procedure since data is overwritten
 		ras_transit_evt_work_cancel();
-		ras_timeout_evt_work_cancel(ras.ras_rd_ovrwrt_cnt);
+		if (ras.ras_timeout_work.pending_cnt) {
+			ras_timeout_evt_work_cancel(info->ranging_cnt);
+		}
 #if CONFIG_RAS_REAL_TIME_RD
 		if (ras_ind_notify_is_enable(ras.curr_conn, BT_UUID_RAS_REALTIME_RD)) {
 			break;
 		}
 #endif
 		ras_rd_sts_notify_or_indicate(ras.curr_conn, BT_UUID_RAS_RD_OVERWRITTEN,
-					      ras.ras_rd_ovrwrt_cnt);
+					      info->ranging_cnt);
 	} break;
 	default: {
 		LOG_ERR("Unexpected event");
@@ -849,7 +863,7 @@ static void ras_sts_work_handler(struct k_work *work)
 	ras.sts_work_pending -= 1;
 }
 
-static void ras_sts_evt_work_put(ras_sts_work_evt_t evt)
+static void ras_sts_evt_work_put(ras_sts_work_evt_t evt, uint16_t ranging_cnt)
 {
 	ras_sts_work_info_t *sts_wrk = k_malloc(sizeof(ras_sts_work_info_t));
 	if (!sts_wrk) {
@@ -858,6 +872,7 @@ static void ras_sts_evt_work_put(ras_sts_work_evt_t evt)
 	}
 	k_work_init(&sts_wrk->work, ras_sts_work_handler);
 	sts_wrk->event = evt;
+	sts_wrk->ranging_cnt = ranging_cnt;
 	atm_work_submit_to_app_work_q(&sts_wrk->work);
 	ras.sts_work_pending += 1;
 }
@@ -1032,6 +1047,7 @@ static void ras_clear_work(void)
 	k_work_cancel(&ras.ras_conn_work.work);
 	ras.ras_conn_work.pending_cnt = 0;
 #endif
+	ras_transit_evt_work_cancel();
 	k_work_cancel_delayable(&ras.ras_timeout_work.work);
 	ras.ras_timeout_work.pending_cnt = 0;
 	LOG_INF("RAS sts work:%u, cp_rsp work:%u", ras.sts_work_pending, ras.cp_rsp_work_pending);
@@ -1182,7 +1198,7 @@ static void ras_rdbuf_update_data(struct bt_conn_le_cs_subevent_result *result)
 					result->header.procedure_counter);
 				return;
 			}
-			ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_OVRWRT);
+			ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_OVRWRT, ras.ras_rd_ovrwrt_cnt);
 		}
 
 		if (buf->data_offset != 0) {
@@ -1263,7 +1279,7 @@ static void ras_cs_subevent_result_cb(struct bt_conn *conn,
 
 	if (result->header.procedure_done_status != BT_CONN_LE_CS_PROCEDURE_INCOMPLETE) {
 		ras.ras_rd_ready_cnt = result->header.procedure_counter;
-		ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY);
+		ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY, ras.ras_rd_ready_cnt);
 		if (result->header.procedure_done_status == BT_CONN_LE_CS_PROCEDURE_ABORTED) {
 			LOG_ERR("CS Procedure abort:  %u %u", result->header.procedure_counter,
 				result->header.procedure_abort_reason);
@@ -1348,7 +1364,7 @@ int ras_fake_cs_data(uint16_t ranging_cnt)
 		sizeof(cs_fake_data));
 
 	buf->status = RAS_BUF_DONE;
-	ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY);
+	ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY, ranging_cnt);
 
 	return 0;
 }
