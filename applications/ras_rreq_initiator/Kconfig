@@ -58,6 +58,57 @@ config ATM_BT_PHY
 	  1: 2M PHY - Higher data rate for improved throughput
 	  2: Coded PHY - Extended range with lower data rate
 
+config ATM_CS_QUICK_TEST
+	bool "CS interval with 180ms with two sub-events"
+
+config RREQ_SET_RAS_FILTER
+	bool "Set RAS Mode 2 ranging data filter"
+	help
+	  When enabled, after subscribing to the RAS Control Point and
+	  before subscribing to ranging data, the initiator sends a
+	  Set Filter CP command with Mode 2 and the mask value
+	  configured by RREQ_RAS_FILTER_MODE_2_MASK to filter out the
+	  selected Mode 2 fields from ranging data reported by the
+	  server.
+
+config RREQ_RAS_FILTER_MODE_2_MASK
+	hex "Mode 2 filter mask value for Set Filter CP command"
+	depends on RREQ_SET_RAS_FILTER
+	range 0x0000 0x3FFF
+	default 0x3FF8
+	help
+	  14-bit filter mask value sent with the Set Filter CP command
+	  for Mode 2. A set bit keeps the corresponding field in the
+	  ranging data; a cleared bit filters it out.
+
+	  Mode 2 mask bits:
+	    bit 0   : Antenna Permutation Index
+	    bit 1   : Phase Correction Term
+	    bit 2   : Quality Indicator and Extension Indicator
+	    bit 3-6 : Antenna Path 1~3 unsupported indication
+
+	  The default 0x3FF8 clears all step data for mode2
+
+config ENABLE_CS_REF_IPT
+	bool "Enable CS reflector inline PCT"
+	select BT_LE_EXTENDED_FEAT_SET
+	select ATM_ENA_LL_FEAT_CS_ENH1
+
+config FORCE_DISABLE_IPT
+	bool "Support IPT but disable IPT for CS config"
+	depends on ENABLE_CS_REF_IPT
+
+config RREQ_DISABLE_RD_SUB
+	bool "Disable ranging data subscriptions"
+	help
+	  When enabled, the initiator skips all ranging data
+	  subscriptions in the RREQ_SMF_RAS_SUBSCRIBE state. This
+	  covers both the real-time ranging data subscription (when
+	  RAS_CLIENT_REAL_TIME_RD is enabled) and the on-demand
+	  ranging data subscriptions (ranging data overwritten,
+	  ranging data ready, and on-demand ranging data). Only the
+	  RAS Control Point subscription is kept.
+
 module = RREQ
 module-str = RREQ
 source "subsys/logging/Kconfig.template.log_config"

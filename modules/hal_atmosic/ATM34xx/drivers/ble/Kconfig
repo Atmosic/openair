@@ -9,6 +9,7 @@ config ATM_BLE
 	select ATM_ATLC
 	select ATM_BTHCI_UTILS
 	select MBEDTLS if ATM_ENA_LL_FEAT_ENC_PRIV
+	select MBEDTLS_PSA_CRYPTO_C if ATM_ENA_LL_FEAT_ENC_PRIV
 
 config ATM_BLE_DRIVER_SPLIT_INIT
 	bool "Split the initialization path for the BLE driver"
@@ -47,10 +48,16 @@ config ATLC_DEEP_SLEEP
 	bool "ATLC deep sleep enable"
 	default y if ATM_BLE_DRIVER_SLEEP
 
+config ATM_BLE_RETENTION_WAKEUP_THRESHOLD
+	int "Number of consecutive retention wakeups before kicking the BLE thread"
+	default 100
+	range 1 254
+	depends on PM
+
 config ATM_BLE_STACK_SIZE
 	int "Size of the event loop thread stack"
-	default 2048 if CTR_DRBG_CSPRNG_GENERATOR
-	default 1350
+	default 2048 if PSA_CSPRNG_GENERATOR
+	default 1416
 
 config ATM_BLE_HIGH_PRIO
 	int

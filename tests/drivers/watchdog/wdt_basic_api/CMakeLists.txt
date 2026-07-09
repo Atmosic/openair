@@ -11,6 +11,8 @@ set(OA_APP_DIR tests/drivers/watchdog/wdt_basic_api)
 cmake_path(CONVERT "$ENV{ZEPHYR_BASE}" TO_CMAKE_PATH_LIST OA_ZEPHYR_BASE)
 set(APPLICATION_CONFIG_DIR ${OA_ZEPHYR_BASE}/${OA_APP_DIR})
 
+set(KCONFIG_ROOT $ENV{ZEPHYR_BASE}/${OA_APP_DIR}/Kconfig)
+
 set(APPLICATION_BOARD_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 list(APPEND DTS_ROOT $ENV{ZEPHYR_BASE}/${OA_APP_DIR})
 # this app requires an extra overlay

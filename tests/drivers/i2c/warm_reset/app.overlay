@@ -1,0 +1,9 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+&arduino_i2c {
+	status = "okay";
+};

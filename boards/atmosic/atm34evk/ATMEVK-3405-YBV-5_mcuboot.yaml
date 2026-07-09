@@ -13,13 +13,14 @@ supported:
   - entropy
   - esl
   - flash
+  - gcov_capable
   - gpio
   - i2c
   - i2c_clock_stretching
-  - ieee802154
   - mikrobus
   - pwm
   - rram
+  - sha2_multi_context
   - smart_label
   - spi
   - uart

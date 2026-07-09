@@ -445,7 +445,11 @@ class Tools:
                 or "atmx2" == Tools.platform_family:
             platform_family = "atm2x_openocd.cfg"
         else:
-            platform_family = 'atmx3_openocd.cfg'
+            if "atm33" == Tools.platform_family or \
+                    "atm34" == Tools.platform_family:
+                platform_family = 'atmx3_openocd.cfg'
+            else:
+                platform_family = f"{Tools.platform_family}_openocd.cfg"
         flags = [
             '-s', os.path.join(Tools.openocd_dir(), 'tcl'),
             '-s', Tools.openocd_cfg_dir(),

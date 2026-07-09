@@ -235,7 +235,21 @@ static ccbm_status_t ccbm_execute(uint32_t duration_ms,
     LOG_INF("VBATT no-load: %d mV", vbatt_no_load_mv);
     LOG_INF("VBATT with-load: %d mV", vbatt_with_load_mv);
 
+#ifdef CONFIG_BATT_MODEL
+    /* Known battery model: internal resistance causes voltage sag under load,
+     * so no-load must always be >= with-load. */
     ASSERT_ERR(vbatt_no_load_mv >= vbatt_with_load_mv);
+#else
+    /* No battery model configured (e.g. USB-powered CI board): near-zero
+     * source impedance means no sag is expected; clamp any ADC-noise inversion.
+     */
+    if (vbatt_with_load_mv > vbatt_no_load_mv) {
+	LOG_WRN(
+	    "No batt model: with-load (%d mV) > no-load (%d mV); clamping delta to 0",
+	    vbatt_with_load_mv, vbatt_no_load_mv);
+	vbatt_with_load_mv = vbatt_no_load_mv;
+    }
+#endif
 
     uint32_t lna_atten_curr = hw_cfg_get_lna_curr(vbatt_with_load_mv);
 

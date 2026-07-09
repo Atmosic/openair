@@ -1,0 +1,15 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+mainmenu "AT command DFU test"
+
+config AT_CMD_DFU_TEST_APP_VERSION
+	string "Banner version printed by the test application"
+	default "1.0.0"
+	help
+	  String embedded in the boot banner so the pytest harness can tell
+	  v1 and v2 builds apart after an MCUboot swap. The pytest fixture
+	  builds the v2 image with this option overridden to "2.0.0".
+
+source "Kconfig.zephyr"

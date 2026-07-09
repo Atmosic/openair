@@ -35,3 +35,4 @@ The mikroBUS™ socket on the IoT Expansion Board allows for easy integration of
    usb_uart_click.rst
    ../../samples/shields/pir_click/README.rst
    ../../samples/shields/buzz_2_click/README.rst
+   ../../applications/multimode_consumer_tag/README_ATMBTCSTAG-3405.rst

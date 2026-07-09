@@ -98,11 +98,18 @@ extern "C" {
 /*! \brief  Initialize LL with FSU (Frame Space Update) support. */
 #define LL_FEATURE_INIT_FSU (1 << 12)
 
+/*! \brief  Initialize LL with ECU (Enhanced Connection Update)) support. */
+#define LL_FEATURE_INIT_ECU (1 << 13)
+
+/*! \brief  Initialize LL with PC (Power Control) support. */
+#define LL_FEATURE_INIT_PC (1 << 14)
+
 /*! \brief  Initialize LL with all features enabled. */
 #define LL_FEATURE_INIT_ALL (LL_FEATURE_INIT_CENTRAL | LL_FEATURE_INIT_PERIPHERAL \
   | LL_FEATURE_INIT_BROADCASTER | LL_FEATURE_INIT_OBSERVER | LL_FEATURE_INIT_CS \
   | LL_FEATURE_INIT_BIS | LL_FEATURE_INIT_CIS | LL_FEATURE_INIT_ISO | LL_FEATURE_INIT_PAWR \
-  | LL_FEATURE_INIT_EXTFEAT | LL_FEATURE_INIT_DBAF | LL_FEATURE_INIT_MONADV | LL_FEATURE_INIT_FSU)
+  | LL_FEATURE_INIT_EXTFEAT | LL_FEATURE_INIT_DBAF | LL_FEATURE_INIT_MONADV | LL_FEATURE_INIT_FSU \
+  | LL_FEATURE_INIT_ECU | LL_FEATURE_INIT_PC)
 
 /*! \brief Check that all of the feature bits in mask are set in featureEn */
 #define LL_FEAT_ALL(featureEn, mask) (((featureEn) & (mask)) == (mask))

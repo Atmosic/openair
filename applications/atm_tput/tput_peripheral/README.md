@@ -36,13 +36,13 @@ west build -p always -b <BOARD> openair/applications/atm_tput/tput_peripheral --
 ### MCUboot + Flash XIP Build
 
 ```bash
-west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_peripheral --sysbuild -T applications.atm_tput_peripheral.atm.mcuboot.flash_xip
+west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_peripheral --sysbuild -T applications.atm_tput.tput_peripheral.atm.mcuboot.flash_xip
 ```
 
 ### MCUboot + Flash XIP Overwrite-Only Build
 
 ```bash
-west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_peripheral --sysbuild -T applications.atm_tput_peripheral.atm.mcuboot.flash_xip.overwrite
+west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_peripheral --sysbuild -T applications.atm_tput.tput_peripheral.atm.mcuboot.flash_xip.overwrite
 ```
 
 ### Flash Command

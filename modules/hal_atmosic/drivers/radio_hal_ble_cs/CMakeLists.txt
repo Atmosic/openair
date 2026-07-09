@@ -13,4 +13,6 @@ if(CONFIG_ATM_RADIO_HAL_BLE_CS)
   zephyr_compile_definitions_ifdef(CONFIG_ATM_RF_DELAY_ONE_EIGHTH_NS
     CONFIG_RF_DELAY_ONE_EIGHTH_NS=CONFIG_ATM_RF_DELAY_ONE_EIGHTH_NS
   )
+elseif(CONFIG_ATM_RADIO_HAL_BLE)
+  zephyr_sources(radio_hal_ble_cs_stubs.c)
 endif()

@@ -240,21 +240,26 @@ static void batt_process_vbat(float result)
 	(vbat_mem[VBAT_BOOST_IDX]), result - VBAT_BOOST_OFFSET, true);
 #endif // BOOST_FROM_VHARV_INDUCTOR
 
-    fns->flag.set(VBAT_MAX_IDX, vbat_mem[VBAT_MAX_IDX]);
-    fns->flag.set(VBAT_BOOST_IDX, vbat_mem[VBAT_BOOST_IDX]);
+    if (fns && fns->flag.set) {
+	fns->flag.set(VBAT_MAX_IDX, vbat_mem[VBAT_MAX_IDX]);
+	fns->flag.set(VBAT_BOOST_IDX, vbat_mem[VBAT_BOOST_IDX]);
+    }
 #ifdef CFG_CABLE_CHARGE
 #ifdef CONFIG_SOC_FAMILY_ATM
     bool in = gpio_pin_get_dt(&usb_detec_gpio);
 #else
     bool in = atm_gpio_read_gpio(PIN_CHARGE_DET_IO);
 #endif
-    if (fns->cable && fns->cable(in, bat_lvl / 100)) {
-	fns->state.set(DEV_HIB);
+    if (fns && fns->cable && fns->cable(in, bat_lvl / 100)) {
+	if (fns->state.set) {
+	    fns->state.set(DEV_HIB);
+	}
     } else
 #endif // CFG_CABLE_CHARGE
-    if (fns->state.get() != DEV_ACTV) {
-	fns->state.set(DEV_ACTV);
-    }
+	if (fns && fns->state.get && fns->state.set &&
+	    fns->state.get() != DEV_ACTV) {
+	    fns->state.set(DEV_ACTV);
+	}
 
     if (lvl_cb) {
 	lvl_cb(bat_lvl, result_mv);
@@ -277,7 +282,11 @@ static bool batt_gadc_sample(void (*cb)(uint16_t, int32_t))
     gadc_sample_channel(LI_ION_BATT, batt_process_vbat,
 	LI_ION_BATT_GEXT_DEFAULT, NULL);
 #else
+#ifdef CONFIG_BATT_MODEL_ADC_32_BITS
     int32_t m_sample_buffer[ADC_BUFFER_SIZE];
+#else
+    int16_t m_sample_buffer[ADC_BUFFER_SIZE];
+#endif
     struct adc_sequence const sequence = {
 	.channels = BIT(ADC_CHANNEL_ID),
 	.buffer = m_sample_buffer,
@@ -331,7 +340,7 @@ static void usb_det_intr(uint32_t mask)
 static void batt_init(batt_cbs const *init)
 {
     fns = init;
-    if (fns->state.get() == DEV_HIB) {
+    if (fns && fns->state.get && fns->flag.get && fns->state.get() == DEV_HIB) {
 	vbat_mem[VBAT_MAX_IDX] = fns->flag.get(VBAT_MAX_IDX);
 	vbat_mem[VBAT_BOOST_IDX] = fns->flag.get(VBAT_BOOST_IDX);
     }

@@ -18,10 +18,14 @@
 #include <zephyr/kernel.h>
 #include "platform_ctrl_led.h"
 #include "app_work_q.h"
+#ifdef CONFIG_AT_CMD_TAG_SET
+#include "at_cmd_uart.h"
+#include "at_cmd_event.h"
+#include "at_cmd_tag.h"
+#include "platform.h"
+#endif
 
 LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
-
-#ifdef CONFIG_TAG_LED_IND
 
 typedef enum tag_led_index_e {
 	LED_IDX_STS_GREEN,
@@ -130,6 +134,10 @@ static void led_update_pattern(struct led_blink_param *param, struct k_work_dela
 {
 	if (pattern_num > LED_BLINK_PATTERN_MAX) {
 		LOG_ERR("Pattern number:%d exceeds max:%d ", pattern_num, LED_BLINK_PATTERN_MAX);
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+				     AT_CMD_TAG_ERR_INVALID_PARAM);
+#endif
 		return;
 	}
 
@@ -192,13 +200,11 @@ static void led_blink_stop(void)
 	event_param.pattern_num = 0;
 	led_off_all();
 }
-#endif
 
 void platform_ctrl_led_state_update(led_state_t state)
 {
 	LOG_INF("LED state update: %d", state);
 
-#ifdef CONFIG_TAG_LED_IND
 	switch (state) {
 	case LED_STATE_PAIRING: {
 		// Green->Red LED blinking every 5 seconds in pairing mode
@@ -236,14 +242,12 @@ void platform_ctrl_led_state_update(led_state_t state)
 	default:
 		break;
 	}
-#endif
 }
 
 void platform_ctrl_led_event_indicate(led_event_t event)
 {
 	LOG_INF("LED event indicate: %d", event);
 
-#ifdef CONFIG_TAG_LED_IND
 	struct led_blink_pattern batt_pattern[] = {
 		{LED_IDX_BAT_GREEN, true, 250},
 		{LED_IDX_BAT_GREEN, false, 250},
@@ -293,5 +297,4 @@ void platform_ctrl_led_event_indicate(led_event_t event)
 	default:
 		break;
 	}
-#endif
 }

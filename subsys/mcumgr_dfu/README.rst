@@ -41,6 +41,7 @@ Enable MCUmgr and the desired transport in your ``prj.conf``:
 .. code-block:: cfg
 
    CONFIG_ATM_MCUMGR=y
+   CONFIG_UART_MCUMGR=y
    CONFIG_MCUMGR_TRANSPORT_UART=y
 
 The subsystem will automatically configure:
@@ -76,7 +77,7 @@ UART Configuration
 ==================
 
 By default, Serial DFU is performed over UART0, which may be disabled.
-Enable it by adding to your board's DTS file:
+Enable it by adding to your board's DTS file as shown below. Board DTS file can be found at openair/boards/atmosic/``<platform>/<board>.dts``:
 
 .. code-block:: dts
 
@@ -117,7 +118,7 @@ Upload and activate a new image:
    OR for multiimage with image0 and image1
 
    mcumgr -c DEMO image upload /path/to/zephyr.signed.bin --image 0
-   mcumgr -c DEMO image upload /path/to/zephyr.signed.bin --image 1
+   mcumgr -c DEMO image upload /path/to/zephyr.signed.flash.bin --image 1
 
    mcumgr -c DEMO image list
 

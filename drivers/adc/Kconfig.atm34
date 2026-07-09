@@ -1,6 +1,6 @@
 # ADC configuration options
 
-# Copyright (c) 2023 Atmosic
+# Copyright (c) 2023-2026 Atmosic
 # SPDX-License-Identifier: Apache-2.0
 
 config ADC_ATM34
@@ -28,5 +28,18 @@ config ADC_CAL_REFRESH_INTERVAL
 	default 5000
 	help
 	    Schedules calibration measurements to update the offset_comp* registers
+
+config ATM_ADC_TEST_API
+	bool "Enable ADC test API (TEST ONLY)"
+	help
+	    Exposes atm_adc_test_raw_samples() which reads raw GADC samples
+	    from a single channel via direct register access, for hardware
+	    bring-up and validation. Bypasses the Zephyr ADC subsystem and
+	    calibration; not for production use.
+
+config ATM_ADC_PGA_BYPASS
+	bool
+	help
+	    Bypass Programmable Gain Amplifier (PGA) in GADC setup
 
 endif

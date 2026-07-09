@@ -15,22 +15,22 @@ if(CONFIG_ATM_UECC)
     else()
       zephyr_compile_options(-DuECC_SUPPORTS_secp160r1=0)
     endif()
-    if(CONFIG_ATM_UECC_SUPPORTS_SECP192R1 OR CONFIG_MBEDTLS_ECP_DP_SECP192R1_ENABLED)
+    if(CONFIG_ATM_UECC_SUPPORTS_SECP192R1 OR CONFIG_PSA_WANT_ECC_SECP_R1_192)
       zephyr_compile_options(-DuECC_SUPPORTS_secp192r1=1)
     else()
       zephyr_compile_options(-DuECC_SUPPORTS_secp192r1=0)
     endif()
-    if(CONFIG_ATM_UECC_SUPPORTS_SECP224R1 OR CONFIG_MBEDTLS_ECP_DP_SECP224R1_ENABLED)
+    if(CONFIG_ATM_UECC_SUPPORTS_SECP224R1 OR CONFIG_PSA_WANT_ECC_SECP_R1_224)
       zephyr_compile_options(-DuECC_SUPPORTS_secp224r1=1)
     else()
       zephyr_compile_options(-DuECC_SUPPORTS_secp224r1=0)
     endif()
-    if(CONFIG_ATM_UECC_SUPPORTS_SECP256R1 OR CONFIG_MBEDTLS_ECP_DP_SECP256R1_ENABLED)
+    if(CONFIG_ATM_UECC_SUPPORTS_SECP256R1 OR CONFIG_PSA_WANT_ECC_SECP_R1_256)
       zephyr_compile_options(-DuECC_SUPPORTS_secp256r1=1)
     else()
       zephyr_compile_options(-DuECC_SUPPORTS_secp256r1=0)
     endif()
-    if(CONFIG_ATM_UECC_SUPPORTS_SECP256K1 OR CONFIG_MBEDTLS_ECP_DP_SECP256K1_ENABLED)
+    if(CONFIG_ATM_UECC_SUPPORTS_SECP256K1 OR CONFIG_PSA_WANT_ECC_SECP_K1_256)
       zephyr_compile_options(-DuECC_SUPPORTS_secp256k1=1)
     else()
       zephyr_compile_options(-DuECC_SUPPORTS_secp256k1=0)
@@ -43,13 +43,27 @@ if(CONFIG_ATM_UECC)
     if(CONFIG_ATM_UECC_SUPPORT_POINT_ADD)
       zephyr_compile_options(-DuECC_SUPPORT_POINT_ADD)
     endif()
-    if(CONFIG_MBEDTLS_ECDSA_C)
-      zephyr_sources(ecdsa_alt.c)
+    if(CONFIG_ATM_UECC_PSA)
+      # psa_ecc.c #include's uECC.c so its symbols are emitted from this TU;
+      # do not also compile the upstream uECC.c or the link will be a multiple
+      # definition error.
+      zephyr_sources(psa_ecc.c)
+      zephyr_link_libraries(
+        -Wl,--wrap=mbedtls_psa_ecdsa_sign_hash
+        -Wl,--wrap=mbedtls_psa_ecdsa_verify_hash
+        -Wl,--wrap=mbedtls_psa_key_agreement_ecdh
+      )
+      if(CONFIG_ATM_UECC_PSA_NO_FALLBACK)
+        # Without this wrap, psa_import_key() for ECC keys reaches
+        # mbedtls_psa_ecp_import_key, which transitively pulls in the
+        # whole software ecp / bignum / ecdsa stack -- defeating the
+        # NO_FALLBACK code-size win.
+        zephyr_link_libraries(
+          -Wl,--wrap=mbedtls_psa_ecp_import_key
+        )
+      endif()
     else()
       zephyr_sources(${ZEPHYR_BASE}/../modules/crypto/micro-ecc/uECC.c)
-    endif()
-    if(CONFIG_BOOT_ECDSA_MICRO_ECC)
-      zephyr_sources(ecp_alt.c)
     endif()
 
 endif()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -211,7 +211,7 @@ static int i2s_config_convert(struct device const *dev, const struct i2s_config 
 		LOG_ERR("Unsupported word size");
 		return -EINVAL;
 	}
-	trx->mstr_sckws = !(cfg->options & I2S_OPT_FRAME_CLK_SLAVE);
+	trx->mstr_sckws = !(cfg->options & I2S_OPT_FRAME_CLK_TARGET);
 
 #define I2S_16M_CLK 0
 #define I2S_32M_CLK 1
@@ -494,7 +494,16 @@ static int i2s_tx_start_transfer(struct device const *dev)
 	CMSDK_I2S_NONSECURE->I2S_CTRL0 |= ATI2S_I2S_CTRL0__SRC_SNK_EN__WRITE(I2S_TX_MASK);
 	NVIC_EnableIRQ(I2S_IRQn);
 #ifdef CONFIG_PM
+	/*
+	 * TX start runs in thread context, but the DMA TX completion (which
+	 * releases the constraint) can fire from ISR context under
+	 * CONFIG_ATM_FIFO_TX_ISR. irq_lock() keeps the flag test and the paired
+	 * pm_policy_state_lock_get atomic against that release, so it cannot
+	 * _put() before this _get() and drive the PM lock count negative.
+	 */
+	unsigned int key = irq_lock();
 	i2s_atm_pm_tx_constraint_set(dev);
+	irq_unlock(key);
 #endif
 	return 0;
 }
@@ -504,7 +513,23 @@ static int i2s_tx_stop_transfer(struct device const *dev)
 	NVIC_DisableIRQ(I2S_IRQn);
 	CMSDK_I2S_NONSECURE->I2S_CTRL0 &= ~ATI2S_I2S_CTRL0__SRC_SNK_EN__WRITE(I2S_TX_MASK);
 #ifdef CONFIG_PM
-	i2s_atm_pm_tx_constraint_release(dev);
+	/*
+	 * Reached from thread context (trigger PREPARE/DROP, or the DMA TX
+	 * completion workqueue) and, under CONFIG_ATM_FIFO_TX_ISR, from the DMA
+	 * TX completion ISR. Only the thread-context path needs to serialize
+	 * against the concurrent release/start: it takes irq_lock so the ISR
+	 * cannot interleave its flag test and paired pm_policy_state_lock_put.
+	 * In ISR context no lock is taken -- a thread cannot preempt the ISR and
+	 * the DMA ISR does not re-enter, so the access is already atomic -- which
+	 * avoids adding interrupt latency on that path.
+	 */
+	if (k_is_in_isr()) {
+		i2s_atm_pm_tx_constraint_release(dev);
+	} else {
+		unsigned int key = irq_lock();
+		i2s_atm_pm_tx_constraint_release(dev);
+		irq_unlock(key);
+	}
 #endif
 	return 0;
 }

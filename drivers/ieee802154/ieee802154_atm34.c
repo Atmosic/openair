@@ -651,7 +651,7 @@ static int ieee802154_atm34_radio_tx(const struct device *dev, enum ieee802154_t
 						     data.priority);
 		break;
 	default:
-		NET_ERR("TX mode %d not supported", tx_mode);
+		LOG_ERR("TX mode %d not supported", tx_mode);
 		return -ENOTSUP;
 	}
 

@@ -140,7 +140,13 @@
     (FLASH_SIZE - ATM_MCUBOOT_SCRATCH_SIZE - ATM_SLOT1_SIZE - \
 	FLASH_XIP_RSVD_SIZE)
 // split the above into equal parts and align to flash sector
+#if ATM_MCUBOOT_SWAP_WITH_OFFSET
+// For swap with offset, we will need slot3 to have one extra block
+// So, keep slot2 one less block, to make room in slot3
+#define ATM_SLOT2_SIZE (ROUND_DOWN_FLASH_BLK(ATM_FLASH_USABLE_AREA_SIZE / 2) - ATM_FLASH_BLOCK_SIZE)
+#else
 #define ATM_SLOT2_SIZE ROUND_DOWN_FLASH_BLK(ATM_FLASH_USABLE_AREA_SIZE/2)
+#endif
 #if (ATM_SLOT2_SIZE <= 0)
 #error "FLASH SLOT2 size underflow, please check FLASH_SIZE"
 #endif
@@ -168,8 +174,16 @@
 #define ATM_SLOT1_OFFSET (ATM_MCUBOOT_SCRATCH_OFFSET + ATM_MCUBOOT_SCRATCH_SIZE)
 // slot 3 is the upgrade slot for slot 2, follows slot 1
 #define ATM_SLOT3_OFFSET (ATM_SLOT1_OFFSET + ATM_SLOT1_SIZE)
-// upgrade slot must be equal in size
+
+// MCUBOOT slot sizes depend on swap mechanism
+#if ATM_MCUBOOT_SWAP_WITH_OFFSET
+// For swap-with-offset: secondary slot = primary slot + 1 sector (4K)
+// This allows the swap algorithm to work without a scratch partition
+#define ATM_SLOT3_SIZE (ATM_SLOT2_SIZE + ATM_FLASH_BLOCK_SIZE)
+#else
+// Legacy mode: slots must be of equal size (for swap-with-scratch)
 #define ATM_SLOT3_SIZE ATM_SLOT2_SIZE
+#endif
 
 #else // RUN_IN_FLASH
 // single image layout

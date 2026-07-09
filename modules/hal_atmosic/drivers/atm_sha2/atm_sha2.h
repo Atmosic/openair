@@ -202,7 +202,7 @@ typedef struct {
     uint64_t sha_txcount_bits;
     /// saved progress for HMAC in bits
     uint64_t txcount_bits;
-    /// saved intermediate digest
+    /// saved intermediate digest (raw H0..H7 words, swizzle-independent)
     uint32_t int_digest[SHA256_DIG_WORDS];
     /// partial block length
     uint32_t partial_len;
@@ -234,10 +234,27 @@ atm_sha256_res_t atm_sha256_init_ctxt(atm_sha256_params_t const *params,
  * @return atm_sha256_res_t result
  * @note this will clear the digest registers, you must call
  * atm_sha256_final_ctxt() before this function to get the output.
- * Should be called when the operation completes successfully or with an error.
+ * Should be called to release a context that will not be finalized (e.g.
+ * abort). atm_sha256_final_ctxt() releases the context itself, so calling
+ * this after a successful or failed final_ctxt is incorrect.
  */
 __NONNULL_ALL
 atm_sha256_res_t atm_sha256_disable_ctxt(atm_sha2_ctxt_t *ctxt);
+
+/**
+ * @brief Clone an in-flight SHA-256 context
+ *
+ * Duplicates @p src into @p dst, taking an additional clock-enable
+ * reference so the two contexts can be independently finalized or
+ * aborted. @p dst must not already be initialized.
+ *
+ * @param[in]  src source context (must be initialized, not finalized)
+ * @param[out] dst destination context (must be zero/uninitialized)
+ * @return atm_sha256_res_t result
+ */
+__NONNULL_ALL
+atm_sha256_res_t atm_sha256_clone_ctxt(atm_sha2_ctxt_t const *src,
+    atm_sha2_ctxt_t *dst);
 
 /**
  * @brief Stream more input data for an on-going SHA-256 calculation
@@ -269,6 +286,10 @@ atm_sha256_res_t atm_sha256_update_pio_ctxt(atm_sha2_ctxt_t *ctxt,
 
 /**
  * @brief Get final digest
+ *
+ * Releases the context's clock-enable reference before returning, on
+ * both the success and failure paths. The context must not be reused
+ * after this call; do not also call atm_sha256_disable_ctxt() on it.
  *
  * @param[in,out] ctxt context
  * @param[out] digest digest of SHA256 calculation

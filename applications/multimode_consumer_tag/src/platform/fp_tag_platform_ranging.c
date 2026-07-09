@@ -16,6 +16,10 @@
 #include <zephyr/logging/log.h>
 #include <errno.h>
 #include "fp_tag_platform_ranging.h"
+#ifdef CONFIG_AT_CMD_TAG_SET
+#include "at_cmd_uart.h"
+#include "at_cmd_event.h"
+#endif
 
 LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
 
@@ -128,6 +132,10 @@ int fp_platform_ranging_config_cb(rt_id_t tech_id, ranging_config_t *config, boo
 #endif
 	default:
 		LOG_ERR("Platform: Unsupported technology ID 0x%02x for configuration", tech_id);
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
+				     AT_CMD_TAG_ERR_INVALID_PARAM);
+#endif
 		return -ENOTSUP;
 	}
 }
@@ -162,6 +170,10 @@ int fp_platform_ranging_start_cb(rt_id_t tech_id)
 #endif
 	default:
 		LOG_ERR("Platform: Unsupported technology ID 0x%02x for start", tech_id);
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
+				     AT_CMD_TAG_ERR_INVALID_PARAM);
+#endif
 		return -ENOTSUP;
 	}
 }
@@ -196,6 +208,10 @@ int fp_platform_ranging_stop_cb(rt_id_t tech_id)
 #endif
 	default:
 		LOG_ERR("Platform: Unsupported technology ID 0x%02x for stop", tech_id);
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
+				     AT_CMD_TAG_ERR_INVALID_PARAM);
+#endif
 		return -ENOTSUP;
 	}
 }

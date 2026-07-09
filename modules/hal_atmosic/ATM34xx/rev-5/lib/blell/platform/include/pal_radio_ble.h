@@ -64,10 +64,11 @@ typedef enum
   PAL_RADIO_STATUS_SUCCESS,         /*!< Operation completed successfully. */
   PAL_RADIO_STATUS_FAILED,          /*!< General failure. */
   PAL_RADIO_STATUS_TIMEOUT,         /*!< Rx timed out. */
+  PAL_RADIO_STATUS_CRC_FAILED,      /*!< Rx CRC match failed. */
+  PAL_RADIO_STATUS_MIC_FAILED,      /*!< Rx MIC match failed. */
   PAL_RADIO_STATUS_CS_AA_FAILED,    /*!< Received packet with AA verification failed. */
   PAL_RADIO_STATUS_CS_SEQ_FAILED,   /*!< Received packet with Sounding Sequence verification failed. */
-  PAL_RADIO_STATUS_CRC_FAILED,      /*!< Rx CRC match failed. */
-  PAL_RADIO_STATUS_MIC_FAILED       /*!< Rx MIC match failed. */
+  PAL_RADIO_STATUS_SCH_ABORTED      /*!< Operation aborted based on MAC scheduler priority. */
 } PalRadioStatus_t;
 
 /*! \brief  PHY modes. */
@@ -157,12 +158,15 @@ typedef union
   PalCsMode2Res_t mode2; /*!< Mode2 step result. */
 } PalCsStepRes_t;
 
+#define PAL_CS_ENABLE_BIT       (1 << 0) /*!< Normal CS enable */
+#define PAL_CS_ENABLE_IPT_BIT   (1 << 1) /*!< CS IPT enable */
+
 /*! \brief  Channel Sounding enable parameters */
 typedef struct
 {
   PalRadioCsStepComp_t stepCompCb;
   uint16_t tPm;
-  bool enable;
+  uint8_t enable;           /*!< bit 0: normal CS, bit 1: CS IPT */
   bool is1stSubEvt;
   bool isInitiator;
   PalRadioPhy_t phy;

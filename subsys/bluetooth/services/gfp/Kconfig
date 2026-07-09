@@ -30,19 +30,19 @@ rsource "Kconfig.logging"
 
 config FAST_PAIR_MAX_ACCOUNT_KEY_COUNT
     int "account key number support"
-    default 64 if FAST_PAIR_FMDN_V2
+    default 16 if FAST_PAIR_FMDN_V2
     default 5
+    range 5 16
     help
       Maximum number of account keys that can be stored and used for
       Fast Pair authentication. This affects the account key filter
       buffer size in advertising data.
 
-      FHN v2 requires minimum 64 keys to support concurrent bonded devices.
+      FHN v2 requires minimum 8 and recommended 16 keys to support concurrent bonded devices.
       Legacy Fast Pair uses 5 keys by default.
 
 config FAST_PAIR_ACCOUNT_KEY_FILTER_MAX_LEN
     int "Maximum account key filter buffer size in bytes"
-    default 80 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT >= 64
     default 39 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 30
     default 33 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 25
     default 27 if FAST_PAIR_MAX_ACCOUNT_KEY_COUNT <= 20
@@ -52,7 +52,7 @@ config FAST_PAIR_ACCOUNT_KEY_FILTER_MAX_LEN
       This must be large enough to hold the Bloom filter for all configured
       account keys. The required size is approximately: 1.2 * key_count + 3.
 
-      For FHN v2 with 64 keys: ~80 bytes recommended.
+      For FHN v2 with 16 keys: ~22 bytes; 27-byte buffer (default) provides headroom.
       For legacy Fast Pair with 5-30 keys: 27-39 bytes.
 
       Note: Extended advertising may be required for larger filter sizes
@@ -166,7 +166,7 @@ config FAST_PAIR_FMDN_V2
 	- Persistent Connection support for power efficiency
 	- Reverse Ringing capability
 	- FIFO eviction for account key storage
-	- Support for up to 64 concurrent bonded devices
+	- Support for up to 16 concurrent bonded devices
 
 	Automatically enables:
 	- BT_KEYS_OVERWRITE_OLDEST: FIFO eviction for bonding keys
@@ -180,14 +180,14 @@ config FAST_PAIR_ACCOUNT_KEY_FIFO_EVICTION
     help
 	Enable FIFO (First-In-First-Out) eviction policy for account key storage.
 	When storage is full, the oldest key (by timestamp) is automatically evicted
-	to make room for new keys. This is required for FHN v2 to support up to 64
+	to make room for new keys. This is required for FHN v2 to support up to 16
 	concurrent bonded devices.
 
 # Override BT_MAX_PAIRED default when FHN v2 is enabled
-# This ensures 64 bonded devices are supported for FHN v2
+# This ensures 16 bonded devices are supported for FHN v2
 # Using configdefault to safely override the default without weakening dependencies
 configdefault BT_MAX_PAIRED
-    default 64 if FAST_PAIR_FMDN_V2
+    default 16 if FAST_PAIR_FMDN_V2
 
 config FAST_PAIR_FMDN_DULT
     bool "Enable Detecting Unwanted Location Trackers (DULT) support in FMDN"

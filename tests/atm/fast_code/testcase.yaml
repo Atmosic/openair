@@ -10,6 +10,10 @@ common:
   harness: ztest
   tags:
     - fast_code
+  depends_on:
+    - flash
+    - rram
+    - xip
 tests:
   tests.atm.fast_code.atm.spe.flash_xip:
     tags:

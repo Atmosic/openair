@@ -33,22 +33,46 @@ tests:
     <<: *sbcn_base
     extra_args:
       - EXTRA_DTC_OVERLAY_FILE=no_led.overlay
+  samples.bluetooth.atm_beacon.atm.sbcn_nosocoff:
+    <<: *sbcn_base
+    extra_configs:
+      - *sbcn_conf
+      - CONFIG_SOFT_OFF=n
   samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled: &sbcn_nobut_noled_base
     <<: *sbcn_base
     extra_args:
-      - EXTRA_DTC_OVERLAY_FILE=no_button.overlay;no_led.overlay
+      - &sbcn_nobut_noled_args EXTRA_DTC_OVERLAY_FILE=no_button.overlay;no_led.overlay
   samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled.short:
     <<: *sbcn_nobut_noled_base
     extra_configs:
+      - *sbcn_conf
       - CONFIG_SOFT_OFF=n
       - CONFIG_ADV_INTV=0x20
       - CONFIG_ADV_MAX_EVT=20
       - CONFIG_ADV_RSTRT_DUR_MS=0
       - CONFIG_ATM_TEST_UTIL=y
       - CONFIG_SOFT_OFF_SUBID=0
+  samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled.mcuboot.flash_xip:
+    <<: *sbcn_nobut_noled_base
+    tags:
+      - mcuboot
+      - flash_xip
+    depends_on:
+      - flash
+      - rram
+      - xip
+    extra_args:
+      - *sbcn_nobut_noled_args
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
   samples.bluetooth.atm_beacon.atm.wurx_bcn:
     <<: *atm_base
     tags:
+      - wurx
+    depends_on:
       - wurx
     extra_configs:
       - &wurx_bcn_conf CONFIG_REFBCN_WURX_BEACON=y
@@ -139,6 +163,8 @@ tests:
     <<: *two_dev_base
     tags:
       - two_dev
+      - wurx
+    depends_on:
       - wurx
     extra_configs:
       - *wurx_bcn_conf

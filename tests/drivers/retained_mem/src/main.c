@@ -22,6 +22,7 @@
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
 #include <zephyr/random/random.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/ztest.h>
 
 #include "arch.h"
@@ -29,6 +30,16 @@
 // internal testing only
 #include "atm_fast_lp.h"
 #include "timer.h"
+#endif
+
+#ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+// align data structures to 4-bytes
+#define TEST_DATA_ALIGNED __aligned(4)
+// do not need to pack state
+#define TEST_STATE_PACKED
+#else
+#define TEST_DATA_ALIGNED
+#define TEST_STATE_PACKED __packed
 #endif
 
 LOG_MODULE_REGISTER(retained_mem_test, CONFIG_RETAINED_MEM_TEST_LOG_LEVEL);
@@ -65,11 +76,13 @@ static inline size_t get_retained_mem_size(void)
 #define HIB_TEST_DURATION_MS CONFIG_RETAINED_MEM_TEST_HIBERNATION_DURATION_MS
 
 /* Test data sizes - will be adjusted at runtime based on platform capacity */
+#define TEST_DATA_SIZE_SIMPLE_DEFAULT 32
 #define TEST_DATA_SIZE_SMALL_DEFAULT  16
 #define TEST_DATA_SIZE_MEDIUM_DEFAULT 64
 #define TEST_DATA_SIZE_LARGE_DEFAULT  128
 
 /* Runtime-adjusted test data sizes */
+static size_t TEST_DATA_SIZE_SIMPLE = TEST_DATA_SIZE_SIMPLE_DEFAULT;
 static size_t TEST_DATA_SIZE_SMALL = TEST_DATA_SIZE_SMALL_DEFAULT;
 static size_t TEST_DATA_SIZE_MEDIUM = TEST_DATA_SIZE_MEDIUM_DEFAULT;
 static size_t TEST_DATA_SIZE_LARGE = TEST_DATA_SIZE_LARGE_DEFAULT;
@@ -88,8 +101,64 @@ typedef enum {
 typedef struct {
 	uint32_t magic;
 	hib_test_cycle_t current_test;
-	uint32_t test_results; /* Bitmask of passed tests */
-} __packed hib_test_cycle_state_t;
+	uint32_t test_results;       /* Bitmask of passed hibernation tests */
+	uint32_t basic_tests_passed; /* Bitmask of basic tests that passed on cold boot,
+				      * carried across HIB wake-ups via retained memory
+				      * so they report PASS instead of SKIP.
+				      */
+} TEST_STATE_PACKED hib_test_cycle_state_t;
+
+/* Per-test bits used to track which basic ZTESTs have already passed in an
+ * earlier boot of the current run.  Mirrors the reset-driver test pattern in
+ * atmosic-internal/tests/drivers/reset.
+ */
+#define BASIC_BIT_SIZE_VALIDATION    BIT(0)
+#define BASIC_BIT_BASIC_SAVE_RESTORE BIT(1)
+#define BASIC_BIT_MAGIC_VALUES       BIT(2)
+#define BASIC_BIT_ZERO_DATA          BIT(3)
+#define BASIC_BIT_SINGLE_BYTE        BIT(4)
+#define BASIC_BIT_MAX_SIZE_DATA      BIT(5)
+#define BASIC_BIT_RETAINED_CAPACITY  BIT(6)
+#define BASIC_BIT_MULTIPLE_CYCLES    BIT(7)
+#define BASIC_BIT_FXOFF0_NEG_TESTS   BIT(8)
+
+/* In-RAM shadow of cycle_state.basic_tests_passed.  Always re-initialized in
+ * retained_mem_setup(): cleared on cold boot / reset, reloaded from retained
+ * memory on HIB wake-up (where the cycle test persisted it before triggering
+ * HIB).  Placed in .noinit to skip C-runtime zero-init since we manage its
+ * contents explicitly.
+ */
+#define BASIC_SHADOW_MAGIC 0x52424153U /* "RBAS" */
+struct basic_shadow_s {
+	uint32_t magic;
+	uint32_t passed;
+};
+static struct basic_shadow_s __noinit basic_shadow;
+
+/* Each basic ZTEST starts with BASIC_TEST_GUARD(bit): if the test already
+ * passed on an earlier boot of this run, return immediately (counts as PASS);
+ * otherwise skip on hibernation wake-ups and run on any other boot type.
+ * Note: we discriminate on TYPE_HIB rather than TYPE_POWER_ON because some
+ * platforms (e.g. Luxor FPGA) report cold boot as TYPE_UNKNOWN; this matches
+ * how test_zz_hibernation_cycle distinguishes wake-up from cold boot.
+ * After the test body succeeds, BASIC_TEST_DONE(bit) records it in the shadow
+ * so the next HIB wake-up reports PASS instead of SKIP.
+ */
+#define BASIC_TEST_GUARD(bit)                                                                      \
+	do {                                                                                       \
+		if (basic_shadow.passed & (bit)) {                                                 \
+			return;                                                                    \
+		}                                                                                  \
+		if (is_boot_type(TYPE_HIB)) {                                                      \
+			ztest_test_skip();                                                         \
+			return;                                                                    \
+		}                                                                                  \
+	} while (0)
+
+#define BASIC_TEST_DONE(bit)                                                                       \
+	do {                                                                                       \
+		basic_shadow.passed |= (bit);                                                      \
+	} while (0)
 
 /* Test patterns */
 #define TEST_PATTERN_0x55          0x55
@@ -104,7 +173,7 @@ typedef struct {
 	uint32_t data_size;
 	uint32_t checksum;
 	uint8_t pattern;
-} __packed hib_test_state_t;
+} TEST_STATE_PACKED hib_test_state_t;
 
 /* Calculate maximum test data size accounting for overhead */
 #define HIB_OVERHEAD_SIZE (sizeof(hib_test_cycle_state_t) + sizeof(hib_test_state_t))
@@ -134,6 +203,10 @@ static void init_test_data_sizes(void)
 {
 	size_t max_data = get_max_test_data_size();
 
+	TEST_DATA_SIZE_SIMPLE = (max_data >= TEST_DATA_SIZE_SIMPLE_DEFAULT)
+					? TEST_DATA_SIZE_SIMPLE_DEFAULT
+					: max_data;
+
 	/* Adjust SMALL size - use default or 1/4 of available capacity */
 	TEST_DATA_SIZE_SMALL = (max_data >= TEST_DATA_SIZE_SMALL_DEFAULT)
 				       ? TEST_DATA_SIZE_SMALL_DEFAULT
@@ -149,6 +222,14 @@ static void init_test_data_sizes(void)
 				       ? TEST_DATA_SIZE_LARGE_DEFAULT
 				       : ((max_data * 3) / 4);
 
+#ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+	LOG_INF("FIXED_OFFSET test configuration, using word-align sizes");
+	TEST_DATA_SIZE_SIMPLE = ROUND_DOWN(TEST_DATA_SIZE_SIMPLE, sizeof(uint32_t));
+	TEST_DATA_SIZE_SMALL = ROUND_DOWN(TEST_DATA_SIZE_SMALL, sizeof(uint32_t));
+	TEST_DATA_SIZE_MEDIUM = ROUND_DOWN(TEST_DATA_SIZE_MEDIUM, sizeof(uint32_t));
+	TEST_DATA_SIZE_LARGE = ROUND_DOWN(TEST_DATA_SIZE_LARGE, sizeof(uint32_t));
+#endif
+
 	/* Ensure minimum sizes */
 	if (TEST_DATA_SIZE_SMALL < 8) {
 		TEST_DATA_SIZE_SMALL = 8;
@@ -161,6 +242,8 @@ static void init_test_data_sizes(void)
 	}
 
 	LOG_INF("Adjusted test data sizes for platform capacity:");
+	LOG_INF("  SIMPLE: %zu bytes (default: %d)", TEST_DATA_SIZE_SIMPLE,
+		TEST_DATA_SIZE_SIMPLE_DEFAULT);
 	LOG_INF("  SMALL: %zu bytes (default: %d)", TEST_DATA_SIZE_SMALL,
 		TEST_DATA_SIZE_SMALL_DEFAULT);
 	LOG_INF("  MEDIUM: %zu bytes (default: %d)", TEST_DATA_SIZE_MEDIUM,
@@ -174,8 +257,8 @@ static void init_test_data_sizes(void)
 #define TEST_DATA_SIZE_MAX (MEM_RETAINED_SIZE_MAX - HIB_OVERHEAD_SIZE)
 
 /* Test data storage - sized for worst-case, trimmed at runtime */
-static uint8_t test_data_buffer[TEST_DATA_SIZE_MAX];
-static uint8_t restored_data_buffer[TEST_DATA_SIZE_MAX];
+static uint8_t TEST_DATA_ALIGNED test_data_buffer[TEST_DATA_SIZE_MAX];
+static uint8_t TEST_DATA_ALIGNED restored_data_buffer[TEST_DATA_SIZE_MAX];
 
 /* Wrapper functions for retained memory driver API */
 static void hib_save_data(const uint8_t *src, uint32_t len)
@@ -269,11 +352,11 @@ typedef struct {
 	hib_test_cycle_state_t cycle_state;
 	hib_test_state_t test_state;
 	uint8_t test_data[HIB_COMBINED_TEST_DATA_SIZE];
-} __packed hib_combined_data_t;
+} TEST_STATE_PACKED hib_combined_data_t;
 
 static hib_combined_data_t combined_storage;
 
-static void save_combined_hibernation_data(hib_test_cycle_t next_test, uint32_t results,
+static bool save_combined_hibernation_data(hib_test_cycle_t next_test, uint32_t results,
 					   size_t data_size, uint8_t pattern,
 					   const uint8_t *test_data)
 {
@@ -284,6 +367,7 @@ static void save_combined_hibernation_data(hib_test_cycle_t next_test, uint32_t 
 	combined_storage.cycle_state.magic = HIB_TEST_CYCLE_MAGIC;
 	combined_storage.cycle_state.current_test = next_test;
 	combined_storage.cycle_state.test_results = results;
+	combined_storage.cycle_state.basic_tests_passed = basic_shadow.passed;
 
 	/* Fill test state */
 	combined_storage.test_state.magic = HIB_TEST_MAGIC;
@@ -306,7 +390,7 @@ static void save_combined_hibernation_data(hib_test_cycle_t next_test, uint32_t 
 		LOG_ERR("Combined data size %zu exceeds retained memory capacity %zu\n", total_size,
 			hib_capacity);
 		LOG_INF("  Overhead: %zu bytes, Data: %zu bytes", HIB_OVERHEAD_SIZE, data_size);
-		return;
+		return false;
 	}
 
 	LOG_DBG("Saving combined data - test=%d, results=0x%08x, "
@@ -318,6 +402,8 @@ static void save_combined_hibernation_data(hib_test_cycle_t next_test, uint32_t 
 
 	/* Single save operation - only save what we need */
 	hib_save_data((uint8_t *)&combined_storage, total_size);
+
+	return true;
 }
 
 static bool load_combined_hibernation_data(hib_test_cycle_t *current_test, uint32_t *results,
@@ -446,9 +532,9 @@ static bool test_hib_hibernation_simple(void)
 {
 	/* Simple hibernation test with fixed-size data - only called on hibernation
 	 * wakeup */
-	static uint8_t simple_test_data[32];
+	static uint8_t simple_test_data[TEST_DATA_SIZE_SIMPLE_DEFAULT];
 	const uint8_t test_pattern = 0xA5;
-	const size_t data_size = sizeof(simple_test_data);
+	const size_t data_size = TEST_DATA_SIZE_SIMPLE;
 
 	LOG_INF("=== SIMPLE HIB TEST: Verifying hibernation data ===");
 
@@ -577,17 +663,34 @@ static void *retained_mem_setup(void)
 	}
 	LOG_INF("Retained memory device ready");
 
+	/* Initialize / restore the per-run "basic tests passed" shadow.  On a
+	 * HIB wake-up we reload the bitmask the cycle test persisted in
+	 * retained memory so that basic tests can report PASS on subsequent
+	 * wake-ups instead of SKIP.  On any other boot type (cold boot, reset,
+	 * or platforms that report TYPE_UNKNOWN on cold boot such as Luxor),
+	 * start fresh; the basic tests will run and re-populate the shadow.
+	 */
+	basic_shadow.magic = BASIC_SHADOW_MAGIC;
+	basic_shadow.passed = 0;
+	if (is_boot_type(TYPE_HIB)) {
+		hib_test_cycle_t dummy_test;
+		uint32_t dummy_results;
+		size_t dummy_size;
+		uint8_t dummy_pattern;
+
+		if (load_combined_hibernation_data(&dummy_test, &dummy_results, &dummy_size,
+						   &dummy_pattern, NULL)) {
+			basic_shadow.passed = combined_storage.cycle_state.basic_tests_passed;
+		}
+	}
+
 	return NULL;
 }
 
 /* Basic retained memory tests */
 ZTEST(retained_mem, test_size_validation)
 {
-	/* Only run size validation on cold boot */
-	if (!is_boot_type(TYPE_POWER_ON)) {
-		ztest_test_skip();
-		return;
-	}
+	BASIC_TEST_GUARD(BASIC_BIT_SIZE_VALIDATION);
 
 	size_t hib_capacity = get_retained_mem_size();
 
@@ -618,15 +721,12 @@ ZTEST(retained_mem, test_size_validation)
 	LOG_INF("Remaining capacity: %zu bytes", hib_capacity - required_capacity);
 
 	LOG_INF("✅ Size validation passed - structure fits in retained memory");
+	BASIC_TEST_DONE(BASIC_BIT_SIZE_VALIDATION);
 }
 
 ZTEST(retained_mem, test_basic_save_restore)
 {
-	/* Only run basic tests on cold boot */
-	if (!is_boot_type(TYPE_POWER_ON)) {
-		ztest_test_skip();
-		return;
-	}
+	BASIC_TEST_GUARD(BASIC_BIT_BASIC_SAVE_RESTORE);
 
 	LOG_INF("Testing basic save/restore without hibernation...");
 
@@ -658,15 +758,12 @@ ZTEST(retained_mem, test_basic_save_restore)
 	/* Verify data */
 	zassert_mem_equal(test_data, restored_data, test_size,
 			  "Restored data should match original data");
+	BASIC_TEST_DONE(BASIC_BIT_BASIC_SAVE_RESTORE);
 }
 
 ZTEST(retained_mem, test_magic_values_preservation)
 {
-	/* Only run basic tests on cold boot */
-	if (!is_boot_type(TYPE_POWER_ON)) {
-		ztest_test_skip();
-		return;
-	}
+	BASIC_TEST_GUARD(BASIC_BIT_MAGIC_VALUES);
 
 	LOG_INF("Testing magic value preservation in retained memory...");
 
@@ -689,15 +786,12 @@ ZTEST(retained_mem, test_magic_values_preservation)
 		      "Current test should be preserved");
 	zassert_equal(restored_cycle_state.test_results, 0x12345678,
 		      "Test results should be preserved");
+	BASIC_TEST_DONE(BASIC_BIT_MAGIC_VALUES);
 }
 
 ZTEST(retained_mem, test_zero_data)
 {
-	/* Only run basic tests on cold boot */
-	if (!is_boot_type(TYPE_POWER_ON)) {
-		ztest_test_skip();
-		return;
-	}
+	BASIC_TEST_GUARD(BASIC_BIT_ZERO_DATA);
 
 	LOG_INF("Testing zero data preservation...");
 
@@ -717,15 +811,13 @@ ZTEST(retained_mem, test_zero_data)
 	for (int i = 0; i < 16; i++) {
 		zassert_equal(restored_data[i], 0, "Byte %d should be zero", i);
 	}
+	BASIC_TEST_DONE(BASIC_BIT_ZERO_DATA);
 }
 
+#ifndef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
 ZTEST(retained_mem, test_single_byte)
 {
-	/* Only run basic tests on cold boot */
-	if (!is_boot_type(TYPE_POWER_ON)) {
-		ztest_test_skip();
-		return;
-	}
+	BASIC_TEST_GUARD(BASIC_BIT_SINGLE_BYTE);
 
 	LOG_INF("Testing single byte save/restore...");
 
@@ -736,15 +828,13 @@ ZTEST(retained_mem, test_single_byte)
 	hib_restore_data(&restored_byte, 1);
 
 	zassert_equal(restored_byte, test_byte, "Single byte should be preserved");
+	BASIC_TEST_DONE(BASIC_BIT_SINGLE_BYTE);
 }
+#endif
 
 ZTEST(retained_mem, test_max_size_data)
 {
-	/* Only run basic tests on cold boot */
-	if (!is_boot_type(TYPE_POWER_ON)) {
-		ztest_test_skip();
-		return;
-	}
+	BASIC_TEST_GUARD(BASIC_BIT_MAX_SIZE_DATA);
 
 	size_t max_data_size = get_max_test_data_size();
 	LOG_INF("Testing maximum test data size (%zu bytes)...", max_data_size);
@@ -765,22 +855,19 @@ ZTEST(retained_mem, test_max_size_data)
 	/* Verify data */
 	zassert_mem_equal(test_data, restored_data, max_data_size,
 			  "Max test data size should be preserved");
+	BASIC_TEST_DONE(BASIC_BIT_MAX_SIZE_DATA);
 }
 
 ZTEST(retained_mem, test_retained_mem_capacity)
 {
-	/* Only run basic tests on cold boot */
-	if (!is_boot_type(TYPE_POWER_ON)) {
-		ztest_test_skip();
-		return;
-	}
+	BASIC_TEST_GUARD(BASIC_BIT_RETAINED_CAPACITY);
 
 	size_t hib_capacity = get_retained_mem_size();
 	LOG_INF("Testing retained memory full capacity (%zu bytes)...", hib_capacity);
 
 	/* Allocate buffers for full HIB storage test */
-	static uint8_t full_test_data[MEM_RETAINED_SIZE_MAX];
-	static uint8_t full_restored_data[MEM_RETAINED_SIZE_MAX];
+	static uint8_t TEST_DATA_ALIGNED full_test_data[MEM_RETAINED_SIZE_MAX];
+	static uint8_t TEST_DATA_ALIGNED full_restored_data[MEM_RETAINED_SIZE_MAX];
 
 	/* Generate test data with checksum pattern */
 	for (size_t i = 0; i < hib_capacity; i++) {
@@ -795,15 +882,12 @@ ZTEST(retained_mem, test_retained_mem_capacity)
 	/* Verify data */
 	zassert_mem_equal(full_test_data, full_restored_data, hib_capacity,
 			  "Full retained memory capacity should be preserved");
+	BASIC_TEST_DONE(BASIC_BIT_RETAINED_CAPACITY);
 }
 
 ZTEST(retained_mem, test_multiple_cycles)
 {
-	/* Only run basic tests on cold boot */
-	if (!is_boot_type(TYPE_POWER_ON)) {
-		ztest_test_skip();
-		return;
-	}
+	BASIC_TEST_GUARD(BASIC_BIT_MULTIPLE_CYCLES);
 
 	LOG_INF("Testing multiple save/restore cycles...");
 
@@ -815,8 +899,8 @@ ZTEST(retained_mem, test_multiple_cycles)
 	size_t test_size = (capacity < 32) ? capacity : 32;
 	LOG_INF("Using test size: %zu bytes (capacity: %zu bytes)", test_size, capacity);
 
-	uint8_t test_data[32];
-	uint8_t restored_data[32];
+	uint8_t TEST_DATA_ALIGNED test_data[32];
+	uint8_t TEST_DATA_ALIGNED restored_data[32];
 
 	/* Test multiple save/restore cycles */
 	for (int cycle = 0; cycle < 3; cycle++) {
@@ -838,11 +922,94 @@ ZTEST(retained_mem, test_multiple_cycles)
 		zassert_mem_equal(test_data, restored_data, test_size,
 				  "Data should be preserved in cycle %d", cycle);
 	}
+	BASIC_TEST_DONE(BASIC_BIT_MULTIPLE_CYCLES);
 }
 
+#ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+ZTEST(retained_mem, test_fixed_offset_0_negative_tests)
+{
+	BASIC_TEST_GUARD(BASIC_BIT_FXOFF0_NEG_TESTS);
+
+	const struct device *dev = RETAINED_MEM_DEVICE;
+	uint32_t t_buf[2];
+	/* derive aligned pointer */
+	uint8_t *aligned = (uint8_t *)t_buf;
+	/* derive a misaligned pointer */
+	uint8_t *unaligned = aligned + 1;
+
+	/*
+	 * Test that FIXED_OFFSET_0 returns -EINVAL for non-zero offsets.
+	 * The optimized path only supports offset=0 for both read and write.
+	 */
+	LOG_INF("Testing FIXED_OFFSET_0 error on non-zero offset...");
+	/* Non-zero offset write should fail with -EINVAL */
+	int ret = retained_mem_write(dev, 1, aligned, sizeof(uint32_t));
+	zassert_equal(ret, -EINVAL,
+		      "FIXED_OFFSET_0: write at non-zero offset should return -EINVAL");
+
+	/* Non-zero offset read should fail with -EINVAL */
+	ret = retained_mem_read(dev, 1, aligned, sizeof(uint32_t));
+	zassert_equal(ret, -EINVAL,
+		      "FIXED_OFFSET_0: read at non-zero offset should return -EINVAL");
+
+	LOG_INF("✅ FIXED_OFFSET_0 non-zero offset error handling passed");
+
+	/*
+	 * Test that FIXED_OFFSET_0 returns -EINVAL for non-4-byte-aligned buffer pointer.
+	 * The optimized path requires the user buffer to be 4-byte aligned for direct HW access.
+	 */
+	LOG_INF("Testing FIXED_OFFSET_0 error on unaligned buffer pointer...");
+
+	/* Write with unaligned buffer should fail with -EINVAL */
+	ret = retained_mem_write(dev, 0, unaligned, sizeof(uint32_t));
+	zassert_equal(ret, -EINVAL,
+		      "FIXED_OFFSET_0: write with unaligned buffer should return -EINVAL");
+
+	/* Read with unaligned buffer should fail with -EINVAL */
+	ret = retained_mem_read(dev, 0, unaligned, sizeof(uint32_t));
+	zassert_equal(ret, -EINVAL,
+		      "FIXED_OFFSET_0: read with unaligned buffer should return -EINVAL");
+
+	LOG_INF("✅ FIXED_OFFSET_0 unaligned buffer error handling passed");
+
+	/*
+	 * Test that FIXED_OFFSET_0 returns -EINVAL for non-4-byte-aligned sizes.
+	 * The optimized path requires the transfer size to be a multiple of 4 bytes
+	 * to match the hardware register width.
+	 */
+	LOG_INF("Testing FIXED_OFFSET_0 error on non-4-byte-aligned size...");
+
+	/* Write with non-4-byte-aligned size (3 bytes) should fail with -EINVAL */
+	ret = retained_mem_write(dev, 0, aligned, 3);
+	zassert_equal(ret, -EINVAL,
+		      "FIXED_OFFSET_0: write with unaligned size (3) should return -EINVAL");
+
+	/* Read with non-4-byte-aligned size (3 bytes) should fail with -EINVAL */
+	ret = retained_mem_read(dev, 0, aligned, 3);
+	zassert_equal(ret, -EINVAL,
+		      "FIXED_OFFSET_0: read with unaligned size (3) should return -EINVAL");
+
+	/* Write with non-4-byte-aligned size (1 byte) should fail with -EINVAL */
+	ret = retained_mem_write(dev, 0, aligned, 1);
+	zassert_equal(ret, -EINVAL,
+		      "FIXED_OFFSET_0: write with unaligned size (1) should return -EINVAL");
+
+	/* Read with non-4-byte-aligned size (1 byte) should fail with -EINVAL */
+	ret = retained_mem_read(dev, 0, aligned, 1);
+	zassert_equal(ret, -EINVAL,
+		      "FIXED_OFFSET_0: read with unaligned size (1) should return -EINVAL");
+
+	LOG_INF("✅ FIXED_OFFSET_0 unaligned size error handling passed");
+
+	BASIC_TEST_DONE(BASIC_BIT_FXOFF0_NEG_TESTS);
+}
+#endif
+
 /* Hibernation test - handles both cold boot and hibernation wakeup */
-/* Named with 'test_z_' prefix to run last alphabetically while following naming convention */
-ZTEST(retained_mem, test_z_hibernation_cycle)
+/* Named with 'test_zz_' prefix so it sorts after every other test_* (including
+ * test_zero_data); this is required because the test triggers HIB and on the
+ * cold boot any test that sorts after it would otherwise never run. */
+ZTEST(retained_mem, test_zz_hibernation_cycle)
 {
 	hib_test_cycle_t current_test;
 	uint32_t test_results;
@@ -909,13 +1076,11 @@ ZTEST(retained_mem, test_z_hibernation_cycle)
 			if (passed_count == 5) {
 				LOG_INF("🎉 ALL HIBERNATION TESTS PASSED! 🎉");
 				LOG_INF("\n=== FINAL TEST SUMMARY ===");
-				LOG_INF("Basic Tests: 6/6 PASSED");
 				LOG_INF("Hibernation Tests: 5/5 PASSED");
 				LOG_INF("🎉 ALL TESTS COMPLETED SUCCESSFULLY! 🎉");
 			} else {
 				LOG_INF("❌ Some hibernation tests failed");
 				LOG_INF("\n=== FINAL TEST SUMMARY ===");
-				LOG_INF("Basic Tests: 6/6 PASSED");
 				LOG_INF("Hibernation Tests: %d/5 PASSED", passed_count);
 				LOG_INF("❌ SOME TESTS FAILED");
 			}
@@ -932,7 +1097,7 @@ ZTEST(retained_mem, test_z_hibernation_cycle)
 
 			switch (next_test) {
 			case HIB_TEST_SIMPLE:
-				next_data_size = 32;
+				next_data_size = TEST_DATA_SIZE_SIMPLE;
 				next_pattern = 0xA5;
 				break;
 			case HIB_TEST_SMALL_DATA:
@@ -961,8 +1126,11 @@ ZTEST(retained_mem, test_z_hibernation_cycle)
 			generate_test_data(test_data_buffer, next_data_size, next_pattern);
 
 			/* Save combined data and trigger hibernation */
-			save_combined_hibernation_data(next_test, test_results, next_data_size,
-						       next_pattern, test_data_buffer);
+			bool success = save_combined_hibernation_data(next_test, test_results,
+								      next_data_size, next_pattern,
+								      test_data_buffer);
+			zassert_true(success, "Save combined hib data failed");
+
 			trigger_hibernation_for_test(next_test);
 
 			/* Should not reach here if hibernation worked */
@@ -989,15 +1157,18 @@ ZTEST(retained_mem, test_z_hibernation_cycle)
 		LOG_INF("\n=== Starting Test 1: %s ===", get_test_name(current_test));
 
 		/* Generate simple test data */
-		const size_t simple_data_size = 32;
+		const size_t simple_data_size = TEST_DATA_SIZE_SIMPLE;
 		const uint8_t simple_pattern = 0xA5;
 		for (size_t i = 0; i < simple_data_size; i++) {
 			test_data_buffer[i] = simple_pattern ^ (i & 0xFF);
 		}
 
 		/* Save combined data and trigger hibernation */
-		save_combined_hibernation_data(current_test, test_results, simple_data_size,
-					       simple_pattern, test_data_buffer);
+		bool success =
+			save_combined_hibernation_data(current_test, test_results, simple_data_size,
+						       simple_pattern, test_data_buffer);
+		zassert_true(success, "Save combined hib data failed");
+
 		trigger_hibernation_for_test(current_test);
 
 		/* Should not reach here if hibernation worked */

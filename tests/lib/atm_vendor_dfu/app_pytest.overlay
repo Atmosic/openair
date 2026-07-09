@@ -1,0 +1,15 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/* Enable uart0 (J-Link interface if00 on ATM34 EVK) as the DFU transport
+ * for the pytest end-to-end swap test. The board DT already lists uart0 as
+ * zephyr,uart-mcumgr; this overlay just brings it up.
+ */
+
+&uart0 {
+	status = "okay";
+	current-speed = <115200>;
+};

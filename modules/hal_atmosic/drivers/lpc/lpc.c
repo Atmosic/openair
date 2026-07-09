@@ -50,7 +50,7 @@ static rep_vec_err_t lpc_prevent_ble_sleep(bool *prevent)
     if (!ke_timer_active(TASK_FIRST_MSG(TASK_ID_USER2), TASK_USER1)) {
 	ke_timer_set(TASK_FIRST_MSG(TASK_ID_USER2), TASK_USER1, 500);
     }
-#elif CONFIG_SOC_FAMILY_ATM
+#elif defined(CONFIG_SOC_FAMILY_ATM)
     if (!k_work_delayable_is_pending(&lpc_work)) {
 	k_work_reschedule(&lpc_work, K_MSEC(500));
     }

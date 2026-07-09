@@ -154,6 +154,7 @@ done:
 
 #ifdef CONFIG_PM
 static int32_t plf_sleep_min = 0xa0;
+static uint8_t ble_sleep_cnt; /* 0 = inactive, non-zero = active count */
 #endif
 
 static unsigned int ble_key;
@@ -187,12 +188,36 @@ ble_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
 	ticks = atm_lpc_to(Z_HZ_ticks, ble_sleep_duration);
     }
 
+    ble_sleep_cnt = ble_sleep_duration ? 1 : 0;
+
     pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
     ble_sem_take(K_TICKS(ticks));
     pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
     *pseq_sleep = true;
 #endif
 }
+
+#ifdef CONFIG_PM
+static void ble_notify_pm_state_exit(enum pm_state state)
+{
+    if (state != PM_STATE_SUSPEND_TO_RAM) {
+	return;
+    }
+    if (!ble_sleep_cnt) {
+	return;
+    }
+    if (ble_sleep_cnt > CONFIG_ATM_BLE_RETENTION_WAKEUP_THRESHOLD) {
+	ble_sleep_cnt = 0;
+	NVIC_SetPendingIRQ(BLE_GIVE_IRQn);
+    } else {
+	ble_sleep_cnt++;
+    }
+}
+
+static struct pm_notifier ble_pm_notifier = {
+    .state_exit = ble_notify_pm_state_exit,
+};
+#endif
 
 /*
  * @note: Can be called from zero-latency ATLC_IRQn, so kernel calls are
@@ -460,12 +485,17 @@ static struct bt_hci_driver_api const drv = {
 
 static struct hci_data hci_data;
 
+// When LL encryption/privacy features are enabled, the BLE controller
+// requires a cryptographically secure CSPRNG. Any of the non-test choices in
+// CSPRNG_GENERATOR_CHOICE (HARDWARE_DEVICE_CS_GENERATOR or
+// PSA_CSPRNG_GENERATOR) is acceptable; only the insecure
+// TEST_CSPRNG_GENERATOR is rejected here.
 #if defined(CONFIG_ATM_ENA_LL_FEAT_ENC_PRIV) && \
-    !defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
-#error CTR_DRBG must be enabled for controller
+    defined(CONFIG_TEST_CSPRNG_GENERATOR)
+#error A non-test CSPRNG must be enabled for controller
 #endif
 
-#ifdef CONFIG_CTR_DRBG_CSPRNG_GENERATOR
+#ifdef CONFIG_CSPRNG_ENABLED
 static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
 {
     int ret = sys_csrand_get(value, sizeof(*value));
@@ -476,7 +506,7 @@ static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
     }
     return (RV_DONE);
 }
-#endif // CONFIG_CTR_DRBG_CSPRNG_GENERATOR
+#endif // CONFIG_CSPRNG_ENABLED
 #endif // CONFIG_ATM_BLE
 
 static void ble_driver_init_part2(void)
@@ -509,7 +539,7 @@ static int ble_driver_init(struct device const *dev)
     __unused uint32_t bp_freq = at_clkrstgen_get_bp();
     // pc_ctr requires 32MHz minimum
     ASSERT_INFO(bp_freq >= 32000000, bp_freq, 32000000);
-#if defined(CONFIG_ATM_BLE) && defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
+#if defined(CONFIG_ATM_BLE) && defined(CONFIG_CSPRNG_ENABLED)
     RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
 #endif
     RV_RF_WAKE_ADD(ble_driver_rf_wake);
@@ -522,6 +552,10 @@ static int ble_driver_init(struct device const *dev)
 
 #ifndef CONFIG_ATM_BLE_DRIVER_SPLIT_INIT
     ble_driver_init_part2();
+#endif
+
+#ifdef CONFIG_PM
+    pm_notifier_register(&ble_pm_notifier);
 #endif
 
     LOG_DBG("exit");

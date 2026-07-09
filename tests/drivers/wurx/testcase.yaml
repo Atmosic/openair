@@ -7,6 +7,17 @@ common:
   tags:
     - drivers
     - wurx
-
+  depends_on:
+    - wurx
 tests:
-  tests.drivers.wurx.atm: {}
+  tests.drivers.wurx.atm: &base_config {}
+
+  tests.drivers.wurx.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="wurx_atm.c"

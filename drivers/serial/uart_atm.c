@@ -52,11 +52,10 @@ LOG_MODULE_REGISTER(uart_atm_rx_idle, CONFIG_UART_LOG_LEVEL);
 #define RTS_GPIO_REQUIRED(inst) 0
 #endif
 
-#ifdef CONFIG_SOC_SERIES_ATM33
-#define UART_TX_GLITCH 1
-#else
-#define UART_TX_GLITCH 0
-#endif
+#define UART_PM_NOTIFIER(inst)                                                                     \
+	UTIL_OR(CONFIG_UART_ATM_TX_GLITCH, DT_INST_NODE_HAS_PROP(inst, rts_pin))
+#define UART_PM_ENTRY(inst)                                                                        \
+	UTIL_OR(CONFIG_UART_ATM_TX_GLITCH, RTS_GPIO_REQUIRED(inst))
 
 typedef void (*set_callback_t)(void);
 
@@ -295,7 +294,14 @@ static void uart_atm_pm_rx_start(const struct device *dev)
 		uart_atm_pm_rx_activity(dev);
 		k_thread_start(dev_data->pm_rx_tid);
 	}
+	/*
+	 * rx_start runs from the public uart_irq_rx_enable / uart_configure paths,
+	 * which can race with the pm_rx thread's set/release. irq_lock() serializes
+	 * the constraint update against that thread; see uart_atm_pm_rx_constraint_set.
+	 */
+	unsigned int key = irq_lock();
 	uart_atm_pm_rx_constraint_set(dev);
+	irq_unlock(key);
 }
 
 static void uart_atm_pm_rx_stop(const struct device *dev)
@@ -307,7 +313,12 @@ static void uart_atm_pm_rx_stop(const struct device *dev)
 		dev_data->pm_rx_stopped = true;
 		k_timer_stop(dev_data->pm_rx_timer);
 	}
+	/* rx_stop runs from public uart_irq_rx_disable; serialize against the
+	 * pm_rx thread as in rx_start.
+	 */
+	unsigned int key = irq_lock();
 	uart_atm_pm_rx_constraint_release(dev);
+	irq_unlock(key);
 }
 
 static void uart_atm_pm_rx_timeout(struct k_timer *timer)
@@ -343,10 +354,16 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 		dev_cfg->uart->HW_FLOW_OVRD &= ~(CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk |
 						 CMSDK_UART_HW_FLOW_OVRD_NRTS_VAL_Msk);
 
+		/* Fold the constraint set into the existing critical section so it
+		 * is serialized against rx_start/rx_stop without an extra irq_lock.
+		 * Keep the original order: acquire the PM constraint before clearing
+		 * pm_rx_sleeping, so there is no window where the flag says "awake"
+		 * while nothing holds the constraint (the PM state_exit notifier reads
+		 * pm_rx_sleeping to decide whether to re-post EVT_WAKE).
+		 */
+		unsigned int key = irq_lock();
 		uart_atm_pm_rx_constraint_set(dev);
 		dev_data->pm_rx_sleeping = false;
-
-		unsigned int key = irq_lock();
 		dev_data->pm_rx_events &= ~EVT_TIMEOUT;
 		k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_WAKE_MS),
 			      K_NO_WAIT);
@@ -377,7 +394,10 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 			dev_cfg->uart->HW_FLOW_OVRD &= ~(CMSDK_UART_HW_FLOW_OVRD_NRTS_OVRD_Msk |
 							 CMSDK_UART_HW_FLOW_OVRD_NRTS_VAL_Msk);
 
+			/* Serialize the constraint set against rx_start/rx_stop. */
+			unsigned int key = irq_lock();
 			uart_atm_pm_rx_constraint_set(dev);
+			irq_unlock(key);
 			dev_data->pm_rx_sleeping = false;
 			k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_AFTER_WAKE_MS),
 				      K_NO_WAIT);
@@ -428,7 +448,10 @@ static void uart_atm_pm_rx_events(const struct device *dev, uint32_t events)
 		ATM_TIMER_WHILE_LPC_DELAY(lpc_ticks);
 #endif
 
+		/* Serialize the constraint release against rx_start/rx_stop. */
+		unsigned int key = irq_lock();
 		uart_atm_pm_rx_constraint_release(dev);
+		irq_unlock(key);
 		dev_data->pm_rx_sleeping = true;
 		dev_data->pm_rx_sleeping_when_set = atm_get_sys_time();
 		k_timer_start(dev_data->pm_rx_timer, K_MSEC(CONFIG_UART_ATM_MAX_SLEEP_MS),
@@ -1115,51 +1138,53 @@ static const struct uart_driver_api uart_atm_driver_api = {
 };
 
 #define ATMOSIC_UART_PM_NOTIFIER_DECL(inst)                                                        \
-	IF_ENABLED(CONFIG_PM, (									\
-IF_ENABLED(UTIL_OR(RTS_GPIO_REQUIRED(inst), UART_TX_GLITCH), (				\
-__FAST static void notify_pm_state_entry##inst(enum pm_state state)			\
-{											\
-	if (state != PM_STATE_SUSPEND_TO_RAM) {						\
-		return;									\
-	}										\
-	IF_ENABLED(RTS_GPIO_REQUIRED(inst), (PIN_SELECT_GPIO(DT_INST_PROP(inst, rts_pin));)) \
-	IF_ENABLED(UART_TX_GLITCH, (PIN_SELECT_GPIO(DT_INST_PROP(inst, tx_pin));))	\
-}											\
-)) /* RTS_GPIO_REQUIRED || UART_TX_GLITCH */						\
-											\
-IF_ENABLED(UTIL_OR(DT_INST_NODE_HAS_PROP(inst, rts_pin), UART_TX_GLITCH), (		\
-__FAST static void notify_pm_state_exit##inst(enum pm_state state)			\
-{											\
-	if (state != PM_STATE_SUSPEND_TO_RAM) {						\
-		return;									\
-	}										\
-	IF_ENABLED(UART_TX_GLITCH, (PIN_SELECT(DT_INST_PROP(inst, tx_pin), UART_SIG(inst, TX));)) \
-	IF_ENABLED(RTS_GPIO_REQUIRED(inst), (						\
-		PIN_SELECT(DT_INST_PROP(inst, rts_pin), UART_SIG(inst, RTS));		\
-	)) /* RTS_GPIO_REQUIRED */							\
-	IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (				\
-		struct uart_atm_dev_data *const dev_data = DEVICE_DT_INST_GET(inst)->data; \
-		if (dev_data->pm_rx_sleeping) {						\
-			uart_atm_pm_rx_post(DEVICE_DT_INST_GET(inst), EVT_WAKE);	\
-		}									\
-	)) /* rts_pin */								\
-}											\
-											\
-static struct pm_notifier uart_atm_pm_notifier##inst = {				\
-	IF_ENABLED(UTIL_OR(RTS_GPIO_REQUIRED(inst), UART_TX_GLITCH), (			\
-		.state_entry = notify_pm_state_entry##inst,				\
-	)) /* RTS_GPIO_REQUIRED || UART_TX_GLITCH */					\
-	.state_exit = notify_pm_state_exit##inst,					\
-};											\
-)) /* rts_pin || UART_TX_GLITCH */							\
-											\
-IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (					\
-static K_KERNEL_STACK_DEFINE(uart_atm_pm_rx_thread_stack##inst,				\
-			     CONFIG_UART_ATM_PM_RX_THREAD_STACK_SIZE);			\
-static struct k_thread uart_atm_pm_rx_thread##inst;					\
-static struct k_sem uart_atm_pm_rx_sem##inst;						\
-static struct k_timer uart_atm_pm_rx_timer##inst;					\
-)) /* rts_pin */									\
+	IF_ENABLED(CONFIG_PM, (                                                                    \
+IF_ENABLED(UART_PM_ENTRY(inst), (                                                                  \
+__FAST static void notify_pm_state_entry##inst(enum pm_state state)                                \
+{                                                                                                  \
+	if (state != PM_STATE_SUSPEND_TO_RAM) {                                                    \
+		return;                                                                            \
+	}                                                                                          \
+	IF_ENABLED(RTS_GPIO_REQUIRED(inst), (PIN_SELECT_GPIO(DT_INST_PROP(inst, rts_pin));))       \
+	IF_ENABLED(CONFIG_UART_ATM_TX_GLITCH, (PIN_SELECT_GPIO(DT_INST_PROP(inst, tx_pin));))      \
+}                                                                                                  \
+)) /* UART_PM_ENTRY */                                                                             \
+                                                                                                   \
+IF_ENABLED(UART_PM_NOTIFIER(inst), (                                                               \
+__FAST static void notify_pm_state_exit##inst(enum pm_state state)                                 \
+{                                                                                                  \
+	if (state != PM_STATE_SUSPEND_TO_RAM) {                                                    \
+		return;                                                                            \
+	}                                                                                          \
+	IF_ENABLED(CONFIG_UART_ATM_TX_GLITCH, (                                                    \
+		PIN_SELECT(DT_INST_PROP(inst, tx_pin), UART_SIG(inst, TX));                        \
+	)) /* CONFIG_UART_ATM_TX_GLITCH */                                                         \
+	IF_ENABLED(RTS_GPIO_REQUIRED(inst), (                                                      \
+		PIN_SELECT(DT_INST_PROP(inst, rts_pin), UART_SIG(inst, RTS));                      \
+	)) /* RTS_GPIO_REQUIRED */                                                                 \
+	IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (                                         \
+		struct uart_atm_dev_data *const dev_data = DEVICE_DT_INST_GET(inst)->data;         \
+		if (dev_data->pm_rx_sleeping) {                                                    \
+			uart_atm_pm_rx_post(DEVICE_DT_INST_GET(inst), EVT_WAKE);                   \
+		}                                                                                  \
+	)) /* rts_pin */                                                                           \
+}                                                                                                  \
+                                                                                                   \
+static struct pm_notifier uart_atm_pm_notifier##inst = {                                           \
+	IF_ENABLED(UART_PM_ENTRY(inst), (                                                          \
+		.state_entry = notify_pm_state_entry##inst,                                        \
+	)) /* UART_PM_ENTRY */                                                                     \
+	.state_exit = notify_pm_state_exit##inst,                                                  \
+};                                                                                                 \
+)) /* UART_PM_NOTIFIER */                                                                          \
+                                                                                                   \
+IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (                                                 \
+static K_KERNEL_STACK_DEFINE(uart_atm_pm_rx_thread_stack##inst,                                    \
+			     CONFIG_UART_ATM_PM_RX_THREAD_STACK_SIZE);                             \
+static struct k_thread uart_atm_pm_rx_thread##inst;                                                \
+static struct k_sem uart_atm_pm_rx_sem##inst;                                                      \
+static struct k_timer uart_atm_pm_rx_timer##inst;                                                  \
+)) /* rts_pin */                                                                                   \
 )) /* CONFIG_PM */
 
 #ifdef CONFIG_UART_INTERRUPT_DRIVEN
@@ -1217,6 +1242,19 @@ static struct k_timer uart_atm_pm_rx_timer##inst;					\
 
 #endif
 
+#if CONFIG_UART_ATM_DELAY_INIT
+#if DT_HAS_CHOSEN(zephyr_console)
+// Always init console UART at PRE_KERNEL_1, even when other UARTs have delayed init
+#define UART_ATM_INIT_LEVEL(inst)                                                                  \
+	COND_CODE_1(DT_SAME_NODE(DT_DRV_INST(inst), DT_CHOSEN(zephyr_console)),                    \
+		    (PRE_KERNEL_1), (POST_KERNEL))
+#else
+#define UART_ATM_INIT_LEVEL(inst) POST_KERNEL
+#endif
+#else
+#define UART_ATM_INIT_LEVEL(inst) PRE_KERNEL_1
+#endif
+
 #define ATMOSIC_UART_INIT(inst)                                                                    \
 	ATMOSIC_UART_PM_NOTIFIER_DECL(inst)                                                        \
 	ATMOSIC_UART_IRQ_HANDLER_DECL(inst)                                                        \
@@ -1225,26 +1263,28 @@ static struct k_timer uart_atm_pm_rx_timer##inst;					\
 	{                                                                                          \
 		WRPR_CTRL_SET((void *)DT_INST_REG_ADDR(inst), WRPR_CTRL__SRESET);                  \
 		WRPR_CTRL_SET((void *)DT_INST_REG_ADDR(inst), CLK_ENABLE);                         \
-		IF_ENABLED(CONFIG_PM, (						\
-		IF_ENABLED(UART_TX_GLITCH, (PIN_SELECT_GPIO_HIGH(DT_INST_PROP(inst, tx_pin));)) \
-		IF_ENABLED(RTS_GPIO_REQUIRED(inst), (			\
-			PIN_SELECT_GPIO_HIGH(DT_INST_PROP(inst, rts_pin)); \
-		)) /* RTS_GPIO_REQUIRED */				\
-		IF_ENABLED(UTIL_OR(DT_INST_NODE_HAS_PROP(inst, rts_pin), UART_TX_GLITCH), ( \
-			pm_notifier_register(&uart_atm_pm_notifier##inst); \
-		)) /* rts_pin || UART_TX_GLITCH */			\
-	))                                /* CONFIG_PM */    \
-		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rx_pin), (		\
-		PIN_SELECT(DT_INST_PROP(inst, rx_pin), UART_SIG(inst, RX)); \
-		PIN_PULLUP(DT_INST_PROP(inst, rx_pin));			\
-	)) /* rx_pin */       \
+		IF_ENABLED(CONFIG_PM, (                                                            \
+		IF_ENABLED(CONFIG_UART_ATM_TX_GLITCH, (                                            \
+			PIN_SELECT_GPIO_HIGH(DT_INST_PROP(inst, tx_pin));                          \
+		)) /* CONFIG_UART_ATM_TX_GLITCH */                                                 \
+		IF_ENABLED(RTS_GPIO_REQUIRED(inst), (                                              \
+			PIN_SELECT_GPIO_HIGH(DT_INST_PROP(inst, rts_pin));                         \
+		)) /* RTS_GPIO_REQUIRED */                                                         \
+		IF_ENABLED(UART_PM_NOTIFIER(inst), (                                               \
+			pm_notifier_register(&uart_atm_pm_notifier##inst);                         \
+		)) /* UART_PM_NOTIFIER */                                                          \
+	)) /* CONFIG_PM */                                                                         \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rx_pin), (                                  \
+		PIN_SELECT(DT_INST_PROP(inst, rx_pin), UART_SIG(inst, RX));                        \
+		PIN_PULLUP(DT_INST_PROP(inst, rx_pin));                                            \
+	)) /* rx_pin */                                                                            \
 		PIN_SELECT(DT_INST_PROP(inst, tx_pin), UART_SIG(inst, TX));                        \
-		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (		\
-		PIN_SELECT(DT_INST_PROP(inst, rts_pin), UART_SIG(inst, RTS)); \
-	)) /* rts_pin */           \
-		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, cts_pin), (		\
-		PIN_SELECT(DT_INST_PROP(inst, cts_pin), UART_SIG(inst, CTS)); \
-	)) /* cts_pin */           \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (                                 \
+		PIN_SELECT(DT_INST_PROP(inst, rts_pin), UART_SIG(inst, RTS));                      \
+	)) /* rts_pin */                                                                           \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, cts_pin), (                                 \
+		PIN_SELECT(DT_INST_PROP(inst, cts_pin), UART_SIG(inst, CTS));                      \
+	)) /* cts_pin */                                                                           \
 	}                                                                                          \
                                                                                                    \
 	static const struct uart_atm_config uart_atm_dev_cfg_##inst = {                            \
@@ -1254,32 +1294,32 @@ static struct k_timer uart_atm_pm_rx_timer##inst;					\
 			DT_INST_NODE_HAS_PROP(inst, cts_pin),                                      \
 		.has_rts_pin = DT_INST_NODE_HAS_PROP(inst, rts_pin),                               \
 		.has_rx_pin = DT_INST_NODE_HAS_PROP(inst, rx_pin),                                 \
-		IF_ENABLED(CONFIG_UART_ATM_HOST_DETECT, (                                                          \
+		IF_ENABLED(CONFIG_UART_ATM_HOST_DETECT, (                                          \
 			IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rx_pin), (                          \
 				.rx_pin = DT_INST_PROP(inst, rx_pin),                              \
 				.gpio_dev = UART_ATM_GPIO_DEV_FROM_PIN(DT_INST_PROP(inst, rx_pin)),\
 			))                                                                         \
-		)) };  \
+		)) };                                                                              \
                                                                                                    \
 	static struct uart_atm_dev_data uart_atm_dev_data_##inst = {                               \
 		.baudrate = DT_INST_PROP(inst, current_speed),                                     \
 		.hw_flow_control = DT_INST_PROP(inst, hw_flow_control),                            \
 		.config_pins = uart_atm_config_pins##inst,                                         \
-		IF_ENABLED(CONFIG_PM, (						\
-		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (	\
-			.pm_rx_thread = &uart_atm_pm_rx_thread##inst,	\
-			.pm_rx_sem = &uart_atm_pm_rx_sem##inst,		\
-			.pm_rx_timer = &uart_atm_pm_rx_timer##inst,	\
-			.pm_rx_thread_stack = uart_atm_pm_rx_thread_stack##inst, \
-			.pm_rx_thread_stack_sizeof =			\
-				K_KERNEL_STACK_SIZEOF(uart_atm_pm_rx_thread_stack##inst), \
-		)) /* rts_pin */					\
-	)) /* CONFIG_PM */                                            \
+		IF_ENABLED(CONFIG_PM, (                                                            \
+		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, rts_pin), (                                 \
+			.pm_rx_thread = &uart_atm_pm_rx_thread##inst,                              \
+			.pm_rx_sem = &uart_atm_pm_rx_sem##inst,                                    \
+			.pm_rx_timer = &uart_atm_pm_rx_timer##inst,                                \
+			.pm_rx_thread_stack = uart_atm_pm_rx_thread_stack##inst,                   \
+			.pm_rx_thread_stack_sizeof =                                               \
+				K_KERNEL_STACK_SIZEOF(uart_atm_pm_rx_thread_stack##inst),          \
+		)) /* rts_pin */                                                                   \
+	)) /* CONFIG_PM */                                                                         \
 	};                                                                                         \
                                                                                                    \
 	DEVICE_DT_INST_DEFINE(inst, &uart_atm_init, NULL, &uart_atm_dev_data_##inst,               \
-			      &uart_atm_dev_cfg_##inst, PRE_KERNEL_1, CONFIG_SERIAL_INIT_PRIORITY, \
-			      &uart_atm_driver_api);                                               \
+			      &uart_atm_dev_cfg_##inst, UART_ATM_INIT_LEVEL(inst),                 \
+			      CONFIG_SERIAL_INIT_PRIORITY, &uart_atm_driver_api);                  \
                                                                                                    \
 	ATMOSIC_UART_IRQ_HANDLER(inst)
 

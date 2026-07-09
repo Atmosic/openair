@@ -422,6 +422,15 @@ ble_driver_send(struct device const *dev, struct net_buf *buf)
     return 0;
 }
 
+// The BLE controller requires a cryptographically secure CSPRNG. Any of the
+// non-test choices in CSPRNG_GENERATOR_CHOICE (HARDWARE_DEVICE_CS_GENERATOR
+// or PSA_CSPRNG_GENERATOR) is acceptable; only the insecure
+// TEST_CSPRNG_GENERATOR is rejected here.
+#if defined(CONFIG_TEST_CSPRNG_GENERATOR)
+#error A non-test CSPRNG must be enabled for controller
+#endif
+
+#ifdef CONFIG_CSPRNG_ENABLED
 static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
 {
     int ret = sys_csrand_get(value, sizeof(*value));
@@ -432,6 +441,7 @@ static rep_vec_err_t cs_rand_word_rep_vec(uint32_t *value)
     }
     return (RV_DONE);
 }
+#endif // CONFIG_CSPRNG_ENABLED
 
 static int ble_driver_close(struct device const *dev)
 {
@@ -451,10 +461,9 @@ ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
     hci->recv = recv;
 
     if (!open_once) {
+#ifdef CONFIG_CSPRNG_ENABLED
 	// provide secure rand for the controller
 	RV_SECURE_RAND_WORD_ADD(cs_rand_word_rep_vec);
-#if !defined(CONFIG_CTR_DRBG_CSPRNG_GENERATOR)
-#error CTR_DRBG must be enabled for controller
 #endif
 
 	p_itf = rwtl_itf_get();
@@ -464,11 +473,13 @@ ble_driver_open(struct device const *dev, bt_hci_recv_t recv)
 	// sys_csrand_get() and sys_rand_get() will block until the underlying
 	// generator is seeded and ready.
 	__UNUSED uint8_t dummy = sys_rand8_get();
+#ifdef CONFIG_CSPRNG_ENABLED
 	int ret = sys_csrand_get(&dummy, sizeof(dummy));
 	if (ret) {
 	    __ASSERT(0, "sys_csrand_get failed: %d", ret);
 	    return ret;
 	}
+#endif // CONFIG_CSPRNG_ENABLED
     }
 
     is_open = true;

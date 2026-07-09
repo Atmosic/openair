@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-Atmosic
+# Copyright (c) 2026 Atmosic
+
+common:
+  sysbuild: true
+  tags:
+    - drivers
+    - at_tz_mpc
+
+tests:
+  tests.drivers.at_tz_mpc.atm.gcov:
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="at_tz_mpc.c"

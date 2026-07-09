@@ -379,10 +379,13 @@ function(atm_partition_info)
     if(CONFIG_ATM_NO_SPE)
       list(APPEND EXT_ARGS "--no_spe")
     endif()
+    if(CONFIG_MCUBOOT_BOOTLOADER_MODE_SWAP_USING_OFFSET)
+      list(APPEND EXT_ARGS "--use_mcuboot_swap_offset")
+    endif()
     message("Generate Partition Info Map File to ${output_file}")
     set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
       COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_PARTITION_INFO_SCRIPT} gen -i ${dt_file} -o ${output_file}
-        -p ${CONFIG_SOC} -f ${CONFIG_SOC_SERIES} -b ${BOARD} ${EXT_ARGS}
+        -p ${CONFIG_SOC} -f ${CONFIG_SOC_SERIES} -b ${BOARD} ${EXT_ARGS} -d
     )
     if(CONFIG_TRUSTED_EXECUTION_NONSECURE AND CONFIG_SPE_PATH)
 	message("Merge Partition Info Map File to ${output_file_merge}")
@@ -415,14 +418,14 @@ function(atm_generate_tag_data_bin_file)
     set(factory_yaml_file ${CMAKE_SOURCE_DIR}/tag_data/factory.yml)
     if(EXISTS "${settings_yaml_file}")
       set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
-      COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT} -t settings -p ${partition_file} -i ${settings_yaml_file} -o ${ZEPHYR_BINARY_DIR}/zephyr_settings.bin
+      COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT} -t settings -obj ${CMAKE_OBJCOPY} -p ${partition_file} -i ${settings_yaml_file} -o ${ZEPHYR_BINARY_DIR}/zephyr_settings.bin
       )
     else()
       message("ignore generate settings.bin")
     endif()
     if(EXISTS "${factory_yaml_file}")
       set_property(GLOBAL APPEND PROPERTY extra_post_build_commands
-      COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT} -t factory -p ${partition_file} -i ${factory_yaml_file} -o ${ZEPHYR_BINARY_DIR}/zephyr_factory.bin
+      COMMAND ${PYTHON_EXECUTABLE} ${CONFIG_GEN_TAG_DATA_BIN_FILE_SCRIPT} -t factory -obj ${CMAKE_OBJCOPY} -p ${partition_file} -i ${factory_yaml_file} -o ${ZEPHYR_BINARY_DIR}/zephyr_factory.bin
       )
     else()
       message("ignore generate factory.bin")
@@ -503,6 +506,9 @@ function(zephyr_atmosic_tasks)
     atm_add_split_image_restore_hook()
     if(CONFIG_MERGE_SPE_NSPE)
       MATH(EXPR S_LOAD_OFFSET "${SPE_CONFIG_FLASH_BASE_ADDRESS} + ${SPE_CONFIG_FLASH_LOAD_OFFSET}")
+      if(CONFIG_BUILD_OUTPUT_ADJUST_LMA)
+        MATH(EXPR S_LOAD_OFFSET "${S_LOAD_OFFSET} + ${CONFIG_BUILD_OUTPUT_ADJUST_LMA}")
+      endif()
       merge_spe(${spe_path} ${S_LOAD_OFFSET})
     endif() # CONFIG_MERGE_SPE_NSPE
   endif() # CONFIG_TRUSTED_EXECUTION_NONSECURE OR CONFIG_ATM_NO_SPE

@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+common:
+  sysbuild: true
+  harness: ztest
+  tags:
+    - drivers
+    - batt_model
+
+tests:
+  tests.drivers.batt_model.atm.coin: {}
+  tests.drivers.batt_model.atm.dry:
+    extra_configs:
+      - CONFIG_BATT_MODEL_DRY=y
+  tests.drivers.batt_model.atm.hsc_liion:
+    depends_on:
+      - energy_harvesting
+    extra_configs:
+      - CONFIG_BATT_MODEL_HSC_LIION=y

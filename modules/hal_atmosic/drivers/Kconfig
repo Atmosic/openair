@@ -6,4 +6,4 @@
 rsource "*/Kconfig"
 
 config MBEDTLS_USER_CONFIG_FILE
-	default "atm-mbedtls-config.h" if ATM_AES_HW || ATM_SHA2_HW || ATM_UECC
+	default "atm-mbedtls-config.h" if ATM_UECC_PSA_NO_FALLBACK

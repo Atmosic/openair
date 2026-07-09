@@ -14,6 +14,28 @@ This application demonstrates a multimode locator tag with all three networks en
 
 It is built with Zephyr Sysbuild (MCUboot variants where noted).
 
+AT Command Interface
+********************
+
+This application supports AT Command control via serial UART interface for testing and development.
+The AT Command interface allows UART-based control of tag functionality without app interaction.
+
+Supported AT Commands include:
+- Device information queries (``AT+TAGINFO``, ``AT+TAGMODE``)
+- Tag operation control (``AT+TAGSTART``, ``AT+TAGRESET``, ``AT+TAGBATTERY``)
+- Protocol-specific commands (FMNA, FHN, STF)
+- Motion sensor control (``AT+TAGMOTIONRPT``)
+- Device firmware upgrade (``AT+SYSDFU``)
+
+For complete AT Command documentation and usage examples, see :ref:`tag_atcmd_guide`.
+
+To build with AT Command support, use the ``at_cmd`` build target:
+
+::
+
+  west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+      -T applications.multimode_consumer_tag.atm.mcuboot.flash_xip.at_cmd
+
 Requirements
 ************
 - Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
@@ -47,6 +69,13 @@ Buttons and user actions (Summary)
 - Common behavior:
   - Long-press Button2 during reboot (~3 seconds) to unpair and reset the device (default behavior). On ATMBTCSTAG-3405, this gesture is overridden by board-specific MMI.
 
+.. note::
+
+   On the **ATMBTCSTAG-3405** board, additional board-specific behaviors are
+   enabled by ``boards/ATMBTCSTAG-3405.conf`` (power on/off, factory reset,
+   battery report, LED indication, and audio feedback). See
+   :ref:`multimode_consumer_tag_atmbtcstag_3405` for the full description.
+
 FMNA (Apple Find My Network Accessory)
 ======================================
 - Unpaired: Use the Apple Find My app to add the tag (pairing flow starts automatically on boot).
@@ -56,8 +85,33 @@ FMNA (Apple Find My Network Accessory)
 FHN (Google Find Hub Network)
 =============================
 - Unpaired: **In single mode**, Press Button2 to start FP Discoverable advertising (Model ID).
-- Provisioned: Press Button2 to stop "Play Sound" triggered by the app.
+- Provisioned: **Single press** Button2 to stop "Play Sound" triggered by the app.
 - UTP (Unwanted Tracker Protection): Press Button2 to enable "Identifier Read State" for DULT GATT write requests; it must remain enabled for 5 minutes.
+
+**FHN v2 — Reverse Ringing** (requires ``CONFIG_FMDN_REVERSE_RINGING=y``):
+
+Reverse Ringing allows the Provider (tag) to initiate ringing on the Seeker (phone), so the
+user can find their phone by pressing a button on the tag.
+
+- **Double press** Button2 while the tag is **not ringing**: Start Reverse Ringing.
+
+  - If a persistent connection is active, a GATT indication with Requested State ``0x01``
+    (start) is sent to the Seeker over the Secure Beacon Actions characteristic.
+  - If no persistent connection exists, the tag starts a Reverse Ringing BLE advertisement
+    so a nearby Seeker can connect and begin ringing.
+
+- **Single press** Button2 while the tag **is ringing**: Stop Reverse Ringing.
+
+  - If a GATT connection is active, a GATT indication with Requested State ``0x00``
+    (stop) is sent to the Seeker.
+  - If no connection exists (still in the advertising window), the Reverse Ringing
+    advertisement is stopped immediately.
+
+.. note::
+
+   Reverse Ringing must first be enabled and configured by the Seeker app before the Provider
+   can trigger it via button press. For full protocol details, implementation notes, and API
+   reference, see ``openair/subsys/bluetooth/services/gfp/fmdn/README_FHN_V2.md``.
 
 STF (Samsung SmartThings Find)
 ==============================
@@ -67,7 +121,7 @@ OTA (Over-The-Air Update)
 =========================
 For builds with MCUboot and OTA enabled (targets with ``.mcuboot.ota`` suffix, see build items below):
 
-- **Enter OTA mode**: Short-press Button2 **10 times** to enter OTA mode. The system will reboot and start advertising with device name "Atmosic OTA". ATMBTCSTAG-3405 have a red LED blink every 1 second to indicate OTA mode is active.
+- **Enter OTA mode**: Short-press Button2 **10 times**, or hold Button2 for **7 seconds** (``CONFIG_TAG_BTN_OTA_LONG_PRESS``, enabled by default when factory reset is not enabled), to enter OTA mode. The system will reboot and start advertising with device name "Atmosic OTA". ATMBTCSTAG-3405 have a red LED blink every 1 second to indicate OTA mode is active.
 - **OTA mode behavior**: All ecosystem-specific behaviors (FMNA/FHN/STF) are suspended. Only OTA functionality is available.
 - **Exit OTA mode**: Power off/on or reset or OTA complete the device to automatically exit OTA mode and return to normal operation.
 
@@ -148,18 +202,7 @@ Example::
   west build -p always -b <BOARD> openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_fhn_tag
 
-8) Triple-mode with MCUboot + OTA over BLE
-==========================================
-Target: ``applications.multimode_consumer_tag.atm.mcuboot.ota``
-- Purpose: Adds MCUboot and OTA (MCUmgr SMP) on top of triple-mode.
-- Extras: MCUboot ECDSA P-256, swap-scratch, ``basic_ota_bt.conf;stf_tag.conf``; tuned logging.
-
-Example::
-
-  west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.mcuboot.ota
-
-9) Google only (FHN) with MCUboot + OTA
+8) Google only (FHN) with MCUboot + OTA
 =======================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_only.mcuboot.ota``
 - Purpose: Google Fast Pair + FMDN only, with MCUboot and OTA.
@@ -169,7 +212,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_only.mcuboot.ota
 
-10) Apple only (FMNA) with MCUboot + UARP
+9) Apple only (FMNA) with MCUboot + UARP
 =========================================
 Target: ``applications.multimode_consumer_tag.atm.fmna_only.mcuboot.uarp``
 - Purpose: Apple Find My only, with MCUboot and UARP enabled.
@@ -179,7 +222,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fmna_only.mcuboot.uarp
 
-11) Samsung only (STF, minimal) with MCUboot + Native Firmware Update Only
+10) Samsung only (STF, minimal) with MCUboot + Native Firmware Update Only
 ===========================================================================
 Target: ``applications.multimode_consumer_tag.atm.stf_only.mcuboot.native_fw_update_only``
 - Purpose: SmartThings Find only (minimal footprint), with MCUboot support. Atmosic OTA is disabled to maintain single STF tag behavior. This build has Samsung's native firmware update mechanism via the STF GATT service only.
@@ -193,7 +236,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_only.mcuboot.native_fw_update_only
 
-12) Samsung only (STF) with MCUboot + OTA
+11) Samsung only (STF) with MCUboot + OTA
 ==========================================
 Target: ``applications.multimode_consumer_tag.atm.stf_only.mcuboot.ota``
 - Purpose: SmartThings Find only, with MCUboot and OTA (both Atmosic OTA and Samsung native firmware update).
@@ -203,7 +246,7 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_only.mcuboot.ota
 
-13) Dual-mode: Google + Apple with MCUboot + OTA
+12) Dual-mode: Google + Apple with MCUboot + OTA
 =================================================
 Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.ota``
 - Purpose: FHN + FMNA, with MCUboot and OTA.
@@ -213,7 +256,28 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.ota
 
-14) Dual-mode: Samsung + Apple with MCUboot + OTA
+Additional OTA modes are available for this FHN + FMNA dual-mode combination:
+
+- **Overwrite mode** -- MCUboot overwrites the old image in-place; no scratch partition
+  required.
+
+  Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.overwrite.ota``
+
+  Example::
+
+    west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+      --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.overwrite.ota
+
+- **Legacy scratch mode** -- traditional MCUboot swap-scratch.
+
+  Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.legacy_scratch.ota``
+
+  Example::
+
+    west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+      --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.legacy_scratch.ota
+
+13) Dual-mode: Samsung + Apple with MCUboot + OTA
 ==================================================
 Target: ``applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.ota``
 - Purpose: STF + FMNA, with MCUboot and OTA.
@@ -223,7 +287,28 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.ota
 
-15) Dual-mode: Samsung + Google with MCUboot + OTA
+Additional OTA modes are available for this STF + FMNA dual-mode combination:
+
+- **Overwrite mode** -- MCUboot overwrites the old image in-place; no scratch partition
+  required.
+
+  Target: ``applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.overwrite.ota``
+
+  Example::
+
+    west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+      --sysbuild -T applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.overwrite.ota
+
+- **Legacy scratch mode** -- traditional MCUboot swap-scratch.
+
+  Target: ``applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.legacy_scratch.ota``
+
+  Example::
+
+    west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+      --sysbuild -T applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.legacy_scratch.ota
+
+14) Dual-mode: Samsung + Google with MCUboot + OTA
 ===================================================
 Target: ``applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.ota``
 - Purpose: STF + FHN, with MCUboot and OTA.
@@ -233,71 +318,115 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.ota
 
+Additional OTA modes are available for this STF + FHN dual-mode combination:
 
-16) ATM34: MCUboot + Flash XIP (triple-mode) with OTA
-======================================================
-Target: ``applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.ota``
-- Purpose: ATM34 SoC: app executes in external flash XIP with MCUboot and OTA.
+- **Overwrite mode** -- MCUboot overwrites the old image in-place; no scratch partition
+  required.
+
+  Target: ``applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.overwrite.ota``
+
+  Example::
+
+    west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+      --sysbuild -T applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.overwrite.ota
+
+- **Legacy scratch mode** -- traditional MCUboot swap-scratch.
+
+  Target: ``applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.legacy_scratch.ota``
+
+  Example::
+
+    west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+      --sysbuild -T applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.legacy_scratch.ota
+
+
+15) MCUboot + Flash XIP (triple-mode) with OTA
+===============================================
+Target: ``applications.multimode_consumer_tag.atm.mcuboot.flash_xip.ota``
+- Purpose: App executes in external flash XIP with MCUboot and OTA.
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.ota
+    --sysbuild -T applications.multimode_consumer_tag.atm.mcuboot.flash_xip.ota
 
-17) ATM34: MCUboot + Flash XIP (overwrite-only) with OTA
-=========================================================
-Target: ``applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.overwrite.ota``
-- Purpose: Similar to (16) but MCUboot overwrite-only (no scratch), with OTA.
+16) MCUboot + Flash XIP (overwrite-only) with OTA
+==================================================
+Target: ``applications.multimode_consumer_tag.atm.mcuboot.flash_xip.overwrite.ota``
+- Purpose: Similar to (15) but MCUboot overwrite-only (no scratch), with OTA.
 - Extras: ``SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y``, scratch size 0, verify img addr off.
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.atm34.mcuboot.flash_xip.overwrite.ota
+    --sysbuild -T applications.multimode_consumer_tag.atm.mcuboot.flash_xip.overwrite.ota
 
-18) Google only (FHN) with Channel Sounding
-============================================
-Target: ``applications.multimode_consumer_tag.atm.fhn_cs_tag``
-- Purpose: Google Find Hub Network, with Channel Sounding.
-- Extras: ``basic_cs_pd50.conf``; ``CONFIG_ATM_CS=y``; larger LL heap; STF + FMNA disabled.
+17) MCUboot + Flash XIP (legacy scratch) with OTA
+==================================================
+Target: ``applications.multimode_consumer_tag.atm.mcuboot.flash_xip.legacy_scratch.ota``
+- Purpose: Similar to (15) but MCUboot legacy swap-scratch mode, with OTA.
+- Extras: ``SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y``, ``ATM_MCUBOOT_SWAP_WITH_OFFSET=0``.
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_cs_tag
+    --sysbuild -T applications.multimode_consumer_tag.atm.mcuboot.flash_xip.legacy_scratch.ota
 
-19) Dual-mode (Google + Apple) with Channel Sounding
-=====================================================
-Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag``
-- Purpose: Enable Atmosic Channel Sounding alongside FHN + FMNA.
-- Extras: ``basic_cs_pd50.conf``; ``CONFIG_ATM_CS=y``; larger LL heap; STF disabled.
+18) Dual-mode (FHN + FMNA) Channel Sounding demo
+=================================================
+Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo``
+- Purpose: FHN + FMNA with an additional BLE CS reflector advertiser for standalone Channel Sounding demo.
+- Extras: ``basic_cs_pd50.conf``; ``CONFIG_ATM_CS=y``; STF disabled.
+
+.. note::
+
+   This target is for **independent Channel Sounding demo purposes only**. It adds a CS reflector
+   advertiser to allow BLE CS measurement testing with a CS initiator device, but does **not**
+   integrate with the Apple Find My Network (FMNA) or Google Find Hub Network (FMDN) Precision
+   Finding protocols. For production Find My products with CS-based Precision Finding, use the
+   ``.oob_de.cs`` targets instead.
 
 Example::
 
   west build -p always -b <BOARD> openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag
+    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo
 
-20) Google only (FHN) with Channel Sounding and MCUboot + OTA
-==============================================================
-Target: ``applications.multimode_consumer_tag.atm.fhn_cs_tag.mcuboot.ota``
-- Purpose: Google Find Hub Network with Channel Sounding, MCUboot and OTA.
-- Extras: ``basic_ota_bt.conf;basic_cs_pd50.conf``; ``CONFIG_ATM_CS=y``; larger LL heap; STF + FMNA disabled.
+19) Dual-mode (FHN + FMNA) Channel Sounding demo with MCUboot + OTA
+=====================================================================
+Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo.mcuboot.ota``
+- Purpose: Same as (18) with MCUboot and OTA added.
+- Extras: ``basic_ota_bt.conf;basic_cs_pd50.conf``; ``CONFIG_ATM_CS=y``; STF disabled.
 
-Example::
+.. note::
 
-  west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_cs_tag.mcuboot.ota
-
-21) Dual-mode (Google + Apple) with Channel Sounding and MCUboot + OTA
-=======================================================================
-Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag.mcuboot.ota``
-- Purpose: Enable Atmosic Channel Sounding alongside FHN + FMNA, with MCUboot and OTA.
-- Extras: ``basic_ota_bt.conf;basic_cs_pd50.conf``; ``CONFIG_ATM_CS=y``; larger LL heap; STF disabled.
+   For independent Channel Sounding demo purposes only. See note in (18).
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_cs_tag.mcuboot.ota
+    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo.mcuboot.ota
+
+20) Dual-mode (FHN + FMNA) with Precision Finding, Flash XIP, UARP + OTA
+==========================================================================
+Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.oob_de.cs.mcuboot.flash_xip.uarp.ota``
+- Purpose: FHN + FMNA with Precision Finding (BLE CS), Flash XIP, MCUboot swap-scratch, UARP and OTA.
+- Extras: ``basic_ota_bt.conf;basic_cs_pd50.conf``; ``CONFIG_USE_UARP=y``; ``CONFIG_FMDN_PRECISION_FINDING=y``; CS-only ranging; STF disabled.
+
+Example::
+
+  west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.oob_de.cs.mcuboot.flash_xip.uarp.ota
+
+21) Dual-mode v2 (FHN + FMNA) with Precision Finding, Flash XIP, UARP + OTA
+=============================================================================
+Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.v2.oob_de.cs.mcuboot.flash_xip.uarp.ota``
+- Purpose: Same as (20) but FHN v2 (16 bonds, larger storage).
+- Extras: ``CONFIG_FAST_PAIR_FMDN_V2=y``; ``CONFIG_BT_MAX_PAIRED=16``; ``ATM_STORAGE_SIZE=0x3000``.
+
+Example::
+
+  west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
+    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.v2.oob_de.cs.mcuboot.flash_xip.uarp.ota
 
 22) Google only (FHN) with Ranging OOB Data Element (Precision Finding)
 ========================================================================
@@ -324,15 +453,64 @@ The ``SB_ATM_DTS_EXTRA_CPPFLAGS`` parameter in ``sample.yaml`` is used to config
    If necessary, you may need to change ``SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"`` to a different size based on your application's storage requirements.
 
    Common storage sizes:
-   - ``0x1000`` (4 KB): Default for multimode and most single-mode builds
-   - ``0x2000`` (8 KB): Used for FMNA-only builds to accommodate additional Apple Find My data
-   - Larger sizes may be required for applications with extensive provisioning or configuration data
+
+   .. list-table::
+      :header-rows: 1
+
+      * - Configuration
+        - ATM_STORAGE_SIZE
+        - Usable NVS
+        - Rationale
+      * - Multimode / single-mode (non-v2)
+        - ``0x1000`` (4 KB)
+        - 3 KB (3 of 4 sectors)
+        - Default; minimal FP + FMNA data
+      * - FMNA-only
+        - ``0x2000`` (8 KB)
+        - 7 KB (7 of 8 sectors)
+        - Additional Apple Find My data
+      * - FHN v2 only (16 bonds)
+        - ``0x2000`` (8 KB)
+        - 7 KB (7 of 8 sectors)
+        - ~3.4 KB required; 3.7 KB headroom (16 bonds worst-case)
+      * - FHN v2 + FMNA combined (16 bonds)
+        - ``0x3000`` (12 KB)
+        - 11 KB (11 of 12 sectors)
+        - ~4.6 KB required (FHN ~3.4 KB + FMNA ~1.2 KB); 6.4 KB headroom
+
+   NVS reserves one full 1 KB sector (0x400 bytes) for garbage collection; usable space is always
+   ``ATM_STORAGE_SIZE − 1 KB``.
 
    To adjust the storage size for a specific build target, modify the corresponding ``SB_ATM_DTS_EXTRA_CPPFLAGS`` value in ``sample.yaml``.
 
 
 Google Find Hub Network (FHN) details
 *************************************
+
+FHN v2 features
+===============
+
+FHN v2 (``CONFIG_FAST_PAIR_FMDN_V2=y``) extends the base FMDN stack with two optional features:
+
+- **Persistent Connection** — allows the Seeker to maintain a long-term GATT connection with the
+  Provider for faster operations and lower latency.
+- **Reverse Ringing** — allows the Provider (tag) to initiate ringing on the Seeker (phone),
+  e.g. when the user presses a button on the tag to find their phone.
+
+Enable the features you need in ``prj.conf``:
+
+.. code-block:: kconfig
+
+   CONFIG_FAST_PAIR_FMDN_V2=y                   # Enable FHN v2 protocol
+   CONFIG_FMDN_PERSISTENT_CONNECTION=y           # Optional: persistent connection
+   CONFIG_FMDN_REVERSE_RINGING=y                 # Optional: reverse ringing (button → phone rings)
+
+.. note::
+
+   FHN v2 also raises the maximum account-key count to 16 (from 5 in v1) and requires a larger
+   NVS storage partition — see the Storage Size Configuration section above. For full protocol
+   details, implementation notes, and API reference, see
+   ``openair/subsys/bluetooth/services/gfp/fmdn/README_FHN_V2.md``.
 
 Adoption and approval
 =====================
@@ -620,3 +798,7 @@ Additional Notes
           };
       };
 - For STF, ensure the TagSDK integration is complete and that ``stf_tag.conf`` is provided via EXTRA_CONF_FILE as shown in the build items.
+
+.. toctree::
+
+   README_TAG_ATCMD.rst

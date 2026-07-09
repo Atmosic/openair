@@ -24,10 +24,14 @@
 #endif // SRAM_SIZE
 #else
 #if defined(RUN_IN_FLASH) && (RUN_IN_FLASH == RUN_APP_IN_FLASH_SPLIT)
+#if ATM_SEC_FAULT_STORAGE
+#define SRAM_SIZE 0x1C00
+#else
 #define SRAM_SIZE 0x1800
+#endif
 
 #if ATM_SEC_FAULT_STORAGE
-#define ATM_SEC_FAULT_STORAGE_NODE 300017E0
+#define ATM_SEC_FAULT_STORAGE_NODE 30001BE0
 #endif
 
 #else
@@ -213,7 +217,11 @@
 	sram0: memory@20001000 {
 		device_type = "memory";
 		compatible = "mmio-sram";
+#if ATM_SEC_FAULT_STORAGE
+		reg = <0x20001C00 0x3e400>;
+#else
 		reg = <0x20001800 0x3e800>;
+#endif
 	};
 #else
 	sram0: memory@20004000 {

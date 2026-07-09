@@ -98,6 +98,12 @@ typedef struct dult_hdlrs_s {
 	uint8_t (*battery_status_cb)(void);
 	/// play sound callback function
 	void (*sound_action_cb)(bool action);
+#ifdef CONFIG_DULT_MOTION_DETECT
+	/// Enable or disable motion sensor hardware; called by the DULT UT state machine
+	void (*motion_hw_enable_cb)(bool enable);
+	/// Raw motion snapshot getter (degrees 0–90); polled by the DULT UT state machine
+	uint8_t (*motion_raw_get_cb)(void);
+#endif
 } dult_hdlrs_t;
 
 /// DULT Service User Information

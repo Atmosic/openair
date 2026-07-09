@@ -16,38 +16,71 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/reboot.h>
+#include <zephyr/bluetooth/bluetooth.h>
+
 #include "app_work_q.h"
 #include "fmna_api.h"
 #include "fmna_tag_platform.h"
 #include "platform_ctrl_battery.h"
-#include "platform_ctrl_buzzer.h"
 #include "platform_ctrl_motion_detect.h"
+#include "platform_indicate.h"
+#ifdef CONFIG_TAG_BUZZER
+#include "platform_ctrl_buzzer.h"
+#endif
+#ifdef CONFIG_AT_CMD_TAG_SET
+#include "at_cmd_uart.h"
+#include "at_cmd_tag.h"
+#endif
 
 LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
 
 #ifdef CONFIG_FMNA_DEV_CUSTOM_BT_ADDR
-#include <zephyr/bluetooth/bluetooth.h>
 static bt_addr_le_t init_addr;
 #endif
 static tag_state_notify_cb fmna_tag_state_notify;
 
+static void fmna_tag_platform_connected(struct bt_conn *conn, uint8_t err)
+{
+	if (err) {
+		LOG_ERR("Connection failed (err 0x%02x)", err);
+		return;
+	}
+	struct bt_conn_info info;
+	bt_conn_get_info(conn, &info);
+	fmna_connected(conn, info.id, info.le.interval_us / BT_HCI_LE_INTERVAL_UNIT_US);
+}
+
 BT_CONN_CB_DEFINE(conn_callbacks) = {
-	.connected = fmna_connected,
+	.connected = fmna_tag_platform_connected,
 	.disconnected = fmna_disconnected,
 	.security_changed = fmna_security_changed,
 	.le_param_updated = fmna_le_param_updated,
 };
 
+static void sound_init(void)
+{
+#ifdef CONFIG_TAG_BUZZER
+	platform_ctrl_buzzer_init();
+#endif
+	/* When CONFIG_TAG_BUZZER=n, AT events are used instead of hardware buzzer.
+	 * No hardware initialization is needed here. */
+	LOG_DBG("sound_init");
+}
+
 static void sound_start(void)
 {
-	platform_ctrl_buzzer_action(true);
 	LOG_DBG("sound_start");
+#if defined(CONFIG_TAG_BUZZER) || defined(CONFIG_AT_EVT_TAGBUZZER)
+	platform_indicate_buzzer(TAG_BUZZER_EVT_FMNA_RING_ON, NULL);
+#endif
 }
 
 static void sound_stop(void)
 {
-	platform_ctrl_buzzer_action(false);
 	LOG_DBG("sound_stop");
+#if defined(CONFIG_TAG_BUZZER) || defined(CONFIG_AT_EVT_TAGBUZZER)
+	platform_indicate_buzzer(TAG_BUZZER_EVT_FMNA_RING_OFF, NULL);
+#endif
 }
 
 static void motion_init(void)
@@ -86,19 +119,19 @@ static fmna_bat_state_level_t battery_level_get(void)
 static void state_notify(fmna_state_notify_t st)
 {
 	LOG_INF("FMNA current state %u", st);
-	tag_state_t tag_st = TAG_STATE_INVALID;
+	tag_event_t tag_st = TAG_EVENT_INVALID;
 	switch (st) {
 	case FMNA_STATE_INIT_DONE:
-		tag_st = TAG_STATE_INIT_DONE;
+		tag_st = TAG_EVENT_INIT_DONE;
 		break;
 	case FMNA_STATE_UNPAIRED:
-		tag_st = TAG_STATE_UNPAIRED;
+		tag_st = TAG_EVENT_UNPAIRED;
 		break;
 	case FMNA_STATE_PAIRING:
-		tag_st = TAG_STATE_PAIRING;
+		tag_st = TAG_EVENT_PAIRING;
 		break;
 	case FMNA_STATE_PAIRED:
-		tag_st = TAG_STATE_PAIRED;
+		tag_st = TAG_EVENT_PAIRED;
 		break;
 	default:
 		LOG_WRN("FMNA current state %u not handled", st);
@@ -125,7 +158,7 @@ static struct fmna_init_params const fmna_init_params = {
 	.version_major = CONFIG_FMNA_VERSION_MAJOR,
 	.version_minor = CONFIG_FMNA_VERSION_MINOR,
 	.version_revision = CONFIG_FMNA_VERSION_REVISION,
-	.sound_cb = {.sound_init = platform_ctrl_buzzer_init,
+	.sound_cb = {.sound_init = sound_init,
 		     .sound_start = sound_start,
 		     .sound_stop = sound_stop},
 	.motion_cb = {.motion_init = motion_init,
@@ -143,6 +176,10 @@ static void fmna_tag_platform_init(tag_state_notify_cb fn_cb)
 	int err = bt_addr_le_from_str(CONFIG_FMNA_DEV_CUSTOM_BT_ADDR_VALUE, "random", &init_addr);
 	if (err) {
 		LOG_ERR("Invalid Bluetooth address format");
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FMNA,
+				     AT_CMD_TAG_ERR_INVALID_PARAM);
+#endif
 		return;
 	}
 #endif

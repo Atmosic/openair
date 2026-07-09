@@ -1,6 +1,6 @@
 # Audio Stream State Machine Unit Tests
 
-This test suite provides comprehensive unit test coverage for the audio stream state machine fixes applied from SUPPORT-4473. The tests are designed to validate the audio stream state transitions, error handling scenarios, stop operation edge cases, and state validation during the stream lifecycle.
+This test suite provides comprehensive unit test coverage for the audio stream state machine fixes. The tests are designed to validate the audio stream state transitions, error handling scenarios, stop operation edge cases, and state validation during the stream lifecycle.
 
 ## Background
 
@@ -24,9 +24,9 @@ The audio stream has the following states:
 
 ### Concurrent Stop Operation Tests
 - Stop operation from different states (IDLE, READY, BUSY)
-- Concurrent stop during playback (SUPPORT-4473 scenario)
+- Concurrent stop during playback
 - Force stopping functionality
-- **Blocking write with concurrent stop** - Core SUPPORT-4473 validation using work queues
+- **Blocking write with concurrent stop** - Core validation using work queues
 
 ### Error Handling Tests
 - Invalid parameter validation
@@ -89,7 +89,7 @@ state_machine/
 5. **test_write_invalid_params** - Write parameter validation
 6. **test_playback_modes** - Both playback modes
 7. **test_stop_from_different_states** - Stop operation validation
-8. **test_concurrent_stop_operation** - SUPPORT-4473 fix validation
+8. **test_concurrent_stop_operation** - concurrent stop and play fix validation
 9. **test_stop_from_idle** - Stop from IDLE state
 10. **test_deinitialize** - Deinitialization testing
 11. **test_multiple_consecutive_operations** - Stress testing
@@ -97,7 +97,7 @@ state_machine/
 13. **test_operation_without_codec** - No-codec operation
 14. **test_small_buffer** - Small buffer edge case
 15. **test_large_buffer** - Large buffer edge case
-16. **test_blocking_write_with_concurrent_stop** - **CORE SUPPORT-4473 TEST** - Validates concurrent stop during blocking write
+16. **test_blocking_write_with_concurrent_stop** - **CONCURRENT TEST** - Validates concurrent stop during blocking write
 
 ## Validation Criteria
 
@@ -108,4 +108,4 @@ The tests validate:
 - ✅ Error handling scenarios are robust
 - ✅ Stop operation edge cases are handled
 - ✅ State validation during stream lifecycle
-- ✅ SUPPORT-4473 concurrent stop issue is resolved
+- ✅ concurrent stop and play issue is resolved

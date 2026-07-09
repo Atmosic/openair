@@ -3,10 +3,19 @@
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
 tests:
-  tests.lib.dtm_2wire.atm:
+  tests.lib.dtm_2wire.atm: &base_config
     sysbuild: true
     harness: ztest
     tags:
       - bluetooth
       - dtm
     timeout: 60
+  tests.lib.dtm_2wire.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="dtm_hci_bridge.c;dtm_mgr.c;dtm_mgr_proc.c"

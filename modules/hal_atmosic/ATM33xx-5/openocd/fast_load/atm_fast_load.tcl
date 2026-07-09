@@ -33,6 +33,10 @@ proc fl_ram_program_page { fn } {
 	rbp 0x2f8
     }
 
+    global _FL_RAM_STACK_TOP
+    set stack_top $_FL_RAM_STACK_TOP
+
+    reg sp $stack_top
     resume $fn
 }
 
@@ -561,6 +565,7 @@ proc atm_fast_load { image {opcode 0x01} {region_start 0x0} } {
 
 proc atm2x_load_ram_image { image } {
     global _FL_RAM_PLATFORM
+    global _FL_RAM_STACK_TOP
     if { $_FL_RAM_PLATFORM == "ATM22xx-x1x" } {
 	set external_flash_init 0x0000601d
     } else {
@@ -568,6 +573,7 @@ proc atm2x_load_ram_image { image } {
     }
 
     load_ram_image $external_flash_init $image 0x2000C000
+    set _FL_RAM_STACK_TOP [lindex [reg sp] 2]
     resume 0x2000C000
 }
 

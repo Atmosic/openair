@@ -37,6 +37,7 @@ LOG_MODULE_DECLARE(gfps, CONFIG_ATM_GFPS_LOG_LEVEL);
 #define SS_KEY_BT_ID_BASE           "bt_id_base"
 #define SS_KEY_FMDN_CLOCK           "fmdn_clock"
 #define SS_KEY_PC_CLIENT_ID         "pc_client_id"
+#define SS_KEY_RR_ENABLED           "rr_enabled"
 #define FP_STORAGE_KEY(subkey)      S_KEY_MAIN "/" subkey
 
 #define ACCOUNT_KEY_CNT CONFIG_FAST_PAIR_MAX_ACCOUNT_KEY_COUNT
@@ -69,6 +70,10 @@ static bool fmdn_clock_valid;
 static uint8_t pc_client_id;
 static bool pc_client_id_valid;
 #endif // CONFIG_FMDN_PERSISTENT_CONNECTION
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+static uint8_t rr_enabled;
+static bool rr_enabled_valid;
+#endif // CONFIG_FMDN_REVERSE_RINGING
 #endif // CONFIG_FAST_PAIR_FMDN
 static uint8_t bt_id_base;
 static bool bt_id_base_valid;
@@ -180,6 +185,17 @@ static int settings_storage_handle_set(char const *name, size_t len, settings_re
 		return 0;
 	}
 #endif // CONFIG_FMDN_PERSISTENT_CONNECTION
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+	if (settings_name_steq(name, SS_KEY_RR_ENABLED, &next) && !next) {
+		if (len != sizeof(rr_enabled)) {
+			return -EINVAL;
+		}
+		read_cb(cb_arg, &rr_enabled, sizeof(rr_enabled));
+		rr_enabled_valid = true;
+		LOG_INF("Loaded RR enabled flag: %u", rr_enabled);
+		return 0;
+	}
+#endif // CONFIG_FMDN_REVERSE_RINGING
 #endif // CONFIG_FAST_PAIR_FMDN
 	if (settings_name_steq(name, SS_KEY_PERSONALIZED_NAME, &next) && !next) {
 		if (len >= sizeof(personalized_name)) {
@@ -410,6 +426,47 @@ void fp_storage_pc_client_id_delete(void)
 	}
 }
 #endif // CONFIG_FMDN_PERSISTENT_CONNECTION
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+void fp_storage_rr_enabled_save(bool enabled)
+{
+	rr_enabled = enabled ? 1 : 0;
+	rr_enabled_valid = true;
+	int err = settings_save_one(FP_STORAGE_KEY(SS_KEY_RR_ENABLED), &rr_enabled,
+				    sizeof(rr_enabled));
+	if (err) {
+		LOG_ERR("save RR enabled failed %d", err);
+	} else {
+		LOG_INF("Saved RR enabled flag: %u", rr_enabled);
+	}
+}
+
+int fp_storage_rr_enabled_get(bool *enabled)
+{
+	if (!rr_enabled_valid) {
+		return -ENOENT;
+	}
+	*enabled = (rr_enabled != 0);
+	return 0;
+}
+
+bool fp_storage_rr_enabled_valid(void)
+{
+	return rr_enabled_valid;
+}
+
+void fp_storage_rr_enabled_delete(void)
+{
+	rr_enabled = 0;
+	rr_enabled_valid = false;
+	int err = settings_delete(FP_STORAGE_KEY(SS_KEY_RR_ENABLED));
+	if (err) {
+		LOG_ERR("delete RR enabled failed (err: %d)", err);
+	} else {
+		LOG_INF("Deleted RR enabled flag from NVS");
+	}
+}
+#endif // CONFIG_FMDN_REVERSE_RINGING
 
 void fp_storage_cur_account_key_clear(void)
 {

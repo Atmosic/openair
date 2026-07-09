@@ -25,18 +25,18 @@ static tag_state_notify_cb stf_tag_state_notify_cb;
 static void stf_tag_state_notify(stf_state_notify_t state)
 {
 	LOG_INF("STF current state %u", state);
-	tag_state_t tag_st = TAG_STATE_INVALID;
+	tag_event_t tag_st = TAG_EVENT_INVALID;
 
 	switch (state) {
 	// upair stf tag will invoke system reboot, so no need to handle unpair state
 	case STF_STATE_INIT_DONE:
-		tag_st = TAG_STATE_INIT_DONE;
+		tag_st = TAG_EVENT_INIT_DONE;
 		break;
 	case STF_STATE_ONBOARDING_START:
-		tag_st = TAG_STATE_PAIRING;
+		tag_st = TAG_EVENT_PAIRING;
 		break;
 	case STF_STATE_ONBOARDING_COMPLETE:
-		tag_st = TAG_STATE_PAIRED;
+		tag_st = TAG_EVENT_PAIRED;
 		break;
 	default:
 		LOG_WRN("STF current state %u not handled", state);

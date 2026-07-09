@@ -11,9 +11,6 @@ if(CONFIG_ATM_STF)
   # TagSDK API include for applications
   zephyr_include_directories(${TAGSDK_PATH}/inc)
 
-  # TagSDK TLS configuration (for mbedtls user config)
-  zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/tls_config)
-
   # Compile TagSDK sources
   add_subdirectory(${TAGSDK_PATH}/example/atmosic_zephyr ${CMAKE_CURRENT_BINARY_DIR}/atmosic_zephyr)
 endif()

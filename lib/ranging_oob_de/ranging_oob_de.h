@@ -35,6 +35,16 @@ extern "C" {
 #define __PACKED __attribute__((packed))
 #endif
 
+/// Ranging OOB version
+typedef enum {
+	/// initial version
+	RANGING_PROTOCOL_VERSION_1 = 0x01,
+	/// add technology transition and device type
+	RANGING_PROTOCOL_VERSION_2,
+	/// add motion notification request
+	RANGING_PROTOCOL_VERSION_3,
+} ranging_oob_ver_t;
+
 /// Ranging Message ID
 typedef enum {
 	/// Ranging Capability Request message
@@ -53,6 +63,8 @@ typedef enum {
 	RANGING_MSG_ID_STOP_RANGING,
 	/// Stop Ranging Response message
 	RANGING_MSG_ID_STOP_RANGING_RESP,
+	/// Motion Notification
+	RANGING_MSG_ID_MOTION_NOTIFICATION,
 	/// 0xFF Reserved for future use
 	RANGING_MSG_ID_RFU = 0xFF
 } ranging_msg_id_t;
@@ -106,11 +118,31 @@ typedef enum {
 	RANGING_RESP_DE_CS_SEC_LEVEL_FOUR = 0x10,
 } ranging_de_cs_sec_level_t;
 
+/// Motion Notification Request
+typedef enum {
+	/// Indicates no motion data required by the initiator device.
+	RANGING_CONF_MOTION_DATA_NOT_REQUIRED = 0x00,
+	///  Indicates the initiator device requires the motion data from the peer device
+	RANGING_CONF_MOTION_DATA_REQUIRED
+} ranging_de_conf_motion_data_t;
+
+/// Motion Notification Message
+typedef enum {
+	/// Not detected: < 5°
+	RANGING_MOTION_NOT_DETECTED = 0x00,
+	/// Slight movement: 5° - 7°
+	RANGING_MOTION_SLIGHT_MOVEMENT,
+	/// Moderate movement: 7° - 10
+	RANGING_MOTION_MODERATE_MOVEMENT,
+	/// Large movement: > 10°
+	RANGING_MOTION_LARGE_MOVEMENT,
+} ranging_de_motion_status_t;
+
 typedef struct {
-	/// Ranging version
+	/// Ranging versions
 	uint8_t version;
 	/// Ranging message ID
-	ranging_msg_id_t msg_id;
+	uint8_t msg_id;
 } __PACKED ranging_oob_de_header_t;
 
 /// Ranging Capability Request Data Element structure
@@ -124,7 +156,7 @@ typedef struct {
 /// UWB Capabilities Data Element
 typedef struct {
 	/// Ranging technology ID
-	rt_id_t id;
+	uint8_t id;
 	/// Total size of UWB capabilities payload
 	uint8_t size;
 	/// Device UWB Address (2 bytes)
@@ -146,11 +178,11 @@ typedef struct {
 /// BLE Channel Sounding Capabilities Data Element
 typedef struct {
 	/// Ranging technology ID
-	rt_id_t id;
+	uint8_t id;
 	/// Size of CS capabilities payload (1 byte)
 	uint8_t size;
-	/// Security Type (1 byte)
-	ranging_de_cs_sec_level_t sec_type;
+	/// Security Type
+	uint8_t sec_type;
 	/// Device Address (6 bytes, big endian)
 	uint8_t addr[6];
 } __PACKED ranging_cap_de_cs_t;
@@ -169,6 +201,13 @@ typedef struct {
 } __PACKED ranging_cap_resp_de_t;
 
 typedef struct {
+	/// Indicates support for technology transitioning (1 byte)
+	uint8_t tech_trans_type;
+	///  Indicates the type of the responder device (2 byte)
+	uint16_t dev_type;
+} __PACKED ranging_cap_resp_tail_de_t;
+
+typedef struct {
 	uint16_t vendor_id;
 	uint8_t static_sts_iv[6];
 } __PACKED s_sts_data_t;
@@ -180,7 +219,7 @@ typedef struct {
 /// UWB TWR Configuration Data Element
 typedef struct {
 	/// Ranging technology ID
-	rt_id_t id;
+	uint8_t id;
 	/// Total size of UWB capabilities payload
 	uint8_t size;
 	/// Device UWB MAC Address (2 bytes)
@@ -215,12 +254,12 @@ typedef struct {
 /// BLE Channel Sounding Configuration Data Element
 typedef struct {
 	/// Ranging technology ID
-	rt_id_t id;
+	uint8_t id;
 	/// Total size of CS configuration payload
 	uint8_t size;
 #ifdef CONFIG_RANGING_OOB_DE_TYPE_BLE_CS_CONFIG_SEC_TYPE
-	/// Security Type (1 byte)
-	ranging_de_cs_sec_level_t sec_type;
+	/// Security Type
+	uint8_t sec_type;
 #endif
 } __PACKED ranging_conf_de_cs_t;
 
@@ -306,14 +345,7 @@ typedef union {
  * Protocol Constants
  * ======================================================================== */
 
-/// Current protocol version
-#define RANGING_PROTOCOL_VERSION_CURRENT 0x01
-
-/// Minimum supported protocol version
-#define RANGING_PROTOCOL_VERSION_MIN 0x01
-
-/// Maximum supported protocol version
-#define RANGING_PROTOCOL_VERSION_MAX 0x01
+#define RANGING_PROTOCOL_VERSION_CURRENT RANGING_PROTOCOL_VERSION_3
 
 /// Validation macros for enum ranges
 #define IS_VALID_RANGING_MSG_ID(id) ((id) <= RANGING_MSG_ID_STOP_RANGING_RESP)

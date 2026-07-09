@@ -54,12 +54,18 @@ tests:
     tags:
       - mcuboot
       - flash_xip
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP"
       - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+    extra_configs:
+      - CONFIG_MCUMGR_GRP_IMG_ALLOW_CONFIRM_NON_ACTIVE_IMAGE_ANY=y
   samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot.flash_xip.legacy_scratch:
     sysbuild: true
     harness: console
@@ -71,12 +77,18 @@ tests:
       - mcuboot
       - flash_xip
       - legacy
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+    extra_configs:
+      - CONFIG_MCUMGR_GRP_IMG_ALLOW_CONFIRM_NON_ACTIVE_IMAGE_ANY=y
   samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot.flash_xip.overwrite:
     sysbuild: true
     harness: console
@@ -88,6 +100,10 @@ tests:
       - mcuboot
       - flash_xip
       - overwrite
+    depends_on:
+      - flash
+      - rram
+      - xip
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -95,3 +111,5 @@ tests:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_MCUBOOT_SCRATCH_SIZE=0;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
       - mcuboot_CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS=n
+    extra_configs:
+      - CONFIG_MCUMGR_GRP_IMG_ALLOW_CONFIRM_NON_ACTIVE_IMAGE_ANY=y

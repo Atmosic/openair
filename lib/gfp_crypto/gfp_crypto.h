@@ -6,7 +6,7 @@
  * @brief Atmosic Google Fast Pair Secure Crypto Middleware
  * This secure Crypto Middleware for Google Fast Pair with psa/mbedtls/uECC.
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -29,12 +29,7 @@
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_MBEDTLS
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-#include "mbedtls/sha256.h"
-#include "mbedtls/md.h"
-#else
 #include "psa/crypto.h"
-#endif
 #endif // CONFIG_MBEDTLS
 #else // CONFIG_SOC_FAMILY_ATM
 #include "atm_aes.h"
@@ -157,13 +152,8 @@ bool gfp_crypto_hmac_sha256(uint8_t const *data_in, uint16_t data_len, uint8_t *
 			    uint8_t const *key, uint16_t key_len);
 
 #if defined(CONFIG_SOC_FAMILY_ATM) && defined(CONFIG_MBEDTLS)
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-/// SHA256 context (mbedTLS implementation)
-typedef mbedtls_sha256_context gfp_crypto_sha256_ctx_t;
-#else
 /// SHA256 context (PSA Crypto implementation)
 typedef psa_hash_operation_t gfp_crypto_sha256_ctx_t;
-#endif
 #else  // CONFIG_SOC_FAMILY_ATM && CONFIG_MBEDTLS
 /// SHA256 context (ATM Crypto implementation)
 typedef void *gfp_crypto_sha256_ctx_t;

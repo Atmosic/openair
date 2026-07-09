@@ -28,6 +28,16 @@ bool fp_fmdn_is_utp_en(void)
 	return false;
 }
 
+void fp_fmdn_clock_set(uint32_t clock_value)
+{
+	fp_fmdn_key_clock_set(clock_value);
+}
+
+uint32_t fp_fmdn_clock_get(void)
+{
+	return fp_fmdn_key_clock_read();
+}
+
 int fp_fmdn_clock_save(void)
 {
 	if (!fp_mode_is_provisioned()) {

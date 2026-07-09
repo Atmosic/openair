@@ -13,4 +13,4 @@ tests:
   samples.sensor.bme280.atm: {}
   samples.sensor.bme280.atm.spi:
     extra_args:
-      - SHIELD=mikroe_weather_click_spi
+      - DTC_OVERLAY_FILE="boards/spi.overlay"

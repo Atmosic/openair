@@ -37,7 +37,9 @@ extern "C" {
 /// HMAC-SHA256 signature length (first 8 bytes of full 32-byte digest)
 #define ADV_RINGING_SIGNATURE_LEN 8
 
-/// Accessory-Initiated Action Frame Type for reverse ringing
+/// Accessory-Initiated Action Frame Type for reverse ringing (Table v2.8)
+#define ADV_RINGING_FRAME_TYPE  0x48
+/// Action type: start ringing
 #define ADV_RINGING_ACTION_TYPE 0x01
 
 /// Advertisement-based ringing state

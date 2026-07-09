@@ -23,6 +23,9 @@
 #ifdef CONFIG_DULT_ADV_SUPPORT
 #include "dult_adv.h"
 #endif
+#ifdef CONFIG_DULT_MOTION_DETECT
+#include "dult_ut.h"
+#endif
 
 LOG_MODULE_REGISTER(dult, CONFIG_ATM_DULT_LOG_LEVEL);
 
@@ -34,7 +37,7 @@ K_WORK_DELAYABLE_DEFINE(dult_read_id_timer, dult_dult_read_id_timer_handler);
 static dult_mode_t cur_no_mode;
 static dult_hdlrs_t const *dult_hdlrs;
 static dult_user_info_t const *dult_user_info;
-bool dult_enabled;
+static bool dult_enabled;
 
 // DULT Service Near Owner Response
 typedef struct ble_dult_no_resp_s {
@@ -194,6 +197,18 @@ static void dult_gatt_sound_play_complete_ind_send(struct k_work *work)
 }
 K_WORK_DEFINE(dult_gatt_sound_play_complete_ind, dult_gatt_sound_play_complete_ind_send);
 
+#ifdef CONFIG_DULT_MOTION_DETECT
+bool dult_is_gatt_sound_active(void)
+{
+	return k_work_delayable_busy_get(&dult_sound_play_timer);
+}
+
+bool dult_is_separated(void)
+{
+	return cur_no_mode == DULT_NO_MODE_SEPERATED;
+}
+#endif
+
 static void dult_sound_play_timer_handler(struct k_work *work)
 {
 	LOG_INF("DULT sound play timeout after %d seconds, stopping sound",
@@ -239,7 +254,7 @@ static void dult_dult_read_id_timer_handler(struct k_work *work)
 static void dult_read_id_update(bool en)
 {
 	if (en) {
-		LOG_INF("Enable Read ID in %d mimutes", DULT_READ_ID_INT_MIN);
+		LOG_INF("Enable Read ID in %d minutes", DULT_READ_ID_INT_MIN);
 		atm_work_reschedule_for_app_work_q(&dult_read_id_timer,
 						   K_MINUTES(DULT_READ_ID_INT_MIN));
 	} else {
@@ -332,6 +347,12 @@ static ssize_t dult_write_handler(struct bt_conn *conn, const struct bt_gatt_att
 	opcode = sys_get_le16(buf);
 	LOG_DBG("Received opcode: %" PRIu16 " (dult gatt write)", opcode);
 	LOG_DBG("cur_no_mode: %u", cur_no_mode);
+
+	if (!dult_user_info || !dult_hdlrs) {
+		LOG_WRN("DULT not initialized, rejecting write (opcode=0x%04x)", opcode);
+		return BT_GATT_ERR(BT_ATT_ERR_NOT_SUPPORTED);
+	}
+
 	if (cur_no_mode != DULT_NO_MODE_SEPERATED) {
 		LOG_WRN("Invalid near-owner state mode: mode=%u "
 			"(Accessory non-owner write)",
@@ -496,7 +517,7 @@ static ssize_t dult_write_handler(struct bt_conn *conn, const struct bt_gatt_att
 #ifdef CONFIG_DULT_ADV_SUPPORT
 static void dult_disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	LOG_DBG("DULT disconnected cur_no_mode %u", cur_no_mode);
+	LOG_INF("DULT disconnected cur_no_mode %u", cur_no_mode);
 	if (dult_enabled && (cur_no_mode == DULT_NO_MODE_SEPERATED)) {
 		// Only restart advertising if in separated mode (power saving)
 		dult_adv_enable(cur_no_mode);
@@ -519,6 +540,34 @@ void dult_deinit(void)
 {
 	k_work_cancel_delayable(&dult_sound_play_timer);
 	k_work_cancel_delayable(&dult_read_id_timer);
+#ifdef CONFIG_DULT_MOTION_DETECT
+	/* Per DULT spec: a BLE connection from an associated device MUST reset
+	 * the separated UT behavior.
+	 */
+	dult_ut_reset();
+#endif
+}
+
+static void dult_apply_mode(dult_mode_t mode)
+{
+	cur_no_mode = mode;
+	if (mode == DULT_NO_MODE_SEPERATED) {
+#ifdef CONFIG_DULT_MOTION_DETECT
+		dult_ut_enter_separated();
+#endif
+#ifdef CONFIG_DULT_ADV_SUPPORT
+		// Only advertise when separated from owner (for unwanted tracking detection)
+		dult_adv_enable(mode);
+#endif
+	} else {
+#ifdef CONFIG_DULT_MOTION_DETECT
+		dult_ut_reset();
+#endif
+#ifdef CONFIG_DULT_ADV_SUPPORT
+		// Stop advertising when near owner (save power)
+		dult_adv_disable();
+#endif
+	}
 }
 
 void dult_reset(void)
@@ -546,26 +595,17 @@ void dult_enable(bool en)
 
 	// When enabling DULT, start in SEPARATED mode by default
 	// The caller should use dult_mode_update() to set the correct mode
-	cur_no_mode = DULT_NO_MODE_SEPERATED;
-#ifdef CONFIG_DULT_ADV_SUPPORT
-	dult_adv_enable(cur_no_mode);
-#endif
+	dult_apply_mode(DULT_NO_MODE_SEPERATED);
 }
 
 void dult_mode_update(dult_mode_t mode)
 {
-	LOG_DBG("Update Near Owner mode from %u to %u", cur_no_mode, mode);
-	cur_no_mode = mode;
-#ifdef CONFIG_DULT_ADV_SUPPORT
-	if (mode == DULT_NO_MODE_SEPERATED) {
-		// Only advertise when separated from owner (for unwanted tracking detection)
-		dult_adv_enable(mode);
-	} else {
-		// Stop advertising when near owner (save power)
-		LOG_DBG("DULT Near Owner mode - disabling advertising to save power");
-		dult_adv_disable();
+	if (dult_enabled) {
+		LOG_WRN("Ignore Near Owner mode %u since dult enabled", mode);
+		return;
 	}
-#endif
+	LOG_DBG("Update Near Owner mode from %u to %u", cur_no_mode, mode);
+	dult_apply_mode(mode);
 }
 
 void dult_read_id_enable(void)
@@ -581,6 +621,9 @@ void dult_handlers_register(dult_hdlrs_t const *hdlrs, dult_user_info_t const *u
 {
 	dult_hdlrs = hdlrs;
 	dult_user_info = user_info;
+#ifdef CONFIG_DULT_MOTION_DETECT
+	dult_ut_set_hdlrs(hdlrs);
+#endif
 #ifdef CONFIG_DULT_ADV_SUPPORT
 	dult_adv_bt_id_set(bt_id);
 #endif

@@ -38,6 +38,8 @@ class AtmSettingsInfo:
     factory_data_start: str = None
     factory_data_size: str = None
     erase_block_size: str = None
+    rram_start: str = None
+    rram_size: str = None
 
 
 class AtmZsgCommand(WestCommand):
@@ -56,6 +58,8 @@ class AtmZsgCommand(WestCommand):
         self.zsg_full_path = None
         self.openocd = None
         self.part_type = None
+        self.rram_start = None
+        self.rram_size = None
 
     def create_default_subparser(self, subparsers, subcmd_str, help_str):
         """adds subparser with default arguments.
@@ -214,8 +218,8 @@ class AtmZsgCommand(WestCommand):
                 f"{exc.stderr}"
             ) from exc
 
-    def pull_subsystem_data(self, args):
-        """Pulls subsystem data from device"""
+    def dump_flash_data(self, args):
+        """Pulls subsystem data from flash"""
         try:
             self.openocd.reset_target()
             cmd_ret, _, stderr = self.openocd.execute_cmd(
@@ -228,7 +232,24 @@ class AtmZsgCommand(WestCommand):
                 print(f"{stderr}")
             return cmd_ret
         except RuntimeError as exc:
-            print(f"Execute pull_subsystem_data failed: {exc}")
+            print(f"Execute dump_flash_data failed: {exc}")
+            sys.exit(1)
+
+    def dump_rram_data(self, args):
+        """Pulls subsystem data from RRAM"""
+        try:
+            self.openocd.reset_target()
+            cmd_ret, _, stderr = self.openocd.execute_cmd(
+                [
+                    f"atm_dump_nvds {args.output_file} {self.part_start} "
+                    f"{self.part_size}"
+                ]
+            )
+            if cmd_ret != 0:
+                print(f"{stderr}")
+            return cmd_ret
+        except RuntimeError as exc:
+            print(f"Execute dump_rram_data failed: {exc}")
             sys.exit(1)
 
     def parse_settings_info(self, filename):
@@ -248,6 +269,10 @@ class AtmZsgCommand(WestCommand):
                     info.factory_data_start = value
                 elif key == "FACTORY_DATA_SIZE":
                     info.factory_data_size = value
+                elif key == "RRAM_START":
+                    info.rram_start = value
+                elif key == "RRAM_SIZE":
+                    info.rram_size = value
                 elif key == "ERASE_BLOCK_SIZE":
                     info.erase_block_size = value
         return info
@@ -261,6 +286,13 @@ class AtmZsgCommand(WestCommand):
         # Get partition info
         info = self.parse_settings_info(args.partition_file)
         self.part_sector_size = int(info.erase_block_size, 16)
+
+        # Store RRAM information for automatic detection
+        if info.rram_start is not None:
+            self.rram_start = int(info.rram_start, 0)  # Support hex (0x) and decimal
+        if info.rram_size is not None:
+            self.rram_size = int(info.rram_size, 0)  # Support hex (0x) and decimal
+
         if "settings" in args.partition_type.lower():
             if (
                 info.storage_data_start is not None
@@ -361,15 +393,23 @@ class AtmZsgCommand(WestCommand):
                 zephyr_sdk_dir = os.environ.get("ZEPHYR_SDK_INSTALL_DIR")
                 if zephyr_sdk_dir and os.path.exists(zephyr_sdk_dir):
                     objcopy_name = (
-                        "objcopy.exe" if sys.platform == "win32" else "objcopy"
+                        "arm-zephyr-eabi-objcopy.exe"
+                        if sys.platform == "win32"
+                        else "arm-zephyr-eabi-objcopy"
                     )
-                    objcopy_file = os.path.join(
-                        zephyr_sdk_dir,
-                        "arm-zephyr-eabi",
-                        "arm-zephyr-eabi",
-                        "bin",
-                        objcopy_name,
-                    )
+                    # Newer Zephyr SDKs nest the toolchain under "gnu/";
+                    # older layouts have it at the SDK root.
+                    for sdk_subdir in ("gnu", ""):
+                        candidate = os.path.join(
+                            zephyr_sdk_dir,
+                            sdk_subdir,
+                            "arm-zephyr-eabi",
+                            "bin",
+                            objcopy_name,
+                        )
+                        if os.path.exists(candidate):
+                            objcopy_file = candidate
+                            break
 
             # Verify objcopy_file exists
             print(f"objcopy file path = {objcopy_file}")
@@ -464,7 +504,23 @@ class AtmZsgCommand(WestCommand):
         except Exception:  # pylint: disable=broad-exception-caught
             print("Invalid configuration. Please use supported device")
             sys.exit(1)
-        self.pull_subsystem_data(args)
+
+        # Automatically detect storage type based on address range
+        use_rram = False
+        if self.rram_start is not None and self.rram_size is not None:
+            # Convert part_start to int for comparison
+            part_start_int = int(self.part_start, 0)  # Support hex (0x) and decimal
+            part_end = part_start_int + self.part_size
+            rram_end = self.rram_start + self.rram_size
+
+            # Check if partition is within RRAM range
+            if part_start_int >= self.rram_start and part_end <= rram_end:
+                use_rram = True
+
+        if use_rram:
+            self.dump_rram_data(args)
+        else:
+            self.dump_flash_data(args)
 
     def scan(self, args):
         """lists all ATEs with validity

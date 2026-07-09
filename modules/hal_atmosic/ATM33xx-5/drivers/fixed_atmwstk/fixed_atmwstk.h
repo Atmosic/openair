@@ -5,7 +5,7 @@
  *
  * @brief Application support for separate wireless stack image
  *
- * Copyright (C) Atmosic 2021-2025
+ * Copyright (C) Atmosic 2021-2026
  *
  *******************************************************************************
  */
@@ -19,6 +19,7 @@
  * @{
  */
 
+#include <stdint.h>
 #include <stdio.h>
 
 #ifdef __cplusplus

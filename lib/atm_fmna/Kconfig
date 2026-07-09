@@ -23,22 +23,15 @@ config ATM_FMNA_LIB
 	select ATM_UECC_SUPPORT_POINT_ADD
 	select ATM_UECC_SUPPORTS_SECP224R1
 	select ATM_UECC_SUPPORTS_SECP256R1
-	select DIRECT_UECC_INTERFACE
 	select ENTROPY_ATM_TRNG
 	select ENTROPY_GENERATOR
 	select MBEDTLS
-	select MBEDTLS_CIPHER
-	select MBEDTLS_CIPHER_AES_ENABLED
-	select MBEDTLS_CIPHER_GCM_ENABLED
-	select MBEDTLS_ECDH_C
-	select MBEDTLS_ECDSA_C
-	# MBEDTLS_ECDH_C requires MBEDTLS_ECP_C
-	select MBEDTLS_ECP_C
-	# MBEDTLS_ECP_C requires at lease one of ECP enabled
-	select MBEDTLS_ECP_DP_SECP224R1_ENABLED
-	select MBEDTLS_ECP_DP_SECP256R1_ENABLED
-	select MBEDTLS_MD
-	select MBEDTLS_SHA256
+	select MBEDTLS_PSA_CRYPTO_C
+	select PSA_WANT_KEY_TYPE_AES
+	select PSA_WANT_ALG_GCM
+	select PSA_WANT_ALG_SHA_256
+	select PSA_WANT_ALG_HMAC
+	select PSA_WANT_KEY_TYPE_HMAC
 
 config ATM_FMNA_LIB_DEBUG
 	bool "Atmosic FMNA static library enable debug log"
@@ -49,4 +42,9 @@ config USE_UARP
 	bool "OTA with Apple UARP"
 	select STREAM_FLASH
 	select IMG_MANAGER
+	select ATM_VENDOR_DFU
 	depends on BOOTLOADER_MCUBOOT
+	help
+	  Enable Apple UARP-based OTA. Routes all incoming firmware bytes
+	  through the shared atm_vendor_dfu helper, which transparently
+	  handles single-image and dual-image (ATMX-tagged) MCUboot layouts.

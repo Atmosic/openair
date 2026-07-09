@@ -17,7 +17,7 @@
 #include "../subsys/settings/src/settings_priv.h"
 
 #if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
-#define FACTORY_PARTITION FIXED_PARTITION_ID(factory_partition)
+#define FACTORY_PARTITION PARTITION_ID(factory_partition)
 #endif
 
 static bool atm_settings_subsys_initialized;

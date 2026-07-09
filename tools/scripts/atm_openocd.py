@@ -74,38 +74,34 @@ def get_atm_openocd():
     return (openocd, openocd_search)
 
 
-def get_openocd_config_from_board_dir(board_dir):
-    """Get OpenOCD configuration path for a specific board directory
+def get_openocd_config_from_board_dirs(board_dirs):
+    """Get OpenOCD configuration path for one or more board directories.
 
-    This function looks for a runner_config.yml file in the board directory
-    and returns the openocd_config value from it.
+    Looks for a ``runner_config.yml`` file in any of ``board_dirs``
 
     Args:
-        board_dir: Board configuration directory
+        board_dirs: Board configuration directories
 
     Returns:
         Path to the OpenOCD config file, or None if not found
     """
-    runner_config_file = Path(board_dir) / "runner_config.yml"
-    with runner_config_file.open("r", encoding="utf-8") as f:
-        config = yaml.load(f.read(), Loader=yaml.SafeLoader)
 
-    # Get and expand the openocd_config value
-    return config.get("openocd_config").replace("ZEPHYR_BASE", str(ZEPHYR_BASE))
+    for board_dir in board_dirs:
+        runner_config_file = Path(board_dir) / "runner_config.yml"
+        try:
+            with runner_config_file.open("r", encoding="utf-8") as f:
+                config = yaml.load(f.read(), Loader=yaml.SafeLoader)
+        except FileNotFoundError:
+            continue
+        return config.get("openocd_config").replace("ZEPHYR_BASE", str(ZEPHYR_BASE))
 
 
-def get_board_dir_from_board(board_name):
-    """Get board directory for a specific board.
+def get_board_dirs_from_board(board_name):
+    """Get all board configuration directories for a board.
 
-    This function looks for the board directory for a given board. It follows the
-    same logic as the `west boards` command implemented in
-    zephyr/scripts/west_commands/boards.py.
-
-    Args:
-        board_name: Name of the board
-
-    Returns:
-        Board configuration directory
+    Returns the full list of directories Zephyr associates with the board,
+    including any contributed by ``extend:`` entries in sibling ``board.yml``
+    files (see ``zephyr/scripts/list_boards.py``).
     """
     args = argparse.Namespace(
         board=board_name,
@@ -132,7 +128,7 @@ def get_board_dir_from_board(board_name):
     args.soc_roots += module_settings["soc_root"]
 
     boards = list_boards.find_v2_boards(args)
-    return boards[board_name].directories[0]
+    return boards[board_name].directories
 
 
 class AtmOpenOCD:
@@ -166,8 +162,8 @@ class AtmOpenOCD:
 
         # If openocd_cfg not provided, try to infer it from the board
         if openocd_cfg is None and board is not None:
-            board_dir = get_board_dir_from_board(board)
-            openocd_cfg = get_openocd_config_from_board_dir(board_dir)
+            board_dirs = get_board_dirs_from_board(board)
+            openocd_cfg = get_openocd_config_from_board_dirs(board_dirs)
             if openocd_cfg:
                 print(f"Inferred OpenOCD config for board '{board}': {openocd_cfg}")
 
@@ -201,8 +197,8 @@ class AtmOpenOCD:
             + ["-f", self.openocd_cfg]
         )
 
-    def execute_cmd(self, cmds, env_var={}):
-        """Executes openocd command on device
+    def execute_cmd_raw(self, cmds, env_var=None):
+        """Executes openocd command on device exactly
         Args:
             cmd (List[str]): open ocd command to run
             env_var (optional): dictionary of environmental commands to add to cmd
@@ -211,12 +207,13 @@ class AtmOpenOCD:
             Tuple(returncode, stdout and stderr) of command
         """
         exec_env = dict(self.env_dict)
-        exec_env.update(env_var)
+        if env_var:
+            exec_env.update(env_var)
         openocd_cmds = ["-c " + s for s in cmds]
 
         with _temp_environ(exec_env):
             call = subprocess.run(
-                self.base_cmd + ["-c init"] + openocd_cmds + ["-c exit"],
+                self.base_cmd + openocd_cmds,
                 check=False,
                 capture_output=True,
                 text=True,
@@ -224,13 +221,28 @@ class AtmOpenOCD:
 
         return (call.returncode, call.stdout, call.stderr)
 
+    def execute_cmd(self, cmds, env_var=None):
+        """Executes openocd command on device
+
+        This function automatically includes 'init' at the start of the command
+        set, and 'exit' at the end.
+
+        Args:
+            cmd (List[str]): open ocd command to run
+            env_var (optional): dictionary of environmental commands to add to cmd
+
+        Returns:
+            Tuple(returncode, stdout and stderr) of command
+        """
+        return self.execute_cmd_raw(["init"] + cmds + ["exit"], env_var)
+
     def reset_target(self):
         """Issues `reset_target` on device
         Args:
             device (str): device jlink serial
             base_openocd_cmd (str): base openocd command
         """
-        return self.execute_cmd(
-            ["release_reset", "sleep 100", "set_normal_boot"],
+        return self.execute_cmd_raw(
+            ["init_rr_nb_exit"],
             env_var={"FTDI_BENIGN_BOOT": "1", "FTDI_HARD_RESET": "1"},
         )

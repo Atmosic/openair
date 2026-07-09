@@ -17,6 +17,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
+#include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt_callbacks.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/bluetooth/bluetooth.h>
@@ -24,6 +25,7 @@
 #include <zephyr/drivers/reset.h>
 #include "platform_ctrl_ota.h"
 #include "platform_ctrl_led.h"
+#include "platform.h"
 
 LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
 
@@ -128,6 +130,21 @@ static struct mgmt_callback mgmt_event_callback = {
 	.event_id = MGMT_EVT_OP_CMD_RECV,
 };
 
+static enum mgmt_cb_return mgmt_dfu_pending_callback(uint32_t event,
+						     enum mgmt_cb_return prev_status, int32_t *rc,
+						     uint16_t *group, bool *abort_more, void *data,
+						     size_t data_size)
+{
+	LOG_INF("OTA DFU image upload complete, pending reboot");
+	platform_indicate_state(TAG_IND_STATE_OTA_COMPLETE, platform_tag_supported_mode_mask_get());
+	return MGMT_CB_OK;
+}
+
+static struct mgmt_callback mgmt_dfu_pending_cb = {
+	.callback = mgmt_dfu_pending_callback,
+	.event_id = MGMT_EVT_OP_IMG_MGMT_DFU_PENDING,
+};
+
 #ifndef CONFIG_MCUBOOT_BOOTLOADER_MODE_OVERWRITE_ONLY
 static void confirm_img_delay_work_cb(struct k_work *work)
 {
@@ -144,6 +161,8 @@ static void confirm_img_delay_work_cb(struct k_work *work)
 			LOG_ERR("Failed to confirm image%d: %d", i, err);
 		} else {
 			LOG_INF("Image%d confirmed successfully", i);
+			platform_indicate_state(TAG_IND_STATE_OTA_CONFIRMED,
+						platform_tag_supported_mode_mask_get());
 		}
 	}
 }
@@ -157,6 +176,7 @@ bool platform_ctrl_ota_init(void)
 	k_work_schedule(&confirm_img_delay_work, K_SECONDS(IMAGE_CONFIRM_DELAY_SEC));
 #endif
 	mgmt_callback_register(&mgmt_event_callback);
+	mgmt_callback_register(&mgmt_dfu_pending_cb);
 
 	/* Settings are already loaded by settings_load() in main() */
 	/* Just check if OTA mode is active and start advertising if needed */
@@ -205,7 +225,7 @@ void platform_ctrl_ota_enter(void)
 	/* Trigger system reboot */
 	LOG_INF("Rebooting into OTA mode...");
 	log_flush();
-	sys_reboot(SYS_REBOOT_WARM);
+	sys_reboot(SYS_REBOOT_COLD);
 
 	/* Should never reach here */
 	CODE_UNREACHABLE;

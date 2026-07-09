@@ -1,0 +1,847 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+menuconfig AT_CMD_SET
+	bool "Atmosic AT Command Set"
+	depends on ATM_AT_CMD
+	depends on BT
+	help
+	  Enable Atmosic AT Command Set library which provides
+	  BLE-related AT commands using Zephyr BLE APIs.
+
+if AT_CMD_SET
+
+module = AT_CMD_SET
+module-str = AT Command Set
+source "subsys/logging/Kconfig.template.log_config"
+
+config AT_CMD_SET_CALLBACKS
+	bool "AT Command Set callback registration"
+	default y
+	help
+	  Enable callback registration support for AT command set features
+	  that require application-provided handlers. This allows commands to
+	  register and invoke callbacks for extended functionality.
+
+config AT_CMD_SET_EVENTS
+	bool "AT Command Set event system"
+	default y
+	select APP_WORK_Q
+	help
+	  Enable event system with shared app work queue for asynchronous event
+	  processing. Multiple event handlers can use the same work queue for
+	  handling AT command-triggered events.
+	  Automatically selects APP_WORK_Q.
+
+config ATM_AT_CMDTEST
+	bool "Atmosic AT command test commands"
+	select AT_EVT_CB_TEST
+	help
+	  Enable AT command test suite including TESTCMD (basic test),
+	  TESTEVENT (event system test), and TESTCBEVT (callback and event test).
+
+config AT_EVT_CB_TEST
+	bool "AT event and callback test"
+	select AT_CMD_SET_EVENTS
+	select AT_CMD_SET_CALLBACKS
+	help
+	  Enable TESTEVENT and TESTCBEVT test commands for demonstrating
+	  the event system and callback registration framework.
+
+if AT_CMD_SET_EVENTS
+
+config AT_CMD_EVT_DATA_MAX_LEN
+	int "Maximum event data length"
+	range 1 AT_CMD_RESP_LEN
+	default 249 if AT_CMD_GATT_CLIENT
+	default 64
+	help
+	  Maximum size of event data that can be passed to event handlers.
+	  When AT_CMD_GATT_CLIENT is enabled the minimum required size is
+	  5 + AT_CMD_GATT_CLIENT_RD_MAX_LEN (header + payload).
+
+endif # AT_CMD_SET_EVENTS
+
+config AT_CMD_PERIPHERAL
+	bool "Peripheral AT commands"
+	select BT_PERIPHERAL
+	help
+	  Enable AT commands for peripheral role.
+
+config AT_CMD_CENTRAL
+	bool "Central AT commands"
+	select BT_CENTRAL
+	select BT_OBSERVER
+	help
+	  Enable AT commands for central and observer roles.
+
+config AT_CMD_ADV_MAX_INST
+	int "Maximum number of advertising instances"
+	default 1
+	range 1 2
+	help
+	  Set the maximum number of advertising instances supported.
+	  Note that this should be equal to or less than the number of advertising sets
+	  supported by the Bluetooth controller.(see Kconfig:BT_EXT_ADV_MAX_ADV_SET).
+
+config AT_CMD_BLEADVENABLE
+	bool "BLE advertising enable/disable"
+	default y if AT_CMD_PERIPHERAL
+
+config AT_CMD_BLEADVDATA
+	bool "BLE advertising data"
+	default y if AT_CMD_PERIPHERAL
+
+config AT_CMD_BLEADVSETID
+	bool "BLE advertising set ID"
+	default y if AT_CMD_PERIPHERAL
+
+config AT_CMD_BLEEXTADVPARM
+	bool "BLE extended advertising parameters"
+	default y if AT_CMD_PERIPHERAL
+	select BT_EXT_ADV
+
+config AT_CMD_BLEADVTXPWR
+	bool "BLE advertising TX power"
+	default y if AT_CMD_PERIPHERAL
+
+config AT_CMD_BLEADVLEGACYPARM
+	bool "BLE legacy advertising parameters"
+	default y if AT_CMD_PERIPHERAL
+
+config AT_CMD_BLESCANRSPDATA
+	bool "BLE scan response data"
+	default y if AT_CMD_PERIPHERAL
+
+config AT_CMD_BLESCANENABLE
+	bool "BLE scan enable/disable"
+	default y if AT_CMD_CENTRAL
+
+config AT_CMD_BLESCANFILMAC
+	bool "BLE scan MAC address filter (controller Filter Accept List)"
+	default y if AT_CMD_CENTRAL
+	depends on AT_CMD_BLESCANENABLE
+	select BT_FILTER_ACCEPT_LIST
+
+config AT_CMD_BLESCANFILRSSI
+	bool "BLE scan RSSI filter (host-side software filter)"
+	default y if AT_CMD_CENTRAL
+	depends on AT_CMD_BLESCANENABLE
+
+config AT_CMD_BLESCANFILRSSI_LOG_WINDOW_MS
+	int "RSSI drop log window (ms)"
+	default 1000
+	range 1000 3000
+	depends on AT_CMD_BLESCANFILRSSI
+	help
+	  Interval in milliseconds over which filtered-out (below-threshold)
+	  advertisement reports are counted before the count is logged.
+	  Valid range is 1000–3000 ms.
+
+config AT_CMD_BLEGAPCREATECONN
+	bool "Enable BLE central create-connection"
+	default y if AT_CMD_CENTRAL
+	depends on AT_CMD_BLESCANENABLE
+	select AT_CMD_BLEGAPCANCELCREATECONN
+	select AT_CMD_SET_CONN_TRACKING
+	imply AT_CMD_BLEGAPDISCONNECT
+
+config AT_CMD_BLEGAPCANCELCREATECONN
+	bool "Enable cancellation of a pending BLE central connection initiation"
+	depends on AT_CMD_BLEGAPCREATECONN
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Calls bt_conn_le_create_cancel() and rejects the command with
+	  AT_ERR_BLE_EINVAL when no connection creation is in progress.
+
+config AT_CMD_BLEGAPDEVNAME
+	bool "BLE GAP device name set/query"
+	default y if AT_CMD_PERIPHERAL
+	select BT_DEVICE_NAME_DYNAMIC
+	help
+	  Calls bt_set_name() to set and bt_get_name() to read the Bluetooth
+	  GAP device name. Maximum name length is CONFIG_BT_DEVICE_NAME_MAX
+	  bytes. The advertising data is not refreshed automatically; restart
+	  advertising (or update adv/scan-response data) to expose the new
+	  name to scanners. When CONFIG_BT_SETTINGS is enabled the name is
+	  persisted across reboots.
+
+config AT_CMD_BLEGAPDISCONNECT
+	bool "Enable BLE disconnect"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Works for both central and peripheral roles. Cancels a pending connection
+	  initiation or disconnects an established connection by connection index.
+
+config AT_CMD_BLEGAPGETCONNSTAT
+	bool "Enable BLE connection status query"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Returns role, peer address, connection interval, latency and supervision
+	  timeout for a tracked connection slot.
+
+config AT_CMD_BLECONNTXPWR
+	bool "Enable BLE connection TX power setting"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	imply ATM_VENDOR_API
+	imply VND_API_SET_CON_TX_POWER
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Sets the transmit
+	  power for a specific active connection slot using the Atmosic vendor API
+	  (CONFIG_VND_API_SET_CON_TX_POWER). Supported dBm values are -20, -10, -8,
+	  -6, -4, -2, 0, 2, 4, 6, 8, and 10 dBm; the RF driver selects the closest
+	  available level.
+
+config AT_CMD_BLEGAPGETPEERINFO
+	bool "Enable BLE peer information query"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Returns the peer identity address type, peer identity address, security
+	  level and encryption key size for a tracked connection slot.
+
+config AT_CMD_BLEGAPGETRSSI
+	bool "Enable BLE connection RSSI query"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Issues an HCI Read RSSI command for the tracked connection slot and
+	  returns the received signal strength in dBm as a signed byte.
+
+config AT_CMD_BLEGAPPARNEGO
+	bool "Enable BLE connection parameter negotiation"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Calls bt_conn_le_param_update() to request a BLE connection parameter
+	  update for a tracked connection slot. The peer may accept or reject the
+	  new interval, latency, and supervision timeout values. Interval values
+	  are expressed in 1.25 ms units; the supervision timeout is in 10 ms
+	  units. The command returns ERR with AT_ERR_BLE_EINVAL when the
+	  connection index is not found, or with the mapped errno when the
+	  Zephyr API rejects the request (e.g. EINVAL for out-of-range params).
+
+config AT_CMD_BLEGATTMTUEXCHGREQ
+	bool "Enable BLE GATT MTU exchange request"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_CONN_TRACKING
+	select BT_GATT_CLIENT
+	help
+	  Calls bt_gatt_exchange_mtu() on the specified active connection to
+	  initiate an ATT MTU exchange with the peer. Can only be issued once
+	  per connection (returns AT_ERR_BLE_EALREADY if already performed).
+	  The negotiated MTU is reported asynchronously via the
+	  +EVTBLEGATTMTUEXCHANGE event when CONFIG_AT_EVT_BLEGATTMTUEXCHANGE
+	  is enabled.
+
+config AT_CMD_BLEGATTMTUGET
+	bool "Enable BLE GATT MTU query"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Returns the current unenhanced ATT (UATT) MTU for the specified
+	  active connection slot by calling bt_gatt_get_uatt_mtu(). The MTU
+	  reflects the value negotiated during the ATT MTU exchange procedure.
+
+config AT_CMD_SET_CONN_TRACKING
+	bool
+	help
+	  Automatically enabled when any command that requires the connection
+	  tracking array (conns[], conn_count) is selected.
+
+config AT_CMD_BLESMPPAIRREQ
+	bool "Enable BLE SMP pair request"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select BT_SMP
+	select BT_BONDABLE_PER_CONNECTION
+	select AT_CMD_SET_CONN_TRACKING
+	select AT_CMD_SET_SMP_AUTH
+	help
+	  Initiates BLE SMP pairing with configurable IO capability, OOB flag,
+	  bond flag and security level. Calls bt_conn_auth_cb_overlay() to
+	  install per-connection authentication callbacks, bt_conn_set_bondable()
+	  to control the SMP bonding bit per-connection, and bt_conn_set_security()
+	  to start the pairing procedure.
+
+config AT_CMD_BLESMPPASSKEY
+	bool "Enable BLE SMP passkey entry response"
+	default y if AT_CMD_BLESMPPAIRREQ
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Reply to a passkey entry indication by entering the passkey shown on
+	  the peer device. Calls bt_conn_auth_passkey_entry().
+
+config AT_CMD_BLESMPCONFIRM
+	bool "Enable BLE SMP numeric comparison confirm"
+	default y if AT_CMD_BLESMPPAIRREQ
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Reply to a numeric comparison indication by confirming (accept=1) or
+	  rejecting (accept=0) the displayed number. Calls
+	  bt_conn_auth_passkey_confirm() or bt_conn_auth_cancel().
+
+config AT_CMD_SET_SMP_AUTH
+	bool
+	select AT_CMD_SET_EVENTS
+	help
+	  Automatically enabled when the SMP pair request command is selected.
+	  Registers the global bt_conn_auth_info_cb and provides the pre-built
+	  per-io_cap bt_conn_auth_cb tables.
+
+config AT_CMD_SYSBDADDR
+	bool "BLE device address query and non-default identity set"
+	default y
+	help
+	  Setting a non-default identity requires CONFIG_BT_ID_MAX > 1.
+
+config AT_CMD_SYSFUNCPIN
+	bool "System function pin (GPIO control and interrupt event)"
+	select AT_CMD_SET_EVENTS
+	select GPIO
+	help
+	  Configure a GPIO pin as input (with interrupt event notification via
+	  +EVTSYSFUNCPIN) or as a driven output. Requires CONFIG_GPIO.
+	  Automatically selects AT_CMD_SET_EVENTS because the interrupt
+	  notification uses the asynchronous event system.
+
+config AT_CMD_SYSPM
+	bool "System power mode (hibernation)"
+	select PM
+	select GPIO
+	help
+	  Enter the device into a low-power state. Currently supports hibernation
+	  mode (mode=1) with a configurable GPIO wakeup pin and polarity.
+	  Requires CONFIG_PM and CONFIG_GPIO.
+
+config AT_CMD_SYSUARTBR
+	bool "System UART baud rate change"
+	select UART_USE_RUNTIME_CONFIGURE
+	help
+	  Change the console UART baud rate at runtime with a configurable
+	  deferred-apply delay (in centiseconds). Valid baud rates: 19200, 38400,
+	  57600, 115200, 230400, 460800.
+	  Automatically selects CONFIG_UART_USE_RUNTIME_CONFIGURE.
+
+config AT_CMD_SYSUARTFC
+	bool "System UART flow control change"
+	select UART_USE_RUNTIME_CONFIGURE
+	help
+	  Enable or disable RTS/CTS hardware flow control on the console UART at
+	  runtime. action=0 disables flow control, action=1 enables RTS/CTS.
+	  Automatically selects CONFIG_UART_USE_RUNTIME_CONFIGURE.
+
+config AT_CMD_SYSUARTRAW
+	bool "Transparent UART raw data bridge (BLE GATT)"
+	depends on BT_CONN
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Bounded single-shot raw data transfer between UART and a connected BLE
+	  peer. The att_idx parameter identifies an existing GATT attribute handle
+	  in the application's GATT server — no separate service is registered.
+	  direction=0 (UART->BLE): the UART ISR feeds bytes via
+	  at_cmd_sysuartraw_rx_byte(); exactly <length> bytes are forwarded to the
+	  peer via bt_gatt_notify() on the specified attribute handle.
+	  direction=1 (BLE->UART): the application GATT write handler calls
+	  at_cmd_sysuartraw_rx_ble_data() to forward data to the UART output.
+	  The system returns to AT command mode automatically after <length> bytes.
+	  Automatically selects AT_CMD_SET_CONN_TRACKING.
+
+config AT_CMD_SYSUARTRAW_BUF_SIZE
+	int "UART raw bridge ring buffer size (bytes)"
+	depends on AT_CMD_SYSUARTRAW
+	range 32 4096
+	default 256
+	help
+	  Size of the ring buffer used to transfer bytes from the UART ISR to
+	  the BLE transmission work queue. Larger values reduce the risk of data
+	  loss when bursts arrive faster than BLE can drain them.
+
+config AT_CMD_SYSRESET
+	bool "System reset"
+	default y
+
+config AT_CMD_SYSSTORAGE
+	bool "System storage ready/query and key/value get/save"
+	depends on SETTINGS
+	default y if SETTINGS
+	help
+	  The application must provide a settings backend (for example
+	  SETTINGS_NVS with the required flash support).
+	  Enable BT_SETTINGS separately if Bluetooth state persistence is desired.
+
+config AT_CMD_SYSDFU
+	bool "Enable serial DFU commands"
+	depends on ATM_VENDOR_DFU
+	select CRC
+	help
+	  Initiate a serial firmware update over the AT command UART and commit
+	  the staged image and reboot into it. Parameters: <type>, <length>,
+	  <crc_en> for the DFU command.
+
+	  The application UART driver must route incoming bytes through
+	  at_cmd_sysdfu_feed_byte() while at_cmd_sysdfu_is_active() is true.
+
+config AT_CMD_SYSMKBANKGOOD
+	bool "Confirm running MCUboot image to prevent revert"
+	depends on BOOTLOADER_MCUBOOT
+	help
+	  Confirms the currently-running MCUboot image (calling
+	  boot_write_img_confirmed_multi for all images pending revert), so
+	  MCUboot does not roll back to the previous image on the next reboot.
+
+config AT_EVT_BLEGAPADVRPT
+	bool "BLE advertising report event"
+	default y if AT_CMD_CENTRAL
+	depends on AT_CMD_BLESCANENABLE
+	select AT_CMD_SET_EVENTS
+
+config AT_EVT_BLEGAPCONN
+	bool "Enable BLE connection established event"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_CONN_TRACKING
+
+config AT_EVT_BLEGAPDISCONN
+	bool "Enable BLE disconnection event"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_CONN_TRACKING
+
+config AT_EVT_BLEGAPLINKINFO
+	bool "Enable BLE remote link info event"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_EVENTS
+	select BT_REMOTE_INFO
+	depends on AT_CMD_SET_CONN_TRACKING
+	help
+	  Requires CONFIG_BT_REMOTE_INFO (selected automatically).
+
+config AT_EVT_BLEGAPPAR
+	bool "Enable BLE connection parameter update event"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_CONN_TRACKING
+
+config AT_EVT_BLEGATTMTUEXCHANGE
+	bool "Enable BLE GATT MTU exchange event"
+	default y if AT_CMD_CENTRAL || AT_CMD_PERIPHERAL
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_CONN_TRACKING
+	help
+	  Emits a +EVTBLEGATTMTUEXCHANGE:<conn_idx>,<mtu> unsolicited event
+	  whenever the ATT MTU for an active connection is updated. Registers
+	  a bt_gatt_cb callback to receive att_mtu_updated notifications from
+	  the Zephyr Bluetooth stack. The <mtu> field reflects the TX ATT MTU
+	  (the effective maximum payload size for outgoing ATT PDUs).
+
+config AT_EVT_BLEGATTMTUEXCHGREQ
+	bool "Enable BLE GATT MTU exchange request result event"
+	default y if AT_CMD_BLEGATTMTUEXCHGREQ
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_CONN_TRACKING
+	help
+	  Emits a +EVTBLEGATTMTUEXCHGREQ:<conn_idx>,<err> unsolicited event
+	  when the ATT MTU exchange procedure initiated by AT+BLEGATTMTUEXCHGREQ
+	  completes. <err> is 0 on success or an ATT/HCI error code on failure.
+	  This event is always emitted (success or failure), enabling the host to
+	  detect cases where att_mtu_updated is not called due to an error.
+
+config AT_CMD_GATT_CLIENT
+	bool "BLE GATT client"
+	default y if AT_CMD_CENTRAL
+	select BT_GATT_CLIENT
+	select AT_CMD_SET_EVENTS
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Enable GATT client infrastructure (context tracking, discovery/read/write
+	  callbacks, and subscribe pool). Required by all AT+BLEGATTDISC*,
+	  AT+BLEGATTRD, AT+BLEGATTWR, and AT+BLEGATTWRWO commands.
+
+config AT_CMD_GATT_CLIENT_RD_MAX_LEN
+	int "GATT client maximum read/write/notify data length"
+	default 244
+	range 1 512
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Maximum number of bytes buffered for a single GATT read response,
+	  write request payload, or notification/indication payload. Also
+	  used as the upper bound in AT command format strings.
+
+config AT_CMD_GATT_CLIENT_SUBS_MAX
+	int "Maximum subscribe slots per connection"
+	default 4
+	range 1 32
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Number of concurrent bt_gatt_subscribe_params entries available
+	  per connection for +BLEGATTNOTI / +BLEGATTINDI.
+
+config AT_CMD_BLEGATTDISCCHAR
+	bool "BLE GATT discover characteristic by UUID"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Discover characteristic by UUID within the entire attribute range.
+
+config AT_CMD_BLEGATTDISCCHARS
+	bool "BLE GATT discover all characteristics"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Discover all characteristics within a handle range.
+
+config AT_CMD_BLEGATTDISCDESCS
+	bool "BLE GATT discover all descriptors"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Discover all descriptors within a handle range.
+
+config AT_CMD_BLEGATTDISCSVC
+	bool "BLE GATT discover service by UUID"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Discover service by UUID within the entire attribute range.
+
+config AT_CMD_BLEGATTDISCSVCS
+	bool "BLE GATT discover all primary services"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Discover all primary services within a handle range.
+
+config AT_CMD_BLEGATTRD
+	bool "BLE GATT read characteristic value"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Read characteristic value with optional offset.
+
+config AT_CMD_BLEGATTWR
+	bool "BLE GATT write characteristic value (with response)"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Write characteristic value with response.
+
+config AT_CMD_BLEGATTWRCCCD
+	bool "BLE GATT write CCCD (subscribe/unsubscribe)"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Subscribe/unsubscribe from notifications/indications. Parameters:
+	  conn_idx, value_handle, ccc_handle, ccc_value (1=notify, 2=indicate, 0=disable).
+
+config AT_CMD_BLEGATTWRWO
+	bool "BLE GATT write characteristic value (without response)"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	help
+	  Write characteristic value without response (write command).
+
+config AT_EVT_BLEGATTINDI
+	bool "BLE GATT indication received event"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	select AT_CMD_SET_EVENTS
+
+config AT_EVT_BLEGATTNOTI
+	bool "BLE GATT notification received event"
+	default y if AT_CMD_GATT_CLIENT
+	depends on AT_CMD_GATT_CLIENT
+	select AT_CMD_SET_EVENTS
+
+config AT_CMD_GATT_DFT_SERVER
+	bool "BLE GATT default server"
+	default y if AT_CMD_PERIPHERAL
+	select BT_GATT_DYNAMIC_DB
+	select SETTINGS
+	select AT_CMD_SET_EVENTS
+	select AT_CMD_SET_CONN_TRACKING
+	select BT_GATT_SERVICE_CHANGED
+	help
+	  Enable default GATT server with predefined Service and Characteristics.
+	  Supports dynamic registration/unregistration without reboot.
+	  Requires BT_GATT_DYNAMIC_DB, SETTINGS, and connection tracking.
+
+config AT_CMD_BLEGATTDFTSERVER
+	bool "BLE GATT default server enable/disable"
+	depends on AT_CMD_GATT_DFT_SERVER
+	default y
+	help
+	  Activate or deactivate the default GATT server.
+
+config AT_CMD_BLEGATTDFTSERVICE
+	bool "BLE GATT default service configuration"
+	depends on AT_CMD_GATT_DFT_SERVER
+	default y
+	help
+	  Set Service UUID and security properties. Per BLE spec, Service
+	  Declaration is read-only; only READ-type permission bits
+	  (BT_GATT_PERM_READ, READ_ENCRYPT, READ_AUTHEN, READ_LESC) are
+	  accepted. WRITE bits are rejected.
+
+config AT_CMD_BLEGATTDFTCHAR1
+	bool "BLE GATT default characteristic 1 (TRX)"
+	depends on AT_CMD_GATT_DFT_SERVER
+	default y
+	help
+	  Set TRX Characteristic UUID and security properties.
+
+config AT_CMD_BLEGATTDFTCHAR2
+	bool "BLE GATT default characteristic 2 (TRX2)"
+	depends on AT_CMD_GATT_DFT_SERVER
+	default y
+	help
+	  Set TRX2 Characteristic UUID and security properties.
+
+config AT_CMD_BLEGATTDFTCHAR1VAL
+	bool "BLE GATT default characteristic 1 read value"
+	depends on AT_CMD_BLEGATTDFTCHAR1
+	default y
+	help
+	  Pre-set the value returned when a client reads Characteristic 1.
+	  Not persisted across reboot.
+
+config AT_CMD_BLEGATTDFTCHAR2VAL
+	bool "BLE GATT default characteristic 2 read value"
+	depends on AT_CMD_BLEGATTDFTCHAR2
+	default y
+	help
+	  Pre-set the value returned when a client reads Characteristic 2.
+	  Not persisted across reboot.
+
+config AT_CMD_GATT_DYN_SERVER
+	bool "BLE GATT dynamic server DB"
+	default y if AT_CMD_PERIPHERAL
+	select BT_GATT_DYNAMIC_DB
+	select BT_GATT_SERVICE_CHANGED
+	select AT_CMD_SET_CONN_TRACKING
+	select AT_CMD_SET_EVENTS
+	help
+	  Enable runtime GATT service/characteristic/descriptor definition
+	  via AT+BLEGATTADD* and AT+BLEGATTSVCACTIVE. Uses system heap.
+
+config HEAP_MEM_POOL_ADD_SIZE_AT_CMD_GATT_DYN
+	int "Heap reserved for dynamic GATT services (bytes)"
+	depends on AT_CMD_GATT_DYN_SERVER
+	default 4096
+	help
+	  Each dynamic service consumes approximately:
+	    - at_cmd_gatt_dyn_svc_t  ~80 B
+	    - at_cmd_gatt_dyn_char_t ~80 B  (per characteristic)
+	    - val_buf                 max_size B  (per characteristic)
+	    - bt_gatt_attr array      ~32 B * attr_count
+	  Default 4096 B supports roughly 4-5 services with small characteristics.
+	  Increase if larger or more services are needed.
+
+config AT_CMD_BLEGATTADDSERVICE
+	bool "BLE GATT add dynamic service"
+	depends on AT_CMD_GATT_DYN_SERVER
+	default y
+	help
+	  Stage a new primary service in the dynamic GATT database.
+
+config AT_CMD_BLEGATTADDCHAR
+	bool "BLE GATT add dynamic characteristic"
+	depends on AT_CMD_GATT_DYN_SERVER
+	default y
+	help
+	  Add a characteristic to the current staged service.
+
+config AT_CMD_BLEGATTADDDESC
+	bool "BLE GATT add standard descriptor"
+	depends on AT_CMD_GATT_DYN_SERVER
+	default y
+	help
+	  Add a 16-bit UUID descriptor to the current staged characteristic.
+
+config AT_CMD_BLEGATTADDDESCUSERDFD
+	bool "BLE GATT add user-defined descriptor"
+	depends on AT_CMD_GATT_DYN_SERVER
+	default y
+	help
+	  Add a 128-bit UUID descriptor with a value buffer to the current
+	  staged characteristic.
+
+config AT_CMD_BLEGATTSVCACTIVE
+	bool "BLE GATT dynamic service activate"
+	depends on AT_CMD_GATT_DYN_SERVER
+	default y
+	help
+	  Register staged dynamic services with the BT stack. Services
+	  remain active until reboot.
+
+config AT_CMD_BLEGATTTOBLE
+	bool "BLE GATT send notification/indication"
+	default y if AT_CMD_PERIPHERAL
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Send a GATT Notification or Indication to connected clients.
+	  Can be used independently or with the default GATT server.
+
+config AT_EVT_BLEGATTFROMBLE
+	bool "BLE GATT data from client event"
+	default y if AT_CMD_PERIPHERAL
+	select AT_CMD_SET_EVENTS
+	select AT_CMD_SET_CONN_TRACKING
+	help
+	  Report +EVTBLEGATTFROMBLE event when a client writes data
+	  to a characteristic. Can be used independently or with the
+	  default GATT server.
+
+config AT_EVT_BLESMPPASSKEY
+	bool "Enable BLE SMP passkey display event"
+	default y if AT_CMD_BLESMPPAIRREQ
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_SMP_AUTH
+	help
+	  Emits an event when the stack requests the passkey be
+	  displayed to the user (passkey_display callback).
+
+config AT_EVT_BLESMPPASSKEYREQIND
+	bool "Enable BLE SMP passkey entry indication"
+	default y if AT_CMD_BLESMPPAIRREQ
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_SMP_AUTH
+	help
+	  Emits an indication when the stack requires the user to enter the
+	  passkey displayed on the peer device. The host must respond with
+	  the passkey entry command to unblock the SMP state machine.
+
+config AT_EVT_BLESMPNUMCOMPIND
+	bool "Enable BLE SMP numeric comparison indication"
+	default y if AT_CMD_BLESMPPAIRREQ
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_SMP_AUTH
+	help
+	  Emits an indication when the stack requires the user to confirm that
+	  the displayed number matches the peer. The host must respond with
+	  the numeric comparison confirm command to unblock the SMP state machine.
+
+config AT_EVT_BLESMPPAIRENDIND
+	bool "Enable BLE SMP pairing end indication"
+	default y if AT_CMD_BLESMPPAIRREQ
+	select AT_CMD_SET_EVENTS
+	depends on AT_CMD_SET_SMP_AUTH
+	help
+	  Emits an indication on pairing completion (bonded=0/1, err=0) or
+	  failure (err=bt_security_err code).
+
+config AT_CMD_TAG_SET_EVENTS
+	bool "Tag AT events"
+	depends on STF_TAG || FMNA_TAG || FHN_TAG || ATM_AT_CMDTEST
+	select AT_CMD_SET_EVENTS
+	help
+	  Register tag-related AT event handlers.
+
+config AT_CMD_TAG_SET
+	bool "Tag AT commands"
+	depends on STF_TAG || FMNA_TAG || FHN_TAG || ATM_AT_CMDTEST
+	select AT_CMD_SET_CALLBACKS
+	select AT_CMD_TAG_SET_EVENTS
+	select AT_CMD_SYSDFU if BOOTLOADER_MCUBOOT
+	help
+	  Enable tag related AT commands.
+	  When used with MCUboot, AT+SYSDFU command is automatically enabled for
+	  serial firmware updates over the AT command UART.
+
+if AT_CMD_TAG_SET
+
+# AT commands
+config AT_CMD_TAGINFO
+	bool "AT+TAGINFO: query tag information"
+	default y
+
+config AT_CMD_TAGMODE
+	bool "AT+TAGMODE: select/query tag protocol mode"
+	default y
+
+config AT_CMD_TAGSTART
+	bool "AT+TAGSTART: start tag processing"
+	default y
+
+config AT_CMD_TAGBATTERY
+	bool "AT+TAGBATTERY: query battery level"
+	default y
+
+config AT_CMD_TAGRESET
+	bool "AT+TAGRESET: factory reset"
+	default y
+
+config AT_CMD_TAGSTFIND
+	bool "AT+TAGSTFIND=<1>: simulate STF button press (stop ring or confirm pairing)"
+	depends on STF_TAG || ATM_AT_CMDTEST
+	default y if STF_TAG || ATM_AT_CMDTEST
+	help
+	  Required when CONFIG_TAG_BUTTON=n.
+	  Single press behavior: stops active ring if playing; otherwise confirms pairing.
+
+config AT_CMD_TAGFMNASN
+	bool "AT+TAGFMNASN=1: trigger FMNA SN lookup window"
+	depends on FMNA_TAG || ATM_AT_CMDTEST
+	default y
+
+config AT_CMD_TAGFMNAMFI
+	bool "AT+TAGFMNAMFI?: log FMNA MFI token"
+	depends on FMNA_TAG || ATM_AT_CMDTEST
+	default y
+
+config AT_CMD_TAGCSUNPAIR
+	bool "AT+TAGCSUNPAIR=: unpair Channel Sounding (CS) peer"
+	depends on ATM_CS || ATM_AT_CMDTEST
+	default y
+
+config AT_CMD_TAGGFPIND
+	bool "AT+TAGGFPIND=<1|2>: simulate GFP button press"
+	depends on FHN_TAG || FMDN_REVERSE_RINGING || ATM_AT_CMDTEST
+	default y
+	help
+	  Required when CONFIG_TAG_BUTTON=n.
+	  Single press (1): Start advertising, stop sound, or stop reverse ringing.
+	  Double press (2): Enable DULT window or control reverse ringing.
+
+config AT_CMD_TAGMOTIONRPT
+	bool "AT+TAGMOTIONRPT=<x>,<y>,<z>: report motion acceleration from host"
+	default y
+	select AT_EVT_TAGMOTIONCTL
+	help
+	  Host reports XYZ acceleration to the tag.
+	  x,y,z: acceleration in cm/s² (signed 16-bit).
+
+# AT events
+config AT_EVT_TAGERROR
+	bool "+EVTTAGERROR: tag error event"
+	default y
+
+config AT_EVT_TAGSTATE
+	bool "+EVTTAGSTATE: tag state change event"
+	default y
+
+config AT_EVT_TAGBUZZER
+	bool "+EVTTAGBUZZER: buzzer action event"
+	default y
+	help
+	  Sent when CONFIG_TAG_BUZZER=n; host is responsible for producing sound.
+
+config AT_EVT_TAGMOTIONCTL
+	bool "+EVTTAGMOTIONCTL=<enable>: motion sensor control event"
+	default y
+	help
+	  Sends AT event to host when motion detection is enabled or disabled.
+
+config AT_EVT_TAGGFPREVERSERING
+	bool "+EVTTAGGFPREVERSERING:<0|1|2>: GFP reverse ringing phone status event"
+	depends on FMDN_REVERSE_RINGING || ATM_AT_CMDTEST
+	default y
+	help
+	  0=CONNECTED, 1=STARTED, 2=STOPPED
+
+endif # AT_CMD_TAG_SET
+
+endif # AT_CMD_SET

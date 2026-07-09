@@ -1,0 +1,20 @@
+# Copyright (c) 2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config TEST_ATM_ADC_API
+	bool
+	default y if ADC_ATM34
+	select ATM_ADC_TEST_API
+	help
+	    Includes test_atm_adc_api.c for testing
+
+config TEST_RAW_SAMPLE_BIT_MASK
+	hex "Bit mask applied to each raw GADC sample before bit assembly"
+	default 0x4 if ADC_ATMx2
+	default 0x2
+	depends on TEST_ATM_ADC_API
+	help
+	    Selects which bit(s) of each raw 16-bit GADC sample are extracted
+	    during the assembly loop.
+
+source "$(ZEPHYR_BASE)/tests/drivers/adc/adc_api/Kconfig"

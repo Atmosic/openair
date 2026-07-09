@@ -24,7 +24,7 @@ properties:
     sample-avg:
       type: int
       description: |
-        ADC samples (0 <= X <= 7) to be averaged. Default 6;
+        ADC samples (0 <= X <= 7) to be averaged. Default 5;
 
     osr-select:
       type: int
@@ -33,3 +33,11 @@ properties:
       enum:
         - 0 # 128 (default)
         - 1 # 64
+
+child-binding:
+  properties:
+    sample-avg:
+      type: int
+      description: |
+        Per-channel sample averaging exponent (0 <= N <= 7).
+        Hardware averages 2^N samples per output. 0 = no averaging (1 sample).

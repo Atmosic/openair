@@ -622,6 +622,8 @@ static int gadc_atm_init(struct device const *dev)
 	struct gadc_atm_data *data = DEV_DATA(dev);
 	data->dev = dev;
 
+	/* Restore GADC to a known state after warm reset. */
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__SRESET);
 	IRQ_CONNECT(DT_INST_IRQN(0), DT_INST_IRQ(0, priority), gadc_atm_isr, DEVICE_DT_INST_GET(0),
 		    0);
 

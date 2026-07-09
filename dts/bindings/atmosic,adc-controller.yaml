@@ -67,5 +67,18 @@ properties:
       type: int
       required: false
 
+    temp-output-scale:
+      type: int
+      description: |
+        Temperature channel output denominator. The ADC driver returns
+        temperature as an integer where 1 LSB = 1/temp-output-scale degC.
+        100 = centi-degC (0.01 degC/LSB).
+        256 = S8.8 fixed-point (1/256 degC/LSB).
+        Defaults to 100 (centi-degC) when not specified.
+      enum:
+        - 100
+        - 256
+      default: 100
+
 io-channel-cells:
     - input

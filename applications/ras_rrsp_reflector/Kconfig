@@ -11,8 +11,7 @@ config BTN_ON_OFF
 config BTN_BATT_REPORT
 	bool "Trigger Battery report with Button"
 	select ADC
-	select BATT_MODEL_COIN
-	depends on BTN_ON_OFF
+	depends on BTN_ON_OFF && BATT_MODEL_COIN
 
 config RRSP_ADV_TIMEOUT_CS
 	int "Advertising timeout time(cs)"

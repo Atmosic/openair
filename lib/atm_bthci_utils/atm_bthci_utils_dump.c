@@ -182,7 +182,8 @@ static inline bool is_hci_adv_report_evt(uint8_t const *buf, uint32_t len)
     return false;
 }
 
-void atm_bthci_dump_hci_pkt(uint8_t type, uint8_t const *buf, uint32_t len)
+void atm_bthci_dump_hci_pkt(atm_hci_dump_type_t type, uint8_t const *buf,
+    uint32_t len)
 {
     if ((type == ATM_HCI_DUMP_EVT) && is_hci_adv_report_evt(buf, len)) {
 	// drop ADV reports that flood in, they can be quite large.

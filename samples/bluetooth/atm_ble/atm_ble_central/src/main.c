@@ -438,7 +438,8 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	} else {
 		LOG_INF("Connection parameters: type = %d, role = %d, id = %d", conn_info.type,
 			conn_info.role, conn_info.id);
-		LOG_INF("interval = %d, latency = %d, timeout = %d", conn_info.le.interval,
+		LOG_INF("interval = %d, latency = %d, timeout = %d",
+			conn_info.le.interval_us / BT_HCI_LE_INTERVAL_UNIT_US,
 			conn_info.le.latency, conn_info.le.timeout);
 	}
 

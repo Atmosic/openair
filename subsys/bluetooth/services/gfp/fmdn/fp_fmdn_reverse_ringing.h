@@ -64,10 +64,9 @@ typedef struct {
 /// These events inform the application about the status of the phone (Seeker) ringing,
 /// NOT about the tag ringing (the tag doesn't ring in reverse ringing!)
 typedef enum {
-	RR_EVENT_REQUEST_SENT,  ///< Tag sent GATT request to phone (persistent connection, show
-				///< feedback)
-	RR_EVENT_ADV_CONNECTED, ///< Seeker connected via advertisement (encryption enabled, show
-				///< feedback)
+	RR_EVENT_RR_ADV_CONNECTED,           ///< Encryption enabled on adv-based connection
+	RR_EVENT_START_INDICATION_CONFIRMED, ///< START indication ACKed on persistent connection
+	RR_EVENT_STOP_INDICATION_CONFIRMED,  ///< STOP indication ACKed on persistent connection
 	RR_EVENT_PHONE_STARTED, ///< Phone confirmed it started ringing (STATE 0x00 received)
 	RR_EVENT_PHONE_FAILED,  ///< Phone failed to start ringing (STATE 0x01 received)
 	RR_EVENT_PHONE_STOPPED_TIMEOUT,  ///< Phone stopped ringing due to timeout (STATE 0x02
@@ -112,10 +111,6 @@ __NONNULL(1)
 int fp_fmdn_reverse_ringing_configure(struct bt_conn *conn, uint8_t flags);
 
 /// Handle reverse ringing state update from Seeker (Data ID 0x12 write request)
-/// Per FHN v2 spec line 264: "Whenever the Seeker starts or stops ringing --
-/// whether triggered by reverse ringing termination request, a timeout or a
-/// manual user action on Seeker's side -- it sends GATT write requests with
-/// data ID 0x12 to communicate the updated ringing state."
 /// @param conn BLE connection
 /// @param state Ringing state from Seeker (0x00-0x04)
 /// @return 0 on success, negative error code on failure
@@ -132,15 +127,11 @@ __NONNULL(1)
 void fp_fmdn_reverse_ringing_disconnected(struct bt_conn *conn);
 
 /// Handle connection established (for advertisement-based reverse ringing)
-/// Per FHN v2 spec line 295: "When Seeker detects Reverse Ringing advertisement
-/// it starts ringing and connects to the Provider"
 /// @param conn BLE connection
 __NONNULL(1)
 void fp_fmdn_reverse_ringing_connected(struct bt_conn *conn);
 
 /// Handle encryption enabled on connection (for advertisement-based reverse ringing)
-/// Per FHN v2 spec line 295: "The Provider may provide feedback to the user
-/// (a specific LED pattern or beep) as soon as encryption is enabled on that connection"
 /// @param conn BLE connection
 __NONNULL(1)
 void fp_fmdn_reverse_ringing_encryption_enabled(struct bt_conn *conn);

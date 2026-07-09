@@ -20,6 +20,8 @@
 extern "C" {
 #endif
 
+#ifdef CONFIG_TAG_LED_IND
+
 /// LED state
 typedef enum {
 	LED_STATE_PAIRING,
@@ -51,6 +53,8 @@ void platform_ctrl_led_state_update(led_state_t state);
  * @param[in] event led event
  */
 void platform_ctrl_led_event_indicate(led_event_t event);
+
+#endif /* CONFIG_TAG_LED_IND */
 
 #ifdef __cplusplus
 }

@@ -211,6 +211,11 @@ typedef struct
   uint8_t   csTSwTimeSup;           /*!< T_SW time supported. */
   uint8_t   csFaeSup;               /*!< Non-zero FAE Mode-0 Table supported. */
   uint8_t   csOptTxSnrCap;          /*!< Optional TX SNR Capability supported. */
+  uint16_t  csTIp2IptTimesSup;      /*!< T_IP2 IPT times supported. */
+  uint8_t   csTSwIptTimesSup;       /*!< T_SW IPT time supported. */
+  uint8_t   csRtt2mAaOnlyN;         /*!< RTT 2M AA Only time of flight accuracy. */
+  uint8_t   csRtt2mSoundingN;       /*!< RTT 2M Sounding time of flight accuracy. */
+  uint8_t   csRtt2mRandPayloadN;    /*!< RTT 2M Random Sequence time of flight accuracy. */
   uint16_t  csMaxProcLenSup;        /*!< Maximum CS procedure duration supported. */
   uint16_t  csMinProcIntervalSup;   /*!< Minimum number of connection events between consecutive CS procedures supported. */
   uint16_t  csMaxProcIntervalSup;   /*!< Maximum number of connection events between consecutive CS procedures supported. */
@@ -352,7 +357,10 @@ typedef struct
 
 /* --- Core Spec 6.0 --- */
 #define LL_FEAT_MONITORING_ADVERTISERS_BIT          64                    /*!< Monitoring advertisers supported. */
-#define LL_FEAT_FRAME_SPACE_UPDATE_BIT              65                    /*!< Monitoring advertisers supported. */
+#define LL_FEAT_FRAME_SPACE_UPDATE_BIT              65                    /*!< Frame space update supported. */
+
+/* --- Core Spec 6.3 --- */
+#define LL_FEAT_CS_ENHANCEMENT_1_BIT                75                    /*!< Channel sounding enhancement-1 supported. */
 
 /*! \brief      This parameter identifies the device role. */
 typedef enum
@@ -394,6 +402,8 @@ typedef enum
 #define LL_OP_MODE_FLAG_ENA_CIE_OPTIMIZATION        (UINT64_C(1) << 28)  /*!< Enable early sending of the CIE bit. */
 #define LL_OP_MODE_FLAG_BIG_RM_SCH                  (UINT64_C(1) << 29)  /*!< Use reservation manager BOD scheduling for BIG. */
 #define LL_OP_MODE_FLAG_BYPASS_INSTANT_DISCON       (UINT64_C(1) << 30)  /*!< Bypass disconnect when instant is past. */
+#define LL_OP_MODE_FLAG_DIS_RX                      (UINT64_C(1) << 31)  /*!< Disable Rx functionality (Tx-only platform). */
+#define LL_OP_MODE_FLAG_DIS_CONN_PARAM_REQ_PROC     (UINT64_C(1) << 32)  /*!< Disable Connection Parameters Request Procedure. */
 /* diagnostics only */
 #define LL_OP_MODE_FLAG_ENA_CS_TEST_UNSYNC_MODE     (UINT64_C(1) << 55)  /*!< Enable CS test unsync mode. */
 #define LL_OP_MODE_FLAG_ENA_CS_DBG_VECTOR           (UINT64_C(1) << 56)  /*!< Enable CS debug vector. */
@@ -1208,7 +1218,15 @@ typedef struct
   uint16_t  optTPmTimesSup;     /*!< Optional T PM supported times. */
   uint8_t   tSwTimesSup;        /*!< T SW supported times. */
   uint8_t   optTxSnrCap;        /*!< Optional TX SNR capability. */
+  uint16_t  tIp2IptTimesSup;    /*!< T IP2 IPT supported times. */
+  uint8_t   tSwIptTimesSup;     /*!< T SW IPT supported times. */
+  uint8_t   rtt2mAaOnly;        /*!< RTT 2M AA Only accuracy. */
+  uint8_t   rtt2mSounding;      /*!< RTT 2M Sounding accuracy. */
+  uint8_t   rtt2mRandPayload;   /*!< RTT 2M Random Sequence accuracy. */
 } LlCsSupParams_t;
+
+/*! \brief CS enhancements bitmask values. */
+#define LL_CS_ENHANCEMENTS_IPT_EN     (1 << 0)  /*!< IPT is enabled in the CS reflector. */
 
 /*! \brief      CS configuration parameters. */
 typedef struct
@@ -1229,7 +1247,7 @@ typedef struct
   uint8_t   chanSelType;        /*!< Channel selection type. */
   uint8_t   ch3cShape;          /*!< Shape for user-specified channel sequence. */
   uint8_t   ch3cJump;           /*!< Number of channels skipped in each rising and falling sequence. */
-  uint8_t   compSignalEn;       /*!< Companion signal enable. */
+  uint8_t   csEnhancements;     /*!< CS enhancements. */
 } LlCsCreateCfg_t;
 
 /*! \brief      CS procedure parameters. */
@@ -1292,7 +1310,7 @@ typedef struct
   uint8_t   tPmTime;            /*!< T PM time. */
   uint8_t   tSwTime;            /*!< T SW time. */
   uint8_t   toneAntCfg;         /*!< Tone antenna configuration. */
-  uint8_t   compSignalEn;       /*!< Companion signal enable. */
+  uint8_t   csEnhancements;     /*!< CS enhancements. */
   uint8_t   snrInit;            /*!< SNR control adjustment for the CS_SYNC of the initiator. */
   uint8_t   snrRefl;            /*!< SNR control adjustment for the CS_SYNC of the reflector. */
   uint16_t  drbgNonce;          /*!< DRGB nonce. */
@@ -2054,6 +2072,11 @@ typedef struct
   uint16_t      optTPmTimesSup;     /*!< Optional T PM supported times. */
   uint8_t       tSwTimesSup;        /*!< T SW supported times. */
   uint8_t       optTxSnrCap;        /*!< Optional TX SNR capability. */
+  uint16_t      tIp2IptTimesSup;    /*!< T IP2 IPT supported times. */
+  uint8_t       tSwIptTimesSup;     /*!< T SW IPT supported times. */
+  uint8_t       rtt2mAaOnly;        /*!< RTT 2M AA Only accuracy. */
+  uint8_t       rtt2mSounding;      /*!< RTT 2M Sounding accuracy. */
+  uint8_t       rtt2mRandPayload;   /*!< RTT 2M Random Sequence accuracy. */
 } LlCsReadRemSupCapInd_t;
 
 /*! \brief      LE CS read remote FAE table complete event. */
@@ -2095,7 +2118,7 @@ typedef struct
   uint8_t       chanSelType;        /*!< Channel selection type. */
   uint8_t       ch3cShape;          /*!< Shape for user-specified channel sequence. */
   uint8_t       ch3cJump;           /*!< Number of channels skipped in each rising and falling sequence. */
-  uint8_t       compSignalEn;       /*!< Companion signal enable. */
+  uint8_t       csEnhancements;     /*!< CS enhancements. */
   uint8_t       tIp1Time;           /*!< T IP1 time. */
   uint8_t       tIp2Time;           /*!< T IP2 time. */
   uint8_t       tFcsTime;           /*!< T FCS time. */

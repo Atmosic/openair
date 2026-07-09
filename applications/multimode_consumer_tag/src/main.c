@@ -32,6 +32,10 @@
 #ifdef CONFIG_STF_TAG
 #include "TagSdk.h"
 #endif
+#ifdef CONFIG_AT_CMD_SET
+#include "at_cmd_uart.h"
+#include "at_cmd_event.h"
+#endif
 
 LOG_MODULE_REGISTER(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
 
@@ -46,6 +50,10 @@ static void tag_bt_ready(void)
 {
 	if (!bt_is_ready()) {
 		LOG_ERR("bt_is_ready is not ready");
+#ifdef CONFIG_AT_CMD_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+				     AT_CMD_TAG_ERR_BLE_INIT);
+#endif
 	}
 
 	/* defer platform_init to app_work_q */
@@ -61,6 +69,7 @@ int main(void)
 	}
 	platform_ctrl_wdt_feed_timer_start();
 
+#ifdef CONFIG_TAG_BUTTON
 	if (!platform_ctrl_button_init()) {
 		LOG_INF("skip power on");
 #ifdef CONFIG_PM
@@ -70,6 +79,7 @@ int main(void)
 #endif
 		return 0;
 	}
+#endif /* CONFIG_TAG_BUTTON */
 
 #ifdef CONFIG_STF_TAG
 	TagInit();
@@ -85,13 +95,21 @@ int main(void)
 		settings_load();
 	}
 
+#ifdef CONFIG_AT_CMD_SET
+	err = at_cmd_uart_multimode_tag_init();
+	if (err) {
+		LOG_ERR("AT command init failed (err %d)", err);
+		return 0;
+	}
+#endif
+
+	platform_indicate_state(TAG_IND_STATE_BOOTED, platform_tag_supported_mode_mask_get());
+
 #ifdef CONFIG_TAG_BTN_OTA_MODE
 	if (platform_ctrl_ota_init()) {
 		LOG_INF("System is in OTA mode");
-#ifdef CONFIG_TAG_LED_IND
-		/* Set LED to OTA mode - red LED blinks every 1 second */
-		platform_ctrl_led_state_update(LED_STATE_OTA_MODE);
-#endif
+		platform_indicate_state(TAG_IND_STATE_OTA_IN_PROGRESS,
+					platform_tag_supported_mode_mask_get());
 		return 0;
 	}
 #endif // CONFIG_TAG_BTN_OTA_MODE

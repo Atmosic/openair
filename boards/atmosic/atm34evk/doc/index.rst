@@ -18,16 +18,16 @@ SoCs and EVKs
 .. _board:
 
 
-==================  ==================  ==================  ==================  ========  ==========
-SoC Part #          EVK Part #          Board List          On-chip             Package   Energy
+==================  ==================  ==================  ==================  ========  ==========  =======
+SoC Part #          EVK Part #          Board List          On-chip             Package   Energy      Li-ion
                                         <BOARD>             Flash                         Harvesting
-==================  ==================  ==================  ==================  ========  ==========
+==================  ==================  ==================  ==================  ========  ==========  =======
 ATM3405-5PCAQK      ATMEVK-3405-PQK-5   ATMEVK-3405-PQK-5   512KB               QFN 5x5
-ATM3405-5YCABV      ATMEVK-3405-YBV-5   ATMEVK-3405-YBV-5   2560KB              BGA 4x4
+ATM3405-5YCABV      ATMEVK-3405-YBV-5   ATMEVK-3405-YBV-5   2560KB              BGA 4x4               x
 ATM3405-5WCAQK      ATMEVK-3405-WQK-5   ATMEVK-3405-WQK-5   1536KB              QFN 5x5
 ATM3405-5WCAQK      ATMBTCSTAG-3405     ATMBTCSTAG-3405     1536KB              QFN 5x5
-ATM3430e-5YCAQN     ATMEVK-3430e-YQN-5  ATMEVK-3430e-YQN-5  2560KB              QFN 7x7   x
-==================  ==================  ==================  ==================  ========  ==========
+ATM3430e-5YCAQN     ATMEVK-3430e-YQN-5  ATMEVK-3430e-YQN-5  2560KB              QFN 7x7   x           x
+==================  ==================  ==================  ==================  ========  ==========  =======
 
 ================
 Pin Multiplexing
@@ -95,10 +95,10 @@ as such rather than the "J-Link driver".  (In Device Manager, expand the categor
 Programming and Debugging
 *************************
 
-It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 0.16.4 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
+It is recommended to set the environment variables ZEPHYR_TOOLCHAIN_VARIANT to ``zephyr`` and ZEPHYR_SDK_INSTALL_DIR to the directory where Zephyr SDK is installed. For example, assuming the installed SDK version 1.0.1 is in the home directory, for reference, it will be like this in a bash shell environment: (use ``setenv`` in a C shell environment, or ``set`` for Windows)::
 
  export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
- export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-0.16.4
+ export ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-1.0.1
 
 Applications for the Atmosic EVK boards can be built, flashed, and debugged using the familiar `west build` and `west flash`.
 
@@ -183,7 +183,7 @@ Note that make use of "board revision" to configure our board partitions to work
 
 Build the application with MCUboot as follows::
 
-  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" -DDTS_EXTRA_CPPFLAGS=";"
+  west build -p -s <APP> -b <BOARD>@mcuboot -d build/<BOARD>/<APP> -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\"
 
 When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command line, ``west`` automatically creates a signed image (``zephyr.signed.{bin,hex}``), which is ultimately used by ``west flash`` to program the device.
 

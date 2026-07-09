@@ -1,0 +1,11 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/* UART0 for AT command input/output */
+&uart0 {
+	current-speed = <115200>;
+	status = "okay";
+};

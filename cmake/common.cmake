@@ -3,26 +3,58 @@
 
 # Code coverage
 if(CONFIG_COVERAGE AND CONFIG_AUTO_TEST)
-  # Reset coverage properties
-  set_compiler_property(PROPERTY no_coverage -fno-profile-arcs -fno-test-coverage -finline)
+  # Reset coverage properties. CONFIG_COVERAGE also defaults the Kconfig
+  # COMPILER_OPTIMIZATIONS choice to NO_OPTIMIZATIONS, applying -O0 globally;
+  # append -Os so that files which are not being instrumented are still built
+  # with normal optimization (-O flags are last-wins for gcc). This avoids
+  # register-pressure failures in inline-asm-heavy modules such as micro-ecc.
+  set_compiler_property(PROPERTY no_coverage -fno-profile-arcs -fno-test-coverage -finline -Os)
   zephyr_compile_options($<TARGET_PROPERTY:compiler,no_coverage>)
 
   # app target
-  set_property(TARGET app APPEND PROPERTY COMPILE_OPTIONS -fno-profile-arcs -fno-test-coverage -finline)
+  set_property(TARGET app APPEND PROPERTY COMPILE_OPTIONS -fno-profile-arcs -fno-test-coverage -finline -Os)
+
+  # Capture the openair module root (one level above this cmake/ directory).
+  get_filename_component(_OPENAIR_MODULE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
   # library source files
   function(set_coverage_properties_for_files file_list patterns_list)
     foreach(pattern IN LISTS ${patterns_list})
+        set(matched FALSE)
         foreach(file IN LISTS ${file_list})
             get_filename_component(file_name ${file} NAME)
-            if(${file_name} MATCHES ${pattern})
-                set_source_files_properties(
-                    ${file}
-                    DIRECTORY ${ZEPHYR_BASE}
-                    PROPERTIES COMPILE_OPTIONS $<TARGET_PROPERTY:compiler,coverage>
-                )
+            # Match the exact file basename, not a regex: the patterns are
+            # source-file basenames, and a substring/regex match would also
+            # catch unrelated files (e.g. "atm_aes.c" matching a test's
+            # "main_atm_aes.c"), whose directory has no build scope here.
+            if("${file_name}" STREQUAL "${pattern}")
+                get_filename_component(file_dir ${file} DIRECTORY)
+                file(RELATIVE_PATH rel_path "${_OPENAIR_MODULE_ROOT}" "${file_dir}")
+                set(zephyr_equiv "${ZEPHYR_BASE}/${rel_path}")
+                get_filename_component(zephyr_equiv "${zephyr_equiv}" ABSOLUTE)
+
+                set(_scopes "${ZEPHYR_BASE}")
+                if(IS_DIRECTORY "${zephyr_equiv}" AND
+                   NOT "${zephyr_equiv}" STREQUAL "${ZEPHYR_BASE}")
+                    list(APPEND _scopes "${zephyr_equiv}")
+                endif()
+
+                foreach(scope IN LISTS _scopes)
+                    set_source_files_properties(
+                        ${file}
+                        DIRECTORY ${scope}
+                        PROPERTIES COMPILE_OPTIONS $<TARGET_PROPERTY:compiler,coverage>
+                    )
+                endforeach()
+                set(matched TRUE)
             endif()
         endforeach()
+        if(NOT matched)
+            message(WARNING
+                "${patterns_list}: pattern '${pattern}' matched no source file under "
+                "${CMAKE_CURRENT_LIST_DIR}; only files within this repo are eligible "
+                "for coverage instrumentation via ${patterns_list}.")
+        endif()
     endforeach()
   endfunction()
 endif()

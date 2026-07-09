@@ -13,10 +13,6 @@
  */
 
 #define DT_DRV_COMPAT atmosic_external_flash_controller
-#define SOC_NV_FLASH_NODE DT_INST(0, soc_nv_flash)
-
-#define FLASH_WRITE_BLK_SZ DT_PROP(SOC_NV_FLASH_NODE, write_block_size)
-#define FLASH_ERASE_BLK_SZ DT_PROP(SOC_NV_FLASH_NODE, erase_block_size)
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
@@ -29,6 +25,11 @@
 #include <zephyr/drivers/flash/atm_flash_api_extensions.h>
 #include <soc.h>
 #include <zephyr/sys/reboot.h>
+
+#define SOC_NV_FLASH_NODE DT_NODELABEL(flash0)
+
+#define FLASH_WRITE_BLK_SZ DT_PROP(SOC_NV_FLASH_NODE, write_block_size)
+#define FLASH_ERASE_BLK_SZ DT_PROP(SOC_NV_FLASH_NODE, erase_block_size)
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
@@ -407,9 +408,10 @@ static bool flash_driver_give(void)
 
 #ifdef FLASH_BREAK_IN
 
-#define FLASH_BREAKIN_TIMEOUT_MS    500
-#define PUYA_BREAK_IN_SUSPEND_US    30
-#define GIGADEV_BREAK_IN_SUSPEND_US 40
+#define FLASH_BREAKIN_TIMEOUT_MS     500
+#define FLASH_BREAKIN_SALVAGE_MS     50
+#define PUYA_BREAK_IN_SUSPEND_US     30
+#define GIGADEV_BREAK_IN_SUSPEND_US  40
 #define MACRONIX_BREAK_IN_SUSPEND_US 40
 
 #define QSPI_CLEAR_INTERRUPT()                                                                     \
@@ -422,12 +424,13 @@ static uint8_t break_in_suspend_us;
 
 static K_SEM_DEFINE(flash_atm_break_sem, 0, 1);
 
-static bool in_exception;
-
 // wait for the outstanding operation allowing break in to complete
+#if EXECUTING_IN_PLACE
+__ramfunc
+#endif
 static int flash_atm_wait_break_in_op_done(const char *desc, off_t offset)
 {
-	if (in_exception) {
+	if (atm_soc_in_exception()) {
 		if (!QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__READ \
 		    (CMSDK_QSPI->REMOTE_AHB_SETUP_4))
 		{
@@ -438,6 +441,18 @@ static int flash_atm_wait_break_in_op_done(const char *desc, off_t offset)
 	}
 	LOG_DBG("Wait op: %s offset:0x%08lx", desc, (unsigned long)offset);
 	int err = k_sem_take(&flash_atm_break_sem, K_MSEC(FLASH_BREAKIN_TIMEOUT_MS));
+#ifdef QSPI_REMOTE_STATUS__RESET_VALUE
+	if (err) {
+		// Spin-loop to prevent read breakin after initial timeout
+		uint32_t start_ms = k_uptime_get_32();
+		while (CMSDK_QSPI->REMOTE_STATUS) {
+			if ((k_uptime_get_32() - start_ms) > FLASH_BREAKIN_SALVAGE_MS) {
+				break;
+			}
+		}
+		err = k_sem_take(&flash_atm_break_sem, K_NO_WAIT);
+	}
+#endif
 	__ASSERT(!err, "breakin wait failed (%d)", err);
 	if (err) {
 		LOG_ERR("  op wait error: %d", err);
@@ -460,8 +475,14 @@ static uint32_t flash_min_freq;
 
 static void external_flash_enable_breakin(void)
 {
+	// In exception context we skip the PM lock (and the break-in setup).
+	// enable/disable always run in the same context (same function,
+	// straight-line), so disable can re-query atm_soc_in_exception() and get
+	// the same answer instead of caching it in a shared flag - this keeps the
+	// get/put balanced and is reentrant-safe for nested exception operations.
+	// NOTE: if a future change ever splits enable and disable across different
+	// contexts, this must become a per-operation nesting-safe flag again.
 	if (atm_soc_in_exception()) {
-		in_exception = true;
 		return;
 	}
 #ifdef CONFIG_PM
@@ -483,8 +504,9 @@ static void external_flash_enable_breakin(void)
 
 static void external_flash_disable_breakin(void)
 {
-	if (in_exception) {
-		in_exception = false;
+	// Mirror external_flash_enable_breakin(): re-query the same condition
+	// rather than reading a cached flag (see note there).
+	if (atm_soc_in_exception()) {
 		return;
 	}
 	QSPI_REMOTE_AHB_SETUP_4__ALLOW_READS_DURING_WRITE__CLR(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
@@ -708,80 +730,73 @@ static int flash_write_page(struct device const *dev, off_t addr,
 	}
 	pp_ram_addr += PP_RAM_ADDR_START;
 
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
-
-	memcpy((void *)pp_ram_addr, buffer, length);
-	if (length == PAGE_SIZE) {
-		CMSDK_QSPI->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(0);
-	} else {
-		CMSDK_QSPI->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(length);
-	}
+	int err = 0;
+	WRPR_CTRL_PUSH(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE) {
+		memcpy((void *)pp_ram_addr, buffer, length);
+		if (length == PAGE_SIZE) {
+			CMSDK_QSPI->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(0);
+		} else {
+			CMSDK_QSPI->BURST_PP_CTRL = QSPI_BURST_PP_CTRL__BYTE_CNT__WRITE(length);
+		}
 
 #define MAGIC_PP_WRITE_ADDR (DT_REG_ADDR(SOC_NV_FLASH_NODE) + 0x00FFFFF8)
-	*(volatile uint32_t *)MAGIC_PP_WRITE_ADDR = addr;
+		*(volatile uint32_t *)MAGIC_PP_WRITE_ADDR = addr;
 
-#if CONFIG_SOC_FLASH_ATM_USE_WRITE_BREAK_IN
-	int err = SYNC_FLASH_BREAKIN("Write 1 page", addr);
-#else
-	int err = 0;
-	// Busy wait in this RAM function instead of allowing breakin on writes
-	while (CMSDK_QSPI->REMOTE_STATUS) {
-		__NOP();
-	}
-#endif
+		err = SYNC_FLASH_BREAKIN("Write 1 page", addr);
+	} WRPR_CTRL_POP();
 
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
 	return err;
 #else
 	GLOBAL_INT_DISABLE();
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
-	// Apply bank swap
-	addr ^= QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__READ(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
+	WRPR_CTRL_PUSH(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE) {
+		// Apply bank swap
+		addr ^= QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__READ(CMSDK_QSPI->REMOTE_AHB_SETUP_4);
 
-	// !!! from this point forward the QSPI bridge will be disabled
+		// !!! from this point forward the QSPI bridge will be disabled
 
-	EXIT_PERF_MODE();
+		EXIT_PERF_MODE();
 
-	// Set WEL
-	qspi_drive_start();
-	qspi_drive_serial_cmd(SPI_FLASH_WREN);
-	qspi_drive_stop();
-
-	// Quad Page Program
-	qspi_drive_start();
-	uint8_t qpp = (man_id == FLASH_MAN_ID_MACRONIX) ? SPI_FLASH_4PP : SPI_FLASH_QPP;
-	qspi_drive_serial_cmd(qpp);
-	if (qpp == SPI_FLASH_4PP) {
-		// 4XIO PP, address is sent in quad mode
-		qspi_drive_byte((addr >> 16) & 0xff);
-		qspi_drive_byte((addr >> 8) & 0xff);
-		qspi_drive_byte(addr & 0xff);
-	} else {
-		// regular QPP, address is sent serially
-		qspi_drive_serial_cmd((addr >> 16) & 0xff);
-		qspi_drive_serial_cmd((addr >> 8) & 0xff);
-		qspi_drive_serial_cmd(addr & 0xff);
-	}
-	for (; length; length--) {
-		qspi_drive_byte(*(buffer++));
-	}
-	qspi_drive_stop();
-
-	// Poll Status Register until WIP clears
-	uint8_t status;
-	do {
+		// Set WEL
 		qspi_drive_start();
-		qspi_drive_serial_cmd(SPI_FLASH_RDSR);
-		status = qspi_read_serial_byte();
+		qspi_drive_serial_cmd(SPI_FLASH_WREN);
 		qspi_drive_stop();
-	} while (status & WIP_MASK);
 
-	RESTORE_PERF_MODE();
+		// Quad Page Program
+		qspi_drive_start();
+		uint8_t qpp = (man_id == FLASH_MAN_ID_MACRONIX) ? SPI_FLASH_4PP : SPI_FLASH_QPP;
+		qspi_drive_serial_cmd(qpp);
+		if (qpp == SPI_FLASH_4PP) {
+			// 4XIO PP, address is sent in quad mode
+			qspi_drive_byte((addr >> 16) & 0xff);
+			qspi_drive_byte((addr >> 8) & 0xff);
+			qspi_drive_byte(addr & 0xff);
+		} else {
+			// regular QPP, address is sent serially
+			qspi_drive_serial_cmd((addr >> 16) & 0xff);
+			qspi_drive_serial_cmd((addr >> 8) & 0xff);
+			qspi_drive_serial_cmd(addr & 0xff);
+		}
+		for (; length; length--) {
+			qspi_drive_byte(*(buffer++));
+		}
+		qspi_drive_stop();
 
-	// Switch control from QSPI to AHB bridge
-	CMSDK_QSPI->TRANSACTION_SETUP = QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
-					QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+		// Poll Status Register until WIP clears
+		uint8_t status;
+		do {
+			qspi_drive_start();
+			qspi_drive_serial_cmd(SPI_FLASH_RDSR);
+			status = qspi_read_serial_byte();
+			qspi_drive_stop();
+		} while (status & WIP_MASK);
+
+		RESTORE_PERF_MODE();
+
+		// Switch control from QSPI to AHB bridge
+		CMSDK_QSPI->TRANSACTION_SETUP =
+			QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
+			QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
+	} WRPR_CTRL_POP();
 
 	// QSPI bridge is restored this point forward
 	GLOBAL_INT_RESTORE();
@@ -800,7 +815,7 @@ static int flash_write_pages(struct device const *dev, off_t addr, size_t length
 			((uintptr_t)buffer >> QSPI_REMOTE_AHB_SETUP_4__INVERT_ADDR__WIDTH));
 	uint8_t copy_buf[precopy ? PAGE_SIZE : 0];
 	int err = 0;
-#if defined(__QSPI_BURST_PP_CTRL_MACRO__) && CONFIG_SOC_FLASH_ATM_USE_WRITE_BREAK_IN
+#if defined(__QSPI_BURST_PP_CTRL_MACRO__)
 	ENABLE_FLASH_BREAKIN();
 #endif
 #ifdef INTEGRATE_FLASH_WITH_MGR
@@ -847,7 +862,7 @@ static int flash_write_pages(struct device const *dev, off_t addr, size_t length
 	atm_mac_mgr_complete_op(atm_mac_mgr_get_iface(), ATM_MAC_MGR_PROT_FLASH);
 	atm_mac_unlock();
 #endif
-#if defined(__QSPI_BURST_PP_CTRL_MACRO__) && CONFIG_SOC_FLASH_ATM_USE_WRITE_BREAK_IN
+#if defined(__QSPI_BURST_PP_CTRL_MACRO__)
 	DISABLE_FLASH_BREAKIN();
 #endif
 	return err;
@@ -2590,6 +2605,9 @@ static int flash_atm_init(struct device const *dev)
 	}
 	LOG_INF("man_id:%#x", man_id);
 #else
+#ifdef __QSPI_REMOTE_AHB_SETUP_8_MACRO__
+	QSPI_REMOTE_AHB_SETUP_8__PP_STALL_WIP_MSB__MODIFY(CMSDK_QSPI->REMOTE_AHB_SETUP_8, 0x3F);
+#endif
 	recover_man_id();
 #endif
 

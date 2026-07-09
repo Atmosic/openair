@@ -11,27 +11,33 @@
 #include <zephyr/pm/policy.h>
 #include <zephyr/drivers/hwinfo.h>
 #include "arch.h"
+#include "app_work_q.h"
 #include "power.h"
 #include "platform.h"
-#include "platform_ctrl_led.h"
 #include "platform_common.h"
 #include "platform_ctrl_battery.h"
 #include "platform_ctrl_wdt.h"
 #ifdef CONFIG_FHN_TAG
 #include "atm_gfp.h"
 #endif
+#if defined(CONFIG_TAG_BTN_FMNA_SN_LOOKUP) || defined(CONFIG_TAG_BTN_LOG_FMNA_MFI_TOKEN)
+#include "fmna_api.h"
+#endif
 #if APP_STF_MULTI_MODE
 #include "TagBtnCallback.h"
-#include "TagSoundPlayer.h"
 #endif
-#ifdef CONFIG_TAG_AUDIO_FEEDBACK
-#include "platform_ctrl_buzzer.h"
-#endif
+#include "platform_indicate.h"
 #ifdef CONFIG_ATM_CS
 #include "atm_cs.h"
 #endif
 #ifdef CONFIG_TAG_BTN_OTA_MODE
 #include "platform_ctrl_ota.h"
+#endif
+#ifdef CONFIG_AT_CMD_TAG_SET
+#include "at_cmd_uart.h"
+#include "at_cmd_event.h"
+#include "at_cmd_tag.h"
+#include "platform.h"
 #endif
 
 LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
@@ -45,9 +51,12 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 #define BUTTON_POLL_INTERVAL_MS         100
 #define BUTTON_SHUTDOWN_POLL_MS         500
 #define BATTERY_REPORT_TAP_COUNT        5
-#define FACTORY_RESET_AUDIO_DURATION_MS 1000
+
 #ifdef CONFIG_TAG_BTN_OTA_MODE
 #define OTA_MODE_TAP_COUNT 10
+#endif
+#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+#define BUTTON_OTA_MODE_TIMEOUT_MS 7000
 #endif
 #ifdef CONFIG_FHN_TAG
 #define FP_TAP_COUNT 1
@@ -57,6 +66,9 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 #endif // CONFIG_FHN_TAG
 #ifdef CONFIG_ATM_CS
 #define CS_UNPAIR_TAP_COUNT 7
+#endif
+#ifdef CONFIG_TAG_BTN_FMNA_SN_LOOKUP
+#define BUTTON_FMNA_SN_LOOKUP_TAP_COUNT 6
 #endif
 #ifdef CONFIG_TAG_BTN_LOG_FMNA_MFI_TOKEN
 extern void fmna_log_mfi_token(void);
@@ -74,6 +86,10 @@ static void battery_report_handler(void);
 
 #ifdef CONFIG_TAG_BTN_OTA_MODE
 static void ota_mode_enter_handler(void);
+#endif
+
+#ifdef CONFIG_TAG_BTN_FMNA_SN_LOOKUP
+static void fmna_sn_lookup_enable_handler(void);
 #endif
 
 #if APP_STF_MULTI_MODE
@@ -101,6 +117,9 @@ static const struct button_action button_actions[] = {
 #endif
 #ifdef CONFIG_ATM_CS
 	{atm_cs_rrsp_unpair, CS_UNPAIR_TAP_COUNT},
+#endif
+#ifdef CONFIG_TAG_BTN_FMNA_SN_LOOKUP
+	{fmna_sn_lookup_enable_handler, BUTTON_FMNA_SN_LOOKUP_TAP_COUNT},
 #endif
 #ifdef CONFIG_TAG_BTN_LOG_FMNA_MFI_TOKEN
 	{fmna_log_mfi_token, BUTTON_LOG_MFI_TOKEN_TAP_COUNT},
@@ -142,19 +161,19 @@ static void battery_report_handler(void)
 	// Battery level LED indication
 	if (batt_percentage > 90) {
 		// 5 blinks for >90%
-		platform_ctrl_led_event_indicate(LED_EVT_BATT_FULL);
+		platform_indicate_led_evt(LED_EVT_BATT_FULL);
 	} else if (batt_percentage > 60) {
 		// 4 blinks for >60%
-		platform_ctrl_led_event_indicate(LED_EVT_BATT_HIGH);
+		platform_indicate_led_evt(LED_EVT_BATT_HIGH);
 	} else if (batt_percentage > 30) {
 		// 3 blinks for >30%
-		platform_ctrl_led_event_indicate(LED_EVT_BATT_MEDIUM);
+		platform_indicate_led_evt(LED_EVT_BATT_MEDIUM);
 	} else if (batt_percentage > 10) {
 		// 2 blinks for >10%
-		platform_ctrl_led_event_indicate(LED_EVT_BATT_LOW);
+		platform_indicate_led_evt(LED_EVT_BATT_LOW);
 	} else {
 		// 1 blink for <=10%
-		platform_ctrl_led_event_indicate(LED_EVT_BATT_CRITICAL);
+		platform_indicate_led_evt(LED_EVT_BATT_CRITICAL);
 	}
 #endif
 }
@@ -166,6 +185,14 @@ static void ota_mode_enter_handler(void)
 	LOG_INF("Entering OTA mode (%d taps detected)", OTA_MODE_TAP_COUNT);
 	// Enter OTA mode (will reboot)
 	platform_ctrl_ota_enter();
+}
+#endif
+
+#ifdef CONFIG_TAG_BTN_FMNA_SN_LOOKUP
+static void fmna_sn_lookup_enable_handler(void)
+{
+	LOG_INF("Enable FMNA SN lookup (%d taps detected)", BUTTON_FMNA_SN_LOOKUP_TAP_COUNT);
+	fmna_sn_lookup_enable();
 }
 #endif
 
@@ -184,15 +211,12 @@ static void cts_tap_timeout_handler(struct k_work *work)
 #ifdef CONFIG_TAG_BTN_FACTORY_RESET
 static void factory_reset_handler(void)
 {
-#ifdef CONFIG_TAG_AUDIO_FEEDBACK
-	LOG_INF("Play audio feedback");
-	platform_ctrl_buzzer_action(true);
-	k_sleep(K_MSEC(FACTORY_RESET_AUDIO_DURATION_MS));
-	platform_ctrl_buzzer_action(false);
+	LOG_INF("Factory reset handler");
+#ifdef CONFIG_TAG_BUZZER
+	platform_indicate_buzzer(TAG_BUZZER_EVT_FACTORY_RESET, NULL);
 #endif
-
 #ifdef CONFIG_TAG_LED_IND
-	platform_ctrl_led_event_indicate(LED_EVT_FACTORY_RESET);
+	platform_indicate_led_evt(LED_EVT_FACTORY_RESET);
 #endif
 	platform_factory_reset();
 }
@@ -202,18 +226,26 @@ static void factory_reset_handler(void)
 static void shutdown_timeout_cb(struct k_work *work)
 {
 	LOG_INF("shutdown timeout");
-#if APP_STF_MULTI_MODE
-	TagSoundPlayItem(SOUND_ITEM_OFF);
-#endif
-	platform_ctrl_led_state_update(LED_STATE_POWER_OFF);
-	platform_ctrl_led_event_indicate(LED_EVT_POWER_OFF);
+	platform_indicate_state(TAG_IND_STATE_POWER_OFF, platform_tag_supported_mode_mask_get());
 
 #ifdef CONFIG_TAG_BTN_FACTORY_RESET
 	bool factory_reset = false;
 #endif
+#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+	bool ota_mode = false;
+#endif
 
 	// Wait for button release
 	while (gpio_pin_get_dt(&button)) {
+#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+		if (!ota_mode &&
+		    (k_uptime_get() - button_press_time > BUTTON_OTA_MODE_TIMEOUT_MS)) {
+			LOG_INF("OTA mode timeout");
+			ota_mode = true;
+			k_work_cancel_delayable(&ota_timeout_work);
+			platform_ctrl_ota_enter();
+		}
+#endif
 #ifdef CONFIG_TAG_BTN_FACTORY_RESET
 		if (!factory_reset &&
 		    (k_uptime_get() - button_press_time > BUTTON_FACTORY_RESET_MS)) {
@@ -230,6 +262,16 @@ static void shutdown_timeout_cb(struct k_work *work)
 }
 
 static K_WORK_DELAYABLE_DEFINE(shutdown_timeout_work, shutdown_timeout_cb);
+#endif
+
+#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+static void ota_timeout_cb(struct k_work *work)
+{
+	LOG_INF("Entering OTA mode (long press %dms)", BUTTON_OTA_MODE_TIMEOUT_MS);
+	platform_ctrl_ota_enter();
+}
+
+static K_WORK_DELAYABLE_DEFINE(ota_timeout_work, ota_timeout_cb);
 #endif
 
 #if APP_STF_MULTI_MODE
@@ -251,7 +293,11 @@ static void button_cb(const struct device *dev, struct gpio_callback *cb, uint32
 		// Cancel CTS timeout when button is pressed (new tap event)
 		k_work_cancel_delayable(&cts_tap_timeout_work);
 #ifdef CONFIG_TAG_BTN_POWER_CTRL
-		k_work_reschedule(&shutdown_timeout_work, K_MSEC(BUTTON_SHUTDOWN_TIMEOUT_MS));
+		atm_work_reschedule_for_app_work_q(&shutdown_timeout_work,
+						   K_MSEC(BUTTON_SHUTDOWN_TIMEOUT_MS));
+#endif
+#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+		k_work_reschedule(&ota_timeout_work, K_MSEC(BUTTON_OTA_MODE_TIMEOUT_MS));
 #endif
 #if APP_STF_MULTI_MODE
 		k_work_reschedule(&stf_long_press_work, K_MSEC(BUTTON_STF_LONG_PRESS_TIMEOUT_MS));
@@ -279,6 +325,9 @@ static void button_cb(const struct device *dev, struct gpio_callback *cb, uint32
 		// Cancel shutdown timeout when button is released
 		k_work_cancel_delayable(&shutdown_timeout_work);
 #endif
+#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+		k_work_cancel_delayable(&ota_timeout_work);
+#endif
 #if APP_STF_MULTI_MODE
 		// Cancel STF long press timeout when button is released
 		k_work_cancel_delayable(&stf_long_press_work);
@@ -295,12 +344,20 @@ bool platform_ctrl_button_init(void)
 	if (err) {
 		LOG_ERR("Error %d: failed to configure %s pin %u", err, button.port->name,
 			button.pin);
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+				     AT_CMD_TAG_ERR_BUTTON);
+#endif
 		return false;
 	}
 	err = gpio_pin_interrupt_configure_dt(&button, GPIO_INT_EDGE_BOTH);
 	if (err) {
 		LOG_ERR("Error %d: failed to configure interrupt on %s pin %u", err,
 			button.port->name, button.pin);
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+				     AT_CMD_TAG_ERR_BUTTON);
+#endif
 		return false;
 	}
 
@@ -319,7 +376,8 @@ bool platform_ctrl_button_init(void)
 	while (gpio_pin_get_dt(&button)) {
 		k_sleep(K_MSEC(BUTTON_POLL_INTERVAL_MS));
 		if (k_uptime_get() - timestamp > BUTTON_POWERON_TIMEOUT_MS) {
-			platform_ctrl_led_event_indicate(LED_EVT_POWER_ON);
+			platform_indicate_state(TAG_IND_STATE_POWER_ON,
+						platform_tag_supported_mode_mask_get());
 			break;
 		}
 	}

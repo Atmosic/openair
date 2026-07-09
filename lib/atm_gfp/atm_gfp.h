@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <zephyr/bluetooth/addr.h>
 #include "compiler.h" // __NONNULL_ALL inline functions
 #ifdef CONFIG_ATM_GFPS
 #include "fp_mode.h"
@@ -84,6 +85,16 @@ typedef int (*atm_gfp_ranging_start_cb_t)(rt_id_t tech_id);
 typedef int (*atm_gfp_ranging_stop_cb_t)(rt_id_t tech_id);
 
 /**
+ * @brief FMDN motion status getter (atm_gfp-internal).
+ *
+ * Used internally by atm_gfp to expose a peak-accumulating getter to the FMDN
+ * layer.  It is NOT supplied by the platform.
+ *
+ * @return Peak motion status since last read; peak is reset on every call.
+ */
+typedef ranging_de_motion_status_t (*atm_gfp_ranging_motion_get_status_t)(void);
+
+/**
  * @brief FMDN ranging callback handler structure
  * Contains callbacks for ranging operations. NULL callbacks are ignored.
  */
@@ -96,23 +107,50 @@ typedef struct {
 
 #endif // CONFIG_FMDN_PRECISION_FINDING
 
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+/**
+ * @brief Raw motion snapshot getter supplied by the platform when motion is enabled.
+ * @return Current tilt angle in whole degrees (0–90), sampled at call time.
+ */
+typedef uint8_t (*atm_gfp_motion_raw_get_t)(void);
+
+/**
+ * @brief Platform motion callback — enable or disable motion sensor hardware.
+ *
+ * Called by atm_gfp to start or stop the motion sensor on behalf of FMDN
+ * precision finding.
+ * @param get_raw  non-NULL to enable; platform writes its raw snapshot getter
+ *                 here.  NULL to disable motion detection.
+ * @return 0 on success, negative errno on error
+ */
+typedef int (*atm_gfp_motion_cb_t)(atm_gfp_motion_raw_get_t *get_raw);
+#endif /* CONFIG_FMDN_PRECISION_FINDING */
+
 #ifdef CONFIG_FMDN_REVERSE_RINGING
 /**
  * @brief Reverse ringing event types
  *
  * Events for reverse ringing (Find My Phone feature) user feedback.
- * Per FHN v2 spec line 263: "The tag may use indication confirmation to provide
- * feedback to the user (a specific LED pattern or beep) on successful operation"
+ * The tag may use indication confirmation to provide feedback to the user
+ * (a specific LED pattern or beep) on successful operation.
  */
 typedef enum {
 	/**
-	 * @brief Request successfully sent to phone
+	 * @brief Seeker connected via RR advertisement, encryption enabled
 	 *
-	 * GATT indication was confirmed (ACKed). Application should show
-	 * feedback to user (LED pattern or beep) that the request was sent.
-	 * Per spec line 263: feedback on "successful operation"
+	 * The phone is already ringing at this point — it started ringing upon
+	 * detecting the RR advertisement before connecting. Application may now
+	 * show active ringing feedback (LED pattern or beep).
 	 */
-	ATM_GFP_RR_EVENT_STARTED = 0,
+	ATM_GFP_RR_EVENT_CONNECTED = 0,
+
+	/**
+	 * @brief Seeker confirmed ringing started
+	 *
+	 * Phone has started ringing. Application should show active ringing
+	 * feedback (LED pattern or beep).
+	 */
+	ATM_GFP_RR_EVENT_STARTED,
 
 	/**
 	 * @brief Reverse ringing stopped
@@ -186,10 +224,11 @@ typedef struct atm_gfp_hdlrs_s {
 	 *
 	 * @param action true to start playing sound, false to stop
 	 * @param ring_op ring operation
-	 * @param ring_vol ring volume
+	 * @param ring_vol_lvl ring volume level
+	 * @param ring_to_ds ring timeout in deciseconds
 	 */
 	void (*sound_action_cb)(bool action, atm_gfp_ring_op_t ring_op,
-				atm_gfp_ring_vol_t ring_vol);
+				atm_gfp_ring_vol_t ring_vol_lvl, uint16_t ring_to_ds);
 
 #ifdef CONFIG_ATM_GFPS
 	/**
@@ -220,6 +259,38 @@ typedef struct atm_gfp_hdlrs_s {
 	atm_gfp_ranging_handler_t const *ranging_handlers;
 #endif
 
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	/**
+	 * @brief Platform motion sensor callback for FMDN precision finding.
+	 *
+	 * atm_gfp calls this to enable/disable the motion sensor hardware on
+	 * behalf of FMDN ranging.  On enable the platform writes its raw
+	 * snapshot getter into the pointer; on disable the pointer is NULL.
+	 */
+	atm_gfp_motion_cb_t motion_cb;
+#endif
+
+#ifdef CONFIG_DULT_MOTION_DETECT
+	/**
+	 * @brief Enable or disable motion sensor hardware for DULT UT detection.
+	 *
+	 * Called by atm_gfp at DULT init to pass the platform HW control
+	 * function to the DULT service.  DULT owns its own polling loop and
+	 * calls this when it needs to start or stop the sensor.
+	 *
+	 * @param enable  true to power on the sensor, false to power it off.
+	 */
+	void (*dult_motion_hw_enable_cb)(bool enable);
+
+	/**
+	 * @brief Raw motion snapshot getter for DULT UT detection.
+	 *
+	 * Registered at DULT init time.  DULT calls this on each poll tick to
+	 * read the current tilt angle in whole degrees (0–90).
+	 */
+	uint8_t (*dult_motion_raw_get_cb)(void);
+#endif
+
 #ifdef CONFIG_FMDN_REVERSE_RINGING
 	/**
 	 * @brief Reverse ringing event callback function
@@ -237,6 +308,7 @@ typedef struct atm_gfp_hdlrs_s {
 	 */
 	void (*reverse_ringing_event_cb)(atm_gfp_reverse_ringing_event_t event);
 #endif
+
 } atm_gfp_hdlrs_t;
 
 /**
@@ -433,12 +505,51 @@ const char *atm_gfp_ring_op_to_string(atm_gfp_ring_op_t ring_op);
 /**
  * @brief Convert ring volume to string
  *
- * @param ring_vol ring volume
- * @return string representation of ring volume
+ * @param ring_vol_lvl ring volume level
+ * @return string representation of ring volume level
  */
-const char *atm_gfp_ring_vol_to_string(atm_gfp_ring_vol_t ring_vol);
+const char *atm_gfp_ring_vol_to_string(atm_gfp_ring_vol_t ring_vol_lvl);
+
+/**
+ * @brief Get current advertising Bluetooth address
+ *
+ * Retrieves the Bluetooth LE address used for the current Fast Pair advertising
+ * set. The address is selected based on provisioning state:
+ * - Not provisioned: Fast Pair advertising BT ID address
+ * - Provisioned:     FMDN advertising BT ID address
+ *
+ * @param[out] addr Pointer to receive the advertising address
+ * @return 0 on success, negative errno on error
+ */
+__NONNULL_ALL
+int atm_gfp_get_adv_addr(bt_addr_le_t *addr);
 
 #ifdef CONFIG_FAST_PAIR_FMDN
+/**
+ * @brief Set FMDN clock to a specific value at startup
+ *
+ * Allows the application to supply the FMDN clock value before the FMDN
+ * service starts. The application is responsible for obtaining and validating
+ * this value (e.g. from uninitialized RAM contents preserved across a reset).
+ *
+ * Must be called before atm_gfp_init() to take effect. If not called,
+ * atm_gfp_init() restores the clock from NVM as normal.
+ *
+ * @param[in] clock_value FMDN clock value in seconds to apply
+ */
+void atm_gfp_fmdn_clock_set(uint32_t clock_value);
+
+/**
+ * @brief Get the current FMDN clock value
+ *
+ * Returns the current running FMDN clock value in seconds. The application
+ * can use this to preserve the clock across resets (e.g. by storing it in
+ * uninitialized RAM) and restore it at startup via atm_gfp_fmdn_clock_set().
+ *
+ * @return current FMDN clock value in seconds
+ */
+uint32_t atm_gfp_fmdn_clock_get(void);
+
 /**
  * @brief Save FMDN clock to NVM
  *

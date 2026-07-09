@@ -25,6 +25,7 @@
 
 #include "arch.h"
 #include "at_wrpr.h"
+#include "hw_cfg.h"
 #include "vectors.h"
 
 #include "radio_hal_common.h"
@@ -145,20 +146,25 @@ static int atm_mac_sys_init(void)
 SYS_INIT(atm_mac_sys_init, PRE_KERNEL_2, 10);
 #endif
 
-static int8_t const valid_tx_power_levels[ATM_RF_POWER_LVL_NUM] =
-{
-  [ATM_RF_POWER_MINUS_20_DBM] = -20,
-  [ATM_RF_POWER_MINUS_10_DBM] = -10,
-  [ATM_RF_POWER_MINUS_8_DBM] = -8,
-  [ATM_RF_POWER_MINUS_6_DBM] = -6,
-  [ATM_RF_POWER_MINUS_4_DBM] = -4,
-  [ATM_RF_POWER_MINUS_2_DBM] = -2,
-  [ATM_RF_POWER_0_DBM] = 0,
-  [ATM_RF_POWER_2_DBM] = 2,
-  [ATM_RF_POWER_4_DBM] = 4,
-  [ATM_RF_POWER_6_DBM] = 6,
-  [ATM_RF_POWER_8_DBM] = 8,
-  [ATM_RF_POWER_10_DBM] = 10,
+static int8_t const valid_tx_power_levels[ATM_RF_POWER_LVL_NUM] = {
+    [ATM_RF_POWER_MINUS_20_DBM] = -20,
+    [ATM_RF_POWER_MINUS_10_DBM] = -10,
+    [ATM_RF_POWER_MINUS_8_DBM] = -8,
+    [ATM_RF_POWER_MINUS_6_DBM] = -6,
+    [ATM_RF_POWER_MINUS_4_DBM] = -4,
+    [ATM_RF_POWER_MINUS_2_DBM] = -2,
+    [ATM_RF_POWER_0_DBM] = 0,
+    [ATM_RF_POWER_2_DBM] = 2,
+    [ATM_RF_POWER_4_DBM] = 4,
+#if CONFIG_ATM_MAX_TX_POWER_DBM >= 6
+    [ATM_RF_POWER_6_DBM] = 6,
+#endif
+#if CONFIG_ATM_MAX_TX_POWER_DBM >= 8
+    [ATM_RF_POWER_8_DBM] = 8,
+#endif
+#if CONFIG_ATM_MAX_TX_POWER_DBM >= 10
+    [ATM_RF_POWER_10_DBM] = 10,
+#endif
 };
 
 int8_t atm_mac_get_tx_power_level(uint8_t index)

@@ -35,11 +35,19 @@ extern "C" {
 
 /// The length of AT command response
 #ifndef AT_CMD_RESP_LEN
+#ifdef CONFIG_AT_CMD_RESP_LEN
+#define AT_CMD_RESP_LEN CONFIG_AT_CMD_RESP_LEN
+#else
 #define AT_CMD_RESP_LEN 256
+#endif
 #endif // AT_CMD_RESP_LEN
 
 #ifndef AT_CMD_RSP_FMT_MAX_LEN
+#ifdef CONFIG_AT_CMD_RSP_FMT_MAX_LEN
+#define AT_CMD_RSP_FMT_MAX_LEN CONFIG_AT_CMD_RSP_FMT_MAX_LEN
+#else
 #define AT_CMD_RSP_FMT_MAX_LEN 64
+#endif
 #endif // AT_CMD_RSP_FMT_MAX_LEN
 
 /// Invalid channel number

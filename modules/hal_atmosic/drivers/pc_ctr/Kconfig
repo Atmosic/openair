@@ -42,11 +42,8 @@ config ATM_PC_LOW_THD
 
 config ATM_LL_HEAP_SIZE
 	int "LL heap size"
-	default 40388 if ATM_LCROM_IFACE && ATMWSTK_PD50
 	default 30000 if ATM_ENA_LL_FEAT_CS && ATMWSTK_PD50
 	default 24000 if ATMWSTK_PD50
-	default 60388 if ATM_LCROM_IFACE && ATMWSTK_CPD200
-	default 80388 if ATM_LCROM_IFACE
 	default 80572
 
 config ATM_ENA_DBG_PC_CTR_MEM_USAGE
@@ -69,6 +66,10 @@ config ATM_ENA_BLE_CS_MANDATORY_TIMING_ONLY
 
 config ATM_ENA_SCAN_RANDOM_BACKOFF
 	bool "Enable scan random backoff"
+	default y
+
+config ATM_ENA_CONN_PARAM_REQ_PROC
+	bool "Enable connection parameters request procedure"
 	default y
 
 config ATM_ENA_BLE_CS_DBG_VECTOR
@@ -100,5 +101,12 @@ config ATM_LL_MAX_CONN
 	default 0
 	help
 	  Maximum number of connections supported by the link layer.
+
+config ATM_ENA_LL_VS_CMD
+	bool "Enable LL basic VS command support"
+
+config ATM_BT_VER
+	int "Override BT version"
+	default 0
 
 endif # ATM_PC_CTR
