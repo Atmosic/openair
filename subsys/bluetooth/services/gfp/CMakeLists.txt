@@ -35,12 +35,15 @@ if(CONFIG_ATM_GFPS)
   endif()
 
   # Check BT_MAX_PAIRED when FAST_PAIR_FMDN_V2 is enabled
-  # FHN v2 requires at least 64 bonded devices
+  # FHN v2 (upcoming spec) requires at least 8 bonded devices; 16 is recommended.
+  # Maximum supported is 16 due to NVS setting size.
   if(CONFIG_FAST_PAIR_FMDN_V2)
     if(NOT DEFINED CONFIG_BT_MAX_PAIRED)
-      message(FATAL_ERROR "CONFIG_BT_MAX_PAIRED is not defined. FHN v2 requires CONFIG_BT_MAX_PAIRED >= 64")
-    elseif(CONFIG_BT_MAX_PAIRED LESS 64)
-      message(FATAL_ERROR "CONFIG_BT_MAX_PAIRED must be >= 64 for FHN v2 (currently ${CONFIG_BT_MAX_PAIRED}). ")
+      message(FATAL_ERROR "CONFIG_BT_MAX_PAIRED is not defined. FHN v2 requires CONFIG_BT_MAX_PAIRED in range [8, 16]")
+    elseif(CONFIG_BT_MAX_PAIRED LESS 8)
+      message(FATAL_ERROR "CONFIG_BT_MAX_PAIRED must be >= 8 for FHN v2 (currently ${CONFIG_BT_MAX_PAIRED})")
+    elseif(CONFIG_BT_MAX_PAIRED GREATER 16)
+      message(FATAL_ERROR "CONFIG_BT_MAX_PAIRED must be <= 16 for FHN v2 (currently ${CONFIG_BT_MAX_PAIRED})")
     endif()
   endif()
 endif()

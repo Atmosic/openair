@@ -34,22 +34,32 @@ typedef enum {
 	TAG_TYPE_MAX,
 } tag_type_t;
 
+/**
+ * @brief Convert tag type to mode bitmask
+ * @param[in] type tag type (tag_type_t)
+ * @return bitmask with the corresponding bit set
+ */
+static inline uint8_t platform_tag_type_to_mode(uint8_t type)
+{
+	return (uint8_t)(1U << type);
+}
+
 /// Tag Mode Indexes
 typedef enum {
 	/// Index of Tag initial done
-	TAG_STATE_INIT_DONE = 0x00,
+	TAG_EVENT_INIT_DONE = 0x00,
 	/// Index of Tag unpaired
-	TAG_STATE_UNPAIRED,
+	TAG_EVENT_UNPAIRED,
 	/// Index of Tag in pairing
-	TAG_STATE_PAIRING,
+	TAG_EVENT_PAIRING,
 	/// Index of Tag paired
-	TAG_STATE_PAIRED,
+	TAG_EVENT_PAIRED,
 	/// Index of Tag invalid
-	TAG_STATE_INVALID = 0xFF,
-} tag_state_t;
+	TAG_EVENT_INVALID = 0xFF,
+} tag_event_t;
 
 /// tag state notify
-typedef void (*tag_state_notify_cb)(tag_state_t st, uint8_t type);
+typedef void (*tag_state_notify_cb)(tag_event_t st, uint8_t type);
 
 /// tag handlers
 typedef struct tag_hdlrs_s {

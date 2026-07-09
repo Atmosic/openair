@@ -10,7 +10,7 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/storage/flash_map.h>
-#include <zephyr/fs/nvs.h>
+#include <zephyr/kvss/nvs.h>
 #include <zephyr/linker/section_tags.h>
 
 #define RESET_TEST_MAGIC 0x5AA5C33C
@@ -21,27 +21,27 @@ static uint8_t __noinit reset_flag;
 ZTEST(flash_atm_abnormal, test_flash_abnormal)
 {
 	static struct nvs_fs nvs = {
-		.flash_device = FIXED_PARTITION_DEVICE(t_storage0),
-		.offset = FIXED_PARTITION_OFFSET(t_storage0),
+		.flash_device = PARTITION_DEVICE(t_storage0),
+		.offset = PARTITION_OFFSET(t_storage0),
 	};
 
 	/* Check if partition exist */
-	if (!device_is_ready(FIXED_PARTITION_DEVICE(t_storage0))) {
-		printk("Flash device %s is not ready\n", FIXED_PARTITION_DEVICE(t_storage0)->name);
+	if (!device_is_ready(PARTITION_DEVICE(t_storage0))) {
+		printk("Flash device %s is not ready\n", PARTITION_DEVICE(t_storage0)->name);
 		ztest_test_fail();
 	}
 
 	/* Mount t_storage0 partition */
 	struct flash_pages_info info;
-	int ret = flash_get_page_info_by_offs(FIXED_PARTITION_DEVICE(t_storage0),
-					      FIXED_PARTITION_OFFSET(t_storage0), &info);
+	int ret = flash_get_page_info_by_offs(PARTITION_DEVICE(t_storage0),
+					      PARTITION_OFFSET(t_storage0), &info);
 	if (ret) {
 		printk("Unable to get page info, rc=%d\n", ret);
 		ztest_test_fail();
 	}
 
 	nvs.sector_size = info.size;
-	nvs.sector_count = FIXED_PARTITION_SIZE(t_storage0) / info.size;
+	nvs.sector_count = PARTITION_SIZE(t_storage0) / info.size;
 
 	TC_PRINT("Doing nvs_mount\n");
 	ret = nvs_mount(&nvs);

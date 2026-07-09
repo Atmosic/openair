@@ -4,6 +4,68 @@
 
 config ATM_UECC
 	bool "Optimized ECC library"
+	default y if ATM_UECC_PSA
+
+config ATM_UECC_PSA
+	bool "uECC-backed PSA ECC driver"
+	depends on PSA_WANT_ALG_ECDSA
+	depends on !USERSPACE
+	help
+	  Route mbedtls_psa_ecdsa_sign_hash(),
+	  mbedtls_psa_ecdsa_verify_hash() and
+	  mbedtls_psa_key_agreement_ecdh() through the uECC software
+	  implementation for the curves uECC supports (secp192r1 / secp224r1 /
+	  secp256r1 / secp256k1). All other curves and deterministic ECDSA
+	  sign fall through to the Mbed TLS software path via linker --wrap
+	  (__real_mbedtls_psa_*).
+
+	  mbedtls_psa_ecp_generate_key() is intentionally not wrapped: the
+	  software path only generates the random scalar (no point arithmetic)
+	  because PSA stores ECC key pairs as the bare scalar and defers
+	  Q = d*G to the next psa_export_public_key() / key-agreement call,
+	  whereas uECC_make_key() always computes Q -- so wrapping keygen
+	  would do an unnecessary scalar mult that the software load path
+	  would then repeat at use time.
+
+	  Note: uECC is a portable, hand-tuned C library, not a hardware
+	  accelerator -- this option enables the optimized software ECC path
+	  through PSA, not any Atmosic ECC peripheral.
+
+	  Code-size note: in this default (with-fallback) mode the link still
+	  pulls in the Mbed TLS PSA software ECC backend (which transitively
+	  pulls in mbedtls bignum / ecp) so the __real_* fallback can run.
+	  See ATM_UECC_PSA_NO_FALLBACK for a smaller variant suitable for the
+	  bootloader.
+
+config ATM_UECC_PSA_NO_FALLBACK
+	bool "Omit Mbed TLS software ECC fallback (smaller image)"
+	depends on ATM_UECC_PSA
+	help
+	  Compile the PSA wrapper without any reference to
+	  __real_mbedtls_psa_ecdsa_sign_hash / ..._verify_hash /
+	  ..._key_agreement_ecdh. Unsupported curves, deterministic ECDSA
+	  on sign, and ECC-key-pair verify (which uECC cannot service
+	  directly) return PSA_ERROR_NOT_SUPPORTED instead of falling
+	  through to software.
+
+	  Because the wrapper is the sole caller of the built-in PSA ECDSA
+	  entry points and --wrap redirects every other reference to
+	  __wrap_*, dropping the __real_* calls makes the original
+	  mbedtls_psa_ecdsa_* objects (and their bignum / ecp dependencies)
+	  unreferenced, so the linker drops them. This recovers the code-size
+	  win that the legacy MBEDTLS_ECP_ALT path (ecp_alt.c, removed in
+	  Mbed TLS 4.x) used to provide for MCUboot.
+
+	  This option additionally redirects mbedtls_psa_ecp_import_key()
+	  through a uECC-shaped stub that validates the PSA key encoding
+	  (uncompressed SEC1 for public, raw scalar for key pair) and copies
+	  it into storage. The on-curve check that the software import path
+	  performs is skipped: a malformed public key is caught at verify
+	  time as PSA_ERROR_INVALID_SIGNATURE.
+
+	  Enable this only in images that are committed to "uECC-supported
+	  curves only" -- typically the MCUboot bootloader, which signs/
+	  verifies with secp256r1.
 
 if ATM_UECC
 

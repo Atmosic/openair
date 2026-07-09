@@ -93,6 +93,17 @@ void fp_fmdn_key_clock_periodic_save_stop(void);
 void fp_fmdn_key_clock_save_immediate(void);
 
 /**
+ * @brief Set FMDN clock to a specific value at startup
+ *
+ * Pre-initializes the in-memory FMDN clock state to the given value so that
+ * the provided value is already in effect when fp_fmdn_key_clock_init() runs.
+ * Must be called before fp_fmdn_key_clock_init() to take effect.
+ *
+ * @param[in] clock_value FMDN clock value in seconds to apply
+ */
+void fp_fmdn_key_clock_set(uint32_t clock_value);
+
+/**
  * @brief Reset FMDN clock value to 0
  *
  * Resets the FMDN clock value to 0 and deletes it from NVM.
@@ -112,7 +123,7 @@ void fp_fmdn_key_clock_reset(void);
  */
 __NONNULL_ALL
 bool fp_fmdn_key_generate(uint8_t const *eid_key, fp_fmdn_auth_key_type_t key_type,
-			  fp_fmdn_auth_key_type_t *auth_key, size_t auth_key_len);
+			  uint8_t *auth_key, size_t auth_key_len);
 
 /**
  * @brief FP FMDN bcna key eid generate auth data

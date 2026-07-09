@@ -6,7 +6,8 @@ common:
   tags:
     - drivers
     - watchdog
-
+  depends_on:
+    - wdt
 tests:
   tests.drivers.watchdog.wdt_unified_api.atm:
     sysbuild: true

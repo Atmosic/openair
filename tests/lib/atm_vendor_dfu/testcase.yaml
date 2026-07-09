@@ -1,0 +1,98 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+common:
+  sysbuild: true
+  harness: ztest
+  tags:
+    - dfu
+    - mcuboot
+    - atm_vendor_dfu
+  depends_on:
+    - flash
+    - rram
+  extra_args:
+    - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+    - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+    - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  timeout: 60
+
+tests:
+  tests.lib.atm_vendor_dfu.atm.mcuboot.single_image: &single_image
+    extra_args:
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+  tests.lib.atm_vendor_dfu.atm.mcuboot.flash_xip.dual_image: &flash_xip_dual_image
+    tags:
+      - flash_xip
+    depends_on:
+      - xip
+    extra_args:
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+
+  tests.lib.atm_vendor_dfu.atm.mcuboot.single_image.gcov:
+    <<: *single_image
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_COVERAGE=y
+      - CONFIG_MAIN_STACK_SIZE=8192
+      - CONFIG_UART_ATM_PM_WQ_STACK_SIZE=2048
+      - CONFIG_UU_TEST_OPENAIR="atm_vendor_dfu.c"
+  tests.lib.atm_vendor_dfu.atm.mcuboot.flash_xip.dual_image.gcov:
+    <<: *flash_xip_dual_image
+    tags:
+      - gcov
+      - flash_xip
+    depends_on:
+      - gcov_capable
+      - xip
+    timeout: 180
+    extra_configs:
+      - CONFIG_COVERAGE=y
+      - CONFIG_MAIN_STACK_SIZE=8192
+      - CONFIG_UU_TEST_OPENAIR="atm_vendor_dfu.c"
+
+  tests.lib.atm_vendor_dfu.atm.mcuboot.pytest.single_image:
+    harness: pytest
+    timeout: 600
+    extra_args:
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - DTC_OVERLAY_FILE=app_pytest.overlay
+    extra_configs:
+      - CONFIG_ZTEST=n
+      - CONFIG_SERIAL=y
+      - CONFIG_REBOOT=y
+    harness_config:
+      pytest_root: ["pytest/test_dfu_swap.py"]
+      pytest_args:
+        - "-v"
+        - "--dfu-mode=single"
+  tests.lib.atm_vendor_dfu.atm.mcuboot.pytest.flash_xip.dual_image:
+    harness: pytest
+    timeout: 600
+    tags:
+      - flash_xip
+    depends_on:
+      - xip
+    extra_args:
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+      - DTC_OVERLAY_FILE=app_pytest.overlay
+    extra_configs:
+      - CONFIG_ZTEST=n
+      - CONFIG_SERIAL=y
+      - CONFIG_REBOOT=y
+    harness_config:
+      pytest_root: ["pytest/test_dfu_swap.py"]
+      pytest_args:
+        - "-v"
+        - "--dfu-mode=dual"

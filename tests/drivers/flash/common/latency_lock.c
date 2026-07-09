@@ -13,7 +13,7 @@
 
 #ifdef CONFIG_FLASH_EX_OP_ENABLED
 
-#define TEST_AREA_DEVICE	FIXED_PARTITION_DEVICE(storage_partition)
+#define TEST_AREA_DEVICE	PARTITION_DEVICE(storage_partition)
 static struct device const * const flash_dev = TEST_AREA_DEVICE;
 
 ZTEST(flash_driver, test_flash_latency_lock)

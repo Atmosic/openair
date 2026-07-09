@@ -13,5 +13,6 @@ config SOC_SERIES_ATM34
 	select CPU_HAS_TEE
 	select HAS_PM
 	select HAS_POWEROFF if PM && $(dt_path_enabled,/power-states/soc_off)
+	select SOC_ATM_SYSTICK_COUNTFLAG_WORKAROUND
 	help
 	  Enable support for ATM34 series

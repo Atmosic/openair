@@ -60,6 +60,7 @@ void LhciAdvSlaveInit(void);
 void LhciExtAdvSlaveInit(void);
 void LhciEncMasterInit(void);
 void LhciEncSlaveInit(void);
+void LhciEncCmnInit(void);
 void LhciPrivAdvInit(void);
 void LhciPrivConnInit(void);
 void LhciConnInit(void);

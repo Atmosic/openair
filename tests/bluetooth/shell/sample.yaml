@@ -21,6 +21,8 @@ tests:
   tests.bluetooth.shell.atm.cs:
     tags:
       - channel_sounding
+    depends_on:
+      - channel_sounding
     extra_args:
       - EXTRA_CONF_FILE=${CMAKE_CURRENT_SOURCE_DIR}/basic_cs.conf
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y

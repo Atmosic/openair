@@ -4,3 +4,22 @@
 
 config ATM_AT_CMD
 	bool "Atmosic AT command core and parser library"
+
+if ATM_AT_CMD
+
+config AT_CMD_RESP_LEN
+	int "AT command response buffer size"
+	default 256
+	help
+	  Maximum size of the underlying AT command response buffer. This defines
+	  the maximum length of any fully formatted AT command response string
+	  (including prefix, postfix, and all parameters).
+
+config AT_CMD_RSP_FMT_MAX_LEN
+	int "AT command response format string maximum length"
+	default 64
+	help
+	  Maximum length of an AT command response format string (e.g., "B,A(0~32)").
+	  This is used internally by the AT command parser when processing responses.
+
+endif # ATM_AT_CMD

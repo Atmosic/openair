@@ -189,6 +189,19 @@ void LmgrSendCsTestEndCmplEvent(void)
 #endif // LL_FEAT_CS_TEST && !defined(ENA_LL_FEAT_CS_TEST)
 #endif
 
+#if defined(ENA_LL_FEAT_CS) && !defined(ENA_LL_FEAT_CS_ENH1)
+void lhciCsEncodeReadRemSupCapV2(LlEvt_t *pEvt, uint8_t **pEvtBuf)
+{
+}
+bool lctrCsFillEnhancedCapPdu(void *pCtx, void *pCapPdu)
+{
+    return false;
+}
+void lhciSetDefaultHciSupCmd_6_3(uint8_t *pBuf)
+{
+}
+#endif
+
 #if LL_FEAT_ISO && !defined(ENA_LL_FEAT_ISO)
 static void stub_LhciHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
 {
@@ -230,7 +243,14 @@ void BbBleAdvSlaveInit(void) __attribute__((alias("stub_void_func")));
 void LhciAdvSlaveInit(void) __attribute__((alias("stub_void_func")));
 uint32_t LlAdvSlaveInit(uint8_t *pFreeMem, uint32_t freeMemAvail)
     __attribute__((alias("stub_return_zero_mem")));
+#elif !defined(ENA_LL_RX)
+static uint8_t stub_LlSetScanRespData(uint8_t len, const uint8_t *pData)
+{
+    return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
+}
 
+uint8_t LlSetScanRespData(uint8_t len, const uint8_t *pData)
+    __attribute__((alias("stub_LlSetScanRespData")));
 #endif // !ENA_LL_FEAT_BROADCASTER || !ENA_LL_FEAT_LEGACY_ADV
 #if !defined(ENA_LL_FEAT_BROADCASTER) || !defined(ENA_LL_FEAT_EXT_ADV)
 void BbBleAuxAdvSlaveInit(void) __attribute__((alias("stub_void_func")));
@@ -259,19 +279,17 @@ void LhciDbafPeripheralInit(void) __attribute__((alias("stub_void_func")));
 #endif // LL_FEAT_DBAF && !defined(ENA_LL_FEAT_DBAF)
 #endif
 #if (defined(INIT_PERIPHERAL) || defined(INIT_CENTRAL)) && \
-    (!defined(DTM_SUPP) && !defined(ENA_LL_FEAT_PERIPHERAL) && \
-	!defined(ENA_LL_FEAT_CENTRAL))
-// DTM handlers are implemented in the PHY module which is required for
-// general connectivity
+    (!defined(ENA_LL_FEAT_PERIPHERAL) && !defined(ENA_LL_FEAT_CENTRAL))
 void LhciPhyInit(void) __attribute__((alias("stub_void_func")));
 #endif
-#ifndef DTM_SUPP
-static uint8_t stub_LlTxTest(LlTestTxParam_t *pTxTestParam)
+#if !defined(DTM_SUPP) || !defined(ENA_LL_RX)
+static uint8_t stub_LlRxTest(LlTestRxParam_t *pRxTestParam)
 {
     return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
 }
-
-static uint8_t stub_LlRxTest(LlTestRxParam_t *pRxTestParam)
+#endif
+#ifndef DTM_SUPP
+static uint8_t stub_LlTxTest(LlTestTxParam_t *pTxTestParam)
 {
     return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
 }
@@ -290,6 +308,9 @@ uint8_t LlEndTest(LlTestReport_t *pRpt)
 uint32_t LlTestInit(uint8_t *pFreeMem, uint32_t freeMemAvail)
     __attribute__((alias("stub_return_zero_mem")));
 void BbBleTestInit(void) __attribute__((alias("stub_void_func")));
+#elif !defined(ENA_LL_RX)
+uint8_t LlRxTest(LlTestRxParam_t *pRxTestParam)
+    __attribute__((alias("stub_LlRxTest")));
 #endif
 #ifdef INIT_CENTRAL
 #ifndef ENA_LL_FEAT_CENTRAL
@@ -359,7 +380,10 @@ void LhciFsuInit(void) __attribute__((alias("stub_void_func")));
 uint32_t LlInitFsuMem(uint8_t *pFreeMem, uint32_t freeMemSize)
     __attribute__((alias("stub_return_zero_mem")));
 #endif
-
+#if LL_FEAT_ECU && !defined(ENA_LL_FEAT_ECU)
+void LlEnhConnUpdateInit(void) __attribute__((alias("stub_void_func")));
+void LhciEnhConnUpdateInit(void) __attribute__((alias("stub_void_func")));
+#endif
 #if defined(INIT_ENCRYPTED) && !defined(ENA_LL_FEAT_ENC_PRIV)
 static void stub_LlEncConnSlaveInit(void)
 {
@@ -373,6 +397,7 @@ void LlEncInit(void) __attribute__((alias("stub_void_func")));
 void LlScInit(void) __attribute__((alias("stub_void_func")));
 void LctrPrivInit(void) __attribute__((alias("stub_void_func")));
 void LhciEncSlaveInit(void) __attribute__((alias("stub_void_func")));
+void LhciEncCmnInit(void) __attribute__((alias("stub_void_func")));
 void LhciPrivAdvInit(void) __attribute__((alias("stub_void_func")));
 void LhciPrivConnInit(void) __attribute__((alias("stub_void_func")));
 #endif // INIT_ENCRYPTED && !ENA_LL_FEAT_ENC_PRIV
@@ -390,15 +415,45 @@ static uint16_t stub_return_zero_init_list(uint8_t numEntries,
     return 0;
 }
 
+#ifdef CONFIG_ATM_ENA_EMULATE_WHITELIST
+#define WHITELIST_SIZE 4
+static uint8_t wl_cnt;
+
+static uint8_t stub_LlAddDeviceToWhitelist(uint8_t addrType, bdAddr_t pAddr)
+{
+    if (wl_cnt < WHITELIST_SIZE) {
+	wl_cnt++;
+	return LL_SUCCESS;
+    } else {
+	return LL_ERROR_CODE_MEM_CAP_EXCEEDED;
+    }
+}
+
+static uint8_t stub_LlRemoveDeviceFromWhitelist(uint8_t addrType, bdAddr_t
+    pAddr)
+{
+    if (wl_cnt) {
+	wl_cnt--;
+	return LL_SUCCESS;
+    } else {
+	return LL_ERROR_CODE_CMD_DISALLOWED;
+    }
+}
+
+static uint8_t stub_LlGetWhitelistSize(void)
+{
+    return WHITELIST_SIZE;
+}
+
+static uint8_t stub_LlClearWhitelist(void)
+{
+    wl_cnt = 0;
+    return LL_SUCCESS;
+}
+#else // CONFIG_ATM_ENA_EMULATE_WHITELIST
 static uint8_t stub_return_err_whitelist(uint8_t addrType, bdAddr_t pAddr)
 {
     return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
-}
-
-static bool stub_bbBleIsPeerInResList(uint8_t peerAddrType,
-    uint64_t peerIdentityAddr)
-{
-    return false;
 }
 
 static uint8_t stub_LlGetWhitelistSize(void)
@@ -409,6 +464,13 @@ static uint8_t stub_LlGetWhitelistSize(void)
 static uint8_t stub_LlClearWhitelist(void)
 {
     return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
+}
+#endif // CONFIG_ATM_ENA_EMULATE_WHITELIST
+
+static bool stub_bbBleIsPeerInResList(uint8_t peerAddrType,
+    uint64_t peerIdentityAddr)
+{
+    return false;
 }
 
 static uint8_t stub_LlAddDeviceToResolvingList(uint8_t peerAddrType,
@@ -503,10 +565,17 @@ bool bbBleIsPeerInResList(uint8_t peerAddrType, uint64_t peerIdentityAddr)
 uint8_t LlGetWhitelistSize(void)
     __attribute__((alias("stub_LlGetWhitelistSize")));
 uint8_t LlClearWhitelist(void) __attribute__((alias("stub_LlClearWhitelist")));
+#ifdef CONFIG_ATM_ENA_EMULATE_WHITELIST
+uint8_t LlAddDeviceToWhitelist(uint8_t addrType, bdAddr_t pAddr)
+    __attribute__((alias("stub_LlAddDeviceToWhitelist")));
+uint8_t LlRemoveDeviceFromWhitelist(uint8_t addrType, bdAddr_t pAddr)
+    __attribute__((alias("stub_LlRemoveDeviceFromWhitelist")));
+#else // CONFIG_ATM_ENA_EMULATE_WHITELIST
 uint8_t LlAddDeviceToWhitelist(uint8_t addrType, bdAddr_t pAddr)
     __attribute__((alias("stub_return_err_whitelist")));
 uint8_t LlRemoveDeviceFromWhitelist(uint8_t addrType, bdAddr_t pAddr)
     __attribute__((alias("stub_return_err_whitelist")));
+#endif // CONFIG_ATM_ENA_EMULATE_WHITELIST
 
 // LL resolving list stubs
 uint8_t LlAddDeviceToResolvingList(uint8_t peerAddrType,

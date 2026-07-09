@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -9,8 +9,8 @@ config ATM_RF
 config MAX_TX_PWR
 	int "Maximum TX power"
 	depends on ATM_RF
-	range -20 10
-	default 10
+	range -20 ATM_MAX_TX_POWER_DBM
+	default ATM_MAX_TX_POWER_DBM
 	help
 	    Configure the maximum transmit power (dBm) for both advertising and
 	    connection.

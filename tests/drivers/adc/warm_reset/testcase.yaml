@@ -1,0 +1,9 @@
+common:
+  tags:
+    - adc
+    - drivers
+  sysbuild: true
+  expect_reboot: true
+
+tests:
+  tests.drivers.adc.warm_reset.atm: {}

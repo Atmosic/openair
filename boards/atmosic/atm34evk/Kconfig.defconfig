@@ -8,10 +8,6 @@ config CORTEX_M_SYSTICK
 	bool
 	default y
 
-config CORTEX_M_SYSTICK_EXTERNAL_REF
-	bool
-	default y
-
 config RUNTIME_NMI
 	bool
 	default y

@@ -22,18 +22,30 @@
 #define CONFIG_RF_DELAY_ONE_EIGHTH_NS 18
 #endif
 
-uint32_t atm_mac_ble_cs_get_rf_delay_one_eighth_ns(void)
+static uint16_t rf_delay_one_eighth_ns = CONFIG_RF_DELAY_ONE_EIGHTH_NS;
+
+uint8_t atm_mac_ble_cs_phase_adj_en =
+#ifdef REF_PHS_CORR_SUPP
+    1;
+#else
+    0;
+#endif
+
+uint16_t atm_mac_ble_cs_get_rf_delay_one_eighth_ns(void)
 {
-    return CONFIG_RF_DELAY_ONE_EIGHTH_NS;
+    return rf_delay_one_eighth_ns;
+}
+
+void atm_mac_ble_cs_set_rf_delay_one_eighth_ns(uint16_t delay)
+{
+    ASSERT_INFO(delay <= ATM_MAC_BLE_CS_RF_DELAY_MAX, delay,
+	ATM_MAC_BLE_CS_RF_DELAY_MAX);
+    rf_delay_one_eighth_ns = delay;
 }
 
 bool atm_mac_ble_cs_adjust_phase(void)
 {
-#ifdef REF_PHS_CORR_SUPP
-    return true;
-#else
-    return false;
-#endif
+    return atm_mac_ble_cs_phase_adj_en;
 }
 
 void atm_mac_ble_enable_cs_ldo(bool enable)

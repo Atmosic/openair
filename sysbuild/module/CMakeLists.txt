@@ -36,7 +36,6 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_image_cmake)
     elseif(SB_CONFIG_ATM_MPC_NULL_POINTER_DETECTION)
       # Use MPC for NULL pointer detection instead of MPU
       list(APPEND dts_extra_cppflags "-DATM_MPC_NULL_POINTER_DETECTION")
-      set_config_bool(${cur_img} CONFIG_NULL_POINTER_EXCEPTION_DETECTION_MPC "y")
     endif()
   endif()
   zephyr_get(SB_ATM_DTS_EXTRA_CPPFLAGS SYSBUILD LOCAL MERGE REVERSE)

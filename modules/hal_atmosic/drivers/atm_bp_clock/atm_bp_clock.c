@@ -26,7 +26,7 @@
 #define __CLKRSTGEN_SET_STATIC_INLINE \
     __attribute__((section(".data_text"))) static
 #include "at_clkrstgen.h"
-#ifdef SECURE_MODE
+#ifndef SECURE_MODE
 #include "rep_vec.h"
 #endif
 

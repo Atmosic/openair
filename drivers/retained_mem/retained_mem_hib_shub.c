@@ -288,11 +288,13 @@ int retained_mem_backend_init(const struct device *dev)
 #else
 		0;
 #endif
-
+#ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+	usable = ROUND_DOWN(usable, sizeof(uint32_t));
+#endif
 	LOG_DBG("Usable capacity %" PRIu32, usable);
 	if (usable != RETAINED_MEM_BACKEND_CAPACITY) {
 		__ASSERT(0, "Usable capacity does not match! got: %" PRIu32 " exp: %" PRIu32,
-			 usable, RETAINED_MEM_BACKEND_CAPACITY);
+			 usable, (uint32_t)RETAINED_MEM_BACKEND_CAPACITY);
 		return -EINVAL;
 	}
 #endif // CONFIG_LOG

@@ -12,9 +12,35 @@ config RANGING_OOB_DE
 	  ranging capability data elements used in Fast Pair Find My Device
 	  Network and other ranging applications.
 
+if RANGING_OOB_DE
+
 config RANGING_OOB_DE_TYPE_BLE_CS_CONFIG_SEC_TYPE
 	bool "Include security type in BLE CS configuration"
-	depends on RANGING_OOB_DE
 	help
 	  Include security type in BLE CS configuration data element.
 	  This is required for Fast Pair Find My Device Network.
+
+config RANGING_OOB_DE_TECH_TRANS_TYPE
+	hex "Ranging OOB DE Technology Transition Type"
+	default 0x01
+	range 0x0 0x1
+	help
+	  Select the technology transition type of the Ranging OOB DE responder.
+	  0x00 - Break-before-make is supported.
+	  0x01 - Make-before-break is supported. The responder is capable of
+	         ranging with multiple technologies concurrently.
+
+config RANGING_OOB_DE_DEV_TYPE
+	hex "Ranging OOB DE Device Type"
+	default 0x03
+	help
+	  Select the device type of the Ranging OOB DE responder.
+	  0x00 - Unknown
+	  0x01 - Phone
+	  0x02 - Tablet
+	  0x03 - Tag
+	  0x04 - Wearable
+	  0x05 - Hearable
+	  0xFF - RFU
+
+endif # RANGING_OOB_DE

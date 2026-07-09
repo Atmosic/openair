@@ -9,6 +9,7 @@ supported:
   - bluetooth
   - energy_harvesting
   - entropy
+  - gcov_capable
   - gpio
   - hid_kb
   - i2c

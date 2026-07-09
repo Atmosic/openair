@@ -92,6 +92,15 @@ extern uint16_t const atlc_ack_154_buf_tcm_offset;
 // Transmit power levels
 #define MIN_TX_POWER_DBM -20
 #define MAX_TX_POWER_DBM 10
+
+#ifndef CONFIG_ATM_MAX_TX_POWER_DBM
+#ifdef MAX_TX_POWER_DBM
+#define CONFIG_ATM_MAX_TX_POWER_DBM MAX_TX_POWER_DBM
+#else
+#define CONFIG_ATM_MAX_TX_POWER_DBM 10
+#endif
+#endif // CONFIG_ATM_MAX_TX_POWER_DBM
+
 // Transmit power index
 enum {
     ATM_RF_POWER_LVL_LOWEST,
@@ -104,9 +113,21 @@ enum {
     ATM_RF_POWER_0_DBM,
     ATM_RF_POWER_2_DBM,
     ATM_RF_POWER_4_DBM,
+#if CONFIG_ATM_MAX_TX_POWER_DBM < 6
+    ATM_RF_POWER_6_DBM = ATM_RF_POWER_4_DBM,
+#else
     ATM_RF_POWER_6_DBM,
+#endif
+#if CONFIG_ATM_MAX_TX_POWER_DBM < 8
+    ATM_RF_POWER_8_DBM = ATM_RF_POWER_6_DBM,
+#else
     ATM_RF_POWER_8_DBM,
+#endif
+#if CONFIG_ATM_MAX_TX_POWER_DBM < 10
+    ATM_RF_POWER_10_DBM = ATM_RF_POWER_8_DBM,
+#else
     ATM_RF_POWER_10_DBM,
+#endif
     ATM_RF_POWER_LVL_HIGHEST = ATM_RF_POWER_10_DBM,
     ATM_RF_POWER_LVL_NUM
 };

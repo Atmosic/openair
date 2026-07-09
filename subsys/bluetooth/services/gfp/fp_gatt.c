@@ -322,7 +322,7 @@ static int fp_handle_key_based_pairing_request(struct bt_conn *conn, struct net_
 		return err;
 	}
 
-	return fp_auth_set_pairing(conn);
+	return 0;
 }
 /**
  * @brief Notify device name via Additional Data characteristic
@@ -753,8 +753,14 @@ static void fp_kbp_work_handler(struct k_work *work)
 		goto cleanup;
 	}
 
-	// Crypto verified - safe to accept pairing now
-	fp_mode_update(FP_MODE_PAIRING_PROCESSING);
+	// Crypto verified - safe to accept pairing now.
+	// Only transition to PAIRING_PROCESSING for initial pairing.
+	// During subsequent pairing the device is already PROVISIONED and the mode
+	// must not regress; fp_auth_allow_pairing() gates pairing_accept instead.
+	if (fp_mode_get() < FP_MODE_PAIRED) {
+		fp_mode_update(FP_MODE_PAIRING_PROCESSING);
+	}
+	fp_auth_allow_pairing(conn);
 
 	// Build and send response
 	NET_BUF_SIMPLE_DEFINE(rsp, GFP_CRYPTO_AES_BLOCK_LEN_BYTES);

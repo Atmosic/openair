@@ -12,31 +12,20 @@
 
 #pragma once
 
-#ifdef CONFIG_ATM_AES_HW
+#ifdef CONFIG_ATM_UECC_PSA_NO_FALLBACK
 
-#define MBEDTLS_AES_SETKEY_ENC_ALT
-#define MBEDTLS_AES_SETKEY_DEC_ALT
-#define MBEDTLS_AES_ENCRYPT_ALT
-#define MBEDTLS_AES_DECRYPT_ALT
-
-#endif
-
-#ifdef CONFIG_ATM_SHA2_HW
-
-#define MBEDTLS_SHA256_ALT
-
-#endif
-
-#ifdef CONFIG_ATM_UECC
-
-#define MBEDTLS_ECDSA_GENKEY_ALT
-#define MBEDTLS_ECDSA_SIGN_ALT
-#define MBEDTLS_ECDSA_VERIFY_ALT
-
-#ifdef CONFIG_BOOT_ECDSA_MICRO_ECC
-#define MBEDTLS_ECP_ALT
-#endif
-
+/*
+ * In NO_FALLBACK builds the PSA wrapper in lib/micro-ecc/psa_ecc.c
+ * returns PSA_ERROR_NOT_SUPPORTED for any curve uECC does not implement,
+ * and the Mbed TLS software ECDSA backend is omitted from the link.
+ * Strip the curve constants and modular-arithmetic code for those curves
+ * out of tf-psa-crypto/drivers/builtin/src/ecp_curves.c so they do not
+ * get pulled in via PSA's transitive selects.
+ *
+ * Do NOT do this in the default (with-fallback) ATM_UECC_PSA build:
+ * undef'ing these macros would leave the software fallback unable to
+ * service callers that legitimately request these curves through PSA.
+ */
 #undef MBEDTLS_ECP_DP_SECP384R1_ENABLED
 #undef MBEDTLS_ECP_DP_SECP521R1_ENABLED
 #undef MBEDTLS_ECP_DP_SECP192K1_ENABLED

@@ -109,8 +109,11 @@ static volatile uint32_t overflow_cyc;
  *
  * Key difference from SysTick: CMSDK_TIMER's INTSTATUS does NOT auto-clear.
  * We must explicitly write to INTCLEAR to acknowledge the interrupt.
+ *
+ * @param val_out Optional pointer to store the timer->value snapshot (val2)
+ *                used in the calculation.
  */
-static uint32_t elapsed(void)
+static uint32_t elapsed(uint32_t *val_out)
 {
 	struct cmsdk_timer_regs *timer = TIMER_BASE;
 	uint32_t val1 = timer->value;
@@ -136,6 +139,10 @@ static uint32_t elapsed(void)
 		timer->intstatus = CMSDK_TIMER_INTCLEAR_Msk;
 	}
 
+	if (val_out != NULL) {
+		*val_out = val2;
+	}
+
 	return (last_load - val2) + overflow_cyc;
 }
 
@@ -145,7 +152,7 @@ static void cmsdk_timer_isr(void)
 	uint32_t dticks;
 
 	/* Update overflow_cyc and clear INTSTATUS by invoking elapsed() */
-	elapsed();
+	elapsed(NULL);
 
 	/* Increment the amount of HW cycles elapsed and announce to kernel */
 	cycle_count += overflow_cyc;
@@ -185,9 +192,12 @@ void sys_clock_set_timeout(int32_t ticks, bool idle)
 
 	k_spinlock_key_t key = k_spin_lock(&lock);
 
-	uint32_t pending = elapsed();
-
-	val1 = timer->value;
+	/* elapsed() is called passing the address of val1 so that the timer->value
+	 * snapshot used for computing 'pending' is also returned and stored
+	 * in val1. This eliminates the timing gap that would exist if we read
+	 * timer->value separately after elapsed(), ensuring perfect precision.
+	 */
+	uint32_t pending = elapsed(&val1);
 
 	cycle_count += pending;
 	overflow_cyc = 0U;
@@ -247,7 +257,7 @@ uint32_t sys_clock_elapsed(void)
 
 	k_spinlock_key_t key = k_spin_lock(&lock);
 	uint32_t unannounced = cycle_count - announced_cycles;
-	uint32_t cyc = elapsed() + unannounced;
+	uint32_t cyc = elapsed(NULL) + unannounced;
 
 	k_spin_unlock(&lock, key);
 	return cyc / CYC_PER_TICK;
@@ -258,7 +268,7 @@ uint32_t sys_clock_cycle_get_32(void)
 	k_spinlock_key_t key = k_spin_lock(&lock);
 	uint32_t ret = cycle_count;
 
-	ret += elapsed();
+	ret += elapsed(NULL);
 	k_spin_unlock(&lock, key);
 	return ret;
 }
@@ -267,7 +277,7 @@ uint32_t sys_clock_cycle_get_32(void)
 uint64_t sys_clock_cycle_get_64(void)
 {
 	k_spinlock_key_t key = k_spin_lock(&lock);
-	uint64_t ret = cycle_count + elapsed();
+	uint64_t ret = cycle_count + elapsed(NULL);
 
 	k_spin_unlock(&lock, key);
 	return ret;

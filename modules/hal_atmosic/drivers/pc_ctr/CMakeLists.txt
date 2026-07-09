@@ -45,6 +45,9 @@ if(CONFIG_ATM_PC_CTR)
   zephyr_compile_definitions_ifndef(CONFIG_ATM_ENA_SCAN_RANDOM_BACKOFF
     DIS_SCAN_RANDOM_BACKOFF
   )
+  zephyr_compile_definitions_ifndef(CONFIG_ATM_ENA_CONN_PARAM_REQ_PROC
+    DIS_CONN_PARAM_REQ_PROC
+  )
   zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_BLE_CS_DBG_VECTOR
     BLE_CS_DBG_VECTOR
   )
@@ -65,5 +68,11 @@ if(CONFIG_ATM_PC_CTR)
   )
   zephyr_compile_definitions_ifdef(CONFIG_ATM_LL_MAX_CONN
     CFG_GAP_MAX_LINKS=CONFIG_ATM_LL_MAX_CONN
+  )
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_LL_VS_CMD
+    LINK_LL_VS_LIB
+  )
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_BT_VER
+    BT_VER_OVERRIDE=CONFIG_ATM_BT_VER
   )
 endif ()

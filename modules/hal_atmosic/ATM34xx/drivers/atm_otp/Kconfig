@@ -1,7 +1,7 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024 Atmosic-2026
 #
 # SPDX-License-Identifier: Apache-2.0
 
 config ATM_OTP
 	bool "Atmosic One-Time Programmed module"
-	default y if TRUSTED_EXECUTION_SECURE && !BOOTLOADER_MCUBOOT
+	default y if TRUSTED_EXECUTION_SECURE

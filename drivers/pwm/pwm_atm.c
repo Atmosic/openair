@@ -203,6 +203,15 @@ static void pwm_atm_fifo_isr(void)
 #endif
 
 #ifdef CONFIG_PM
+/*
+ * pm_constraint_mask tracks which PWM channels hold a PM constraint. All callers
+ * (pwm_atm_set_cycles, pwm_atm_fifo_start/stop/run_dma) run in thread context;
+ * on different channels they may run concurrently, so the mask is updated with
+ * atomic read-modify-write ops. The 0 <-> non-zero transition is derived from
+ * the value returned by that same atomic op, so the paired pm_policy lock
+ * get/put is issued exactly once. A single mechanism (atomic) is used, with no
+ * irq_lock layered on top.
+ */
 static atomic_t pm_constraint_mask;
 static void pwm_atm_pm_constraint_set(const struct device *dev, uint8_t channel)
 {
@@ -218,8 +227,14 @@ static void pwm_atm_pm_constraint_release(const struct device *dev, uint8_t chan
 {
 	struct pwm_atm_data *data = DEV_DATA(dev);
 	atomic_t old_mask = atomic_and(&pm_constraint_mask, ~BIT(channel));
+	atomic_t new_mask = old_mask & ~BIT(channel);
 
-	if (old_mask && !pm_constraint_mask) {
+	/* Use the value returned by atomic_and instead of re-reading
+	 * pm_constraint_mask: another channel could be set or cleared between the
+	 * atomic_and and a re-read, mis-detecting the last-channel transition and
+	 * unbalancing the PM lock get/put.
+	 */
+	if (old_mask && !new_mask) {
 		/* Calculate frame duration based on stored period for the channel being disabled */
 		if (data->period_cycles[channel]) {
 			/*

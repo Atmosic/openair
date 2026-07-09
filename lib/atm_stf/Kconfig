@@ -4,10 +4,15 @@
 
 config ATM_STF
 	bool "Atmosic Samsung SmartThings Find (STF) TagSDK integration"
+	select ATM_VENDOR_DFU
 	help
 	  Enable Samsung SmartThings Find TagSDK integration.
 	  This provides the Atmosic wrapper for the Samsung TagSDK.
 	  Note: Requires MBEDTLS configuration in application conf file.
+
+	  Routes the TagSDK firmware-update transport through the shared
+	  atm_vendor_dfu helper, which transparently handles single-image
+	  and dual-image (ATMX-tagged) MCUboot layouts.
 
 if ATM_STF
 

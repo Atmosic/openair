@@ -6,7 +6,7 @@
  * @brief Atmosic Google Fast Pair Secure Crypto Middleware
  * This secure Crypto Middleware for Google Fast Pair with mbedtls/uECC.
  *
- * Copyright (C) Atmosic 2025
+ * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -26,10 +26,6 @@
 
 #ifdef CONFIG_ATM_GFP_DIRECT_UECC_INTERFACE
 #include "uECC_vli.h"
-#elif CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-#include "mbedtls/ecdh.h"
-#include "mbedtls/ecp.h"
-#include "mbedtls/aes.h"
 #endif
 
 #ifndef CONFIG_SOC_FAMILY_ATM
@@ -59,36 +55,12 @@ LOG_MODULE_REGISTER(gfp_crypto, CONFIG_GFP_CRYPTO_LOG_LEVEL);
 	((type == GFP_CRYPTO_AES_ECB_128) ? ATM_AES_KEY_LEN_128 : ATM_AES_KEY_LEN_256)
 #else
 #define AES_KEY_BITS(type) ((type == GFP_CRYPTO_AES_ECB_128) ? 128 : 256)
-#define CHECK_RV_GOTO_RET(_rv_, _label_, _val_)                                                    \
-	if (_rv_) {                                                                                \
-		_rv_ = _val_;                                                                      \
-		goto _label_;                                                                      \
-	}
 #endif
 
 static bool gfp_crypto_do_aes_ecb(uint8_t *out, uint8_t const *in, uint16_t in_len,
 				  uint8_t const *key, bool en, gfp_crypto_aes_ecb_type_t type)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-	mbedtls_aes_context aes;
-	mbedtls_aes_init(&aes);
-	int ret;
-	int mode;
-	if (en) {
-		mode = MBEDTLS_AES_ENCRYPT;
-		ret = mbedtls_aes_setkey_enc(&aes, key, AES_KEY_BITS(type));
-	} else {
-		mode = MBEDTLS_AES_DECRYPT;
-		ret = mbedtls_aes_setkey_dec(&aes, key, AES_KEY_BITS(type));
-	}
-	CHECK_RV_GOTO_RET(ret, cleanup, -1);
-	ret = mbedtls_aes_crypt_ecb(&aes, mode, in, out);
-	CHECK_RV_GOTO_RET(ret, cleanup, -2);
-cleanup:
-	mbedtls_aes_free(&aes);
-	return ret ? false : true;
-#else
 
 	// Ensure PSA crypto is initialized
 	psa_status_t status = psa_crypto_init();
@@ -131,7 +103,6 @@ cleanup:
 	}
 
 	return true;
-#endif
 #else  // CONFIG_SOC_FAMILY_ATM
        // Use ATM hardware acceleration
 	atm_aes_params_t const params = {
@@ -180,20 +151,6 @@ static void gfp_crypto_hmac_key(uint8_t *hmac_key, uint8_t const *key, uint16_t 
 bool gfp_crypto_sha256(uint8_t const *data_in, uint16_t data_len, uint8_t *data_out)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-	mbedtls_sha256_context ctx;
-	mbedtls_sha256_init(&ctx);
-	int ret;
-	ret = mbedtls_sha256_starts(&ctx, false);
-	CHECK_RV_GOTO_RET(ret, cleanup, -1);
-	ret = mbedtls_sha256_update(&ctx, data_in, data_len);
-	CHECK_RV_GOTO_RET(ret, cleanup, -2);
-	ret = mbedtls_sha256_finish(&ctx, data_out);
-	CHECK_RV_GOTO_RET(ret, cleanup, -3);
-cleanup:
-	mbedtls_sha256_free(&ctx);
-	return ret ? false : true;
-#else
 
 	// Ensure PSA crypto is initialized
 	psa_status_t status = psa_crypto_init();
@@ -213,7 +170,6 @@ cleanup:
 	}
 
 	return true;
-#endif
 #else  // CONFIG_SOC_FAMILY_ATM
 	atm_sha256_params_t const sha256_params = {.mode = ATM_SHA256_SHA_MODE,
 						   .byte_endianess = ATM_SHA256_ENDIANESS_BIG,
@@ -231,24 +187,6 @@ bool gfp_crypto_hmac_sha256(uint8_t const *data_in, uint16_t data_len, uint8_t *
 			    uint8_t const *key, uint16_t key_len)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-	int res;
-	mbedtls_md_type_t const alg = MBEDTLS_MD_SHA256;
-	mbedtls_md_info_t const *info = mbedtls_md_info_from_type(alg);
-	mbedtls_md_context_t ctx;
-	mbedtls_md_init(&ctx);
-	res = mbedtls_md_setup(&ctx, info, true);
-	CHECK_RV_GOTO_RET(res, cleanup, -1);
-	res = mbedtls_md_hmac_starts(&ctx, key, key_len);
-	CHECK_RV_GOTO_RET(res, cleanup, -2);
-	res = mbedtls_md_hmac_update(&ctx, data_in, data_len);
-	CHECK_RV_GOTO_RET(res, cleanup, -3);
-	res = mbedtls_md_hmac_finish(&ctx, data_out);
-	CHECK_RV_GOTO_RET(res, cleanup, -4);
-cleanup:
-	mbedtls_md_free(&ctx);
-	return res ? false : true;
-#else
 
 	// Ensure PSA crypto is initialized
 	psa_status_t status = psa_crypto_init();
@@ -286,7 +224,6 @@ cleanup:
 	}
 
 	return true;
-#endif
 #else  // CONFIG_SOC_FAMILY_ATM
        // Use ATM hardware acceleration
 	uint8_t hmac_key[HMAC_KEY_LEN];
@@ -307,10 +244,6 @@ cleanup:
 void gfp_crypto_sha256_init(gfp_crypto_sha256_ctx_t *ctx)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-	mbedtls_sha256_init(ctx);
-	mbedtls_sha256_starts(ctx, false);
-#else
 
 	// Ensure PSA crypto is initialized
 	psa_status_t status = psa_crypto_init();
@@ -326,7 +259,6 @@ void gfp_crypto_sha256_init(gfp_crypto_sha256_ctx_t *ctx)
 		ATM_LOG(W, "psa_hash_setup failed: %d", status);
 		return;
 	}
-#endif
 #else  // CONFIG_SOC_FAMILY_ATM
 	UNUSED(ctx);
 	atm_sha256_params_t const sha256_params = {.mode = ATM_SHA256_SHA_MODE,
@@ -339,18 +271,11 @@ void gfp_crypto_sha256_init(gfp_crypto_sha256_ctx_t *ctx)
 bool gfp_crypto_sha256_update(gfp_crypto_sha256_ctx_t *ctx, uint8_t const *data, uint16_t data_len)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-	if (mbedtls_sha256_update(ctx, data, data_len)) {
-		ATM_LOG(W, "sha256 update error");
-		return false;
-	}
-#else
 	psa_status_t status = psa_hash_update(ctx, data, data_len);
 	if (status != PSA_SUCCESS) {
 		ATM_LOG(W, "psa_hash_update failed: %d", status);
 		return false;
 	}
-#endif
 #else  // CONFIG_SOC_FAMILY_ATM
 	UNUSED(ctx);
 	if (atm_sha256_update_pio(data, data_len) != ATM_SHA256_RES_SUCCESS) {
@@ -364,12 +289,6 @@ bool gfp_crypto_sha256_update(gfp_crypto_sha256_ctx_t *ctx, uint8_t const *data,
 void gfp_crypto_sha256_deinit(gfp_crypto_sha256_ctx_t *ctx, uint8_t *out)
 {
 #ifdef CONFIG_SOC_FAMILY_ATM
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-	if (mbedtls_sha256_finish(ctx, out)) {
-		ATM_LOG(W, "sha256 finish error");
-	}
-	mbedtls_sha256_free(ctx);
-#else
 	size_t hash_length;
 	psa_status_t status =
 		psa_hash_finish(ctx, out, PSA_HASH_LENGTH(PSA_ALG_SHA_256), &hash_length);
@@ -378,7 +297,6 @@ void gfp_crypto_sha256_deinit(gfp_crypto_sha256_ctx_t *ctx, uint8_t *out)
 		psa_hash_abort(ctx);
 		return;
 	}
-#endif
 #else  // CONFIG_SOC_FAMILY_ATM
 	UNUSED(ctx);
 	atm_sha256_final(out);
@@ -483,124 +401,7 @@ static int gfp_crypto_uECC_curve_public_key_size_secp256r1(void)
 {
 	return uECC_curve_public_key_size(CURVE_SECP256R1);
 }
-
-#elif CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-
-static int mbedtls_csrng(void *state, uint8_t *dest, unsigned size)
-{
-	return sys_csrand_get(dest, size);
-}
-
-static int gfp_crypto_mbedtls_public_key_size_secp256r1(void)
-{
-	return MBEDTLS_ECP_MAX_PT_LEN - 1;
-}
-
-static int gfp_crypto_mbedtls_private_key_size_secp256r1(void)
-{
-	return MBEDTLS_ECP_MAX_BYTES;
-}
-
-static int gfp_crypto_mbedtls_order_size_secp256r1(void)
-{
-	return MBEDTLS_ECP_MAX_BYTES;
-}
-
-static void gfp_crypto_mbedtls_vli_mmod_secp256r1(uint8_t const *data_in, uint16_t data_in_len,
-						  uint8_t *data_out, uint16_t data_out_len)
-{
-	mbedtls_ecp_group ecp_grp;
-	mbedtls_ecp_group_init(&ecp_grp);
-	mbedtls_mpi mpi_in;
-	mbedtls_mpi_init(&mpi_in);
-	mbedtls_mpi mpi_out;
-	mbedtls_mpi_init(&mpi_out);
-
-	int rv = mbedtls_ecp_group_load(&ecp_grp, MBEDTLS_ECP_DP_SECP256R1);
-	CHECK_RV_GOTO_RET(rv, cleanup, -1);
-	rv = mbedtls_mpi_read_binary(&mpi_in, data_in, data_in_len);
-	CHECK_RV_GOTO_RET(rv, cleanup, -2);
-	rv = mbedtls_mpi_mod_mpi(&mpi_out, &mpi_in, &ecp_grp.N);
-	CHECK_RV_GOTO_RET(rv, cleanup, -3);
-	rv = mbedtls_mpi_write_binary(&mpi_out, data_out, data_out_len);
-	CHECK_RV_GOTO_RET(rv, cleanup, -4);
-	gfp_crypto_reverse_array(data_out, data_out_len);
-cleanup:
-	mbedtls_ecp_group_free(&ecp_grp);
-	mbedtls_mpi_free(&mpi_in);
-	mbedtls_mpi_free(&mpi_out);
-	return;
-}
-
-static int gfp_crypto_mbedtls_compute_public_key_secp256r1(uint8_t const *private_key,
-							   uint8_t *public_key)
-{
-	uint8_t m_public_key[MBEDTLS_ECP_MAX_PT_LEN];
-	mbedtls_ecp_group ecp_grp;
-	mbedtls_ecp_group_init(&ecp_grp);
-	mbedtls_ecp_keypair ecp_keypair;
-	mbedtls_ecp_keypair_init(&ecp_keypair);
-	mbedtls_ecp_point ecp_pubkey;
-	mbedtls_ecp_point_init(&ecp_pubkey);
-
-	int rv = mbedtls_ecp_group_load(&ecp_grp, MBEDTLS_ECP_DP_SECP256R1);
-	CHECK_RV_GOTO_RET(rv, cleanup, -1);
-	rv = mbedtls_ecp_read_key(MBEDTLS_ECP_DP_SECP256R1, &ecp_keypair, private_key,
-				  gfp_crypto_mbedtls_private_key_size_secp256r1());
-	CHECK_RV_GOTO_RET(rv, cleanup, -2);
-	rv = mbedtls_ecp_keypair_calc_public(&ecp_keypair, mbedtls_csrng, NULL);
-	CHECK_RV_GOTO_RET(rv, cleanup, -3);
-	rv = mbedtls_ecp_export(&ecp_keypair, NULL, NULL, &ecp_pubkey);
-	CHECK_RV_GOTO_RET(rv, cleanup, -4);
-	size_t length;
-	rv = mbedtls_ecp_point_write_binary(&ecp_grp, &ecp_pubkey, MBEDTLS_ECP_PF_UNCOMPRESSED,
-					    &length, m_public_key, sizeof(m_public_key));
-	CHECK_RV_GOTO_RET(rv, cleanup, -4);
-	memcpy(public_key, m_public_key + 1, gfp_crypto_mbedtls_public_key_size_secp256r1());
-cleanup:
-	mbedtls_ecp_group_free(&ecp_grp);
-	mbedtls_ecp_point_free(&ecp_pubkey);
-	mbedtls_ecp_keypair_free(&ecp_keypair);
-	return !rv ? 1 : 0;
-}
-
-static int gfp_crypto_mbedtls_shared_secret_secp256r1(const uint8_t *public_key,
-						      const uint8_t *private_key, uint8_t *secret)
-{
-	uint8_t m_public_key[MBEDTLS_ECP_MAX_PT_LEN];
-	mbedtls_ecp_group ecp_grp;
-	mbedtls_ecp_group_init(&ecp_grp);
-	mbedtls_mpi mpi_secret;
-	mbedtls_mpi_init(&mpi_secret);
-	mbedtls_ecp_point ecp_pubkey;
-	mbedtls_ecp_point_init(&ecp_pubkey);
-	mbedtls_mpi ecp_privkey;
-	mbedtls_mpi_init(&ecp_privkey);
-
-	int rv = mbedtls_ecp_group_load(&ecp_grp, MBEDTLS_ECP_DP_SECP256R1);
-	CHECK_RV_GOTO_RET(rv, cleanup, -1);
-	m_public_key[0] = 0x04;
-	memcpy(m_public_key + 1, public_key, gfp_crypto_mbedtls_public_key_size_secp256r1());
-	rv = mbedtls_ecp_point_read_binary(&ecp_grp, &ecp_pubkey, m_public_key,
-					   sizeof(m_public_key));
-	CHECK_RV_GOTO_RET(rv, cleanup, -2);
-	rv = mbedtls_mpi_read_binary(&ecp_privkey, private_key,
-				     gfp_crypto_mbedtls_private_key_size_secp256r1());
-	CHECK_RV_GOTO_RET(rv, cleanup, -3);
-	rv = mbedtls_ecdh_compute_shared(&ecp_grp, &mpi_secret, &ecp_pubkey, &ecp_privkey,
-					 mbedtls_csrng, NULL);
-	CHECK_RV_GOTO_RET(rv, cleanup, -4);
-	rv = mbedtls_mpi_write_binary(&mpi_secret, secret,
-				      gfp_crypto_mbedtls_private_key_size_secp256r1());
-	CHECK_RV_GOTO_RET(rv, cleanup, -5);
-cleanup:
-	mbedtls_ecp_group_free(&ecp_grp);
-	mbedtls_ecp_point_free(&ecp_pubkey);
-	mbedtls_mpi_free(&mpi_secret);
-	mbedtls_mpi_free(&ecp_privkey);
-	return !rv ? 1 : 0;
-}
-#endif // CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
+#endif
 
 #ifdef CONFIG_ATM_GFP_DIRECT_UECC_INTERFACE
 void gfp_crypto_ecp_curve_intf_secp160r1(gfp_crypto_ecp_curve_intf_t *intf)
@@ -623,13 +424,6 @@ void gfp_crypto_ecp_curve_intf_secp256r1(gfp_crypto_ecp_curve_intf_t *intf)
 	intf->curve_public_key_size = gfp_crypto_uECC_curve_public_key_size_secp256r1;
 	intf->vli_mmod = gfp_crypto_uECC_vli_mmod_secp256r1;
 	intf->compute_public_key = gfp_crypto_uECC_compute_public_key_secp256r1;
-#elif CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-	intf->shared_secret = gfp_crypto_mbedtls_shared_secret_secp256r1;
-	intf->order_size = gfp_crypto_mbedtls_order_size_secp256r1;
-	intf->curve_private_key_size = gfp_crypto_mbedtls_private_key_size_secp256r1;
-	intf->curve_public_key_size = gfp_crypto_mbedtls_public_key_size_secp256r1;
-	intf->vli_mmod = gfp_crypto_mbedtls_vli_mmod_secp256r1;
-	intf->compute_public_key = gfp_crypto_mbedtls_compute_public_key_secp256r1;
 #else
 #error "No ECP 256r1 curve interface is defined"
 #endif
@@ -809,11 +603,7 @@ bool gfp_crypto_gfps_hmac_sha256(uint8_t *ct, uint16_t ct_len, gfp_crypto_ctx_t 
 	return true;
 cleanup:
 #ifdef CONFIG_SOC_FAMILY_ATM
-#ifdef CONFIG_ATM_GFP_DIRECT_MBEDTLS_INTERFACE
-	mbedtls_sha256_free(&ctx);
-#else
 	psa_hash_abort(&ctx);
-#endif
 #endif // CONFIG_SOC_FAMILY_ATM
 	memset(buf, 0x00, tsize);
 	free(buf);

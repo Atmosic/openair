@@ -42,9 +42,9 @@ static bool is_connection_authenticated(struct bt_conn *conn)
 		// Not a fp connection
 		return false;
 	}
-	if (!fp_mode_is_provisioned()) {
-		LOG_WRN("Firmware revision read attempt before provisioning");
-		return false;
+	if (fp_mode_get() == FP_MODE_PAIRING) {
+		LOG_DBG("Firmware revision read attempt allowed when the Provider is discoverable");
+		return true;
 	}
 	/* Check security level - L3 and above indicate authentication/bonding */
 	bt_security_t sec_level = bt_conn_get_security(conn);
@@ -55,22 +55,23 @@ static bool is_connection_authenticated(struct bt_conn *conn)
 	return true;
 }
 
+#define GFP_DIS_ATT_ERR_UNAUTHENTICATED 0x80
+
 /**
  * @brief Read firmware revision characteristic
  *
- * Per FP spec: Firmware revision should only be readable after provisioning.
- * If an attempt is made to read the firmware revision, and the Provider isn't
- * bonded nor an authenticated operation was successfully completed over that
- * same connection, the Provider should return an unauthenticated error.
+ * FHN v2: firmware revision is returned only when either of the following is true:
+ *   - The Seeker is bonded (security level >= L3), OR
+ *   - Any FHN operation authenticated with the account key was successfully completed
+ *     over the same connection before this read (expressed here as pairing mode / L3+).
+ * Otherwise the Provider returns ATT application error 0x80 (unauthenticated).
  */
 static ssize_t read_fw_revision(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf,
 				uint16_t len, uint16_t offset)
 {
 	if (!is_connection_authenticated(conn)) {
-		/* if return BT_ATT_ERR_AUTHENTICATION might cause Reading friwmware revision failed
-		 * in validator app, to return BT_ATT_ERR_SUCCESS currently.
-		 */
-		return BT_GATT_ERR(BT_ATT_ERR_SUCCESS);
+		LOG_WRN("Firmware revision read rejected - unauthenticated connection");
+		return BT_GATT_ERR(GFP_DIS_ATT_ERR_UNAUTHENTICATED);
 	}
 
 	LOG_DBG("Firmware revision read: %s", gfp_dis_fw_version);

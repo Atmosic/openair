@@ -267,6 +267,16 @@ void fp_fmdn_key_clock_save_immediate(void)
 	k_work_reschedule(&fmdn_clock_save_work, K_NO_WAIT);
 }
 
+void fp_fmdn_key_clock_set(uint32_t clock_value)
+{
+	fmdn_clock_offset = clock_value;
+	fmdn_clock_boot_uptime = k_uptime_seconds();
+	fmdn_clock_initialized = true;
+
+	LOG_INF("FMDN Clock set to %" PRIu32 " [s] (boot_uptime=%" PRIu32 ")", clock_value,
+		fmdn_clock_boot_uptime);
+}
+
 void fp_fmdn_key_clock_reset(void)
 {
 	/* Reset clock state variables */

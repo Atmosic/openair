@@ -31,15 +31,17 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 #include "at_apb_gadc_regs_core_macro.h"
 #include "calibration.h"
 #include "ll.h"
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 #include "spi.h"
 #include "pmu_spi.h"
 #include "pmu_top_regs_core_macro.h"
 #include "pmu_swreg_regs_core_macro.h"
 #include "pmu_gadc_regs_core_macro.h"
+#endif
 #include "timer.h"
 #include "sec_jrnl.h"
 
-#define Z_CMSDK_GADC ((CMSDK_AT_APB_GADC_TypeDef *)DT_REG_ADDR(DT_NODELABEL(adc)))
+#define Z_CMSDK_GADC CMSDK_GADC
 
 /* GADC internal reference voltage (Unit:mV) */
 #define ATM_GADC_VREF_VOL 600
@@ -47,6 +49,22 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 #define GADC_MOD_SELECT    0
 #define GADC_WARMUP_CYCLES 3
 #define GADC_WAIT_AMOUNT   40
+
+/* VBATT on-chip sense divider: VBATT is scaled by 1/6 before reaching the ADC input */
+#define GADC_VBATT_SENSE_DIV           6
+/* ADC positive full-scale: 15-bit range within the 16-bit signed FIFO output (2^15) */
+#define GADC_ADC_FULL_SCALE            32768
+/* OTP gain_vbat1: Q0.16 slope in mV_VBAT/LSB (absorbs the 1/6 sense divider + Vref) */
+#define GADC_CAL_VBAT_FRAC_BITS        16
+/* OTP offset_vbat1: s12.4 y-intercept in mV_VBAT; shift by 4 to recover integer mV */
+#define GADC_CAL_VBAT_OFFSET_FRAC_BITS 4
+/* No-OTP fallback: ideal slope = SENSE_DIV * Vref_mV * 2^16 / FULL_SCALE = 7200 */
+#define GADC_CAL_VBAT_GAIN_UNITY                                                                   \
+	((uint16_t)((GADC_VBATT_SENSE_DIV * ATM_GADC_VREF_VOL *                                    \
+		     (1UL << GADC_CAL_VBAT_FRAC_BITS)) /                                           \
+		    GADC_ADC_FULL_SCALE))
+/* OTP gain_temp0 is U-6.22 fixed-point (22 fractional bits); units: degC/LSB */
+#define GADC_CAL_TEMP_FRAC_BITS 22
 
 /* Enumeration of GADC channels in SoC */
 typedef enum {
@@ -70,12 +88,15 @@ typedef enum {
 	UNUSED = 0,
 	/** VBAT channel */
 	VBATT = 1,
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	/** VSTORE channel */
 	VSTORE = 2,
 	/** VDD1A channel */
 	CORE = 3,
+#endif
 	/** Temperature channel */
 	TEMP = 4,
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	/// P4/P5 differential channel.
 	PORT1_DIFFERENTIAL = 5,
 	/// P6/P7 differential channel.
@@ -100,6 +121,7 @@ typedef enum {
 #endif
 	// Calibration - for internal use only
 	CALIBRATION,
+#endif /* DGADC_CTRL1__RTRIM_IC__WRITE */
 	/** Max channels */
 	CHANNEL_NUM_MAX,
 } GADC_CHANNEL_ID;
@@ -137,7 +159,7 @@ struct gadc_atm_data {
 	/** Current results */
 	int32_t *buffer;
 	/** Offset for the active channels */
-	uint8_t offset[CHANNEL_NUM_MAX_USER];
+	uint8_t offset[CHANNEL_NUM_MAX];
 };
 #define DEV_DATA(dev) ((struct gadc_atm_data *)(dev)->data)
 
@@ -152,13 +174,46 @@ typedef enum {
 	GAIN_EXT_MAX,
 } gadc_gain_ext_t;
 
+static uint16_t gcal_len;
+
+#ifndef DGADC_CTRL1__RTRIM_IC__WRITE
+static hw_cfg_cal_data_t gcal;
+#else  /* !DGADC_CTRL1__RTRIM_IC__WRITE */
+static struct gadc_cal_s gcal;
+static struct chip_info_s chipinfo;
+static uint16_t chipinfo_len;
+
+static uint32_t calts[GAIN_EXT_END];
+static bool firstcal[GAIN_EXT_END];
+#endif /* DGADC_CTRL1__RTRIM_IC__WRITE */
+
 static gadc_gain_ext_t gext[CHANNEL_NUM_MAX];
 static gadc_gain_ext_t const gextmap[CHANNEL_NUM_MAX][GAIN_EXT_MAX] = {
 	{GAIN_EXT_END}, // unused, invalid channel
+#ifdef CONFIG_ATM_ADC_PGA_BYPASS
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_X1, GAIN_EXT_END},
+#else /* CONFIG_ATM_ADC_PGA_BYPASS */
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	{GAIN_EXT_EIGHTH, GAIN_EXT_QUARTER, GAIN_EXT_END},
 	{GAIN_EXT_EIGHTH, GAIN_EXT_QUARTER, GAIN_EXT_END},
 	{GAIN_EXT_HALF, GAIN_EXT_END},
+#else
 	{GAIN_EXT_X1, GAIN_EXT_END},
+	{GAIN_EXT_END}, // unused, invalid channel
+	{GAIN_EXT_END}, // unused, invalid channel
+#endif
+	{GAIN_EXT_X1, GAIN_EXT_END},
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	{GAIN_EXT_QUARTER, GAIN_EXT_HALF, GAIN_EXT_X1, GAIN_EXT_END},
 	{GAIN_EXT_QUARTER, GAIN_EXT_HALF, GAIN_EXT_X1, GAIN_EXT_END},
 	{GAIN_EXT_QUARTER, GAIN_EXT_HALF, GAIN_EXT_X1, GAIN_EXT_END},
@@ -172,16 +227,21 @@ static gadc_gain_ext_t const gextmap[CHANNEL_NUM_MAX][GAIN_EXT_MAX] = {
 	{GAIN_EXT_QUARTER, GAIN_EXT_HALF, GAIN_EXT_X1, GAIN_EXT_END},
 #endif
 	{GAIN_EXT_EIGHTH, GAIN_EXT_QUARTER, GAIN_EXT_HALF, GAIN_EXT_X1, GAIN_EXT_END},
+#endif /* DGADC_CTRL1__RTRIM_IC__WRITE */
+#endif /* CONFIG_ATM_ADC_PGA_BYPASS */
 };
 
-static struct gadc_cal_s gcal;
-static uint16_t gcal_len;
+/* Per-channel sample-avg values from DT, indexed by channel reg (GADC_CHANNEL_ID).
+ * All channels are pre-filled with the top-level sample-avg (or 0 if absent).
+ * DT_FOREACH_CHILD overrides only nodes explicitly declared as children of adc.
+ */
+#define GADC_CH_SAVG_INIT(node)                                                                    \
+	[DT_REG_ADDR(node)] =                                                                      \
+		DT_PROP_OR(node, sample_avg, DT_PROP_OR(DT_NODELABEL(adc), sample_avg, 0)),
 
-static struct chip_info_s chipinfo;
-static uint16_t chipinfo_len;
-
-static uint32_t calts[GAIN_EXT_END];
-static bool firstcal[GAIN_EXT_END];
+static const uint8_t ch_savg[CHANNEL_NUM_MAX] = {
+	[0 ... CHANNEL_NUM_MAX - 1] = DT_PROP_OR(DT_NODELABEL(adc), sample_avg, 0),
+	DT_FOREACH_CHILD(DT_NODELABEL(adc), GADC_CH_SAVG_INIT)};
 
 static void adc_context_update_buffer_pointer(struct adc_context *ctx, bool repeat)
 {
@@ -206,6 +266,15 @@ static struct gadc_fifo_s gadc_read_ch_data(void)
 /* Enable/Disable GADC analog side */
 __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 {
+#ifdef DGADC_CONFIG__GADC_EN__WRITE
+	if (enable) {
+		Z_CMSDK_GADC->CONFIG =
+			DGADC_CONFIG__GADC_RSTB__WRITE(1) | DGADC_CONFIG__GADC_EN__WRITE(1);
+		atm_timer_lpc_delay(2);
+	} else {
+		Z_CMSDK_GADC->CONFIG = 0;
+	}
+#else
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
 		CMSDK_PSEQ->GADC_CONFIG = PSEQ_GADC_CONFIG__GADC_CUTVDD_B__MASK;
@@ -220,6 +289,7 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 		}
 	}
 	WRPR_CTRL_POP();
+#endif
 
 #ifdef GADC_GADC_CTRL__EXT_VDD1_SEL__SET
 	if (enable) {
@@ -233,6 +303,10 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 			} else if (ch == PORT4_SINGLE_ENDED) {
 				GADC_GADC_CTRL__EXT_VBAT_SEL__SET(gadc_ctrl);
 			}
+#ifdef CONFIG_ATM_ADC_PGA_BYPASS
+			GADC_GADC_CTRL__PGA_EN__CLR(gadc_ctrl);
+			GADC_GADC_CTRL__BYPASS_PGA__SET(gadc_ctrl);
+#endif
 			PMU_GADC_WRITE(GADC_CTRL_REG_ADDR, gadc_ctrl);
 		}
 		WRPR_CTRL_POP();
@@ -240,6 +314,7 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 #endif
 }
 
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 static void gadc_apply_calibration(void)
 {
 	if (CAL_PRESENT(gcal, offset_comp3)) {
@@ -252,19 +327,61 @@ static void gadc_apply_calibration(void)
 		Z_CMSDK_GADC->OFFSET_COMP3 = gcal.offset_comp3;
 	}
 }
+#else
+static int32_t gadc_atm_apply_cal(uint32_t raw, uint8_t ch)
+{
+	switch (ch) {
+	case VBATT: {
+		/*
+		 * OTP format:
+		 *   gain_vbat1  : U0.16 slope in mV_VBAT/LSB
+		 *   offset_vbat1: S12.4 y-intercept in mV_VBAT
+		 *
+		 * Zephyr adaptation: return fake_raw so that
+		 *   fake_raw * Vref / FULL_SCALE == vbatt_mv.
+		 * Compute in Q16 with round-to-nearest (carry-in method):
+		 *   prod_q16 = raw * gain_vbat1 + offset_vbat1 * 2^12   [Q16 mV]
+		 *   carry    = bit 15 of prod_q16                        [round bit]
+		 *   vbatt_mv = (prod_q16 >> 16) + carry                  [integer mV]
+		 *   fake_raw = vbatt_mv * FULL_SCALE / Vref
+		 */
+		uint16_t gain = gcal_len ? gcal.gain_vbat1 : GADC_CAL_VBAT_GAIN_UNITY;
+		int16_t offset = gcal_len ? gcal.offset_vbat1 : 0;
+		int32_t prod_q16 = (int32_t)(raw * gain) +
+				   ((int32_t)offset
+				    << (GADC_CAL_VBAT_FRAC_BITS - GADC_CAL_VBAT_OFFSET_FRAC_BITS));
+		int32_t carry = (prod_q16 >> (GADC_CAL_VBAT_FRAC_BITS - 1)) & 1;
+		int32_t vbatt_mv = (prod_q16 >> GADC_CAL_VBAT_FRAC_BITS) + carry;
+		return vbatt_mv * GADC_ADC_FULL_SCALE / ATM_GADC_VREF_VOL;
+	}
+	case TEMP:
+		if (!gcal_len) {
+			return (int32_t)raw;
+		}
+		/*
+		 * gain_temp0 : U-6.22 (22 frac bits), degC/LSB — unsigned slope
+		 * offset_temp0: S8.8  ( 8 frac bits), degC     — signed intercept
+		 * output      : S8.8  ( 8 frac bits), degC
+		 */
+		return (int32_t)(((int32_t)raw * (int32_t)gcal.gain_temp0) >>
+				 (GADC_CAL_TEMP_FRAC_BITS - 8)) +
+		       gcal.offset_temp0;
+	default:
+		return (int32_t)raw;
+	}
+}
+#endif
 
 static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 {
 	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL);
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	gadc_apply_calibration();
-
+#endif
 	gadc_analog_control(true, ch);
-
-	NVIC_EnableIRQ(DT_INST_IRQN(0));
-
+	irq_enable(DT_INST_IRQN(0));
 	Z_CMSDK_GADC->INTERRUPT_MASK = 0;
 	Z_CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
-	Z_CMSDK_GADC->INTERRUPT_CLEAR = 0;
 
 	// Set the gain and watch channel for the specified channel
 	GADC_WATCH_CHANNEL watch_ch;
@@ -274,6 +391,7 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 		watch_ch = WATCH_CH_VBATT;
 		DGADC_GAIN_CONFIG0__CH1_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	case VSTORE: {
 		watch_ch = WATCH_CH_VSTORE;
 		DGADC_GAIN_CONFIG0__CH2_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
@@ -282,12 +400,16 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 		watch_ch = WATCH_CH_CORE;
 		DGADC_GAIN_CONFIG0__CH3_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
+#endif
 	case TEMP: {
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 #define GADC_CLK_1MHZ 3
 		clkdiv = GADC_CLK_1MHZ;
+#endif
 		watch_ch = WATCH_CH_TEMP;
 		DGADC_GAIN_CONFIG0__CH4_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	case PORT1_DIFFERENTIAL: {
 		watch_ch = WATCH_CH_PORT1_DIFF;
 #ifdef DGADC_GAIN_CONFIG1__CH5_GAIN_SEL__MODIFY
@@ -373,6 +495,7 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 		DGADC_GAIN_CONFIG0__CH1_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
 	} break;
 #endif
+#endif /* DGADC_CTRL1__RTRIM_IC__WRITE */
 	case UNUSED:
 	case CHANNEL_NUM_MAX:
 	default: {
@@ -382,9 +505,8 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 	} break;
 	}
 
-	uint8_t savg = DT_PROP(DT_NODELABEL(adc), sample_avg);
 	Z_CMSDK_GADC->CTRL = DGADC_CTRL__WATCH_CHANNELS__WRITE(1 << watch_ch) |
-			     DGADC_CTRL__AVERAGING_AMOUNT__WRITE(savg) |
+			     DGADC_CTRL__AVERAGING_AMOUNT__WRITE(ch_savg[ch]) |
 			     DGADC_CTRL__WAIT_AMOUNT__WRITE(GADC_WAIT_AMOUNT) |
 			     DGADC_CTRL__CLKDIV__WRITE(clkdiv) |
 			     DGADC_CTRL__WARMUP__WRITE(GADC_WARMUP_CYCLES) |
@@ -399,12 +521,12 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 		YIELD();
 	}
 
-	DGADC_CTRL__ENABLE_DP__SET(Z_CMSDK_GADC->CTRL);
-
-	// Interrupt when complete (fifo overrun)
+	/* Unmask only INTRPT2 (measurement done) before triggering conversion */
 	Z_CMSDK_GADC->INTERRUPT_MASK = DGADC_INTERRUPT_MASK__MASK_INTRPT2__MASK;
+	DGADC_CTRL__ENABLE_DP__SET(Z_CMSDK_GADC->CTRL);
 }
 
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 static void gadc_calibrate_offset(gadc_gain_ext_t gainext, int32_t sample)
 {
 	int32_t result = -sample;
@@ -427,9 +549,11 @@ static void gadc_calibrate_offset(gadc_gain_ext_t gainext, int32_t sample)
 		break;
 	}
 }
+#endif
 
 static void gadc_measure_or_calibrate(struct gadc_atm_data *data)
 {
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	uint32_t curts = atm_lpc_to_ms(atm_get_sys_time());
 	if (firstcal[gext[data->ch]] ||
 	    ((curts - calts[gext[data->ch]]) > CONFIG_ADC_CAL_REFRESH_INTERVAL)) {
@@ -442,6 +566,7 @@ static void gadc_measure_or_calibrate(struct gadc_atm_data *data)
 		data->chmask |= BIT(CALIBRATION);
 		data->ch = CALIBRATION;
 	}
+#endif
 
 	gadc_start_measurement(data->dev, data->ch);
 }
@@ -463,7 +588,7 @@ static int gadc_atm_read_async(struct device const *dev, struct adc_sequence con
 {
 	struct gadc_atm_data *data = DEV_DATA(dev);
 
-	if (!chan_setup_mask || chan_setup_mask & ~BIT_MASK(CHANNEL_NUM_MAX_USER)) {
+	if (!chan_setup_mask || chan_setup_mask & ~BIT_MASK(CHANNEL_NUM_MAX)) {
 		LOG_ERR("Invalid selection of channels. Received: %#x", sequence->channels);
 		return -EINVAL;
 	}
@@ -482,7 +607,7 @@ static int gadc_atm_read_async(struct device const *dev, struct adc_sequence con
 	}
 
 	data->active_channels = 0;
-	for (int i = 0; i < CHANNEL_NUM_MAX_USER; ++i) {
+	for (int i = 0; i < CHANNEL_NUM_MAX; ++i) {
 		if (sequence->channels & BIT(i)) {
 			data->offset[i] = data->active_channels++;
 		}
@@ -535,12 +660,15 @@ static int gadc_atm_channel_setup(struct device const *dev,
 		return -EINVAL;
 	}
 
-	if (channel_cfg->channel_id >= CHANNEL_NUM_MAX_USER) {
+	if (channel_cfg->channel_id >= CHANNEL_NUM_MAX) {
 		LOG_ERR("Channel %d is not valid", channel_cfg->channel_id);
 		return -EINVAL;
 	}
 
 	gadc_gain_ext_t gainext;
+#ifdef CONFIG_ATM_ADC_PGA_BYPASS
+	gainext = GAIN_EXT_X1;
+#else
 	switch (channel_cfg->gain) {
 	case ADC_GAIN_1_8:
 		gainext = GAIN_EXT_EIGHTH;
@@ -558,6 +686,7 @@ static int gadc_atm_channel_setup(struct device const *dev,
 		LOG_ERR("Invalid channel gain");
 		return -EINVAL;
 	}
+#endif
 
 	if (!gadc_ext_valid(channel_cfg->channel_id, gainext)) {
 		LOG_ERR("Invalid gext (%d) for channel (%d)", gainext, channel_cfg->channel_id);
@@ -597,6 +726,12 @@ static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__SRESET);
 
 	// raw_fifo:  4 bit channel + 16 bit data = 20 bits
+#ifndef DGADC_CTRL1__RTRIM_IC__WRITE
+	int32_t sample_signed = gadc_atm_apply_cal(raw_fifo.sample, ch);
+	LOG_DBG("channel: %d, raw: %#x, sample_signed: %" PRId32 "\n", ch, raw_fifo.value,
+		sample_signed);
+	return sample_signed;
+#else
 	int32_t sample_signed = raw_fifo.sample;
 
 	if (ch == LI_ION_BATT) {
@@ -640,6 +775,7 @@ static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 		sample_signed);
 
 	return sample_signed;
+#endif                         /* !DGADC_CTRL1__RTRIM_IC__WRITE */
 }
 
 static void gadc_atm_isr(void const *arg)
@@ -648,19 +784,19 @@ static void gadc_atm_isr(void const *arg)
 	struct gadc_atm_data *data = DEV_DATA(dev);
 
 	Z_CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
-	Z_CMSDK_GADC->INTERRUPT_CLEAR = 0;
 
-	NVIC_DisableIRQ(DT_INST_IRQN(0));
+	irq_disable(DT_INST_IRQN(0));
 
 	int32_t sample = gadc_process_samples(dev, data->ch);
 	data->chmask &= ~BIT(data->ch);
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	if (data->ch == CALIBRATION) {
 		data->ch = __builtin_ffs(data->chmask) - 1;
 		gadc_calibrate_offset(gext[data->ch], sample);
 		gadc_start_measurement(dev, data->ch);
 		return;
 	}
-
+#endif
 	*(data->buffer + data->offset[data->ch]) = sample;
 	if (data->chmask) {
 		data->ch = __builtin_ffs(data->chmask) - 1;
@@ -685,13 +821,14 @@ static int gadc_atm_init(struct device const *dev)
 
 	// Fetch GADC calibration
 	gcal_len = sizeof(gcal);
-	sec_jrnl_ret_status_t status =
-		nsc_sec_jrnl_get(ATM_TAG_GADC_CAL, &gcal_len, (uint8_t *)&gcal);
+	sec_jrnl_ret_status_t status;
+	status = nsc_sec_jrnl_get(ATM_TAG_GADC_CAL, &gcal_len, (uint8_t *)&gcal);
 	if (status != SEC_JRNL_OK) {
 		LOG_INF("GADC_CAL tag not found: %#x", status);
 		gcal_len = 0;
 	}
 
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	// Fetch chip info
 	chipinfo_len = sizeof(chipinfo);
 	status = nsc_sec_jrnl_get(ATM_TAG_CHIP_INFO, &chipinfo_len, (uint8_t *)&chipinfo);
@@ -705,6 +842,7 @@ static int gadc_atm_init(struct device const *dev)
 		calts[i] = ts;
 		firstcal[i] = true;
 	}
+#endif
 
 	adc_context_unlock_unconditionally(&data->ctx);
 
@@ -718,3 +856,64 @@ static struct gadc_atm_data gadc_atm_data_0 = {
 };
 DEVICE_DT_INST_DEFINE(0, gadc_atm_init, NULL, &gadc_atm_data_0, NULL, POST_KERNEL,
 		      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &api_atm_driver_api);
+
+#ifdef CONFIG_ATM_ADC_TEST_API
+
+int atm_adc_test_raw_samples(uint8_t channel, int16_t *buf, uint8_t buf_len)
+{
+	if (!buf || !buf_len) {
+		return -EINVAL;
+	}
+
+	int ret = 0;
+	uint8_t clkdiv = DT_PROP(DT_NODELABEL(adc), clock_freq);
+
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL);
+	gadc_analog_control(true, (GADC_CHANNEL_ID)channel);
+
+	Z_CMSDK_GADC->INTERRUPT_MASK = 0;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
+
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
+	uint8_t watch_ch = (channel >= LI_ION_BATT) ? WATCH_CH_CALIBRATION : channel;
+#else
+	uint8_t watch_ch = channel;
+#endif
+	Z_CMSDK_GADC->CTRL = DGADC_CTRL__WATCH_CHANNELS__WRITE(1U << watch_ch) |
+			     DGADC_CTRL__AVERAGING_AMOUNT__WRITE(0) |
+			     DGADC_CTRL__WAIT_AMOUNT__WRITE(GADC_WAIT_AMOUNT) |
+			     DGADC_CTRL__CLKDIV__WRITE(clkdiv) |
+			     DGADC_CTRL__WARMUP__WRITE(GADC_WARMUP_CYCLES) |
+			     DGADC_CTRL__MODE__WRITE(0);
+
+	DGADC_CTRL__ENABLE_DP__SET(Z_CMSDK_GADC->CTRL);
+
+	for (uint8_t i = 0; i < buf_len; i++) {
+#define ATM_ADC_TEST_API_POLL_TIMEOUT_MS 50
+		int64_t deadline = k_uptime_get() + ATM_ADC_TEST_API_POLL_TIMEOUT_MS;
+		uint32_t out;
+		for (;;) {
+			out = Z_CMSDK_GADC->DATAPATH_OUTPUT;
+			if (!(out & DGADC_DATAPATH_OUTPUT__EMPTY__MASK)) {
+				break;
+			}
+			if (k_uptime_get() > deadline) {
+				ret = -ETIMEDOUT;
+				goto cleanup;
+			}
+		}
+
+		struct gadc_fifo_s f = {
+			.value = DGADC_DATAPATH_OUTPUT__DATA__READ(out),
+		};
+		buf[i] = f.sample;
+	}
+
+cleanup:
+	Z_CMSDK_GADC->CTRL = 0;
+	gadc_analog_control(false, UNUSED);
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__SRESET);
+
+	return ret;
+}
+#endif /* CONFIG_ATM_ADC_TEST_API */

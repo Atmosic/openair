@@ -55,13 +55,32 @@ void fp_fmdn_sba_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value
 #define SBA_DATA_ID_REVERSE_RINGING        0x12
 #endif
 
+/// ATT write error codes for Persistent Connection Management
+/// Returned as write error when Provider cannot fulfil the configure request.
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+/// Another Seeker currently owns the privilege to persistently connect to this Provider.
+#define SBA_PC_ERR_ANOTHER_SEEKER_OWNS 0x85
+/// Persistent connections are currently managed by the OEM companion app.
+#define SBA_PC_ERR_OEM_APP_OWNS        0x86
+#endif
+
+/// ATT write error codes for Configure Reverse Ringing (Data ID 0x11)
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+/// Feature is unavailable (e.g. hardware not ready).
+#define SBA_RR_ERR_UNAVAILABLE   0x83
+/// Operation is not supported by the Provider.
+#define SBA_RR_ERR_NOT_SUPPORTED 0x84
+#endif
+
 /// Secure Beacon Actions GATT Characteristic definition for Fast Pair service (v2)
-/// Requires ACL encryption - only available when bonded
+/// Access requires Security Mode 1, Level 4 (authenticated MITM-protected LE Secure Connections)
+/// BT_GATT_PERM_READ_AUTHEN / BT_GATT_PERM_WRITE_AUTHEN enforce this; the stack rejects any access
+/// below L3 with Insufficient Authentication and below L4 (no LESC) with the same error, prompting
+/// the Seeker to re-pair with LESC.
 #define FP_FMDN_SECURE_BEACON_ACTIONS_CHARACTERISTIC                                               \
 	BT_GATT_CHARACTERISTIC(FP_FMDN_UUID_SECURE_BEACON_ACTIONS,                                 \
-			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE | BT_GATT_CHRC_NOTIFY |      \
-				       BT_GATT_CHRC_INDICATE,                                      \
-			       BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT,             \
+			       BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE | BT_GATT_CHRC_INDICATE,     \
+			       BT_GATT_PERM_READ_AUTHEN | BT_GATT_PERM_WRITE_AUTHEN,               \
 			       fp_fmdn_sba_read, fp_fmdn_sba_write, NULL),                         \
 		BT_GATT_CCC(fp_fmdn_sba_ccc_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE)
 

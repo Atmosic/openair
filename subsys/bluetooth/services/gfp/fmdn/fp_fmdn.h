@@ -37,6 +37,23 @@ extern "C" {
 bool fp_fmdn_is_utp_en(void);
 
 /**
+ * @brief Set FMDN clock to a specific value at startup
+ *
+ * Pre-initializes the FMDN clock so the provided value is already in effect
+ * when the FMDN service starts. Must be called before atm_gfp_init().
+ *
+ * @param[in] clock_value FMDN clock value in seconds to apply
+ */
+void fp_fmdn_clock_set(uint32_t clock_value);
+
+/**
+ * @brief Get the current FMDN clock value
+ *
+ * @return current FMDN clock value in seconds
+ */
+uint32_t fp_fmdn_clock_get(void);
+
+/**
  * @brief FP FMDN clock save to NVM
  *
  * @return 0 if successful, otherwise a (negative) error code is returned

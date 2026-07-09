@@ -2,11 +2,16 @@
 #
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
+common:
+  sysbuild: true
+  tags:
+    - retained_mem
 tests:
   tests.drivers.retained_mem.atm:
-    sysbuild: true
-    tags:
-      - retained_mem
+    {}
+  tests.drivers.retained_mem.atm.fixed_offset_0:
     extra_configs:
-      - CONFIG_RETAINED_MEM=y
-      - CONFIG_RETAINED_MEM_ATM_HIB=y
+      - CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0=y
+  tests.drivers.retained_mem.atm.force_no_mutex:
+    extra_configs:
+      - CONFIG_RETAINED_MEM_MUTEX_FORCE_DISABLE=y

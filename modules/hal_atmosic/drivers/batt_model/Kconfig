@@ -3,13 +3,38 @@
 # SPDX-License-Identifier: LicenseRef-Atmosic
 #
 
+choice BATT_MODEL_SELECTION
+	prompt "Battery Model Selection"
+	optional
+
+config BATT_MODEL_COIN
+	bool "Coin Cell Battery support"
+
+config BATT_MODEL_DRY
+	bool "Dry Battery support"
+
+config BATT_MODEL_HSC_LIION
+	bool "HSC/Li-ion Battery Model Driver"
+	help
+	  Battery model driver for HSC (Hybrid Super Capacitor) and Li-ion batteries
+	  with energy harvesting support. The driver uses device tree batt-type property
+	  to determine the appropriate battery model at compile time.
+
+endchoice
+
 config BATT_MODEL
-	bool "Atmosic Battery Model module"
+	bool
+	depends on ADC
+	default y if BATT_MODEL_COIN || BATT_MODEL_DRY || BATT_MODEL_HSC_LIION
 
 if BATT_MODEL
 
 module = BATT_MODEL
 module-str = Atmosic Battery Model
 source "subsys/logging/Kconfig.template.log_config"
+
+config BATT_MODEL_ADC_32_BITS
+	bool
+	default y if ADC_ATMx3 || ADC_ATM34
 
 endif # BATT_MODEL

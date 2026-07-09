@@ -5,7 +5,7 @@
  *
  * @brief Radio initialization and specific functions
  *
- * Copyright (C) Atmosic 2020-2025
+ * Copyright (C) Atmosic 2020-2026
  *
  *******************************************************************************
  */
@@ -33,8 +33,10 @@
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 STATIC_ASSERT(CONFIG_FORCE_TX_PWR == UNSET_FORCE_TX_PWR_VALUE ||
-    (CONFIG_FORCE_TX_PWR >= -20 && CONFIG_FORCE_TX_PWR <= 10),
-    "CONFIG_FORCE_TX_PWR must be UNSET_FORCE_TX_PWR_VALUE (disabled) or -20..10");
+	(CONFIG_FORCE_TX_PWR >= -20 &&
+	    CONFIG_FORCE_TX_PWR <= CONFIG_ATM_MAX_TX_POWER_DBM),
+    "CONFIG_FORCE_TX_PWR must be UNSET_FORCE_TX_PWR_VALUE (disabled) or between"
+    " -20 dBm and CONFIG_ATM_MAX_TX_POWER_DBM");
 #else
 #define CFG_MAX_TX_PWR_UB 10
 STATIC_ASSERT(CONFIG_MAX_TX_PWR <= CFG_MAX_TX_PWR_UB,

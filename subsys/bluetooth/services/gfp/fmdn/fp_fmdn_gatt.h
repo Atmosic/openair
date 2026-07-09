@@ -76,9 +76,11 @@ void fp_fmdn_gatt_utp_mode_reg(fp_fmdn_utp_mode_cb const hdlr);
  * @brief The callback function of ring action
  * @param[in] action enable/disable ring action
  * @param[in] ring_op ring operation
- * @param[in] ring_vol ring volume
+ * @param[in] ring_vol_lvl ring volume level
+ * @param[in] ring_to_ds ring timeout in deciseconds
  */
-typedef void (*fp_fmdn_ring_action_cb)(bool action, uint8_t ring_op, uint8_t ring_vol);
+typedef void (*fp_fmdn_ring_action_cb)(bool action, uint8_t ring_op, uint8_t ring_vol_lvl,
+				       uint16_t ring_to_ds);
 
 /**
  * @brief fmdn ring action handler register

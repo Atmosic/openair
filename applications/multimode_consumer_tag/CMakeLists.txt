@@ -12,3 +12,4 @@ target_sources(app PRIVATE
 )
 
 add_subdirectory(src/platform)
+add_subdirectory_ifdef(CONFIG_AT_CMD_TAG_SET src/at_cmd)

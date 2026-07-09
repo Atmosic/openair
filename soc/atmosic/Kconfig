@@ -6,4 +6,14 @@ if SOC_FAMILY_ATM
 
 rsource "*/Kconfig"
 
+config SOC_ATM_SYSTICK_COUNTFLAG_WORKAROUND
+	bool
+	help
+	  Workaround for a SysTick COUNTFLAG race condition present on certain
+	  Atmosic SoC series.  When the counter naturally reaches 0 at the
+	  same moment software writes VAL=0, the hardware re-asserts COUNTFLAG
+	  even though the counter was just reloaded, causing a spurious ~1 s
+	  time jump in the tickless kernel.  Selected automatically by every
+	  SoC series that carries the hardware defect; not user-configurable.
+
 endif # SOC_FAMILY_ATM

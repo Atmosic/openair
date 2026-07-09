@@ -27,6 +27,16 @@ set_target_properties(swapped_app PROPERTIES
   IMAGE_CONF_SCRIPT ${ZEPHYR_BASE}/share/sysbuild/image_configurations/MAIN_image_default.cmake
 )
 
+# Ensure swapped_app is built after spe
+if(SB_CONFIG_SPE)
+  add_dependencies(swapped_app spe)
+  sysbuild_add_dependencies(CONFIGURE swapped_app spe)
+
+  # Set SPE_PATH so swapped_app links against libentryveneers.a
+  set(sysbuild_spe_path "${CMAKE_BINARY_DIR}/spe")
+  set_property(TARGET swapped_app APPEND_STRING PROPERTY CONFIG "CONFIG_SPE_PATH=\"${sysbuild_spe_path}\"\n")
+endif()
+
 # Add the swapped app to the list of images to flash
 # Ensure the flashing order of images is as follows:
 # - mcuboot

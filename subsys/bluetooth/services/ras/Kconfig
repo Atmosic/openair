@@ -46,6 +46,14 @@ config RAS_ACTIVE_SECURE_CHANGE
 config RAS_PTS_FAKE_CS_DATA
 	bool "Generate fake cs data to pass PTS test"
 
+config RAS_FILTER_RD
+	bool "Support for Filter Ranging Data (partial)"
+	help
+	  Only support mode2 with bit0~2
+	  bit0: Antenna Permutation Index
+	  bit1: Phase Correction Term
+	  bit2: Quality Indicator and Extension Indicator
+
 module = BT_RAS
 module-str = BT_RAS
 source "subsys/logging/Kconfig.template.log_config"
@@ -68,6 +76,17 @@ config RAS_CLIENT_RECEIVE_RANGING_DATA_TIMEOUT_SEC
 	int "Timeout for No Ranging Data Received"
 	range 0 5
 	default 5
+
+config RAS_CLIENT_CP_QUEUE_SIZE
+	int "RAS Client Control Point callback tracking size per connection"
+	range 1 16
+	default 4
+	help
+	  Maximum number of outstanding Control Point commands awaiting a
+	  response on a connection. The client writes each command to the
+	  server immediately and tracks (opcode, callback) entries in a FIFO
+	  to dispatch responses in send order. -ENOMEM is returned if the
+	  pool is exhausted.
 
 config RAS_CLIENT_REAL_TIME_RD
 	bool "Support Real-time Ranging Data Mode"

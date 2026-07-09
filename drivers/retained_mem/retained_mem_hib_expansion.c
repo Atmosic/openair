@@ -25,107 +25,140 @@
 LOG_MODULE_DECLARE(retained_mem_hib, CONFIG_RETAINED_MEM_LOG_LEVEL);
 
 /* Persistent expansion size constant for internal use */
-#define PERSISTENT_EXPANSION_SIZE RETAINED_MEM_BACKEND_CAPACITY
+#define PERSISTENT_EXPANSION_BYTES RETAINED_MEM_BACKEND_CAPACITY
+#define PERSISTENT_EXPANSION_WORDS (RETAINED_MEM_BACKEND_CAPACITY / sizeof(uint32_t))
+
+#ifdef __PSEQ_PERSISTENT_EXPANSION_WDATA_MACRO__
+#define UNROLL_WORDS 4 // Number of 32 bit words to write in one loop
+
+// clang-format off
+#define WRITE_PERSISTENT(ctrl, align_src) do {                                 \
+	/* setup address first, then write data after */                       \
+	CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;                          \
+	ctrl += 1 << PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__SHIFT;       \
+	CMSDK_PSEQ->PERSISTENT_EXPANSION_WDATA = *align_src++;                 \
+} while(0)
+
+#define READ_PERSISTENT(ctrl, align_dst) do {                                  \
+	/* setup address first, then write data after */                       \
+	CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;                          \
+	ctrl += 1 << PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__SHIFT;       \
+	*align_dst++ = CMSDK_PSEQ->PERSISTENT_EXPANSION_RDATA;                   \
+} while(0)
+// clang-format on
+#endif
 
 void retained_mem_backend_save(const uint8_t *src, uint32_t len)
 {
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
+		uint32_t ctrl = 0;
 #ifdef __PSEQ_PERSISTENT_EXPANSION_WDATA_MACRO__
 		__ASSERT(IS_ALIGNED(src, sizeof(uint32_t)), "src is not aligned!");
 		__ASSERT(IS_ALIGNED(len, sizeof(uint32_t)), "length is not aligned!");
+		__ASSERT(len <= PERSISTENT_EXPANSION_BYTES,
+			 "length is larger than retained mem size!");
 		uint32_t *align_src = (uint32_t *)src;
 
 		// enable clock and enable writes
-		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__SET(
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL);
-		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WRITE__SET(
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL);
+		ctrl = CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL;
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__SET(ctrl);
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WRITE__SET(ctrl);
+		CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;
+		// Start writes at 0
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__MODIFY(ctrl, 0);
 
-		uint32_t ctrl = CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL;
+		len /= sizeof(uint32_t);
+		uint32_t unrolled_count = len / UNROLL_WORDS;
+		uint32_t word_remainder = len - (unrolled_count * UNROLL_WORDS);
 
-		for (uint32_t exp_addr = 0; len && (exp_addr < (PERSISTENT_EXPANSION_SIZE / 4));
-		     exp_addr++, align_src++, len -= sizeof(uint32_t)) {
-			/* setup address */
-			PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__MODIFY(ctrl, exp_addr);
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;
-			/* write data (must be done after address is updated first) */
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_WDATA = *align_src;
+		while (unrolled_count > 0) {
+			WRITE_PERSISTENT(ctrl, align_src);
+			WRITE_PERSISTENT(ctrl, align_src);
+			WRITE_PERSISTENT(ctrl, align_src);
+			WRITE_PERSISTENT(ctrl, align_src);
+			unrolled_count--;
+		}
+		while (word_remainder > 0) {
+			WRITE_PERSISTENT(ctrl, align_src);
+			word_remainder--;
 		}
 #else
 		/* Write data byte-by-byte using expansion interface */
-		for (uint8_t addr = 0; (len && (addr < PERSISTENT_EXPANSION_SIZE));
+		for (uint8_t addr = 0; len && (addr < PERSISTENT_EXPANSION_BYTES);
 		     addr++, src++, len--) {
-			uint32_t ctrl_val = 0;
-
 			/* Set write data (bits 0-7) */
-			ctrl_val |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WDATA__WRITE(*src);
+			ctrl = PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WDATA__WRITE(*src);
 
 			/* Set address (bits 8-13) */
-			ctrl_val |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__WRITE(addr);
+			ctrl |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__WRITE(addr);
 
 			/* Set write enable (bit 16) */
-			ctrl_val |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WRITE__MASK;
+			ctrl |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WRITE__MASK;
 
 			/* Set clock enable (bit 17) */
-			ctrl_val |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__MASK;
+			ctrl |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__MASK;
 
 			/* Write to control register to trigger the write */
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl_val;
+			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;
 		}
 #endif
 		// make sure clock is gated and write enable cleared
-		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__CLR(
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL);
-		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WRITE__CLR(
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL);
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__CLR(ctrl);
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WRITE__CLR(ctrl);
+		CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;
 	}
 	WRPR_CTRL_POP();
-
-	/* Assert if we ran short on storage */
-	ASSERT_ERR(!len);
 }
 
 void retained_mem_backend_restore(uint8_t *dst, uint32_t len)
 {
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
+		uint32_t ctrl = 0;
 #ifdef __PSEQ_PERSISTENT_EXPANSION_WDATA_MACRO__
 		__ASSERT(IS_ALIGNED(dst, sizeof(uint32_t)), "dst is not aligned!");
 		__ASSERT(IS_ALIGNED(len, sizeof(uint32_t)), "length is not aligned!");
+		__ASSERT(len <= PERSISTENT_EXPANSION_BYTES,
+			 "length is larger than retained mem size!");
 		uint32_t *align_dst = (uint32_t *)dst;
 
 		// enable clock and make sure write enable is cleared
-		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__SET(
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL);
-		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WRITE__CLR(
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL);
+		ctrl = CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL;
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__SET(ctrl);
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_WRITE__CLR(ctrl);
+		CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;
+		// Start reads at 0
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__MODIFY(ctrl, 0);
 
-		uint32_t ctrl = CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL;
+		len /= sizeof(uint32_t);
+		uint32_t unrolled_count = len / UNROLL_WORDS;
+		uint32_t word_remainder = len - (unrolled_count * UNROLL_WORDS);
 
-		for (uint32_t exp_addr = 0; len && (exp_addr < (PERSISTENT_EXPANSION_SIZE / 4));
-		     exp_addr++, align_dst++, len -= sizeof(uint32_t)) {
-
-			/* setup address */
-			PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__MODIFY(ctrl, exp_addr);
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;
-			*align_dst = CMSDK_PSEQ->PERSISTENT_EXPANSION_RDATA;
+		while (unrolled_count > 0) {
+			READ_PERSISTENT(ctrl, align_dst);
+			READ_PERSISTENT(ctrl, align_dst);
+			READ_PERSISTENT(ctrl, align_dst);
+			READ_PERSISTENT(ctrl, align_dst);
+			unrolled_count--;
+		}
+		while (word_remainder > 0) {
+			READ_PERSISTENT(ctrl, align_dst);
+			word_remainder--;
 		}
 #else
 		/* Read data byte-by-byte using expansion interface */
-		for (uint8_t addr = 0; (len && (addr < PERSISTENT_EXPANSION_SIZE));
+		for (uint8_t addr = 0; len && (addr < PERSISTENT_EXPANSION_BYTES);
 		     addr++, dst++, len--) {
-			uint32_t ctrl_val = 0;
-
 			/* Set address (bits 8-13) */
-			ctrl_val |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__WRITE(addr);
+			ctrl = PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_ADDR__WRITE(addr);
 
 			/* Clear write enable for read mode (bit 16 = 0) */
 			/* Set clock enable (bit 17) */
-			ctrl_val |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__MASK;
+			ctrl |= PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__MASK;
 
 			/* Write to control register to set read address */
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl_val;
+			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;
 
 			/* Read data from read data register (bits 0-7) */
 			*dst = (uint8_t)PSEQ_PERSISTENT_EXPANSION_RDATA__PEXPAN_RDATA__READ(
@@ -133,8 +166,8 @@ void retained_mem_backend_restore(uint8_t *dst, uint32_t len)
 		}
 #endif
 		// make sure clock is gated
-		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__CLR(
-			CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL);
+		PSEQ_PERSISTENT_EXPANSION_CTRL__PEXPAN_CLKEN__CLR(ctrl);
+		CMSDK_PSEQ->PERSISTENT_EXPANSION_CTRL = ctrl;
 	}
 	WRPR_CTRL_POP();
 }

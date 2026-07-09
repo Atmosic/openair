@@ -62,7 +62,11 @@ atm_aes_res_t atm_aes_init(atm_aes_params_t const *params)
 
     // clear sideload valid
     CMSDK_AES->SIDELOAD_CTRL = AES_SIDELOAD_CTRL__RESET_VALUE;
-    // reset shadow (must be written twice)
+    // reset shadowed control register; AES unit must be idle before writing
+    while (!(CMSDK_AES->STATUS & AES_STATUS__IDLE__MASK)) {
+	YIELD();
+    }
+    // Double-write required to commit to shadowed control register
     CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__RESET_VALUE;
     CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__RESET_VALUE;
 
@@ -81,13 +85,15 @@ atm_aes_res_t atm_aes_init(atm_aes_params_t const *params)
 	ctrl |= 1 << AES_CTRL_SHADOWED__BYTE_REVERSE__SHIFT;
     }
 #endif
-    // CTRL must be written now even if we are sideloading
-    CMSDK_AES->CTRL_SHADOWED = ctrl;
-    CMSDK_AES->CTRL_SHADOWED = ctrl;
     // wait for idle bit in status
     while (!(CMSDK_AES->STATUS & AES_STATUS__IDLE__MASK)) {
 	YIELD();
     }
+    // CTRL must be written now even if we are sideloading
+    // Double-write required to commit to shadowed control register
+    CMSDK_AES->CTRL_SHADOWED = ctrl;
+    CMSDK_AES->CTRL_SHADOWED = ctrl;
+
     size_t const key_bytes = (params->key_len == ATM_AES_KEY_LEN_128) ?
         ATM_AES_128_KEY_LEN_BYTES : ATM_AES_256_KEY_LEN_BYTES;
 #ifdef SUPPORT_KEY_SIDE_LOAD
@@ -102,13 +108,15 @@ atm_aes_res_t atm_aes_init(atm_aes_params_t const *params)
 	    CMSDK_AES->SIDELOAD_CTRL =
 		AES_SIDELOAD_CTRL__SIDELOAD_UPDATE_EN__WRITE(0) |
 		AES_SIDELOAD_CTRL__SIDELOAD_VAL__WRITE(1);
-	    // rewrite CTRL register with sideload bit
-	    CMSDK_AES->CTRL_SHADOWED = ctrl;
-	    CMSDK_AES->CTRL_SHADOWED = ctrl;
 	    // wait for idle bit in status
 	    while (!(CMSDK_AES->STATUS & AES_STATUS__IDLE__MASK)) {
 		YIELD();
 	    }
+	    // rewrite CTRL register with sideload bit
+	    // Double-write required to commit to shadowed control register
+	    CMSDK_AES->CTRL_SHADOWED = ctrl;
+	    CMSDK_AES->CTRL_SHADOWED = ctrl;
+
 	} else {
 	    return ATM_AES_RES_INVALID_INPUT_ERR;
 	}
@@ -218,6 +226,7 @@ atm_aes_res_t atm_aes_update(uint8_t *dest, uint8_t const *src,
 void atm_aes_disable(void)
 {
     CMSDK_AES->SIDELOAD_CTRL = AES_SIDELOAD_CTRL__RESET_VALUE;
+    // Double-write required to commit to shadowed control register
     CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__RESET_VALUE;
     CMSDK_AES->CTRL_SHADOWED = AES_CTRL_SHADOWED__RESET_VALUE;
     CMSDK_AES->TRIGGER = AES_TRIGGER__KEY_IV_DATA_IN_CLEAR__MASK |
@@ -234,6 +243,12 @@ atm_aes_res_t atm_aes_ecb(uint8_t *dest, uint8_t const *src,
 	return ATM_AES_RES_INVALID_INPUT_ERR;
     }
 
+    return atm_aes_op(dest, src, ATM_AES_BLOCK_LEN_BYTES, params);
+}
+
+atm_aes_res_t atm_aes_op(uint8_t *dest, uint8_t const *src, size_t num_bytes,
+    atm_aes_params_t const *params)
+{
 #ifdef CONFIG_SOC_FAMILY_ATM
     if (k_mutex_lock(&aes_hw_mutex, K_MSEC(100))) {
 	return ATM_AES_RES_INTERNAL_ERR;
@@ -248,7 +263,7 @@ atm_aes_res_t atm_aes_ecb(uint8_t *dest, uint8_t const *src,
 	return res;
     }
 
-    res = atm_aes_update(dest, src, ATM_AES_BLOCK_LEN_BYTES);
+    res = atm_aes_update(dest, src, num_bytes);
     atm_aes_disable();
 #ifdef CONFIG_SOC_FAMILY_ATM
     k_mutex_unlock(&aes_hw_mutex);

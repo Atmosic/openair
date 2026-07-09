@@ -24,7 +24,3 @@ description: |
 compatible: "atmosic,retained-hib"
 
 include: base.yaml
-
-properties:
-  status:
-    default: "okay"

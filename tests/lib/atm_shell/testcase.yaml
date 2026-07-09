@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
 tests:
-  tests.lib.atm_shell.atm:
+  tests.lib.atm_shell.atm: &base_config
     sysbuild: true
     harness: console
     harness_config:
@@ -13,3 +13,14 @@ tests:
     extra_configs:
       - CONFIG_LOG_BACKEND_UART=y
       - CONFIG_SHELL_LOG_BACKEND=n
+  tests.lib.atm_shell.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_LOG_BACKEND_UART=y
+      - CONFIG_SHELL_LOG_BACKEND=n
+      - CONFIG_UU_TEST_OPENAIR="atm_shell.c"

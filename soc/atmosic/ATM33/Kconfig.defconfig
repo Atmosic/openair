@@ -16,6 +16,9 @@ config NUM_IRQS
 config HW_STACK_PROTECTION
 	default y
 
+config UART_ATM_TX_GLITCH
+	default y
+
 config CORTEX_M_NULL_POINTER_EXCEPTION_PAGE_SIZE
 	hex "Size of paged unmapped to implement null pointer detection"
 	default $(dt_nodelabel_reg_size_hex,rom_null_page)

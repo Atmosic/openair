@@ -78,6 +78,12 @@ struct i2c_atm_data {
 	uint32_t config;
 	struct k_sem xfer_sem;
 	struct k_sem completion_sem;
+#ifdef CONFIG_PM
+	/* Per-instance: must NOT be shared across I2C controllers, so each
+	 * controller manages its own PM lifecycle.
+	 */
+	bool pm_constraint_on;
+#endif
 };
 
 typedef void (*set_callback_t)(void);
@@ -130,11 +136,12 @@ static int i2c_atm_set_speed(struct device const *dev, uint32_t speed)
 }
 
 #ifdef CONFIG_PM
-static bool pm_constraint_on;
 static void i2c_atm_pm_constraint_set(const struct device *dev)
 {
-	if (!pm_constraint_on) {
-		pm_constraint_on = true;
+	struct i2c_atm_data *data = dev->data;
+
+	if (!data->pm_constraint_on) {
+		data->pm_constraint_on = true;
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -142,8 +149,10 @@ static void i2c_atm_pm_constraint_set(const struct device *dev)
 
 static void i2c_atm_pm_constraint_release(const struct device *dev)
 {
-	if (pm_constraint_on) {
-		pm_constraint_on = false;
+	struct i2c_atm_data *data = dev->data;
+
+	if (data->pm_constraint_on) {
+		data->pm_constraint_on = false;
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -153,19 +162,32 @@ static void i2c_atm_pm_constraint_release(const struct device *dev)
 static inline void i2c_atm_enter_transfer_session(struct device const *dev)
 {
 	struct i2c_atm_data *data = dev->data;
+
+	/*
+	 * sem_take must come before pm_constraint_set, so that only one thread
+	 * operates on this instance's pm_constraint_on at a time and its get is
+	 * issued before its matching put. Together with the flag being
+	 * per-instance (see i2c_atm_pm_constraint_set), this keeps the PM lock
+	 * get/put balanced even when multiple I2C buses run concurrently.
+	 */
+	k_sem_take(&data->xfer_sem, K_FOREVER);
 #ifdef CONFIG_PM
 	i2c_atm_pm_constraint_set(dev);
 #endif
-	k_sem_take(&data->xfer_sem, K_FOREVER);
 }
 
 static inline void i2c_atm_exit_transfer_session(struct device const *dev)
 {
 	struct i2c_atm_data *data = dev->data;
-	k_sem_give(&data->xfer_sem);
+
+	/*
+	 * pm_constraint_release must come before sem_give, otherwise the next
+	 * thread may start a transfer after the PM lock has been released.
+	 */
 #ifdef CONFIG_PM
 	i2c_atm_pm_constraint_release(dev);
 #endif
+	k_sem_give(&data->xfer_sem);
 }
 
 static void i2c_atm_isr(const struct device *dev)
@@ -563,6 +585,7 @@ static int i2c_atm_init(struct device const *dev)
 	PINCTRL_DT_INST_DEFINE(n);                                                                   \
 	static void i2c_atm_enable_clocks_##n(void)                                                  \
 	{                                                                                            \
+		WRPR_CTRL_SET(I2C_BASE(n), WRPR_CTRL__SRESET);                                       \
 		WRPR_CTRL_SET(I2C_BASE(n), WRPR_CTRL__CLK_ENABLE);                                   \
 	}                                                                                            \
 	IF_ENABLED(I2C_GPIO_REQUIRED, (                                                            \

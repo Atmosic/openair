@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2023, Atmosic
+ * Copyright (c) 2023-2026, Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define DT_DRV_COMPAT microchip_mcp3221
+#define DT_DRV_COMPAT atmosic_mcp3221_sensor
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/i2c.h>

@@ -31,6 +31,8 @@ extern "C" {
 #define MAX_N_AP 4
 /// Invalid rssi value in CS
 #define INVALID_CS_RSSI_VAL 0x7F
+/// Maximum allowed RF delay value in units of 1/8 ns
+#define ATM_MAC_BLE_CS_RF_DELAY_MAX 1024
 
 /// CS step complete callback function type
 typedef bool (*atm_mac_ble_cs_step_comp_t)(uint8_t status, uint32_t start_ts);
@@ -45,11 +47,15 @@ typedef enum {
     CS_MODE_NUM,
 } cs_mode_t;
 
+/// Bitmask definitions for cs_enable_t::enable
+#define CS_ENABLE_BIT (1 << 0) ///< Normal CS enable
+#define CS_ENABLE_IPT_BIT (1 << 1) ///< CS IPT enable
+
 /// Structure of CS enable
 typedef struct cs_enable_s {
     atm_mac_ble_cs_step_comp_t step_cmpl_cb;
     uint16_t t_pm;
-    bool enable;
+    uint8_t enable; ///< bit 0: normal CS, bit 1: CS IPT
     bool reset_cfo_info;
     bool is_initiator;
     atm_mac_ble_phy_t phy;
@@ -224,7 +230,15 @@ void atm_mac_ble_cs_enable_bt20(bool enable);
  *
  * return Additional delay, in units of 1/8 ns
  */
-uint32_t atm_mac_ble_cs_get_rf_delay_one_eighth_ns(void);
+uint16_t atm_mac_ble_cs_get_rf_delay_one_eighth_ns(void);
+
+/**
+ * @brief Set additional RF DELAY
+ *
+ * @param[in] delay Additional delay, in units of 1/8 ns
+ *   [0..ATM_MAC_BLE_CS_RF_DELAY_MAX]
+ */
+void atm_mac_ble_cs_set_rf_delay_one_eighth_ns(uint16_t delay);
 
 /**
  * @brief Whether to enable antenna switching

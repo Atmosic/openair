@@ -37,7 +37,7 @@ static struct i2s_config *get_config(const struct device *dev_i2s)
 		.format = I2S_FMT_DATA_FORMAT_I2S,
 		.frame_clk_freq = SAMPLE_FREQUENCY,
 		.timeout = TIMEOUT,
-		.options = I2S_OPT_FRAME_CLK_MASTER | I2S_OPT_BIT_CLK_MASTER,
+		.options = I2S_OPT_FRAME_CLK_CONTROLLER | I2S_OPT_BIT_CLK_CONTROLLER,
 	};
 	return &i2s_cfg;
 }

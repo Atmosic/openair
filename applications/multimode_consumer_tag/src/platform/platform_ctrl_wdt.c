@@ -20,6 +20,12 @@
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
 #include "platform_ctrl_wdt.h"
+#ifdef CONFIG_AT_CMD_TAG_SET
+#include "at_cmd_uart.h"
+#include "at_cmd_event.h"
+#include "at_cmd_tag.h"
+#include "platform.h"
+#endif
 
 LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
 
@@ -54,6 +60,10 @@ int platform_ctrl_wdt_init(void)
 {
 	if (!device_is_ready(wdog_dev)) {
 		LOG_ERR("wdog0 not ready");
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+				     AT_CMD_TAG_ERR_WDOG);
+#endif
 		return -ENODEV;
 	}
 
@@ -70,12 +80,20 @@ int platform_ctrl_wdt_init(void)
 	wdt_channel_id = wdt_install_timeout(wdog_dev, &wdt_config);
 	if (wdt_channel_id < 0) {
 		LOG_ERR("Watchdog install error: %d", wdt_channel_id);
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+				     AT_CMD_TAG_ERR_WDOG);
+#endif
 		return -EIO;
 	}
 
 	int ret = wdt_setup(wdog_dev, 0);
 	if (ret < 0) {
 		LOG_ERR("Watchdog setup error: %d", ret);
+#ifdef CONFIG_AT_CMD_TAG_SET
+		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+				     AT_CMD_TAG_ERR_WDOG);
+#endif
 		return -EIO;
 	}
 

@@ -15,14 +15,17 @@ supported:
   - epd_display
   - esl
   - flash
+  - gcov_capable
   - hid_kb
   - gpio
   - i2c
   - i2c_clock_stretching
   - ieee802154
+  - lis2dh
   - mikrobus
   - pwm
   - rram
+  - sha2_multi_context
   - smart_label
   - spi
   - uart

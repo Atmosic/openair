@@ -151,13 +151,37 @@ class SecJrnlCommand(WestCommand):
             subparsers, "append", "Appends a single TLV to the secure journal"
         )
         append_parser.add_argument(
-            "--tag", required=True, type=auto_int, help="Tag for TLV"
+            "-t",
+            "--tag",
+            type=auto_int,
+            required=False,
+            action="append",
+            help="tag to append (hex value, e.g., 0xB8)",
+        )
+        append_parser.add_argument(
+            "-n",
+            "--tag-name",
+            type=str,
+            required=False,
+            action="append",
+            help="tag name to append (e.g., ATE, CHIP_INFO)",
+            dest="tag_name",
         )
         append_parser.add_argument(
             "--data",
-            required=True,
+            required=False,
+            action="append",
             type=unescaped_str,
             help="Data for TLV (ASCII text + \\xHH escapes)",
+        )
+        append_parser.add_argument(
+            "-j",
+            "--json",
+            type=str,
+            required=False,
+            action="append",
+            help="tag data in JSON format (e.g., '{\"rsvd\": [0,0,0,0,0,0,0]}')",
+            dest="json_data",
         )
         append_parser.add_argument(
             "--locked",
@@ -285,44 +309,6 @@ class SecJrnlCommand(WestCommand):
             finally:
                 os.remove(tf.name)
 
-    def append(self, args):
-        """Append tag to secure journal. DOES NOT INCR RATCHET
-
-        Args:
-            args: args passed at the command line
-
-        """
-        self.pull_sec_jrnl()
-        sec_jrnl = SecJrnl(self.sec_jrnl)
-        locked = args.locked
-        old_tlv = sec_jrnl.get(args.tag)
-        if (old_tlv is not None) and old_tlv.status.locked:
-            raise RuntimeError(
-                f"Existing tag ({old_tlv.tag}) is already locked down in Secure Journal. Cannot overwrite with new data."
-            )
-
-        if (hasattr(sec_jrnl, "is_secure_tag")) and sec_jrnl.is_secure_tag(args.tag):
-            print(
-                f"\nWARNING: Tag {wrap_color(hex(args.tag), TermColors.BOLD)} is a user-secure tag. This means the tag can only be accessed via the secure application."
-            )
-            print(
-                f"All user-secure tags {wrap_color('must', TermColors.BOLD)} be locked. You will not be able to update this value after ratcheting"
-            )
-            print("Are you sure you want this?")
-            answer = input()
-            if answer.lower() == "no":
-                return
-            if answer.lower() != "yes":
-                print("Please enter yes or no.")
-                return
-            # secure-only tags MUST be locked down - force it.
-            locked = True
-        sec_jrnl.append_tag(args.tag, args.data, locked)
-        if args.dry_run:
-            print(sec_jrnl)
-        else:
-            self.push_sec_jrnl(sec_jrnl.bin)
-
     def _resolve_tag_entries(self, args):
         """Resolve tag entries from --tag/--tag-name and --data/--json arguments.
 
@@ -378,6 +364,48 @@ class SecJrnlCommand(WestCommand):
             )
 
         return list(zip(resolved_tags, resolved_data))
+
+    def append(self, args):
+        """Append tag to secure journal. DOES NOT INCR RATCHET
+
+        Args:
+            args: args passed at the command line
+
+        """
+        self.pull_sec_jrnl()
+        sec_jrnl = SecJrnl(self.sec_jrnl)
+        tag_entries = self._resolve_tag_entries(args)
+        assert len(tag_entries) == 1
+        tag, data = tag_entries[0]
+
+        locked = args.locked
+        old_tlv = sec_jrnl.get(tag)
+        if (old_tlv is not None) and old_tlv.status.locked:
+            raise RuntimeError(
+                f"Existing tag ({old_tlv.tag}) is already locked down in Secure Journal. Cannot overwrite with new data."
+            )
+
+        if (hasattr(sec_jrnl, "is_secure_tag")) and sec_jrnl.is_secure_tag(tag):
+            print(
+                f"\nWARNING: Tag {wrap_color(hex(tag), TermColors.BOLD)} is a user-secure tag. This means the tag can only be accessed via the secure application."
+            )
+            print(
+                f"All user-secure tags {wrap_color('must', TermColors.BOLD)} be locked. You will not be able to update this value after ratcheting"
+            )
+            print("Are you sure you want this?")
+            answer = input()
+            if answer.lower() == "no":
+                return
+            if answer.lower() != "yes":
+                print("Please enter yes or no.")
+                return
+            # secure-only tags MUST be locked down - force it.
+            locked = True
+        sec_jrnl.append_tag(tag, data, locked)
+        if args.dry_run:
+            print(sec_jrnl)
+        else:
+            self.push_sec_jrnl(sec_jrnl.bin)
 
     def create(self, args):
         """Create a brand new secure journal bin file.

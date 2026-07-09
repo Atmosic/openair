@@ -37,7 +37,11 @@ def run_with_timeout(command, timeout=None):
     ) as process:
         print(f"run [{command}]")
         try:
-            _, _ = process.communicate(timeout=timeout)
+            stdout, stderr = process.communicate(timeout=timeout)
+            if stdout:
+                sys.stdout.write(stdout)
+            if stderr:
+                sys.stderr.write(stderr)
             return process.returncode
         except subprocess.TimeoutExpired:
             print(f"run {command} expired")
@@ -78,6 +82,13 @@ def parse_args(args=None):
     parser.add_argument(
         "-o", "--output_file", required=False, default=None, help="output file path"
     )
+    parser.add_argument(
+        "-obj",
+        "--objcopy_file",
+        required=False,
+        default=None,
+        help="objcopy exe file path",
+    )
     return parser.parse_args(args)
 
 
@@ -108,6 +119,9 @@ def main(args=None):
         f"west zsg write -i {args.input_file} -o {args.output_file} "
         f"-p {args.partition_file} -t {args.partition_type} --hex"
     )
+    if args.objcopy_file and os.path.exists(args.objcopy_file):
+        cmd += f" -obj {args.objcopy_file}"
+
     return_code = run_with_timeout(cmd)
     if return_code != 0:
         print("Execute generate command failed")

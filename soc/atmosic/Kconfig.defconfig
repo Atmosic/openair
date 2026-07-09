@@ -53,11 +53,11 @@ choice RNG_GENERATOR_CHOICE
 	default XOSHIRO_RANDOM_GENERATOR
 endchoice
 
-# ATM TRNG HW should be used as an entropy source for a
-# secure PRNG implementation.  Use the default AES-CTR mode drbg.
+# ATM TRNG HW should be used as an entropy source for a secure PRNG
+# implementation.  Route it through the PSA Crypto CSPRNG.
 choice CSPRNG_GENERATOR_CHOICE
-	depends on MBEDTLS
-	default CTR_DRBG_CSPRNG_GENERATOR
+	depends on PSA_CRYPTO
+	default PSA_CSPRNG_GENERATOR
 endchoice
 
 config BT_RX_STACK_SIZE
@@ -95,6 +95,19 @@ config OMIT_FRAME_POINTER
 
 endif # ENTROPY_ATM_TRNG
 
+config HEAP_MEM_POOL_ADD_SIZE_PSA_CRYPTO
+	int "Additional heap memory pool size for PSA Crypto"
+	default 1536 if MBEDTLS_PSA_CRYPTO_C && !MBEDTLS_ENABLE_HEAP
+	default 0
+	help
+	  PSA Crypto allocates a persistent global driver context (and a
+	  CTR_DRBG state when MBEDTLS_PSA_CRYPTO_LEGACY_RNG is selected) plus
+	  per-call cipher / key-derivation operation contexts from the system
+	  k_heap whenever MBEDTLS_ENABLE_HEAP is disabled. Reserve headroom
+	  here so PSA users (FMNA, STF, ...) do not starve other consumers.
+	  Sized for MBEDTLS_PSA_STATIC_KEY_SLOTS=y; raise this if dynamic
+	  key slots are re-enabled.
+
 if BOOTLOADER_MCUBOOT
 
 choice MCUBOOT_BOOTLOADER_MODE
@@ -106,17 +119,20 @@ endif # BOOTLOADER_MCUBOOT
 if MCUBOOT
 
 config BOOT_ECDSA_MICRO_ECC
-	bool "Use Micro ECC to accelerate mbedtls ecdsa"
-	default y if BOOT_ECDSA_MBEDTLS
-	select ATM_UECC
+	bool "Use Micro ECC to accelerate PSA ecdsa"
+	depends on BOOT_ECDSA_PSA
+	default y if BOOT_ECDSA_PSA
+	select ATM_UECC_PSA
+	select ATM_UECC_PSA_NO_FALLBACK
 	select ATM_UECC_VLI_API
 	select OVERRIDE_FRAME_POINTER_DEFAULT
 	select OMIT_FRAME_POINTER
+	select PSA_CRYPTO # Needed by ATM_UECC_PSA
 
 config BOOT_SHA2_ATM
 	bool "Use Atmosic SHA acceleration"
-	depends on MBEDTLS_SHA256
 	depends on !USERSPACE
+	depends on PSA_WANT_ALG_SHA_256
 	select ATM_SHA2_HW
 
 endif # MCUBOOT

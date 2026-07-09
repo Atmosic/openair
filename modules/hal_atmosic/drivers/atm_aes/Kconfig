@@ -7,6 +7,13 @@ config ATM_AES
 	bool "Atmosic AES module"
 	default y if ATM_BLE || ATM_AES_HW
 
+config ATM_AES_HW
+	bool "PSA driver - hardware accelerator for AES"
+	default y
+	depends on $(dt_nodelabel_enabled,aes)
+	depends on PSA_WANT_KEY_TYPE_AES
+	depends on !USERSPACE
+
 config ATM_AES_SUPPORTS_ECB_128
 	bool
 
@@ -21,6 +28,9 @@ config ATM_AES_SUPPORTS_DECRYPT
 
 config ATM_AES_ATM_CORE
 	bool
+	depends on $(dt_nodelabel_enabled,aes)
+	help
+	  Includes HAL driver for AES hardware engine.
 
 choice ATM_AES_IMPL
 	prompt "Atmosic AES default implementation"
@@ -46,17 +56,27 @@ config ATM_AES_NONE
 
 endchoice
 
-config ATM_AES_HW
-	bool "Hardware accelerator for AES"
-	default y
-	depends on MBEDTLS_CIPHER_AES_ENABLED && !USERSPACE
-	select MBEDTLS_USER_CONFIG_ENABLE
+if ATM_AES_ATM_CORE
 
-if ATM_AES
-
+# FIXME: move to device tree
 config ATM_AES_CAN_REVERSE_BYTES
 	bool "Atmosic AES can reverse byte order"
 	default n if SOC_SERIES_ATM33
 	default y
 
-endif # ATM_AES
+endif # ATM_AES_ATM_CORE
+
+if ATM_AES_HW
+
+config ATM_AES_HW_FALLBACK_ON_EXHAUSTION
+	bool "Fall back to software when AES HW is busy"
+	default y
+	help
+	  When the Atmosic AES hardware cannot accept a new operation
+	  -- because it is already in use by another caller (e.g. the BLE
+	  controller) and the HW mutex acquisition timed out -- transparently
+	  route the request to the Mbed TLS software implementation instead
+	  of returning PSA_ERROR_INSUFFICIENT_MEMORY. Disable to surface the
+	  error to the caller (useful for diagnosing contention).
+
+endif # ATM_AES_HW

@@ -22,7 +22,10 @@ from runners.core import ZephyrBinaryRunner, RunnerCaps, BuildConfiguration
 
 sys.path.append(os.fspath(Path(__file__).parent.parent.parent / "tools" / "scripts"))
 # pylint: disable=wrong-import-position
-from atm_openocd import get_openocd_config_from_board_dir
+from atm_openocd import (
+    get_board_dirs_from_board,
+    get_openocd_config_from_board_dirs,
+)
 
 DEFAULT_OPENOCD_TCL_PORT = 6333
 DEFAULT_OPENOCD_TELNET_PORT = 4444
@@ -132,7 +135,14 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         print(cfg.board_dir)
         if not openocd_config:
             try:
-                openocd_config = get_openocd_config_from_board_dir(cfg.board_dir)
+                openocd_config = get_openocd_config_from_board_dirs([cfg.board_dir])
+            except FileNotFoundError:
+                self.logger.warning("Cannot locate openocd config")
+        if not openocd_config:
+            try:
+                board_name = BuildConfiguration(cfg.build_dir).get("CONFIG_BOARD")
+                board_dirs = get_board_dirs_from_board(board_name)
+                openocd_config = get_openocd_config_from_board_dirs(board_dirs)
             except FileNotFoundError:
                 self.logger.warning("Cannot locate openocd config")
 
@@ -605,8 +615,12 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
             noreset=args.noreset,
             use_elf=args.use_elf,
             erase_flash=args.erase_flash,
-            erase_flash_addr=int(args.erase_flash_addr, 16) if args.erase_flash_addr else None,
-            erase_flash_size=int(args.erase_flash_size, 16) if args.erase_flash_size else None,
+            erase_flash_addr=(
+                int(args.erase_flash_addr, 16) if args.erase_flash_addr else None
+            ),
+            erase_flash_size=(
+                int(args.erase_flash_size, 16) if args.erase_flash_size else None
+            ),
             ext_flash_base_addr=int(args.ext_flash_base_addr, 16),
             factory_data_file=args.factory_data_file,
             fast_load=args.fast_load,
@@ -715,20 +729,27 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
             if self.rram:
                 self.do_flash_rram(**kwargs)
             elif self.memory_space is not None:
-                found_flash = False
-                for file in self.hex_name:
-                    target_memory = self.find_target_memory_space(
-                        file, self.memory_spaces
-                    )
-                    if target_memory is None:
-                        print("No matching memory space found for the given hex file.")
-                    if target_memory["type"] == "FLASH":
-                        print(f"Hex file will be programmed into: {target_memory}")
-                        found_flash = True
-                    else:
-                        print("No matching memory space found for the given hex file.")
-                if found_flash:
-                    self.do_load_flash(**kwargs)
+                if any(m["type"] == "ROM" for m in self.memory_spaces):
+                    self.do_flash_rom_only(**kwargs)
+                else:
+                    found_flash = False
+                    for file in self.hex_name:
+                        target_memory = self.find_target_memory_space(
+                            file, self.memory_spaces
+                        )
+                        if target_memory is None:
+                            print(
+                                "No matching memory space found for the given hex file."
+                            )
+                        if target_memory["type"] == "FLASH":
+                            print(f"Hex file will be programmed into: {target_memory}")
+                            found_flash = True
+                        else:
+                            print(
+                                "No matching memory space found for the given hex file."
+                            )
+                    if found_flash:
+                        self.do_load_flash(**kwargs)
             else:
                 self.logger.error("Flashing unsupported for platform")
                 sys.exit(1)
@@ -744,11 +765,7 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
                 self.openocd_cmd
                 + self.cfg_cmd
                 + [
-                    "-c init",
-                    "-c release_reset",
-                    "-c sleep 100",
-                    "-c set_normal_boot",
-                    "-c exit",
+                    "-c init_rr_nb_exit",
                 ]
             )
 
@@ -806,10 +823,14 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
                     if self.erase_flash_size:
                         erase_size = hex(self.erase_flash_size)
                         if self.erase_flash_addr:
-                            erase_addr = hex(self.erase_flash_addr - self.ext_flash_base_addr)
+                            erase_addr = hex(
+                                self.erase_flash_addr - self.ext_flash_base_addr
+                            )
                         else:
                             erase_addr = "0x0"
-                        cmd_flash += ["-c atm_erase_flash " + erase_size + " " + erase_addr]
+                        cmd_flash += [
+                            "-c atm_erase_flash " + erase_size + " " + erase_addr
+                        ]
                     else:
                         cmd_flash += ["-c catch {atm_erase_flash}"]
                 if self.erase_rram:
@@ -925,7 +946,9 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
                 if self.erase_flash_size:
                     erase_size = hex(self.erase_flash_size)
                     if self.erase_flash_addr:
-                        erase_addr = hex(self.erase_flash_addr - self.ext_flash_base_addr)
+                        erase_addr = hex(
+                            self.erase_flash_addr - self.ext_flash_base_addr
+                        )
                     else:
                         erase_addr = "0x0"
                     cmd_flash += ["-c atm_erase_flash " + erase_size + " " + erase_addr]
@@ -1018,6 +1041,28 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
                 self.check_call(cmd_flash)
         else:
             self.check_call(cmd_flash)
+
+    def do_flash_rom_only(self, **kwargs):
+        """Program FPGA ROM only (no flash/RRAM).
+
+        Used when --memory_space contains a ROM-type entry (and neither
+        --rram nor a FLASH-type memory_space is the target). Falls back
+        to the compiled zephyr.elf when --rom_image is not supplied.
+        """
+        _ = kwargs
+        rom_img = self.rom_image if self.rom_image else self.elf_name[0]
+        self.logger.info("Programming FPGA ROM with: %s", rom_img)
+        self.do_reset_target()
+        cmd = self.openocd_cmd + self.cfg_cmd + ["-c init"]
+        cmd += ["-c unlock_fpga_rom"]
+        cmd += ["-c puts -nonewline [load_image " + rom_img + "]"]
+        cmd += ["-c lock_fpga_rom"]
+        if not self.noreset:
+            cmd += ["-c set _RESET_HARD_ON_EXIT 1"]
+        cmd += ["-c exit"]
+        cmd = [item.replace("\\", "/") for item in cmd]
+        self.logger.debug("cmd_flash: %s", " ".join(cmd))
+        self.check_call(cmd)
 
     def do_debugserver(self, **kwargs):
         """perform debugserver"""

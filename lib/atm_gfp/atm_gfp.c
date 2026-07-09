@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file atm_gfp.c
  *
- * @brief Library For Goole Fast Pair
- *
- * Copyright (C) Atmosic 2025-2026
+ * @brief Library For Google Fast Pair
  *
  *******************************************************************************
  */
@@ -13,9 +17,9 @@
 #include <zephyr/kernel.h>
 #include <errno.h>
 #include <zephyr/logging/log.h>
+#include "app_work_q.h"
 #include "atm_gfp.h"
 #ifdef CONFIG_ATM_DULT
-#include "app_work_q.h"
 #include "dult.h"
 #endif
 #include "gfps.h"
@@ -49,12 +53,24 @@ static atm_gfp_ranging_handler_t const *atm_gfp_ranging_hdlrs;
  * @brief Adapter for reverse ringing events
  *
  * Converts detailed module-level events to simplified application-level events.
- * Per FHN v2 spec line 263, application only needs to know:
- * - Request sent successfully (indication confirmed) → Show LED/beep
- * - Ringing stopped (any reason) → Turn off LED/beep
+ *
+ * For persistent connections the indication ACK is the fast-feedback trigger —
+ * the application must not wait for the Seeker's write-back (RR_EVENT_PHONE_STARTED).
+ * Once ATM_GFP_RR_EVENT_STARTED has been delivered via indication ACK, the
+ * subsequent Seeker write is suppressed so the application callback fires
+ * exactly once per session.
+ *
+ * For adv-based connections no START indication is sent, so RR_EVENT_PHONE_STARTED
+ * remains the sole trigger for ATM_GFP_RR_EVENT_STARTED.
  *
  * @param event Module-level event
  */
+
+/* true after indication ACK fires for persistent flow; reset on any stop event
+ * or at the start of a new adv-based session.
+ */
+static bool rr_started_sent;
+
 static void atm_gfp_reverse_ringing_event_adapter(fp_fmdn_reverse_ringing_event_t event)
 {
 	if (!atm_gfp_hdlrs || !atm_gfp_hdlrs->reverse_ringing_event_cb) {
@@ -64,18 +80,32 @@ static void atm_gfp_reverse_ringing_event_adapter(fp_fmdn_reverse_ringing_event_
 	/* Convert detailed module events to simple application events */
 	atm_gfp_reverse_ringing_event_t lib_event;
 	switch (event) {
-	case RR_EVENT_REQUEST_SENT:
-		/* Indication confirmed - show feedback to user */
+	case RR_EVENT_RR_ADV_CONNECTED:
+		/* Reset flag at the start of every new adv-based session */
+		rr_started_sent = false;
+		lib_event = ATM_GFP_RR_EVENT_CONNECTED;
+		break;
+	case RR_EVENT_START_INDICATION_CONFIRMED:
+		/* Persistent flow: indication ACK is the fast-feedback trigger */
+		rr_started_sent = true;
 		lib_event = ATM_GFP_RR_EVENT_STARTED;
 		break;
-
 	case RR_EVENT_PHONE_STARTED:
+		/* Adv flow: no indication ACK, Seeker write is the only trigger.
+		 * Persistent flow: indication ACK already fired STARTED — suppress.
+		 */
+		if (rr_started_sent) {
+			return;
+		}
+		lib_event = ATM_GFP_RR_EVENT_STARTED;
+		break;
+	case RR_EVENT_STOP_INDICATION_CONFIRMED:
 	case RR_EVENT_PHONE_FAILED:
 	case RR_EVENT_PHONE_STOPPED_TIMEOUT:
 	case RR_EVENT_PHONE_STOPPED_USER:
 	case RR_EVENT_PHONE_STOPPED_PROVIDER:
 	case RR_EVENT_TIMEOUT_LOCAL:
-		/* Any stop event - turn off feedback */
+		rr_started_sent = false;
 		lib_event = ATM_GFP_RR_EVENT_STOPPED;
 		break;
 
@@ -122,10 +152,11 @@ static uint8_t atm_gfp_battery_status(void)
 	return 0;
 }
 
-static void atm_gfp_sound_action(bool action, uint8_t ring_op, uint8_t ring_vol)
+static void atm_gfp_sound_action(bool action, uint8_t ring_op, uint8_t ring_vol_lvl,
+				 uint16_t ring_to_ds)
 {
 	if (atm_gfp_hdlrs && atm_gfp_hdlrs->sound_action_cb) {
-		return atm_gfp_hdlrs->sound_action_cb(action, ring_op, ring_vol);
+		return atm_gfp_hdlrs->sound_action_cb(action, ring_op, ring_vol_lvl, ring_to_ds);
 	}
 }
 
@@ -203,18 +234,64 @@ static void atm_gfp_dult_sound_action(bool action)
 	if (atm_gfp_hdlrs && atm_gfp_hdlrs->sound_action_cb) {
 		// DULT does not define ring_op and ring_vol
 		return atm_gfp_hdlrs->sound_action_cb(action, ATM_GFP_RING_OP_ALL,
-						      ATM_GFP_RING_VOL_HIGH);
+						      ATM_GFP_RING_VOL_HIGH,
+						      (DULT_PLAY_SOUND_DUR_SEC * 10));
 	}
 }
 
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+/* Raw-degrees snapshot getter provided by the platform when hw is enabled.  */
+static uint8_t (*motion_raw_getter)(void);
+/* FMDN active flag — makes FMDN hw enable/disable idempotent.               */
+static bool motion_fmdn_active;
+
+static int atm_gfp_motion_hw_start(void)
+{
+	if (!atm_gfp_hdlrs || !atm_gfp_hdlrs->motion_cb) {
+		return -ENODEV;
+	}
+	motion_raw_getter = NULL;
+	return atm_gfp_hdlrs->motion_cb(&motion_raw_getter);
+}
+
+static void atm_gfp_motion_hw_stop(void)
+{
+	motion_raw_getter = NULL;
+	atm_gfp_hdlrs->motion_cb(NULL);
+}
+
+/*
+ * Enable or disable motion hw on behalf of FMDN ranging.
+ * Idempotent: repeated calls with the same state are no-ops.
+ */
+static int atm_gfp_fmdn_motion_set(bool enable)
+{
+	if (enable == motion_fmdn_active) {
+		return 0;
+	}
+	motion_fmdn_active = enable;
+	if (enable) {
+		return atm_gfp_motion_hw_start();
+	}
+	atm_gfp_motion_hw_stop();
+	return 0;
+}
+#endif /* CONFIG_FMDN_PRECISION_FINDING */
+
 static int fp_tag_dult_init(void)
 {
-	static dult_hdlrs_t const hdlrs = {
+	static dult_hdlrs_t hdlrs = {
 		.dult_get_id_cb = fp_tag_dult_get_id,
 		.battery_status_cb = atm_gfp_battery_status,
 		.sound_action_cb = atm_gfp_dult_sound_action,
 	};
 
+#ifdef CONFIG_DULT_MOTION_DETECT
+	if (atm_gfp_hdlrs) {
+		hdlrs.motion_hw_enable_cb = atm_gfp_hdlrs->dult_motion_hw_enable_cb;
+		hdlrs.motion_raw_get_cb = atm_gfp_hdlrs->dult_motion_raw_get_cb;
+	}
+#endif
 	static dult_user_info_t user_info;
 	fp_tag_dult_user_info(&user_info);
 	dult_handlers_register(&hdlrs, &user_info, fp_conn_get_bt_id(FP_DULT_ADV_BT_ID));
@@ -256,7 +333,6 @@ static void atm_gfp_mode_switch(fp_mode_t mode)
 		break;
 	case FP_MODE_PROVISIONED:
 		atm_gfp_provision_timer_en(false);
-		dult_mode_update(DULT_NO_MODE_NEAR_OWNER);
 		break;
 	default:
 		LOG_DBG("mode %u do nothing", mode);
@@ -277,7 +353,12 @@ static void atm_gfp_service_init(void)
 	fp_tag_dult_init();
 	if (mode == FP_MODE_PROVISIONED) {
 		// Enable DULT based on UTP mode (consistent with UTP mode switch logic)
-		dult_enable(fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON);
+		bool utp_mode = (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON);
+		if (utp_mode) {
+			dult_enable(utp_mode);
+		} else {
+			dult_mode_update(DULT_NO_MODE_SEPERATED);
+		}
 	}
 #endif
 	if (mode == FP_MODE_NONE) {
@@ -444,9 +525,9 @@ const char *atm_gfp_ring_op_to_string(atm_gfp_ring_op_t ring_op)
 	}
 }
 
-const char *atm_gfp_ring_vol_to_string(atm_gfp_ring_vol_t ring_vol)
+const char *atm_gfp_ring_vol_to_string(atm_gfp_ring_vol_t ring_vol_lvl)
 {
-	switch (ring_vol) {
+	switch (ring_vol_lvl) {
 	case ATM_GFP_RING_VOL_DEFAULT:
 		return "DEFAULT";
 	case ATM_GFP_RING_VOL_LOW:
@@ -456,10 +537,11 @@ const char *atm_gfp_ring_vol_to_string(atm_gfp_ring_vol_t ring_vol)
 	case ATM_GFP_RING_VOL_HIGH:
 		return "HIGH";
 	default:
-		__ASSERT(0, "Invalid ring_vol: %d", ring_vol);
+		__ASSERT(0, "Invalid ring_vol_lvl: %d", ring_vol_lvl);
 		return NULL;
 	}
 }
+
 fp_mode_t atm_gfp_fp_mode_get(void)
 {
 	return fp_mode_get();
@@ -522,6 +604,23 @@ static int atm_gfp_ranging_stop_wrapper(rt_id_t tech_id)
 	return atm_gfp_ranging_hdlrs->stop_cb(tech_id);
 }
 
+static int atm_gfp_ranging_motion_wrapper(fp_fmdn_ranging_motion_get_status_t *get_status)
+{
+	if (get_status) {
+		int ret = atm_gfp_fmdn_motion_set(true);
+
+		if (ret) {
+			return ret;
+		}
+		/* Provide the raw platform getter directly; fp_fhpf_gatt converts
+		 * degrees to the 4-level enum and sends GATT notifications itself. */
+		*get_status = motion_raw_getter;
+	} else {
+		atm_gfp_fmdn_motion_set(false);
+	}
+	return 0;
+}
+
 void atm_gfp_ranging_handler_register(atm_gfp_ranging_handler_t const *handler)
 {
 	LOG_DBG("Registering FMDN ranging handler - capability: %s, config: %s, start: %s, "
@@ -541,13 +640,24 @@ void atm_gfp_ranging_handler_register(atm_gfp_ranging_handler_t const *handler)
 		.config_cb = atm_gfp_ranging_config_wrapper,
 		.start_cb = atm_gfp_ranging_start_wrapper,
 		.stop_cb = atm_gfp_ranging_stop_wrapper,
+		.motion_cb = atm_gfp_ranging_motion_wrapper,
 	};
 
 	fp_fmdn_ranging_handler_register(&fmdn_handler);
 }
-#endif
+#endif // CONFIG_FMDN_PRECISION_FINDING
 
 #ifdef CONFIG_FAST_PAIR_FMDN
+void atm_gfp_fmdn_clock_set(uint32_t clock_value)
+{
+	fp_fmdn_clock_set(clock_value);
+}
+
+uint32_t atm_gfp_fmdn_clock_get(void)
+{
+	return fp_fmdn_clock_get();
+}
+
 int atm_gfp_fmdn_clock_save(void)
 {
 	return fp_fmdn_clock_save();
@@ -558,3 +668,68 @@ void atm_gfp_fmdn_clock_reset(void)
 	fp_fmdn_clock_reset();
 }
 #endif
+
+int atm_gfp_get_adv_addr(bt_addr_le_t *addr)
+{
+	uint8_t fp_id = gfps_fp_is_provisioned() ? FP_FMDN_ADV_BT_ID : FP_ADV_BT_ID;
+	uint8_t bt_id = fp_conn_get_bt_id(fp_id);
+
+	bt_addr_le_t all_addr[CONFIG_BT_ID_MAX];
+	size_t all_count = CONFIG_BT_ID_MAX;
+	bt_id_get(all_addr, &all_count);
+
+	if (bt_id >= all_count) {
+		LOG_ERR("BT ID %u out of range (count: %u)", bt_id, (uint32_t)all_count);
+		return -ENODEV;
+	}
+
+	LOG_INF("ADV addr from BT_ID [%u]", bt_id);
+	bt_addr_le_copy(addr, &all_addr[bt_id]);
+	return 0;
+}
+
+#ifdef CONFIG_ZTEST
+/* Test hooks: expose internal static functions for unit test coverage */
+void atm_gfp_test_set_hdlrs(atm_gfp_hdlrs_t const *hdlrs)
+{
+	atm_gfp_hdlrs = hdlrs;
+}
+
+void atm_gfp_test_service_init(void)
+{
+	atm_gfp_service_init();
+}
+
+#ifdef CONFIG_FAST_PAIR_FMDN
+void atm_gfp_test_utp_mode_switch(fp_fmdn_utp_mode_t mode)
+{
+	fp_tag_utp_mode_switch(mode);
+}
+#endif /* CONFIG_FAST_PAIR_FMDN */
+
+void atm_gfp_test_convert_handlers(atm_gfp_hdlrs_t const *atm_hdlrs, gfps_hdlrs_t *gfps_hdlrs)
+{
+	atm_gfp_convert_handlers(atm_hdlrs, gfps_hdlrs);
+}
+
+uint8_t atm_gfp_test_battery_status(void)
+{
+	return atm_gfp_battery_status();
+}
+
+void atm_gfp_test_sound_action(bool action, uint8_t ring_op, uint8_t ring_vol_lvl,
+			       uint16_t ring_to_ds)
+{
+	atm_gfp_sound_action(action, ring_op, ring_vol_lvl, ring_to_ds);
+}
+
+void atm_gfp_test_mode_switch(fp_mode_t mode)
+{
+	atm_gfp_mode_switch(mode);
+}
+
+void atm_gfp_test_provision_timeout(void)
+{
+	atm_gfp_provision_timeout_handler(NULL);
+}
+#endif /* CONFIG_ZTEST */

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
 tests:
-  tests.drivers.uart.uart_atm_idle.atm:
+  tests.drivers.uart.uart_atm_idle.atm: &base_config
     sysbuild: true
     harness: console
     harness_config:
@@ -14,3 +14,12 @@ tests:
       - uart
       - gpio
 
+  tests.drivers.uart.uart_atm_idle.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="uart_atm.c"

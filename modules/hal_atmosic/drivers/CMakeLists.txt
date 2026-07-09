@@ -40,9 +40,8 @@ add_subdirectory(sec_reset)
 add_subdirectory(sec_wdog_disable)
 add_subdirectory(user_debug)
 
-if(CONFIG_ATM_AES_HW OR CONFIG_ATM_SHA2_HW OR CONFIG_ATM_UECC)
+if(CONFIG_ATM_AES_HW OR CONFIG_ATM_SHA2_HW OR CONFIG_ATM_UECC_PSA)
   zephyr_include_directories(
     ../config
   )
-  zephyr_link_libraries(mbedTLS)
 endif()

@@ -36,6 +36,21 @@ LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 /* Ranging callback handlers */
 static fp_fmdn_ranging_handler_t const *ranging_handlers;
 
+/* Connection that has motion notifications enabled */
+static struct bt_conn *motion_conn;
+/* OOB DE version negotiated with the motion-requesting seeker */
+static uint8_t motion_nego_version;
+/* Sequential number: number of previously sent motion notifications */
+static uint8_t motion_seq_num;
+/* Follow-up NOT_DETECTED notifications remaining after motion clears */
+static uint8_t motion_not_detected_remaining;
+/* BCNA notification sender registered by fp_fmdn_gatt */
+static fp_fhpf_motion_notify_fn_t motion_notify_fn;
+static fp_fmdn_ranging_motion_get_status_t motion_get_status_fn;
+static struct k_work_delayable motion_poll_work;
+#define MOTION_NOTIFY_INTERVAL_MS        2000
+#define MOTION_NOT_DETECTED_FOLLOWUP_CNT 3
+
 /* Unified static buffers to reduce stack usage */
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
 static ranging_cap_de_uwb_t cap_buf_uwb_data;
@@ -339,6 +354,67 @@ static const tech_handler_t *tech_handler_find(rt_id_t tech_id)
 	return NULL;
 }
 
+/**
+ * @brief Register the BCNA motion notification sender function
+ *
+ * Called by fp_fmdn_gatt during init to provide the notification path.
+ */
+void fp_fhpf_gatt_motion_notify_fn_reg(fp_fhpf_motion_notify_fn_t fn)
+{
+	motion_notify_fn = fn;
+	LOG_DBG("FHPF: motion notify fn %s", fn ? "registered" : "unregistered");
+}
+
+/**
+ * @brief 2-second periodic work handler — polls the application getter and
+ *        sends a BCNA motion notification when motion was detected.
+ *
+ * The protocol layer owns the notification interval so that all platform
+ * implementations behave consistently with the spec.
+ */
+/* Convert raw tilt degrees to the FMDN 4-level motion status enum. */
+static ranging_de_motion_status_t motion_deg_to_status(uint8_t deg)
+{
+	if (deg >= 10) {
+		return RANGING_MOTION_LARGE_MOVEMENT;
+	}
+	if (deg >= 7) {
+		return RANGING_MOTION_MODERATE_MOVEMENT;
+	}
+	if (deg >= 5) {
+		return RANGING_MOTION_SLIGHT_MOVEMENT;
+	}
+	return RANGING_MOTION_NOT_DETECTED;
+}
+
+static void fp_fhpf_motion_poll_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	if (!motion_get_status_fn || !motion_conn || !motion_notify_fn) {
+		return;
+	}
+	ranging_de_motion_status_t st = motion_deg_to_status(motion_get_status_fn());
+	if (st != RANGING_MOTION_NOT_DETECTED) {
+		/* Motion detected: send notification and arm follow-up counter */
+		LOG_INF("FHPF: motion status %d seq=%u, sending notification", st, motion_seq_num);
+		motion_notify_fn(motion_conn, motion_nego_version, motion_seq_num, st);
+		motion_seq_num++;
+		motion_not_detected_remaining = MOTION_NOT_DETECTED_FOLLOWUP_CNT;
+	} else if (motion_not_detected_remaining) {
+		/* Motion just cleared: send follow-up NOT_DETECTED so the seeker gets a
+		 * hard signal that the peripheral is stationary again. */
+		LOG_INF("FHPF: motion cleared, NOT_DETECTED follow-up seq=%u remaining=%u",
+			motion_seq_num, motion_not_detected_remaining);
+		motion_notify_fn(motion_conn, motion_nego_version, motion_seq_num,
+				 RANGING_MOTION_NOT_DETECTED);
+		motion_seq_num++;
+		motion_not_detected_remaining--;
+	} else {
+		LOG_DBG("FHPF: no motion, notification suppressed");
+	}
+	k_work_reschedule(&motion_poll_work, K_MSEC(MOTION_NOTIFY_INTERVAL_MS));
+}
+
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
 /**
  * @brief Internal security check function (used by macro)
@@ -504,12 +580,28 @@ size_t fp_fhpf_gatt_bcna_ranging_cap_handle(const struct bt_conn *conn, uint8_t 
 #endif
 
 		/* Copy capability data to response */
+#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
 		if (handler->tech_id == RT_TECH_ID_UWB) {
 			FP_UTIL_MEMCPY_SHIFT(dst_ptr, cap_buffer.uwb, handler->cap_size, *resp_len);
-		} else {
+		}
+#endif
+#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
+		if (handler->tech_id == RT_TECH_ID_CS) {
 			FP_UTIL_MEMCPY_SHIFT(dst_ptr, cap_buffer.cs, handler->cap_size, *resp_len);
 		}
+#endif
 	}
+
+	if (oob_header.version >= RANGING_PROTOCOL_VERSION_2) {
+		LOG_INF("CS capabilities: append OOBv2 tail DE");
+		ranging_cap_resp_tail_de_t tail_de = {
+			.tech_trans_type = CONFIG_RANGING_OOB_DE_TECH_TRANS_TYPE,
+			.dev_type = CONFIG_RANGING_OOB_DE_DEV_TYPE,
+		};
+		FP_UTIL_MEMCPY_SHIFT(dst_ptr, &tail_de, sizeof(ranging_cap_resp_tail_de_t),
+				     *resp_len);
+	}
+
 	LOG_HEXDUMP_DBG(addition_data, *resp_len, "BCNA RC: Response Ranging Capability DE:");
 	return 0;
 }
@@ -565,8 +657,13 @@ static size_t fp_fmdn_handle_ranging_operation(struct bt_conn *conn, uint8_t *ad
 	uint16_t status_bitmap = 0x0000;
 
 	if (req_msg_id == RANGING_MSG_ID_CONF) {
+		uint8_t nego_version = RANGING_OOB_DE_SUPPORT_VERSION(oob_header.version);
+		/* For v3+: reserve the last 1 byte for motion_support so the tech-block
+		 * loop stops before reading it.
+		 */
+		uint16_t min_remaining = (nego_version >= RANGING_PROTOCOL_VERSION_3) ? 1 : 0;
 		/* Configuration: Process technology-specific data */
-		while (add_data_len > 0) {
+		while (add_data_len > min_remaining) {
 			uint8_t tech_id = ptr[0];
 			uint8_t tech_size = ptr[1];
 
@@ -617,6 +714,61 @@ static size_t fp_fmdn_handle_ranging_operation(struct bt_conn *conn, uint8_t *ad
 			/* Move to next technology configuration data */
 			ptr += tech_size;
 			add_data_len -= tech_size;
+		}
+		/* For OOB DE v3+: the 1-byte motion support field is the last byte
+		 * of the Ranging Configuration message payload (after all tech blocks).
+		 */
+		if (nego_version >= RANGING_PROTOCOL_VERSION_3) {
+			if (add_data_len < 1) {
+				LOG_ERR("BCNA RC Config: Missing motion support byte");
+				return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+			}
+			uint8_t motion_support = ptr[0];
+			ptr += 1;
+			add_data_len -= 1;
+			LOG_INF("FHPF: OOB v%d motion_support=0x%02x handler.motion_cb=%s",
+				nego_version, motion_support,
+				ranging_handlers->motion_cb ? "YES" : "NO");
+			if (ranging_handlers->motion_cb) {
+				bool enable = (motion_support == RANGING_CONF_MOTION_DATA_REQUIRED);
+				fp_fmdn_ranging_motion_get_status_t get_fn = NULL;
+				if (enable) {
+					/* Lazy-init the work item once */
+					static bool poll_work_initialized;
+					if (!poll_work_initialized) {
+						k_work_init_delayable(&motion_poll_work,
+								      fp_fhpf_motion_poll_handler);
+						poll_work_initialized = true;
+					}
+				}
+				/* NULL = disable, non-NULL = enable (platform writes getter) */
+				int ret = ranging_handlers->motion_cb(enable ? &get_fn : NULL);
+				if (ret) {
+					LOG_WRN("FHPF: motion_cb returned %d", ret);
+				}
+				if (enable && !ret) {
+					motion_conn = conn;
+					motion_nego_version = nego_version;
+					motion_seq_num = 0;
+					motion_not_detected_remaining = 0;
+					motion_get_status_fn = get_fn;
+					k_work_reschedule(&motion_poll_work,
+							  K_MSEC(MOTION_NOTIFY_INTERVAL_MS));
+				} else {
+					k_work_cancel_delayable(&motion_poll_work);
+					motion_conn = NULL;
+					motion_nego_version = 0;
+					motion_not_detected_remaining = 0;
+					motion_get_status_fn = NULL;
+				}
+			}
+		}
+		/* Warn on unexpected trailing bytes after all known CONF fields are consumed.
+		 * Unknown trailing data must be ignored but log it so new spec fields are visible.
+		 */
+		if (add_data_len) {
+			LOG_WRN("BCNA RC Config: %u unexpected trailing byte(s), ignoring",
+				add_data_len);
 		}
 	} else {
 		/* Start/Stop: Process each supported technology */
@@ -716,9 +868,11 @@ void fp_fhpf_gatt_ranging_handler_register(fp_fmdn_ranging_handler_t const *hand
 		return;
 	}
 	ranging_handlers = handler;
-	LOG_DBG("FHPF: CS handler registered - capability: %s, config:%s, start:%s, stop:%s",
+	LOG_DBG("FHPF: CS handler registered - capability: %s, config:%s, start:%s, stop:%s, "
+		"motion:%s",
 		handler->capability_cb ? "YES" : "NO", handler->config_cb ? "YES" : "NO",
-		handler->start_cb ? "YES" : "NO", handler->stop_cb ? "YES" : "NO");
+		handler->start_cb ? "YES" : "NO", handler->stop_cb ? "YES" : "NO",
+		handler->motion_cb ? "YES" : "NO");
 }
 
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
@@ -776,6 +930,15 @@ void fp_fhpf_gatt_conn_event(struct bt_conn *conn, bool connected)
 
 	if (!connected) {
 		LOG_DBG("FHPF: Connection disconnected");
+		if (motion_conn == conn) {
+			k_work_cancel_delayable(&motion_poll_work);
+			motion_conn = NULL;
+			motion_nego_version = 0;
+			motion_seq_num = 0;
+			motion_not_detected_remaining = 0;
+			motion_get_status_fn = NULL;
+			LOG_DBG("FHPF: motion state cleared on disconnect");
+		}
 		return;
 	}
 

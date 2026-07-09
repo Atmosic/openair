@@ -47,7 +47,7 @@ int atm_print_version(void)
 #endif // CONFIG_TRUSTED_EXECUTION_SECURE && !CONFIG_ATM_NO_SPE
 #if defined(CONFIG_MCUBOOT_IMG_MANAGER)
 	struct mcuboot_img_header hdr;
-	int err = boot_read_bank_header(FIXED_PARTITION_ID(slot0_partition), &hdr, sizeof(hdr));
+	int err = boot_read_bank_header(PARTITION_ID(slot0_partition), &hdr, sizeof(hdr));
 	if (err) {
 		// Failed to get header information
 		DEBUG_TRACE("Failed to get slot0 header information: %d", err);

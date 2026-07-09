@@ -711,7 +711,7 @@ class AtmIsp:
         """Function tranfer elf to bin file with toolchain in ZEPHYR_SDK_INSTALL_DIR"""
         sdk_install_dir = os.getenv("ZEPHYR_SDK_INSTALL_DIR")
         cmake_objcopy = os.path.join(
-            sdk_install_dir, "arm-zephyr-eabi", "bin", "arm-zephyr-eabi-objcopy"
+            sdk_install_dir, "gnu", "arm-zephyr-eabi", "bin", "arm-zephyr-eabi-objcopy"
         )
         cmd_arg = [cmake_objcopy, "-O", "binary"]
         cmd_arg.append(elffile)

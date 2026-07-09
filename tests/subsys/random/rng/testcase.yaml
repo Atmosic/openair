@@ -8,5 +8,19 @@ common:
     - random
     - security
 tests:
-  tests.subsys.random.rng.atm:
+  tests.subsys.random.rng.atm: &base_config
     sysbuild: true
+
+  # Coverage twin: the entropy-device random generator routes sys_rand_get /
+  # sys_csrand_get through entropy_atm_get_entropy(), so this scenario
+  # instruments the Atmosic entropy driver. See the "Zephyr Coverage" guide
+  # (Confluence page 879525936) for the pattern.
+  tests.subsys.random.rng.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="entropy_atm.c"
