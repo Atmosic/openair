@@ -39,7 +39,7 @@ tests:
         - "Booting Zephyr OS"
     tags:
       - mcuboot
-      - openair_release_mcuboot:
+      - openair_release_mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
