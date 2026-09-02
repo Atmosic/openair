@@ -177,7 +177,7 @@ static int entropy_atm_get_entropy(const struct device *dev,
 			if (k_is_in_isr()) {
 				return -EAGAIN;
 			}
-			int err = k_sem_take(&trng_ring_sem, K_MSEC(100));
+			int err = k_sem_take(&trng_ring_sem, K_MSEC(CONFIG_ENTROPY_ATM_DELAY_MS));
 			if (err) {
 #ifdef CONFIG_ENTROPY_ATM_STATS
 				entropy_atm_trng_timeout++;

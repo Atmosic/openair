@@ -15,6 +15,11 @@ config ENTROPY_ATM_RING_ENTRIES
 	int "Number of entries in ring buffer between ISR and driver methods"
 	default 8
 
+config ENTROPY_ATM_DELAY_MS
+	int "Maximum delay before reporting a failure to gather entropy"
+	default 600 if ATM_RADIO_HAL_MGR
+	default 30
+
 config ENTROPY_ATM_STATS
 	bool "Debug statistics for internal driver operations"
 	default n
