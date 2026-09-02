@@ -12,6 +12,7 @@ Supported Platforms
 
     * `ATM33/e <boards/atmosic/atm33evk/doc/index.rst>`_
     * `ATM34/e <boards/atmosic/atm34evk/doc/index.rst>`_
+    * `ATM5/e <boards/atmosic/atm5evk/doc/index.rst>`_
 
 Starting 25.07.0 release, support for ATMx2xx(ATM2/3) platforms are deprecated.
 
@@ -47,5 +48,6 @@ For details about how to build and program an application, see the following sec
 
  * `ATM33/e programming and debugging </boards/atmosic/atm33evk/doc/index.rst#programming-and-debugging>`_
  * `ATM34/e programming and debugging </boards/atmosic/atm34evk/doc/index.rst#programming-and-debugging>`_
+ * `ATM5/e programming and debugging </boards/atmosic/atm5evk/doc/index.rst#programming-and-debugging>`_
 
 For more information, see `Atmosic OpenAir Documentation <https://atmosic.com/public/OpenAir_SDK_doc/index.html>`_.
