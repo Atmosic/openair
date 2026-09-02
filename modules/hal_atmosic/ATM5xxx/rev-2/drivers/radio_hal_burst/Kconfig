@@ -1,0 +1,6 @@
+# Copyright (c) 2024-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_RADIO_HAL_BURST
+	bool "Atmosic burst mode module"

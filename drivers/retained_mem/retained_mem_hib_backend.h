@@ -7,13 +7,12 @@
  *
  * Copyright (C) Atmosic 2025-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
 
-#ifndef RETAINED_MEM_HIB_BACKEND_H
-#define RETAINED_MEM_HIB_BACKEND_H
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -23,11 +22,7 @@
 #include "arch.h"
 #include "at_apb_pseq_regs_core_macro.h"
 
-#if !defined(CMSDK_SHUB_BASE) && defined(CMSDK_SHUB_NONSECURE_BASE)
-#define CMSDK_SHUB_BASE CMSDK_SHUB_NONSECURE_BASE
-#endif
-
-#ifdef CMSDK_SHUB_BASE
+#ifdef __PSEQ_SENSOR_HUB_CONTROL_MACRO__
 #include "at_apb_shub_regs_core_macro.h"
 #endif
 
@@ -45,9 +40,10 @@
  *
  * This macro defines the actual number of bytes available for retained
  * memory storage based on the hardware capabilities of the platform.
- * The capacity is determined at compile time based on hardware detection:
+ * The capacity is determined at compile time based on the presence of
+ * of the SHUB hardware and one or more PERSISTENT registers.
  *
- * SHUB-based platforms (ATM33/ATM34):
+ * When SHUB hardware is present:
  * - SHUB provides 198-222 bytes
  * - PSEQ PERSISTENT1-4 provide 16 bytes (always available)
  * - PSEQ PERSISTENT5 provides 4 additional bytes (if available)
@@ -58,7 +54,7 @@
  * Expansion-based platforms (without SHUB):
  * - PSEQ Persistent Expansion provides 64 bytes
  */
-#ifdef CMSDK_SHUB_BASE
+#ifdef __PSEQ_SENSOR_HUB_CONTROL_MACRO__
 #ifdef __SHUB_PORT0_ALM0_THRHLD_MAX_3_MACRO__
 #define SHUB_CAPACITY 222
 #else
@@ -90,13 +86,17 @@
 #endif // __PSEQ_PERSISTENT_EXPANSION_WDATA_MACRO__
 #else
 #error "No retained memory backend available - neither SHUB nor persistent expansion detected"
-#endif // CMSDK_SHUB_BASE
+#endif // __PSEQ_SENSOR_HUB_CONTROL_MACRO__
 
 #ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
 // word aligned access can limit the final capacity
 #define RETAINED_MEM_BACKEND_CAPACITY ROUND_DOWN(_PHYSICAL_MEM_BACKEND_CAPACITY, sizeof(uint32_t))
 #else
 #define RETAINED_MEM_BACKEND_CAPACITY _PHYSICAL_MEM_BACKEND_CAPACITY
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /**
@@ -140,4 +140,6 @@ void retained_mem_backend_restore(uint8_t *dst, uint32_t len);
  */
 int retained_mem_backend_init(const struct device *dev);
 
-#endif /* RETAINED_MEM_HIB_BACKEND_H */
+#ifdef __cplusplus
+}
+#endif

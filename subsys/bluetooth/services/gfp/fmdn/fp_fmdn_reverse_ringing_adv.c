@@ -12,10 +12,12 @@
  */
 
 #include <errno.h>
+#include <inttypes.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/gap.h>
+#include <zephyr/sys/byteorder.h>
 #include "fp_fmdn_reverse_ringing_adv.h"
 #include "fp_fmdn_reverse_ringing.h"
 #include "fp_fmdn_persistent_conn.h"
@@ -33,7 +35,7 @@ LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 typedef struct adv_ringing_svc_data_s {
 	uint16_t uuid;                                ///< Eddystone UUID (0xFEAA)
 	uint8_t frame_type;                           ///< Frame Type (ADV_RINGING_FRAME_TYPE)
-	uint8_t nonce;                                ///< Action nonce
+	uint8_t nonce[ADV_RINGING_NONCE_LEN];         ///< Action nonce
 	uint8_t action_type;                          ///< Action type (0x01)
 	uint8_t signature[ADV_RINGING_SIGNATURE_LEN]; ///< HMAC-SHA256 signature (first 8 bytes)
 } adv_ringing_svc_data_t;
@@ -47,7 +49,12 @@ static struct bt_data adv_ringing_ad[] = {
 
 static fp_fmdn_reverse_ringing_adv_state_t adv_ringing_state;
 
-/* Track EID for nonce validity (nonce must be unique per EID) */
+/* EID[0..7] are used in the HMAC input and adv payload. */
+#define FMDN_RR_ADV_EID_LEN 8
+
+/* EID captured at session start; only the first FMDN_RR_ADV_EID_LEN bytes
+ * are used, but fp_fmdn_key_get_eid() requires a full-size buffer.
+ */
 static uint8_t current_eid[FP_FMDN_STATE_EID_LEN];
 
 static struct bt_le_ext_adv *adv_ringing_set;
@@ -116,21 +123,29 @@ static int fp_fmdn_reverse_ringing_adv_data(void)
 		return -EIO;
 	}
 
+	uint8_t client_id = PC_CLIENT_ID_NONE;
+	if (fp_storage_pc_client_id_valid() && fp_storage_pc_client_id_get(&client_id)) {
+		LOG_ERR("RR_ADV: Failed to get client ID");
+	}
+
 	/* Increment nonce for this request */
 	adv_ringing_state.current_nonce++;
 
-	/* Build HMAC-SHA256 input: protocol_version || EID || nonce || action_type || client_id */
+	/* Build HMAC-SHA256 input:
+	 * protocol_version || EID[0..7] || nonce || action_type || client_id
+	 */
 	uint8_t protocol_version = BCNA_MJR_VER;
 	uint8_t action_type = ADV_RINGING_ACTION_TYPE;
-	uint8_t hmac_input[1 + FP_FMDN_STATE_EID_LEN + 1 + 1 + 1];
+	uint8_t hmac_input[1 + FMDN_RR_ADV_EID_LEN + ADV_RINGING_NONCE_LEN + 1 + 1];
 	uint8_t hmac_offset = 0;
 
 	hmac_input[hmac_offset++] = protocol_version;
-	memcpy(&hmac_input[hmac_offset], current_eid, FP_FMDN_STATE_EID_LEN);
-	hmac_offset += FP_FMDN_STATE_EID_LEN;
-	hmac_input[hmac_offset++] = adv_ringing_state.current_nonce;
+	memcpy(&hmac_input[hmac_offset], current_eid, FMDN_RR_ADV_EID_LEN);
+	hmac_offset += FMDN_RR_ADV_EID_LEN;
+	sys_put_be16(adv_ringing_state.current_nonce, &hmac_input[hmac_offset]);
+	hmac_offset += ADV_RINGING_NONCE_LEN;
 	hmac_input[hmac_offset++] = action_type;
-	hmac_input[hmac_offset++] = PC_CLIENT_ID_NONE;
+	hmac_input[hmac_offset++] = client_id;
 
 	/* Compute HMAC-SHA256 signature */
 	uint8_t hmac_full[GFP_CRYPTO_SHA256_DIG_LEN];
@@ -142,7 +157,7 @@ static int fp_fmdn_reverse_ringing_adv_data(void)
 	/* Build service data structure */
 	adv_ringing_svc_data.uuid = EDDYSTONE_UUID_SERVICE;
 	adv_ringing_svc_data.frame_type = ADV_RINGING_FRAME_TYPE;
-	adv_ringing_svc_data.nonce = adv_ringing_state.current_nonce;
+	sys_put_be16(adv_ringing_state.current_nonce, adv_ringing_svc_data.nonce);
 	adv_ringing_svc_data.action_type = action_type;
 	memcpy(adv_ringing_svc_data.signature, hmac_full, ADV_RINGING_SIGNATURE_LEN);
 
@@ -247,8 +262,22 @@ int fp_fmdn_reverse_ringing_adv_start(void)
 	 * Reset nonce to 0 so the new session starts a fresh unique nonce sequence
 	 * (1, 2, 3, ...) relative to this EID, as required by the spec.
 	 */
-	(void)fp_fmdn_key_get_eid(current_eid);
-	adv_ringing_state.current_nonce = 0;
+	uint8_t new_eid[FP_FMDN_STATE_EID_LEN];
+	uint8_t eid_len = fp_fmdn_key_get_eid(new_eid);
+	if (!eid_len) {
+		LOG_ERR("RR_ADV: EID not generated, cannot start ringing");
+		return -EIO;
+	}
+	if (memcmp(new_eid, current_eid, FMDN_RR_ADV_EID_LEN) != 0) {
+		/* EID rotated (or first session) → start fresh nonce sequence */
+		memcpy(current_eid, new_eid, FMDN_RR_ADV_EID_LEN);
+		adv_ringing_state.current_nonce = 0;
+		LOG_INF("RR_ADV: EID rotated, nonce reset to 0");
+	} else {
+		/* Same EID → continue nonce sequence to maintain uniqueness */
+		LOG_DBG("RR_ADV: Same EID, continuing nonce from %u",
+			adv_ringing_state.current_nonce);
+	}
 
 	if (!adv_ringing_set) {
 		adv_ringing_param.id = fp_conn_get_bt_id(FP_FMDN_ADV_BT_ID);
@@ -275,7 +304,7 @@ int fp_fmdn_reverse_ringing_adv_start(void)
 	adv_ringing_state.active = true;
 	adv_ringing_state.start_time_ms = k_uptime_get();
 
-	LOG_INF("RR_ADV: Advertisement started (interval=%ums, nonce=0x%02x)",
+	LOG_INF("RR_ADV: Advertisement started (interval=%ums, nonce=0x%04" PRIx16 ")",
 		ADV_RINGING_INTERVAL_MS, adv_ringing_state.current_nonce);
 
 	return 0;

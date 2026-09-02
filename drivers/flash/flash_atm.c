@@ -7,7 +7,7 @@
  *
  * Copyright (C) Atmosic 2018-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -62,6 +62,17 @@ LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
 #define EXECUTING_IN_PLACE DT_NODE_HAS_COMPAT( \
 	CTR_FROM_FIXED_PARTITION(DT_CHOSEN(zephyr_code_partition)), DT_DRV_COMPAT)
 
+/*
+ * The bring-up sequence is needed whenever the image does not execute from the
+ * flash it is bringing up, and additionally whenever a caller asks for it to be
+ * exposed through flash_atm_bringup().
+ */
+#if !EXECUTING_IN_PLACE || defined(CONFIG_SOC_FLASH_ATM_BRINGUP_API)
+#define FLASH_ATM_BRINGUP 1
+#else
+#define FLASH_ATM_BRINGUP 0
+#endif
+
 #if defined(QSPI_REMOTE_AHB_SETUP_9__ESL__WRITE) && defined(CONFIG_SOC_FLASH_ATM_USE_BREAK_IN)
 // enable break in for SOCs that support erase/write breakin
 // this allows the CPU to break in during a long running operation
@@ -74,14 +85,23 @@ LOG_MODULE_REGISTER(flash_atm, CONFIG_FLASH_LOG_LEVEL);
 #endif // QSPI_REMOTE_AHB_SETUP_9__ESL__WRITE &&
        // CONFIG_SOC_FLASH_ATM_USE_BREAK_IN
 
-#if !EXECUTING_IN_PLACE
+#if FLASH_ATM_BRINGUP
 #include "at_pinmux.h"
 #include "at_apb_spi_regs_core_macro.h"
 #include "spi.h"
+#endif
+
+#if !EXECUTING_IN_PLACE
 #define __PP_FAST __STATIC_INLINE
 #else
 // Need to make sure page programming (PP) routines are in RAM
 #define __PP_FAST __ramfunc static
+#endif
+
+#if FLASH_ATM_BRINGUP && defined(__QSPI_BURST_PP_CTRL_MACRO__)
+// The in-file bit-banging helpers are not compiled on these SOCs, so pick up
+// the HAL versions for the bring-up sequence.
+#include "qspi.h"
 #endif
 
 #ifdef CMSDK_QSPI_NONSECURE
@@ -257,14 +277,21 @@ do {\
 } while(0)
 #endif
 
+/* The PSEQ-driven flash power-down machinery is available whenever the
+ * SoC has the flash-control hardware and either standard PM (pm_notifier
+ * path) or the forced-power-down prep mechanism (CONFIG_ATM_PD) is enabled.
+ */
+#if defined(CONFIG_PM) || defined(CONFIG_ATM_PD)
+#include "at_apb_pseq_regs_core_macro.h"
+#include "power.h"
+#ifdef __PSEQ_FLASH_CONTROL2_MACRO__
+#include "pseq_states.h"
+#endif
+#endif // CONFIG_PM || CONFIG_ATM_PD
+
 #ifdef CONFIG_PM
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
-#include "at_apb_pseq_regs_core_macro.h"
-#ifdef __PSEQ_FLASH_CONTROL2_MACRO__
-#include "pseq_states.h"
-#define FLASH_PD
-#endif
 #define LOCK_FLASH_PM()                                                                            \
 	do {                                                                                       \
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);               \
@@ -1489,6 +1516,20 @@ static int flash_atm_ex_op_ruid(const struct device *dev, void *out)
 }
 #endif /* CONFIG_FLASH_ATM_RUID */
 
+#ifdef CONFIG_FLASH_ATM_MAN_ID
+static int flash_atm_ex_op_man_id(const struct device *dev, void *out)
+{
+	ARG_UNUSED(dev);
+
+	struct flash_atm_ex_op_man_id_out *ret = (struct flash_atm_ex_op_man_id_out *)out;
+	if (!man_id) {
+		return -ENODEV;
+	}
+	ret->man_id = man_id;
+	return 0;
+}
+#endif /* CONFIG_FLASH_ATM_MAN_ID */
+
 #ifdef CONFIG_FLASH_EX_OP_ENABLED
 static int flash_atm_ex_op_latency_lock(const struct device *dev, const uintptr_t in)
 {
@@ -1527,6 +1568,11 @@ static int flash_atm_ex_op(const struct device *dev, uint16_t code, const uintpt
 #ifdef CONFIG_FLASH_ATM_RUID
 	case FLASH_ATM_EX_OP_RUID:
 		rv = flash_atm_ex_op_ruid(dev, out);
+		break;
+#endif
+#ifdef CONFIG_FLASH_ATM_MAN_ID
+	case FLASH_ATM_EX_OP_MAN_ID:
+		rv = flash_atm_ex_op_man_id(dev, out);
 		break;
 #endif
 	default:
@@ -1568,11 +1614,34 @@ static struct flash_driver_api const flash_atm_api = {
 #endif
 };
 
-#ifdef FLASH_PD
+#if defined(CONFIG_PM) || defined(CONFIG_ATM_PD)
+/*
+ * Shared by the pm_notifier path (CONFIG_PM) and the forced-power-down prep
+ * hook (CONFIG_ATM_PD).
+ */
+__ramfunc static void flash_atm_arm_hib_pseq(void)
+{
+#ifdef __PSEQ_FLASH_CONTROL2_MACRO__
+	// Arm the PSEQ to power the flash down as the device enters hibernation.
+	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+	{
+		PSEQ_FLASH_CONTROL2__PSEQ_STATE_MATCH__MODIFY(CMSDK_PSEQ->FLASH_CONTROL2,
+							      PSEQ_STATE_HIB_START);
+	}
+	WRPR_CTRL_POP();
+#endif
+}
+#endif // CONFIG_PM || CONFIG_ATM_PD
+
+#ifdef CONFIG_PM
 __ramfunc static void notify_pm_state_entry(enum pm_state state)
 {
 	if (state >= PM_STATE_SUSPEND_TO_RAM) {
 		// pull-up before switching to low power state
+#ifdef CONFIG_SOC_SERIES_ATM5
+		PIN_PULLUP(DT_INST_PROP(0, d0_pin));
+		PIN_PULLUP(DT_INST_PROP(0, d1_pin));
+#endif
 		PIN_PULLUP(DT_INST_PROP(0, d2_pin));
 		PIN_PULLUP(DT_INST_PROP(0, d3_pin));
 	}
@@ -1581,16 +1650,17 @@ __ramfunc static void notify_pm_state_entry(enum pm_state state)
 		return;
 	}
 
-	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
-		PSEQ_FLASH_CONTROL2__PSEQ_STATE_MATCH__MODIFY(
-			CMSDK_PSEQ->FLASH_CONTROL2, PSEQ_STATE_HIB_START);
-	} WRPR_CTRL_POP();
+	flash_atm_arm_hib_pseq();
 }
 
 __ramfunc static void notify_pm_state_exit(enum pm_state state)
 {
 	if (state >= PM_STATE_SUSPEND_TO_RAM) {
 		// clear pull-up before switching to active state
+#ifdef CONFIG_SOC_SERIES_ATM5
+		PIN_PULL_CLR(DT_INST_PROP(0, d0_pin));
+		PIN_PULL_CLR(DT_INST_PROP(0, d1_pin));
+#endif
 		PIN_PULL_CLR(DT_INST_PROP(0, d2_pin));
 		PIN_PULL_CLR(DT_INST_PROP(0, d3_pin));
 	}
@@ -1600,10 +1670,65 @@ static struct pm_notifier notifier = {
 	.state_entry = notify_pm_state_entry,
 	.state_exit = notify_pm_state_exit,
 };
+#endif // CONFIG_PM
+
+#ifdef CONFIG_ATM_PD
+/*
+ * Forced-power-down prep: arm flash power-down regardless of urgency, since
+ * the negotiated pm_notifier path does not run on a forced entry.
+ */
+static void flash_atm_pd_prep(enum atm_pd_method method, enum atm_pd_urgency urgency)
+{
+	ARG_UNUSED(method);
+	ARG_UNUSED(urgency);
+	/*
+	 * Pull up the data lines before power-down, matching the pm_notifier
+	 * path (notify_pm_state_entry); the forced entry does not run it.
+	 */
+#ifdef CONFIG_SOC_SERIES_ATM5
+	PIN_PULLUP(DT_INST_PROP(0, d0_pin));
+	PIN_PULLUP(DT_INST_PROP(0, d1_pin));
+#endif
+	PIN_PULLUP(DT_INST_PROP(0, d2_pin));
+	PIN_PULLUP(DT_INST_PROP(0, d3_pin));
+	flash_atm_arm_hib_pseq();
+}
+
+ATM_PD_PREP_DEFINE(flash_atm, 80, flash_atm_pd_prep);
+#endif // CONFIG_ATM_PD
+
+#if !defined(__PSEQ_FLASH_CONTROL2_MACRO__) && defined(CONFIG_ATM_PD_POST)
+__ramfunc static void flash_atm_pd_post(void)
+{
+	/*
+	 * The software (SPI-command) deep-power-down path only exists on SoCs that
+	 * lack the PSEQ flash-control hardware.
+	 */
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
+	{
+		EXIT_PERF_MODE();
+
+		// Deep sleep Macronix, GIGA or PUYA
+		qspi_drive_start();
+		qspi_drive_serial_cmd(SPI_FLASH_DP);
+		qspi_drive_stop();
+
+		// Switch control back to AHB bridge
+		CMSDK_QSPI->TRANSACTION_SETUP =
+			QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
+			QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
+	}
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+}
+
+ATM_PD_POST_DEFINE(flash_atm, 80, flash_atm_pd_post);
+#endif // !__PSEQ_FLASH_CONTROL2_MACRO__ && CONFIG_ATM_PD_POST
 
 static void macronix_flash_enable_pm(void)
 {
+#if defined(CONFIG_PM) || defined(CONFIG_ATM_PD)
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
+#ifdef __PSEQ_FLASH_CONTROL2_MACRO__
 		// Use PSEQ to control flash power across retention
 		CMSDK_PSEQ->FLASH_CONTROL =
 			PSEQ_FLASH_CONTROL__PD_B4_SLEEP__MASK |
@@ -1614,13 +1739,22 @@ static void macronix_flash_enable_pm(void)
 		CMSDK_PSEQ->FLASH_CONTROL2 =
 			PSEQ_FLASH_CONTROL2__EXPM_MODE__WRITE(2) |
 			PSEQ_FLASH_CONTROL2__PSEQ_STATE_MATCH__WRITE(PSEQ_STATE_RET_ALL_START);
+#else
+		// Use PSEQ to power up flash
+		CMSDK_PSEQ->FLASH_CONTROL = PSEQ_FLASH_CONTROL__POWER_CYCLE_EN__MASK;
+#endif
 	} WRPR_CTRL_POP();
+#ifdef CONFIG_PM
 	pm_notifier_register(&notifier);
+#endif
+#endif // CONFIG_PM || CONFIG_ATM_PD
 }
 
 static void giga_flash_enable_pm(void)
 {
+#if defined(CONFIG_PM) || defined(CONFIG_ATM_PD)
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
+#ifdef __PSEQ_FLASH_CONTROL2_MACRO__
 		// Use PSEQ to control flash power across retention
 		CMSDK_PSEQ->FLASH_CONTROL =
 			PSEQ_FLASH_CONTROL__PD_B4_SLEEP__MASK |
@@ -1633,13 +1767,25 @@ static void giga_flash_enable_pm(void)
 		CMSDK_PSEQ->FLASH_CONTROL2 =
 			PSEQ_FLASH_CONTROL2__EXPM_MODE__WRITE(2) |
 			PSEQ_FLASH_CONTROL2__PSEQ_STATE_MATCH__WRITE(PSEQ_STATE_RET_ALL_START);
+#else
+		// Use PSEQ to power up flash
+		CMSDK_PSEQ->FLASH_CONTROL =
+			PSEQ_FLASH_CONTROL__OPCODE__WRITE(0xab) |
+			PSEQ_FLASH_CONTROL__RPD_HAS_CLOCK__MASK |
+			PSEQ_FLASH_CONTROL__POWER_CYCLE_EN__MASK;
+#endif
 	} WRPR_CTRL_POP();
+#ifdef CONFIG_PM
 	pm_notifier_register(&notifier);
+#endif
+#endif // CONFIG_PM || CONFIG_ATM_PD
 }
 
 static void winbond_flash_enable_pm(void)
 {
+#if defined(CONFIG_PM) || defined(CONFIG_ATM_PD)
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
+#ifdef __PSEQ_FLASH_CONTROL2_MACRO__
 		// Use PSEQ to control flash power across retention
 		CMSDK_PSEQ->FLASH_CONTROL =
 			PSEQ_FLASH_CONTROL__PD_B4_SLEEP__MASK |
@@ -1650,10 +1796,16 @@ static void winbond_flash_enable_pm(void)
 		CMSDK_PSEQ->FLASH_CONTROL2 =
 			PSEQ_FLASH_CONTROL2__EXPM_MODE__WRITE(2) |
 			PSEQ_FLASH_CONTROL2__PSEQ_STATE_MATCH__WRITE(PSEQ_STATE_RET_ALL_START);
-	} WRPR_CTRL_POP();
-	pm_notifier_register(&notifier);
-}
+#else
+		// Use PSEQ to power up flash
+		CMSDK_PSEQ->FLASH_CONTROL = PSEQ_FLASH_CONTROL__POWER_CYCLE_EN__MASK;
 #endif
+	} WRPR_CTRL_POP();
+#ifdef CONFIG_PM
+	pm_notifier_register(&notifier);
+#endif
+#endif // CONFIG_PM || CONFIG_ATM_PD
+}
 
 #ifdef CONFIG_FLASH_ATM_RUID
 #if EXECUTING_IN_PLACE
@@ -1691,7 +1843,7 @@ static void flash_read_ruid(uint8_t *ruid, uint8_t len)
 }
 #endif // CONFIG_FLASH_ATM_RUID
 
-#if !EXECUTING_IN_PLACE
+#if FLASH_ATM_BRINGUP
 static uint8_t spi_flash_wait_for_no_wip(const spi_dev_t *spi)
 {
 	uint8_t ret;
@@ -1760,20 +1912,6 @@ static bool spi_winbond_make_quad(const spi_dev_t *spi)
 	return ((spi_read(spi, SPI_FLASH_RDSR2) & 0x02) == 0x02);
 }
 
-#ifdef FLASH_PD
-/**
- * @brief Command external flash device to power down.
- *
- * @note For FlashROM images, __FAST will locate this function in RAM.
- */
-__FAST
-static void spi_macronix_deep_power_down(const spi_dev_t *spi)
-{
-	// Also works as Winbond power-down
-	do_spi_transaction(spi, 0, SPI_FLASH_DP, 0, 0x0, 0x0);
-}
-#endif
-
 static void spi_flash_sw_reset(const spi_dev_t *spi)
 {
 	do_spi_transaction(spi, 0, SPI_FLASH_RSTEN, 0, 0x0, 0x0);
@@ -1826,18 +1964,6 @@ static uint8_t do_qspi_read(uint8_t opcode)
 
 	return (CMSDK_QSPI->READ_DATA);
 }
-
-#ifdef FLASH_PD
-static void do_qspi_continuous_read_mode_reset(void)
-{
-	qspi_drive_start();
-	qspi_drive_byte(0xff);
-	qspi_drive_byte(0xff);
-	qspi_drive_byte(0xff);
-	qspi_drive_byte(0xff);
-	qspi_drive_stop();
-}
-#endif
 
 #ifdef CMSDK_QSPI_NONSECURE
 static void get_bp_divisor(uint32_t bp_freq, uint8_t *divisor)
@@ -2218,65 +2344,6 @@ static bool winbond_flash_init(uint8_t mem_cap)
 	return true;
 }
 
-#ifdef FLASH_PD
-/**
- * @brief Place external flash device into deep power down.
- *
- * @note For FlashROM images, __FAST will locate this function in RAM.
- */
-__FAST
-static void fast_macronix_deep_power_down(void)
-{
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
-	{
-		do_qspi_continuous_read_mode_reset();
-
-		// Switch control from AHB bridge to SPI2
-		CMSDK_QSPI->TRANSACTION_SETUP =
-			QSPI_TRANSACTION_SETUP__REMOTE_SPI_HAS_CONTROL__MASK |
-			QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
-	}
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
-
-	WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__CLK_ENABLE);
-	{
-		spi_macronix_deep_power_down(&spi2_8MHz_0);
-	}
-	WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__SRESET);
-}
-
-/**
- * @brief Place external flash device into deep power down.
- *
- * @note For FlashROM images, __FAST will locate this function in RAM.
- */
-__FAST
-static void fast_winbond_deep_power_down(void)
-{
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_ENABLE);
-	{
-		// Switch control from AHB bridge to SPI2
-		CMSDK_QSPI->TRANSACTION_SETUP =
-			QSPI_TRANSACTION_SETUP__REMOTE_SPI_HAS_CONTROL__MASK |
-			QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
-
-		WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__CLK_ENABLE);
-		{
-			spi_macronix_deep_power_down(&spi2_8MHz_0);
-		}
-		WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__SRESET);
-
-		// Switch control from SPI2 to AHB bridge
-		CMSDK_QSPI->TRANSACTION_SETUP =
-			QSPI_TRANSACTION_SETUP__REMOTE_AHB_QSPI_HAS_CONTROL__MASK |
-			QSPI_TRANSACTION_SETUP__CSN_VAL__MASK;
-	}
-	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
-}
-
-__UNUSED static void (*qspi_flash_deep_power_down)(void);
-#endif
-
 static bool micron_flash_init(uint8_t mem_cap)
 {
 	/*
@@ -2382,9 +2449,12 @@ static bool micron_flash_init(uint8_t mem_cap)
 }
 /*
  * Configure pinumx for QSPI signals
+ *
+ * ATM5 has no QSPI pin selection registers; its QSPI signals are fixed.
  */
 static void flash_init_pinmux(void)
 {
+#ifdef PINMUX_QSPI_CLK
 	PIN_SELECT(DT_INST_PROP(0, clk_pin), QSPI_CLK);
 	PIN_SELECT(DT_INST_PROP(0, csn_pin), QSPI_CSN);
 	PIN_SELECT(DT_INST_PROP(0, d0_pin), QSPI_D0);
@@ -2402,6 +2472,7 @@ static void flash_init_pinmux(void)
 #endif
 	PIN_PULLUP(DT_INST_PROP(0, d2_pin));
 	PIN_PULLUP(DT_INST_PROP(0, d3_pin));
+#endif // PINMUX_QSPI_CLK
 }
 
 /*
@@ -2410,9 +2481,9 @@ static void flash_init_pinmux(void)
  * Flash might have been in deep power down during hibernation,
  * so wake it up well before first attempted access.
  */
-static void external_flash_wakeup(void)
+static void external_flash_wakeup(void (*init_pinmux)(void))
 {
-	flash_init_pinmux();
+	init_pinmux();
 
 	WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__CLK_ENABLE);
 	{
@@ -2451,11 +2522,7 @@ static bool flash_discover(void)
 				return false;
 			}
 
-#ifdef FLASH_PD
-			// Deep Power-down
-			qspi_flash_deep_power_down = fast_macronix_deep_power_down;
 			macronix_flash_enable_pm();
-#endif
 			break;
 		} else if ((man_id == FLASH_MAN_ID_GIGA) || (man_id == FLASH_MAN_ID_FUDAN) ||
 			   (man_id == FLASH_MAN_ID_PUYA) || (man_id == FLASH_MAN_ID_GIANTEC)) {
@@ -2463,22 +2530,14 @@ static bool flash_discover(void)
 				return false;
 			}
 
-#ifdef FLASH_PD
-			// Deep Power-down
-			qspi_flash_deep_power_down = fast_macronix_deep_power_down;
 			giga_flash_enable_pm();
-#endif
 			break;
 		} else if (man_id == FLASH_MAN_ID_WINBOND) {
 			if (!winbond_flash_init(mem_cap)) {
 				return false;
 			}
 
-#ifdef FLASH_PD
-			// Power-down
-			qspi_flash_deep_power_down = fast_winbond_deep_power_down;
 			winbond_flash_enable_pm();
-#endif
 			break;
 		}
 
@@ -2509,7 +2568,31 @@ static bool flash_discover(void)
 	return true;
 }
 
-#endif // EXECUTING_IN_PLACE
+#ifdef CONFIG_SOC_FLASH_ATM_BRINGUP_API
+int flash_atm_bringup(void (*init_pinmux)(void))
+{
+	// the controller may hold state from the ROM or a previous image
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__CLK_DISABLE);
+	WRPR_CTRL_SET(CMSDK_QSPI, WRPR_CTRL__SRESET);
+	WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__CLK_ENABLE);
+	{
+		spi_flash_sw_reset(&spi2_8MHz_0);
+	}
+	WRPR_CTRL_SET(CMSDK_SPI2, WRPR_CTRL__SRESET);
+
+	external_flash_wakeup(init_pinmux ? init_pinmux : flash_init_pinmux);
+
+	if (!flash_discover()) {
+		LOG_ERR("No flash found: man_id:%#x", man_id);
+		return -ENODEV;
+	}
+
+	LOG_INF("man_id:%#x", man_id);
+	return 0;
+}
+#endif // CONFIG_SOC_FLASH_ATM_BRINGUP_API
+
+#endif // FLASH_ATM_BRINGUP
 
 static void recover_man_id(void)
 {
@@ -2536,20 +2619,14 @@ static void recover_man_id(void)
 					// Can't tell GIGA apart from FUDAN
 					man_id = FLASH_MAN_ID_GIGA;
 				}
-#ifdef FLASH_PD
 				giga_flash_enable_pm();
-#endif
 			} else {
 				man_id = FLASH_MAN_ID_WINBOND;
-#ifdef FLASH_PD
 				winbond_flash_enable_pm();
-#endif
 			}
 		} else {
 			man_id = FLASH_MAN_ID_MACRONIX;
-#ifdef FLASH_PD
 			macronix_flash_enable_pm();
-#endif
 		}
 	} else {
 		man_id = FLASH_MAN_ID_MICRON;
@@ -2596,7 +2673,7 @@ static int flash_atm_init(struct device const *dev)
 		sys_reboot(SYS_REBOOT_COLD);
 	}
 
-	external_flash_wakeup();
+	external_flash_wakeup(flash_init_pinmux);
 	bool found = flash_discover();
 
 	if (!found) {
@@ -2604,12 +2681,12 @@ static int flash_atm_init(struct device const *dev)
 		return 0;
 	}
 	LOG_INF("man_id:%#x", man_id);
-#else
+#else // !EXECUTING_IN_PLACE
 #ifdef __QSPI_REMOTE_AHB_SETUP_8_MACRO__
 	QSPI_REMOTE_AHB_SETUP_8__PP_STALL_WIP_MSB__MODIFY(CMSDK_QSPI->REMOTE_AHB_SETUP_8, 0x3F);
 #endif
 	recover_man_id();
-#endif
+#endif // !EXECUTING_IN_PLACE
 
 #ifdef CONFIG_SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
 	LOG_INF("SW erase mode");

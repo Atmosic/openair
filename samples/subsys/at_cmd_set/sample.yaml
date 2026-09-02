@@ -36,6 +36,8 @@ tests:
       type: one_line
       regex:
         - "Ready for AT commands"
+    tags:
+      - openair_release
   samples.subsys.at_cmd_set.atm.mcuboot:
     harness: console
     harness_config:
@@ -74,6 +76,8 @@ tests:
         - "-v"
         - "-T"
         - "5"
+    tags:
+      - openair_release
   samples.subsys.at_cmd_set.atm.pytest.system:
     harness: pytest
     timeout: 300
@@ -183,6 +187,73 @@ tests:
         - "-v"
         # Two-device mode requires --dev-b-serial=<port> in --pytest-args:
         #   west twister ... --pytest-args="--at-cmd-serial=<port> --dev-b-serial=<port>"
+  samples.subsys.at_cmd_set.atm.mcuboot.pytest.sysdfu.single_image:
+    harness: pytest
+    tags:
+      - dfu
+      - mcuboot
+    timeout: 600
+    depends_on:
+      - flash
+      - rram
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+    extra_configs:
+      - CONFIG_AT_CMD_SYSDFU=y
+      - CONFIG_AT_CMD_SYSMKBANKGOOD=y
+      - CONFIG_ATM_VENDOR_DFU=y
+      - CONFIG_STREAM_FLASH=y
+      - CONFIG_BOOTLOADER_MCUBOOT=y
+      - CONFIG_MCUBOOT_IMG_MANAGER=y
+      - CONFIG_IMG_MANAGER=y
+      - CONFIG_CRC=y
+      - CONFIG_UART_INTERRUPT_DRIVEN=y
+      - CONFIG_SERIAL=y
+      - CONFIG_REBOOT=y
+    harness_config:
+      pytest_root: ["pytest/test_at_cmd_dfu_swap.py"]
+      pytest_args:
+        - "-v"
+        - "--dfu-mode=single"
+  samples.subsys.at_cmd_set.atm.mcuboot.flash_xip.pytest.sysdfu.dual_image:
+    harness: pytest
+    tags:
+      - dfu
+      - mcuboot
+      - flash_xip
+    timeout: 600
+    depends_on:
+      - flash
+      - rram
+      - xip
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_OFFSET=y
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SCRATCH_SIZE=0"
+      - mcuboot_CONFIG_UPDATEABLE_IMAGE_NUMBER=2
+    extra_configs:
+      - CONFIG_AT_CMD_SYSDFU=y
+      - CONFIG_AT_CMD_SYSMKBANKGOOD=y
+      - CONFIG_ATM_VENDOR_DFU=y
+      - CONFIG_STREAM_FLASH=y
+      - CONFIG_BOOTLOADER_MCUBOOT=y
+      - CONFIG_MCUBOOT_IMG_MANAGER=y
+      - CONFIG_IMG_MANAGER=y
+      - CONFIG_CRC=y
+      - CONFIG_UART_INTERRUPT_DRIVEN=y
+      - CONFIG_SERIAL=y
+      - CONFIG_REBOOT=y
+    harness_config:
+      pytest_root: ["pytest/test_at_cmd_dfu_swap.py"]
+      pytest_args:
+        - "-v"
+        - "--dfu-mode=dual"
   samples.subsys.at_cmd_set.atm.two_dev.smp:
     tags:
       - two_dev
@@ -208,3 +279,27 @@ tests:
         # At runtime, Twister must pass:
         #   --pytest-args="--at-cmd-serial=<UART0_A>"
         #   --pytest-args="--dev-b-serial=<UART0_B>"
+  samples.subsys.at_cmd_set.atm.two_dev.central.sensor_beacon:
+    tags:
+      - two_dev
+      - sensor_beacon
+    harness: pytest
+    timeout: 600
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    extra_configs:
+      - CONFIG_AT_CMD_PERIPHERAL=n
+      - CONFIG_AT_CMD_CENTRAL=y
+      - CONFIG_BT_EXT_ADV=y
+      - CONFIG_BT_L2CAP_TX_MTU=247
+      - CONFIG_BT_BUF_ACL_RX_SIZE=251
+    harness_config:
+      pytest_root: ["pytest"]
+      pytest_dut_scope: session
+      pytest_args:
+        - "-m"
+        - "sensor_beacon"
+        - "-v"
+        # DevB must be pre-flashed with applications/sensor_beacon.
+        # At runtime pass:
+        #   --pytest-args="--at-cmd-serial=<UART0_A> --dev-b-serial=<UART0_B>"

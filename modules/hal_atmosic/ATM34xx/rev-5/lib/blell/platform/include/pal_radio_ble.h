@@ -447,6 +447,21 @@ void PalRadioSetPacketCounter(uint64_t pktCtr);
 /*************************************************************************************************/
 void PalRadioTxStart(uint32_t dueTime);
 
+#if (BB_BLE_TX_NOW_ENABLE)
+/*************************************************************************************************/
+/*!
+ *  \brief      Start a Tx immediately
+ *
+ *  Setup the radio for a Tx operation that begins as soon as the underlying controller can
+ *  dispatch it rather than at a future \a dueTime. The Tx buffer must still be loaded via
+ *  \a PalRadioTxData() / \a PalRadioTxPrevData() prior to dispatch.
+ *
+ *  Some platforms may not provide this, and must continue to use \a PalRadioTxStart().
+ */
+/*************************************************************************************************/
+void PalRadioTxStartNow(void);
+#endif
+
 /*************************************************************************************************/
 /*!
  *  \brief      Set next Tx packet using TIFS timing.
@@ -608,6 +623,13 @@ void PalRadioReadRxPayload(void);
  */
 /*************************************************************************************************/
 void PalRadioStop(void);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Release a pending radio-manager operation without starting radio activity.
+ */
+/*************************************************************************************************/
+void PalRadioReleasePending(void);
 
 /* Energy Detection Scan */
 

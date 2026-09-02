@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file platform_ctrl_buzzer.c
- *
- * @brief Platform control buzzer For Multimode Consumer Tag
- *
- * Copyright (C) Atmosic 2025-2026
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <zephyr/device.h>
@@ -69,8 +61,8 @@ void platform_ctrl_buzzer_init(void)
 	if (!device_is_ready(buzzer_dev)) {
 		LOG_ERR("Buzzer device not ready");
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
-				     AT_CMD_TAG_ERR_BUZZER);
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(), AT_CMD_TAG_ERR_BUZZER);
 #endif
 		buzzer_dev = NULL;
 		return;

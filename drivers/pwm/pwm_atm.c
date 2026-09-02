@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2021-2026, Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/logging/log.h>
@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(pwm_atm, CONFIG_PWM_LOG_LEVEL);
 #endif
 #ifdef CONFIG_PM
 #include <zephyr/pm/policy.h>
+#include <zephyr/pm/pm.h>
 #include <zephyr/kernel.h>
 #endif
 #include <soc.h>
@@ -111,6 +112,24 @@ static void pwm_pseq_latch_close(void)
 }
 #endif
 
+#if defined(CONFIG_PM) && defined(PSEQ_CTRL0__PWM_LATCH_OPEN__CLR)
+static void notify_pm_state_exit(enum pm_state state)
+{
+	if (state != PM_STATE_SUSPEND_TO_RAM) {
+		return;
+	}
+
+	/* PSEQ opens the PWM latch on retention entry and does not re-close it
+	 * on resume, freezing the pin output. Re-close it here so subsequent
+	 * PWM transfers reach the pin. */
+	pwm_pseq_latch_close();
+}
+
+static struct pm_notifier pwm_notifier = {
+	.state_exit = notify_pm_state_exit,
+};
+#endif /* defined(CONFIG_PM) && defined(PSEQ_CTRL0__PWM_LATCH_OPEN__CLR) */
+
 static void pwm_disable(uint8_t instance)
 {
 	switch (instance) {
@@ -167,40 +186,6 @@ static inline bool pwm_atm_fifo_validate(const struct device *dev, uint32_t chan
 {
 	return (fifo_dev == dev && fifo_channel == channel && data->fifo_data[channel].initialized);
 }
-
-static void pwm_atm_fifo_isr(void)
-{
-	uint32_t intr_mask = Z_CMSDK_PWM->INTERRUPTS;
-
-	if (PWM_INTERRUPTS__FIFO_LWM_HIT_INTRPT__READ(intr_mask)) {
-		/* FIFO low water mark hit - call alert handler */
-		if (fifo_config && fifo_config->fifo_alert_callback) {
-			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, 0);
-		}
-		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT1__MASK;
-	}
-
-	if (PWM_INTERRUPTS__FIFO_CMD_DONE_INTRPT__READ(intr_mask)) {
-		/* All FIFO commands completed */
-		pwm_disable(fifo_channel);
-		if (fifo_config && fifo_config->fifo_done_callback) {
-			fifo_config->fifo_done_callback(fifo_dev, fifo_channel, 0);
-		}
-		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT3__MASK;
-	}
-
-	if (PWM_INTERRUPTS__FIFO_OVRFLOW_INTRPT__READ(intr_mask)) {
-		LOG_ERR("PWM FIFO overflow");
-		/* Call alert callback with overflow error */
-		if (fifo_config && fifo_config->fifo_alert_callback) {
-			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, -EOVERFLOW);
-		}
-		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT2__MASK;
-	}
-
-	Z_CMSDK_PWM->INTERRUPTS_CLEAR = 0x0;
-}
-#endif
 
 #ifdef CONFIG_PM
 /*
@@ -260,6 +245,49 @@ static void pwm_atm_pm_constraint_release(const struct device *dev, uint8_t chan
 }
 #endif
 
+static void pwm_atm_fifo_isr(void)
+{
+	uint32_t intr_mask = Z_CMSDK_PWM->INTERRUPTS;
+
+	if (PWM_INTERRUPTS__FIFO_LWM_HIT_INTRPT__READ(intr_mask)) {
+		/* FIFO low water mark hit - call alert handler */
+		if (fifo_config && fifo_config->fifo_alert_callback) {
+			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, 0);
+		}
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT1__MASK;
+	}
+
+	if (PWM_INTERRUPTS__FIFO_CMD_DONE_INTRPT__READ(intr_mask)) {
+		/* All FIFO commands completed */
+		pwm_disable(fifo_channel);
+
+		if (fifo_config && fifo_config->fifo_done_callback) {
+			fifo_config->fifo_done_callback(fifo_dev, fifo_channel, 0);
+		}
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT3__MASK;
+
+#ifdef CONFIG_PM
+		/* Release the PM constraint acquired in fifo_start/run_dma.
+		 * FIFO mode does not set period_cycles so the k_usleep path
+		 * in pwm_atm_pm_constraint_release is never taken — safe to
+		 * call from ISR. */
+		pwm_atm_pm_constraint_release(fifo_dev, fifo_channel);
+#endif
+	}
+
+	if (PWM_INTERRUPTS__FIFO_OVRFLOW_INTRPT__READ(intr_mask)) {
+		LOG_ERR("PWM FIFO overflow");
+		/* Call alert callback with overflow error */
+		if (fifo_config && fifo_config->fifo_alert_callback) {
+			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, -EOVERFLOW);
+		}
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT2__MASK;
+	}
+
+	Z_CMSDK_PWM->INTERRUPTS_CLEAR = 0x0;
+}
+#endif
+
 static void pinmux_config(uint8_t instance, uint8_t polarity, pwm_mode_t mode)
 {
 	switch (instance) {
@@ -291,10 +319,6 @@ static void pinmux_config(uint8_t instance, uint8_t polarity, pwm_mode_t mode)
 		ASSERT_INFO(0, instance, 0);
 	} break;
 	}
-
-#ifdef PSEQ_CTRL0__PWM_LATCH_OPEN__CLR
-	pwm_pseq_latch_close();
-#endif
 }
 
 static void pwm_set_duration(uint8_t instance, uint16_t hi_dur, uint16_t lo_dur)
@@ -830,6 +854,14 @@ static int pwm_atm_init(struct device const *dev)
 
 	WRPR_CTRL_SET(Z_CMSDK_PWM, PWM_CLK_CTRL);
 	config->config_pins();
+
+#if defined(CONFIG_PM) && defined(PSEQ_CTRL0__PWM_LATCH_OPEN__CLR)
+	static bool notifier_registered = false;
+	if (!notifier_registered) {
+		pm_notifier_register(&pwm_notifier);
+		notifier_registered = true;
+	}
+#endif
 
 	return 0;
 }

@@ -92,6 +92,7 @@ class TLV:
         0xB9: "CHIP_INFO",
         0xBC: "MISC_CAL",
         0xC2: "XTAL_CAL",
+        0xC3: "PMU_CAL",
         0xC6: "RES_CAL",
     }
 
@@ -137,6 +138,14 @@ class TLV:
         0xC2: [  # xtal_cal_s
             ("xtal_bits1", "I", None),
             ("xtal_bits0", "I", None),
+        ],
+        0xC3: [  # pmu_cal_s
+            ("pmu_top_pmu3", "I", None),
+            ("pmu_top_pmu4", "I", None),
+            ("pmu_top_pmu5", "I", None),
+            ("pmu_top_pmu6", "I", None),
+            ("pmu_top_pmu7", "I", None),
+            ("pmu_top_pmu10", "I", None),
         ],
         0xC6: [  # res_cal_s
             ("version", "B", None),

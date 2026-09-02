@@ -365,6 +365,26 @@ void fp_fhpf_gatt_motion_notify_fn_reg(fp_fhpf_motion_notify_fn_t fn)
 	LOG_DBG("FHPF: motion notify fn %s", fn ? "registered" : "unregistered");
 }
 
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+uint8_t motion_raw_peak;
+
+static uint8_t fp_fhpf_motion_get_raw(void)
+{
+	uint8_t raw = motion_raw_peak;
+	motion_raw_peak = 0;
+	return raw;
+}
+
+void fp_fhpf_motion_trigger_event(void)
+{
+	uint8_t motion_raw = motion_get_status_fn();
+	LOG_INF("FHPF: motion_trigger_event %d, motion_raw_peak %d", motion_raw, motion_raw_peak);
+	if (motion_raw > motion_raw_peak) {
+		motion_raw_peak = motion_raw;
+	}
+}
+#endif // CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+
 /**
  * @brief 2-second periodic work handler — polls the application getter and
  *        sends a BCNA motion notification when motion was detected.
@@ -375,6 +395,7 @@ void fp_fhpf_gatt_motion_notify_fn_reg(fp_fhpf_motion_notify_fn_t fn)
 /* Convert raw tilt degrees to the FMDN 4-level motion status enum. */
 static ranging_de_motion_status_t motion_deg_to_status(uint8_t deg)
 {
+	LOG_DBG("FHPF: motion_deg_to_status %d", deg);
 	if (deg >= 10) {
 		return RANGING_MOTION_LARGE_MOVEMENT;
 	}
@@ -393,7 +414,13 @@ static void fp_fhpf_motion_poll_handler(struct k_work *work)
 	if (!motion_get_status_fn || !motion_conn || !motion_notify_fn) {
 		return;
 	}
+
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+	ranging_de_motion_status_t st = motion_deg_to_status(fp_fhpf_motion_get_raw());
+#else
 	ranging_de_motion_status_t st = motion_deg_to_status(motion_get_status_fn());
+#endif
+
 	if (st != RANGING_MOTION_NOT_DETECTED) {
 		/* Motion detected: send notification and arm follow-up counter */
 		LOG_INF("FHPF: motion status %d seq=%u, sending notification", st, motion_seq_num);
@@ -932,6 +959,10 @@ void fp_fhpf_gatt_conn_event(struct bt_conn *conn, bool connected)
 		LOG_DBG("FHPF: Connection disconnected");
 		if (motion_conn == conn) {
 			k_work_cancel_delayable(&motion_poll_work);
+			/* Release motion hw to balance the enable issued at ranging config. */
+			if (ranging_handlers && ranging_handlers->motion_cb) {
+				ranging_handlers->motion_cb(NULL);
+			}
 			motion_conn = NULL;
 			motion_nego_version = 0;
 			motion_seq_num = 0;

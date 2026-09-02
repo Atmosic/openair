@@ -211,6 +211,23 @@ bool fp_mode_power_loss_recovery_required_adv(fp_mode_t mode)
 	return false;
 }
 
+#if defined(CONFIG_ZTEST)
+void fp_mode_test_adv_sync(void)
+{
+	fp_mode_adv_sync(FP_MODE_ADV_SYNC_REASON_MODE_CHANGE);
+}
+
+void fp_mode_test_adv_sync_plr_state(void)
+{
+	fp_mode_adv_sync(FP_MODE_ADV_SYNC_REASON_PLR_STATE_CHANGE);
+}
+
+void fp_mode_test_adv_sync_plr_periodic(void)
+{
+	fp_mode_adv_sync(FP_MODE_ADV_SYNC_REASON_PLR_PERIODIC_TOGGLE);
+}
+#endif /* CONFIG_ZTEST */
+
 #ifdef CONFIG_FAST_PAIR_FMDN
 static void power_loss_recovery_timeout_handler(struct k_work *work)
 {
@@ -311,4 +328,31 @@ bool fp_mode_power_loss_is_periodic(void)
 	return (power_loss_recovery_state == POWER_LOSS_RECOVERY_PERIODIC &&
 		power_loss_recovery_periodic_active);
 }
-#endif
+
+#if defined(CONFIG_ZTEST)
+void fp_mode_test_plr_start(void)
+{
+	fp_mode_power_loss_recovery_start();
+}
+
+void fp_mode_test_plr_stop(void)
+{
+	fp_mode_power_loss_recovery_stop();
+}
+
+bool fp_mode_test_plr_is_periodic(void)
+{
+	return fp_mode_power_loss_is_periodic();
+}
+
+void fp_mode_test_plr_timeout(void)
+{
+	power_loss_recovery_timeout_handler(NULL);
+}
+
+void fp_mode_test_plr_periodic(void)
+{
+	power_loss_recovery_periodic_handler(NULL);
+}
+#endif /* CONFIG_ZTEST */
+#endif /* CONFIG_FAST_PAIR_FMDN */

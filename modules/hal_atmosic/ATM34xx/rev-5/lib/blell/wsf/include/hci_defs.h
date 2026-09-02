@@ -397,6 +397,8 @@ extern "C" {
 /* Version 6.3 */
 #define HCI_OCF_LE_CS_READ_LOCAL_SUP_CAP_V2          0xA5
 #define HCI_OCF_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2   0xA6
+#define HCI_OCF_LE_CS_SET_SECURITY_REQUIREMENTS      0xA7
+#define HCI_OCF_LE_CS_SET_DEFAULT_SECURITY_REQUIREMENTS 0xA8
 /**@}*/
 
 /** \name Opcode manipulation macros
@@ -608,6 +610,8 @@ extern "C" {
 /* Version 6.3 */
 #define HCI_OPCODE_LE_CS_READ_LOCAL_SUP_CAP_V2       HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_CS_READ_LOCAL_SUP_CAP_V2)
 #define HCI_OPCODE_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2 HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2)
+#define HCI_OPCODE_LE_CS_SET_SECURITY_REQUIREMENTS   HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_CS_SET_SECURITY_REQUIREMENTS)
+#define HCI_OPCODE_LE_CS_SET_DEFAULT_SECURITY_REQUIREMENTS HCI_OPCODE(HCI_OGF_LE_CONTROLLER, HCI_OCF_LE_CS_SET_DEFAULT_SECURITY_REQUIREMENTS)
 /**@}*/
 
 /** \name Packetcraft Vendor Specific
@@ -805,6 +809,8 @@ extern "C" {
 /* Version 6.3 */
 #define HCI_LEN_LE_CS_READ_LOCAL_SUP_CAP_V2          0
 #define HCI_LEN_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2   32
+#define HCI_LEN_LE_CS_SET_SECURITY_REQUIREMENTS      10   /*!< Connection_Handle(2) + CS_Security_Requirements(8) */
+#define HCI_LEN_LE_CS_SET_DEFAULT_SECURITY_REQUIREMENTS 8 /*!< CS_Security_Requirements(8) */
 
 /* Vendor Specific */
 #define HCI_LEN_VS_PAWR_EXT_ENABLE                   1
@@ -1178,6 +1184,8 @@ extern "C" {
 /* Version 6.3 */
 #define HCI_SUP_LE_CS_READ_LOCAL_SUP_CAP_V2          0x04U    /*!< Byte 49 */
 #define HCI_SUP_LE_CS_WRITE_CACH_REMOTE_SUP_CAP_V2   0x08U    /*!< Byte 49 */
+#define HCI_SUP_LE_CS_SET_SECURITY_REQUIREMENTS      0x10U    /*!< Byte 49 */
+#define HCI_SUP_LE_CS_SET_DEFAULT_SECURITY_REQUIREMENTS 0x20U /*!< Byte 49 */
 
 #define HCI_SUP_CMD_LEN                              64      /*!< Byte length of support cmd field. */
 /**@}*/

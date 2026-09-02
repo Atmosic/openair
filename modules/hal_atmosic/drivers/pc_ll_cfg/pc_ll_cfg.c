@@ -57,7 +57,8 @@ static bool pc_ll_cfg_load_user_cfg(uint8_t cfgId, void *pBuf, uint32_t len)
 #ifndef CONFIG_SOC_FAMILY_ATM
 __attribute__((constructor))
 #endif
-static void pc_ll_cfg_init_constructor(void)
+static void
+pc_ll_cfg_init_constructor(void)
 {
     PalCfgSetUserCfgCb(pc_ll_cfg_load_user_cfg);
 }
@@ -145,6 +146,16 @@ int uECC_make_key_continue(void) __attribute__((alias("stub_return_one")));
 int uECC_shared_secret_continue(void) __attribute__((alias("stub_return_one")));
 #endif
 #else // !CONFIG_ATM_LCROM_IFACE
+#ifndef CONFIG_ATM_ENA_SW_LA
+#include "pal_sw_dbg.h"
+
+void PalSwDbgCommonValue(sw_dbg_common_type_t type, uint32_t value)
+{
+    (void)type;
+    (void)value;
+}
+#endif
+
 // Stub for void(void) prototypes
 __attribute__((unused)) static void stub_void_func(void)
 {
@@ -167,8 +178,7 @@ void LhciPowerControlInit(void) __attribute__((alias("stub_void_func")));
 #if LL_FEAT_CS && !defined(ENA_LL_FEAT_CS)
 void LlCsCentralInit(void) __attribute__((alias("stub_void_func")));
 void LlCsPeripheralInit(void) __attribute__((alias("stub_void_func")));
-void BbBleCsInitiatorInit(void) __attribute__((alias("stub_void_func")));
-void BbBleCsReflectorInit(void) __attribute__((alias("stub_void_func")));
+void BbBleCsInit(void) __attribute__((alias("stub_void_func")));
 void LhciCsInit(void) __attribute__((alias("stub_void_func")));
 uint32_t LlInitCsMem(uint8_t *pFreeMem, uint32_t freeMemSize)
     __attribute__((alias("stub_return_zero_mem")));
@@ -199,6 +209,18 @@ bool lctrCsFillEnhancedCapPdu(void *pCtx, void *pCapPdu)
 }
 void lhciSetDefaultHciSupCmd_6_3(uint8_t *pBuf)
 {
+}
+bool lctrCsSecReqsMet(void *pCsCtx, void *pAclCsCtx)
+{
+    return true;
+}
+uint8_t LctrCsSetSecurityRequirements(uint16_t connHandle, uint64_t csSecReqs)
+{
+    return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
+}
+uint8_t LctrCsSetDefaultSecurityRequirements(uint64_t csSecReqs)
+{
+    return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
 }
 #endif
 
@@ -258,12 +280,12 @@ void LhciExtAdvSlaveInit(void) __attribute__((alias("stub_void_func")));
 uint32_t LlInitExtAdvMem(uint8_t *pFreeMem, uint32_t freeMemSize)
     __attribute__((alias("stub_return_zero_mem")));
 void LlExtAdvSlaveInit(void) __attribute__((alias("stub_void_func")));
-#if LL_FEAT_PAWR
+#if LL_FEAT_PAWR && defined(ENA_LL_FEAT_PAWR)
 void LhciPawrPeripheralInit(void) __attribute__((alias("stub_void_func")));
 void LlPawrPeripheralInit(void) __attribute__((alias("stub_void_func")));
 uint32_t LlInitPawrPeripheralMem(uint8_t *pFreeMem, uint32_t freeMemSize)
     __attribute__((alias("stub_return_zero_mem")));
-#endif // LL_FEAT_PAWR
+#endif // LL_FEAT_PAWR && ENA_LL_FEAT_PAWR
 #endif // !ENA_LL_FEAT_BROADCASTER || !ENA_LL_FEAT_EXT_ADV
 #endif // INIT_BROADCASTER
 #ifdef INIT_PERIPHERAL
@@ -384,6 +406,54 @@ uint32_t LlInitFsuMem(uint8_t *pFreeMem, uint32_t freeMemSize)
 void LlEnhConnUpdateInit(void) __attribute__((alias("stub_void_func")));
 void LhciEnhConnUpdateInit(void) __attribute__((alias("stub_void_func")));
 #endif
+#if LL_FEAT_PAWR && !defined(ENA_LL_FEAT_PAWR)
+void LhciPawrPeripheralInit(void) __attribute__((alias("stub_void_func")));
+void LlPawrPeripheralInit(void) __attribute__((alias("stub_void_func")));
+uint32_t LlInitPawrPeripheralMem(uint8_t *pFreeMem, uint32_t freeMemSize)
+    __attribute__((alias("stub_return_zero_mem")));
+void LhciPawrCentralInit(void) __attribute__((alias("stub_void_func")));
+void LlPawrCentralInit(void) __attribute__((alias("stub_void_func")));
+uint32_t LlInitPawrCentralMem(uint8_t *pFreeMem, uint32_t freeMemSize)
+    __attribute__((alias("stub_return_zero_mem")));
+#endif
+#if LL_FEAT_PAST && !defined(ENA_LL_FEAT_PAST)
+void LhciPastInit(void) __attribute__((alias("stub_void_func")));
+void LlPastInit(void) __attribute__((alias("stub_void_func")));
+#endif
+#if LL_FEAT_SLV_PER_ADV && !defined(ENA_LL_FEAT_SLV_PER_ADV)
+static uint8_t stub_LlSetPeriodicAdvParam(uint8_t handle,
+    LlPerAdvParam_t *pPerAdvParam)
+{
+    return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
+}
+
+static uint8_t stub_LlSetPeriodicAdvData(uint8_t handle, uint8_t op,
+    uint8_t len, const uint8_t *pData)
+{
+    return LL_ERROR_CODE_UNKNOWN_HCI_CMD;
+}
+
+static uint16_t stub_BbBleInitPeriodicList(uint8_t numEntries,
+    uint8_t *pFreeMem, uint32_t freeMemSize)
+{
+    return 0;
+}
+
+static void stub_LlSetPeriodicAdvEnable(uint8_t enable, uint8_t handle)
+{
+}
+
+void BbBleSlvPerAdvInit(void) __attribute__((alias("stub_void_func")));
+void LctrSlvPeriodicAdvInit(void) __attribute__((alias("stub_void_func")));
+uint8_t LlSetPeriodicAdvParam(uint8_t handle, LlPerAdvParam_t *pPerAdvParam)
+    __attribute__((alias("stub_LlSetPeriodicAdvParam")));
+uint8_t LlSetPeriodicAdvData(uint8_t handle, uint8_t op, uint8_t len,
+    const uint8_t *pData) __attribute__((alias("stub_LlSetPeriodicAdvData")));
+void LlSetPeriodicAdvEnable(uint8_t enable, uint8_t handle)
+    __attribute__((alias("stub_LlSetPeriodicAdvEnable")));
+uint16_t BbBleInitPeriodicList(uint8_t numEntries, uint8_t *pFreeMem,
+    uint32_t freeMemSize) __attribute__((alias("stub_BbBleInitPeriodicList")));
+#endif
 #if defined(INIT_ENCRYPTED) && !defined(ENA_LL_FEAT_ENC_PRIV)
 static void stub_LlEncConnSlaveInit(void)
 {
@@ -429,8 +499,8 @@ static uint8_t stub_LlAddDeviceToWhitelist(uint8_t addrType, bdAddr_t pAddr)
     }
 }
 
-static uint8_t stub_LlRemoveDeviceFromWhitelist(uint8_t addrType, bdAddr_t
-    pAddr)
+static uint8_t stub_LlRemoveDeviceFromWhitelist(uint8_t addrType,
+    bdAddr_t pAddr)
 {
     if (wl_cnt) {
 	wl_cnt--;

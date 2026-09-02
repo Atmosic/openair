@@ -1,0 +1,30 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+&i2c0 {
+	status = "disabled";
+};
+
+&spi1 {
+	status = "disabled";
+};
+
+&pinctrl {
+	pdm0_clk_default: pdm0_clk_default {
+		pinmux = <16 PINMUX_PDM0_CLK>;
+	};
+
+	pdm0_data_default: pdm0_data_default {
+		pinmux = <13 PINMUX_PDM0_IN>;
+	};
+};
+
+dmic_dev: &pdm0 {
+	status = "okay";
+	pinctrl-0 = <&pdm0_clk_default &pdm0_data_default>;
+	pinctrl-names = "default";
+	clock-frequency = <1000000>;
+};

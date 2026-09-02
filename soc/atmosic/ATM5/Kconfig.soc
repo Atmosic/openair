@@ -1,0 +1,17 @@
+# Copyright (c) 2024-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config SOC_SERIES_ATM5
+	bool
+	select SOC_FAMILY_ATM
+
+config SOC_SERIES
+	default "ATM5" if SOC_SERIES_ATM5
+
+config SOC_ATM5XXX_2
+	bool
+	select SOC_SERIES_ATM5
+
+config SOC
+	default "ATM5xxx-2" if SOC_ATM5XXX_2

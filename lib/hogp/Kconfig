@@ -1,0 +1,22 @@
+# Copyright (c) Atmosic 2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_HOGP
+	bool "HID over GATT Profile (HOGP) library"
+	depends on BT && BT_PERIPHERAL
+	default n
+	help
+	  Enable the Atmosic HOGP library, which registers a static GATT
+	  HID service with keyboard INPUT, LED OUTPUT, and Consumer Control
+	  INPUT reports.  Provides hogp_init(), hogp_send_kbd_report(), and
+	  hogp_send_consumer_report().
+
+if ATM_HOGP
+
+config HOGP_LOG_LEVEL
+	int "HOGP log level"
+	default 3
+	range 0 4
+
+endif # ATM_HOGP

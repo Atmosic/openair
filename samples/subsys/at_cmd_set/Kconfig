@@ -1,0 +1,14 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+mainmenu "AT command set sample"
+
+config AT_CMD_SET_SAMPLE_APP_VERSION
+	string "Application version printed in boot banner"
+	default "1.0.0"
+	help
+	  Embedded in the boot banner so the pytest DFU harness can tell
+	  v1 and v2 builds apart after an MCUboot swap.
+
+source "Kconfig.zephyr"

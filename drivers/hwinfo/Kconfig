@@ -1,11 +1,11 @@
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if HWINFO
 
 config HWINFO_ATM
 	bool "Atmosic device ID"
 	default y
-	depends on SOC_SERIES_ATM33 || SOC_SERIES_ATM34
 	select ATM_RESET
 	help
 	  Enable Atmosic hwinfo driver

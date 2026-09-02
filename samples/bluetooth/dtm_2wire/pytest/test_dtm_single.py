@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 """Pytest smoke tests for the Bluetooth DTM 2-wire sample."""
 

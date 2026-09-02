@@ -93,6 +93,14 @@ config AT_CMD_BLEADVDATA
 	bool "BLE advertising data"
 	default y if AT_CMD_PERIPHERAL
 
+config AT_CMD_BLEADVDATA_CB
+	bool "Post-set callback for AT+BLEADVDATA"
+	depends on AT_CMD_BLEADVDATA
+	select AT_CMD_SET_CALLBACKS
+	help
+	  After advertising data is stored by AT+BLEADVDATA, invoke an
+	  application-provided callback.
+
 config AT_CMD_BLEADVSETID
 	bool "BLE advertising set ID"
 	default y if AT_CMD_PERIPHERAL
@@ -109,6 +117,14 @@ config AT_CMD_BLEADVTXPWR
 config AT_CMD_BLEADVLEGACYPARM
 	bool "BLE legacy advertising parameters"
 	default y if AT_CMD_PERIPHERAL
+
+config AT_CMD_BLEADVLEGACYPARM_CB
+	bool "Post-set callback for AT+BLEADVLEGACYPARM"
+	depends on AT_CMD_BLEADVLEGACYPARM
+	select AT_CMD_SET_CALLBACKS
+	help
+	  After advertising parameters are stored by AT+BLEADVLEGACYPARM,
+	  invoke an application-provided callback.
 
 config AT_CMD_BLESCANRSPDATA
 	bool "BLE scan response data"
@@ -147,6 +163,20 @@ config AT_CMD_BLEGAPCREATECONN
 	select AT_CMD_SET_CONN_TRACKING
 	imply AT_CMD_BLEGAPDISCONNECT
 
+config AT_CMD_BLEGAPCREATECONN_INIT_TIMEOUT
+	int "Initial BLE connection supervision timeout (× 10 ms)"
+	default 400
+	range 10 3200
+	depends on AT_CMD_BLEGAPCREATECONN
+	help
+	  Supervision timeout for the BLE connection created by
+	  AT+BLEGAPCREATECONN. The default 400 (4000 ms) matches
+	  BT_LE_CONN_PARAM_DEFAULT. Increase (e.g. to 1000 = 10 s) on
+	  platforms where the baseband clock runs faster than nominal
+	  (e.g. INIT_BP_FREQ=64000000), where the effective timeout is
+	  scaled by 48/64 = 0.75× so the default 4000 ms fires at 3000 ms
+	  real-time — too short for SMP key exchange to complete.
+
 config AT_CMD_BLEGAPCANCELCREATECONN
 	bool "Enable cancellation of a pending BLE central connection initiation"
 	depends on AT_CMD_BLEGAPCREATECONN
@@ -166,6 +196,14 @@ config AT_CMD_BLEGAPDEVNAME
 	  advertising (or update adv/scan-response data) to expose the new
 	  name to scanners. When CONFIG_BT_SETTINGS is enabled the name is
 	  persisted across reboots.
+
+config AT_CMD_BLEGAPDEVNAME_CB
+	bool "Post-set callback for AT+BLEGAPDEVNAME"
+	depends on AT_CMD_BLEGAPDEVNAME
+	select AT_CMD_SET_CALLBACKS
+	help
+	  After a successful bt_set_name() call, invoke an application-provided
+	  callback. Use this to perform side effects such as updating advertising data.
 
 config AT_CMD_BLEGAPDISCONNECT
 	bool "Enable BLE disconnect"
@@ -359,6 +397,24 @@ config AT_CMD_SYSUARTRAW_BUF_SIZE
 	  Size of the ring buffer used to transfer bytes from the UART ISR to
 	  the BLE transmission work queue. Larger values reduce the risk of data
 	  loss when bursts arrive faster than BLE can drain them.
+
+config AT_CMD_LOCK_SET
+	bool "AT command lock related command sets"
+	select AT_CMD_SYSLOCK
+	select AT_CMD_SYSUNLOCK
+
+config AT_CMD_SYSLOCK
+	bool "Set to lock an AT command channel"
+	depends on AT_CMD_LOCK_SET
+
+config AT_CMD_SYSUNLOCK
+	bool "Set to unlock an AT command channel"
+	depends on AT_CMD_LOCK_SET
+
+config AT_CMD_SYSUNLOCKKEY_VALUE
+	string "Expected unlock key for AT+SYSUNLOCKKEY"
+	default "atm"
+	depends on AT_CMD_LOCK_SET
 
 config AT_CMD_SYSRESET
 	bool "System reset"
@@ -813,6 +869,13 @@ config AT_CMD_TAGMOTIONRPT
 	help
 	  Host reports XYZ acceleration to the tag.
 	  x,y,z: acceleration in cm/s² (signed 16-bit).
+
+config AT_CMD_TAGADDR
+	bool "AT+TAGADDR=<protocol>: query advertising BT address"
+	default y
+	help
+	  Returns the live advertising BT address for the given protocol.
+	  Valid protocol values: 0x01 (fmna), 0x02 (fhn), 0x04 (stf).
 
 # AT events
 config AT_EVT_TAGERROR

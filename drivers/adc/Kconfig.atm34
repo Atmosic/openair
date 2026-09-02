@@ -1,7 +1,7 @@
 # ADC configuration options
 
 # Copyright (c) 2023-2026 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ADC_ATM34
 	bool "Atmosic ATM34 ADC driver"
@@ -37,9 +37,21 @@ config ATM_ADC_TEST_API
 	    bring-up and validation. Bypasses the Zephyr ADC subsystem and
 	    calibration; not for production use.
 
-config ATM_ADC_PGA_BYPASS
+config ATM_ADC_CAL_RELOAD
 	bool
+	default y
 	help
-	    Bypass Programmable Gain Amplifier (PGA) in GADC setup
+	    The driver exposes atm_adc_reload_cal() to re-read the GADC
+	    calibration tag after the active secure journal changes.
+
+config ATM_ADC_CAL_TEST_HOOKS
+	bool "Enable GADC calibration reload test hooks (TEST ONLY)"
+	depends on ATM_ADC_CAL_RELOAD && ATM_ADC_TEST_API
+	default y if ZTEST
+	help
+	    Exposes atm_adc_test_invalidate_cal() and
+	    atm_adc_test_set_cal_missing() so tests can verify that
+	    atm_adc_reload_cal() re-reads the secure journal. Not for
+	    production use.
 
 endif

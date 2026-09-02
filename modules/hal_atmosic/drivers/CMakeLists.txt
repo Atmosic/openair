@@ -39,6 +39,8 @@ add_subdirectory(sec_debug)
 add_subdirectory(sec_reset)
 add_subdirectory(sec_wdog_disable)
 add_subdirectory(user_debug)
+add_subdirectory_ifdef(CONFIG_SOC_SERIES_ATM5 nv_mem_prot)
+add_subdirectory_ifdef(CONFIG_ATM_SEC_JRNL_OTP sec_jrnl_otp_flash)
 
 if(CONFIG_ATM_AES_HW OR CONFIG_ATM_SHA2_HW OR CONFIG_ATM_UECC_PSA)
   zephyr_include_directories(

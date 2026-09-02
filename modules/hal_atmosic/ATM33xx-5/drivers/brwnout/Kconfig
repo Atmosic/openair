@@ -12,12 +12,12 @@ config BROWNOUT_THR_VBAT
         default 0
         help
             Controls the VBAT brownout threshold for the non-lithium ion battery type.
-            For battery level <= 1.8V,
-                VBAT threshold = 0.9 + 0.025X, where 0 <= X <= 31
             For battery level > 1.8V,
-                VBAT threshold = 1.4 + 0.05X, where
+                VBAT threshold = 1.4V + 0.05V * X, where
                     0 <= X <= 31, for non-rechargeable battery type
                     0 <= X <= 17, for rechargeable battery type
+            For battery level <= 1.8V,
+                VBAT threshold = 0.9V + 0.025V * X, where 0 <= X <= 31
             The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through the ``batt-level`` device tree property. Refer to the PMU configuration for additional details.
 
 endif

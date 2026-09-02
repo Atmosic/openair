@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file fp_tag_platform_ranging.c
- *
- * @brief Fast Pair tag ranging platform implementation
- *
- * Copyright (C) Atmosic 2025-2026
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <zephyr/kernel.h>
@@ -133,7 +125,7 @@ int fp_platform_ranging_config_cb(rt_id_t tech_id, ranging_config_t *config, boo
 	default:
 		LOG_ERR("Platform: Unsupported technology ID 0x%02x for configuration", tech_id);
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
 				     AT_CMD_TAG_ERR_INVALID_PARAM);
 #endif
 		return -ENOTSUP;
@@ -171,7 +163,7 @@ int fp_platform_ranging_start_cb(rt_id_t tech_id)
 	default:
 		LOG_ERR("Platform: Unsupported technology ID 0x%02x for start", tech_id);
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
 				     AT_CMD_TAG_ERR_INVALID_PARAM);
 #endif
 		return -ENOTSUP;
@@ -209,7 +201,7 @@ int fp_platform_ranging_stop_cb(rt_id_t tech_id)
 	default:
 		LOG_ERR("Platform: Unsupported technology ID 0x%02x for stop", tech_id);
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
 				     AT_CMD_TAG_ERR_INVALID_PARAM);
 #endif
 		return -ENOTSUP;

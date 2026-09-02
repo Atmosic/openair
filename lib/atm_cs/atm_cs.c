@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file atm_cs.c
  *
  * @brief Atmosic Channel Sounding middleware
- *
- * Copyright (C) Atmosic 2025
  *
  *******************************************************************************
  */
@@ -21,6 +25,10 @@
 #include "app_work_q.h"
 #include "atm_cs.h"
 #include "ras.h"
+#ifdef CONFIG_ZTEST
+/* Expose struct bt_conn internals (ref field) for test hooks */
+#include "conn_internal.h"
+#endif /* CONFIG_ZTEST */
 
 LOG_MODULE_REGISTER(atm_cs, CONFIG_ATM_CS_LOG_LEVEL);
 
@@ -45,6 +53,13 @@ LOG_MODULE_REGISTER(atm_cs, CONFIG_ATM_CS_LOG_LEVEL);
 /* Current active connection for CS operations */
 static struct bt_conn *cs_current_conn;
 static K_MUTEX_DEFINE(cs_conn_mutex);
+
+#ifdef CONFIG_ZTEST
+/* Fake connection object used by test hooks; ref is set before use */
+static struct bt_conn cs_fake_conn;
+/* When true, cs_connection_is_valid() bypasses bt_conn_get_info validation */
+static bool cs_test_conn_valid_override;
+#endif /* CONFIG_ZTEST */
 
 #ifndef CONFIG_ATM_CS_ADV_BT_ID_DEFAULT
 #define ATM_CS_KEY_MAIN            SETTINGS_STORAGE_KEY("atm_cs")
@@ -227,6 +242,12 @@ static bool cs_connection_is_valid(struct bt_conn *conn)
 	if (!conn) {
 		return false;
 	}
+
+#ifdef CONFIG_ZTEST
+	if (cs_test_conn_valid_override) {
+		return true;
+	}
+#endif /* CONFIG_ZTEST */
 
 	struct bt_conn_info info;
 	int err = bt_conn_get_info(conn, &info);
@@ -474,3 +495,97 @@ void atm_cs_rrsp_stop_adv(void)
 	cs_adv_set = NULL;
 	LOG_INF("CS advertising stopped and cleaned up");
 }
+
+#ifdef CONFIG_ZTEST
+/* Test hooks: expose internal static callbacks for unit test coverage */
+void atm_cs_test_connection_terminated(struct bt_conn *conn, uint8_t reason)
+{
+	cs_connection_terminated_cb(conn, reason);
+}
+
+void atm_cs_test_advertising_timeout(struct bt_le_ext_adv *instance,
+				     struct bt_le_ext_adv_sent_info *info)
+{
+	cs_advertising_timeout_cb(instance, info);
+}
+
+void atm_cs_test_advertising_connected(struct bt_le_ext_adv *instance,
+				       struct bt_le_ext_adv_connected_info *info)
+{
+	cs_advertising_connected(instance, info);
+}
+
+void atm_cs_test_conn_set_null(void)
+{
+	cs_conn_set(NULL);
+}
+
+void atm_cs_test_conn_get(void)
+{
+	struct bt_conn *conn = cs_conn_get();
+
+	if (conn) {
+		bt_conn_unref(conn);
+	}
+}
+
+void atm_cs_test_configure_settings(void)
+{
+	cs_configure_default_settings_work_handler(NULL);
+}
+
+/*
+ * Set cs_current_conn to the fake conn (ref=100) and enable the validation
+ * bypass. Call atm_cs_test_clear_fake_conn() when done to avoid leaking state.
+ */
+void atm_cs_test_set_fake_conn_active(void)
+{
+	/* BT_CONN_TYPE_LE required so bt_conn_get_dst doesn't return NULL */
+	cs_fake_conn.type = BT_CONN_TYPE_LE;
+	atomic_set(&cs_fake_conn.ref, 100);
+	cs_current_conn = &cs_fake_conn;
+	cs_test_conn_valid_override = true;
+}
+
+/*
+ * Clear fake conn state directly (bypass bt_conn_unref) so ref never reaches
+ * zero and triggers BT stack cleanup on a non-pool object.
+ */
+void atm_cs_test_clear_fake_conn(void)
+{
+	cs_current_conn = NULL;
+	cs_test_conn_valid_override = false;
+}
+
+/*
+ * Return the fake conn with ref=100 and validation bypass enabled.
+ * Used to pass a safe bt_conn * into callbacks that call bt_conn_get_dst.
+ */
+struct bt_conn *atm_cs_test_get_fake_conn(void)
+{
+	/* BT_CONN_TYPE_LE required so bt_conn_get_dst doesn't return NULL */
+	cs_fake_conn.type = BT_CONN_TYPE_LE;
+	atomic_set(&cs_fake_conn.ref, 100);
+	cs_test_conn_valid_override = true;
+	return &cs_fake_conn;
+}
+
+#ifndef CONFIG_ATM_CS_ADV_BT_ID_DEFAULT
+/*
+ * Minimal settings_read_cb that copies cb_arg (a uint8_t *) into data.
+ * Used by atm_cs_test_settings_handle to exercise
+ * atm_cs_settings_storage_handle_set without requiring real NVS data.
+ */
+static int cs_test_read_cb(void *cb_arg, void *data, size_t len)
+{
+	memcpy(data, cb_arg, len);
+	return (int)len;
+}
+
+void atm_cs_test_settings_handle(uint8_t bt_id)
+{
+	atm_cs_settings_storage_handle_set(ATM_CS_KEY_BT_ID, sizeof(bt_id), cs_test_read_cb,
+					   &bt_id);
+}
+#endif /* !CONFIG_ATM_CS_ADV_BT_ID_DEFAULT */
+#endif /* CONFIG_ZTEST */

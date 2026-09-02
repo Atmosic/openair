@@ -18,7 +18,7 @@ manifest:
     path: modules/crypto/micro-ecc
   - name: zephyr
     url: https://github.com/Atmosic/zephyr
-    revision: 60ec8234fb113b281247ed2c69f4d53e6ad7d7b7
+    revision: ac6a632ae3f09465969c8f5f3edce51b5646c310
     west-commands: scripts/west-commands.yml
   - name: cmsis
     url: https://github.com/zephyrproject-rtos/cmsis
@@ -26,6 +26,10 @@ manifest:
     path: modules/hal/cmsis
     groups:
     - hal
+  - name: cmsis-dsp
+    url: https://github.com/zephyrproject-rtos/cmsis-dsp
+    revision: 97512610ec92058f0119450b9e743eeb7e95b5c8
+    path: modules/lib/cmsis-dsp
   - name: cmsis_6
     url: https://github.com/zephyrproject-rtos/CMSIS_6
     revision: 30a859f44ef8ab4dc8f84b03ed586fd16ccf9d74

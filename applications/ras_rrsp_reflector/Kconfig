@@ -18,6 +18,13 @@ config RRSP_ADV_TIMEOUT_CS
 	range 0 360000
 	default 0
 
+config RRSP_SUBRATE_TEST
+	bool "Enable LE connection subrating test"
+	select BT_SUBRATING
+	help
+	  Request new subrating parameters after the CS default settings are
+	  configured and register a callback for subrate changed events.
+
 config BTN_FACTORY_RESET
 	bool "Factory reset with long press button for 10s in power on state"
 	help

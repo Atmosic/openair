@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023-2026, Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_mcp3221_sensor

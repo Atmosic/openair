@@ -7,7 +7,7 @@
  *
  * Copyright (C) Atmosic 2020-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -35,6 +35,17 @@ LOG_MODULE_REGISTER(flash_atm_rram, CONFIG_FLASH_LOG_LEVEL);
 #include "at_wrpr.h"
 #include "rram_rom_prot.h"
 #include "sec_cache.h"
+
+#ifdef CONFIG_SOC_FLASH_ATM_RRAM_USE_DMA
+#include "dma.h"
+// A DMA transfer is not interruptible, so this is only for images that own the
+// core outright. Everything else uses the store loop.
+#define RRAM_MEMCPY(dst, src, len) dma_memcpy(dst, src, len)
+#define RRAM_MEMSET(dst, c, len)   dma_memset(dst, c, len)
+#else
+#define RRAM_MEMCPY(dst, src, len) flash_atm_memcpy_slow_dest(dst, src, len)
+#define RRAM_MEMSET(dst, c, len)   flash_atm_memset_slow_dest(dst, c, len)
+#endif
 
 static int flash_atm_rram_read(struct device const *dev, off_t addr, void *data, size_t len)
 {
@@ -69,7 +80,7 @@ static int flash_atm_rram_write(struct device const *dev, off_t addr, void const
 		return -EIO;
 	}
 
-	flash_atm_memcpy_slow_dest((void *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), data, len);
+	RRAM_MEMCPY((void *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), data, len);
 
 	rram_prot_write_disable(addr, len);
 	ICACHE_FLUSH();
@@ -88,7 +99,7 @@ static int flash_atm_rram_erase(struct device const *dev, off_t addr, size_t siz
 		return -EIO;
 	}
 
-	flash_atm_memset_slow_dest((void *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), 0xff, size);
+	RRAM_MEMSET((void *)(DT_REG_ADDR(SOC_NV_FLASH_NODE) + addr), 0xff, size);
 
 	rram_prot_write_disable(addr, size);
 	ICACHE_FLUSH();

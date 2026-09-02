@@ -280,12 +280,6 @@ static bool rrsp_buttons_configure_irq(const struct gpio_dt_spec btn)
 		LOG_ERR("Failed to configure %s pin %u err:%d", btn.port->name, btn.pin, err);
 		return false;
 	}
-	err = gpio_pin_interrupt_configure_dt(&btn, GPIO_INT_EDGE_BOTH);
-	if (err) {
-		LOG_ERR("Failed to configure interrupt on %s pin %u err:%d", btn.port->name,
-			btn.pin, err);
-		return false;
-	}
 #ifdef CONFIG_BTN_ON_OFF
 	k_work_init_delayable(&rrsp_button_longpress_work, rrsp_button_longpress_handler);
 	atm_socoff_wakeup_gpio_set(true);
@@ -316,6 +310,14 @@ static bool rrsp_buttons_configure_irq(const struct gpio_dt_spec btn)
 	rrsp_button_lock_sleep(true);
 	k_work_reschedule(&rrsp_button_longpress_work, K_MSEC(BTN_LONG_PRESS_MS));
 #endif // CONFIG_BTN_ON_OFF
+
+	err = gpio_pin_interrupt_configure_dt(&btn, GPIO_INT_EDGE_BOTH);
+	if (err) {
+		LOG_ERR("Failed to configure interrupt on %s pin %u err:%d", btn.port->name,
+			btn.pin, err);
+		return false;
+	}
+
 	return true;
 }
 

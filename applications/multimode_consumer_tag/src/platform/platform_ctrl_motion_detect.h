@@ -54,6 +54,35 @@ typedef enum {
  */
 uint8_t platform_ctrl_motion_detect_get_raw_data(motion_raw_unit_t unit);
 
+#if defined(CONFIG_LIS2DH_TRIGGER) || defined(CONFIG_AT_CMD_TAGMOTIONRPT)
+/**
+ * @brief Callback type for motion event notification.
+ *
+ * Registered by the application layer; called by the platform when the
+ * motion sensor interrupt fires (CONFIG_LIS2DH_TRIGGER) or when motion is
+ * injected via AT command (CONFIG_AT_CMD_TAGMOTIONRPT).  Must be safe to
+ * call from work queue context.
+ */
+typedef void (*motion_event_cb_t)(void);
+
+/**
+ * @brief Register a callback invoked on motion trigger events.
+ *
+ * @param cb  Callback to invoke, or NULL to deregister.
+ */
+void platform_ctrl_motion_detect_set_event_cb(motion_event_cb_t cb);
+
+/**
+ * @brief Enable or disable the motion trigger.
+ *
+ * With CONFIG_LIS2DH_TRIGGER: arms/disarms the sensor HW interrupt.
+ * With CONFIG_AT_CMD_TAGMOTIONRPT: arms/disarms the inject() event path.
+ *
+ * @param enable  true to arm the trigger, false to disarm.
+ */
+void platform_ctrl_motion_detect_trigger_enable(bool enable);
+#endif /* CONFIG_LIS2DH_TRIGGER || CONFIG_AT_CMD_TAGMOTIONRPT */
+
 #ifdef CONFIG_AT_CMD_TAGMOTIONRPT
 /**
  * @brief Inject XYZ acceleration from the host sensor.

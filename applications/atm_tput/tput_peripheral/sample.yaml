@@ -13,7 +13,9 @@ common:
     - atm_test_with_spe
     - role_peripheral
 tests:
-  applications.atm_tput.tput_peripheral.atm: {}
+  applications.atm_tput.tput_peripheral.atm:
+    tags:
+      - openair_release
   applications.atm_tput.tput_peripheral.atm.mcuboot.flash_xip:
     tags:
       - mcuboot

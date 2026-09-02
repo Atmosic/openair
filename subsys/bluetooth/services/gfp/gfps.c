@@ -52,11 +52,6 @@ void gfps_handlers_register(gfps_hdlrs_t const *hdlrs)
 		fp_fmdn_key_battery_reg(hdlrs->battery_status_cb);
 	}
 #endif // CONFIG_FAST_PAIR_FMDN_DULT
-#ifdef CONFIG_FMDN_REVERSE_RINGING
-	if (hdlrs->reverse_ringing_action_cb) {
-		fp_fmdn_reverse_ringing_action_reg(hdlrs->reverse_ringing_action_cb);
-	}
-#endif // CONFIG_FMDN_REVERSE_RINGING
 #endif // CONFIG_FAST_PAIR_FMDN
 }
 

@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 identifier: ATMEVK-3430e-YQN-5@mcuboot/ATM34xx-5
 name: ATMEVK-3430e-YQN-5_mcuboot
 type: mcu
@@ -8,6 +12,7 @@ supported:
   - adc
   - atlc
   - bluetooth
+  - brownout_hib
   - ccbm
   - channel_sounding
   - energy_harvesting
@@ -21,7 +26,9 @@ supported:
   - i2c
   - i2c_clock_stretching
   - ieee802154
+  - ir
   - mikrobus
+  - pdm
   - pwm
   - rram
   - sha2_multi_context

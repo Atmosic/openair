@@ -40,6 +40,13 @@ bool platform_ctrl_ota_init(void);
  */
 void platform_ctrl_ota_enter(void);
 
+/**
+ * @brief Check if OTA mode is currently active
+ *
+ * @return true if OTA advertising is active, false otherwise
+ */
+bool platform_ctrl_ota_is_active(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file fp_fmdn_adv.c
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Advertisement Middleware
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -24,6 +28,9 @@
 #ifdef CONFIG_FAST_PAIR_FMDN
 #include "fp_fmdn_gatt.h"
 #include "fp_fmdn_key.h"
+#endif
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+#include "fp_fmdn_persistent_conn.h"
 #endif
 #include "fp_conn.h"
 #include "fp_common.h"
@@ -60,6 +67,13 @@ static struct bt_le_adv_param fmdn_adv_param = {
 		BT_LE_ADV_OPT_CONN,
 	.peer = NULL,
 };
+
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+/* Cached PC adv params. pc_adv_suppress is set for Undetectable (0x04). */
+static bool pc_adv_active;
+static bool pc_adv_suppress;
+static fp_fmdn_pc_adv_param_t pc_adv_param;
+#endif
 
 #define FMDN_UUID_SERVICE 0xFEAA
 typedef struct fmdn_adv_s {
@@ -270,43 +284,60 @@ static bool fp_fmdn_adv_rpa_expired(struct bt_le_ext_adv *adv)
 	}
 
 	/*
-	 * FMDN owns the RPA timeout once provisioned, including during PLR.
-	 * The FHN spec (ID rotation) requires ~1024s average rotation for both
-	 * FHN frames and the corresponding BLE address. Since FMDN drives the
-	 * EID clock, it is the authoritative owner of this timeout.
+	 * Synchronize RPA rotation with EID rotation per FHN spec:
+	 * "FHN advertisement and the corresponding BLE address(es) should
+	 * rotate at the same time."
 	 *
-	 * fp_adv_rpa_expired() only sets the timeout before provisioning, when
-	 * FMDN is not yet active. Once provisioned, it defers here.
+	 * FMDN owns the RPA timeout once provisioned. If the EID clock window
+	 * has not yet advanced (timer fired early, e.g. inherited from FP before
+	 * provisioning), defer RPA rotation to the next EID boundary. Otherwise
+	 * allow both RPA and EID to rotate together.
 	 *
 	 * When sharing BT_ID with Fast Pair (CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR),
-	 * both rpa_expired callbacks fire on the same expiration event. FMDN sets
-	 * the timeout and FP skips it, ensuring exactly one HCI command is issued
-	 * with a single consistent random value from fp_mode_rpa_timeout().
+	 * both rpa_expired callbacks fire on the same event. FMDN sets the timeout
+	 * and FP skips it, ensuring exactly one HCI command is issued.
 	 */
-	uint16_t next_timeout = fp_mode_rpa_timeout();
-	int err = bt_le_set_rpa_timeout(next_timeout);
+	bool eid_needs_rotate = fp_fmdn_key_eid_needs_rotate();
+	uint16_t next_timeout;
+	int err;
+
+	if (eid_needs_rotate) {
+		next_timeout = fp_mode_rpa_timeout();
+
+		if (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) {
+			static int64_t last_utp_rotation;
+			int64_t current_time = k_uptime_get();
+			if (current_time - last_utp_rotation < (SEC_PER_DAY * MSEC_PER_SEC)) {
+				LOG_DBG("FMDN: UTP_MODE enabled, skip rotate the current RPA "
+					"(24h not elapsed)");
+				rpa_expired = false;
+			} else {
+				LOG_DBG("FMDN: UTP_MODE enabled, allowing RPA rotation after 24h");
+				last_utp_rotation = current_time;
+			}
+		}
+	} else {
+		uint32_t secs_remaining = fp_fmdn_key_secs_until_eid_rotate();
+
+		/* Add 1s margin to ensure we land past the EID boundary.
+		 * The actual rotation randomization is applied by fp_mode_rpa_timeout()
+		 * when EID is ready on the next fire.
+		 */
+		next_timeout = (uint16_t)MIN(secs_remaining + 1U, 3600U);
+		LOG_DBG("FMDN: EID not due, deferring RPA rotation by %u [s]", next_timeout);
+		rpa_expired = false;
+	}
+
+	err = bt_le_set_rpa_timeout(next_timeout);
 	if (err) {
 		LOG_ERR("FMDN: bt_le_set_rpa_timeout failed: %d for %u [s]", err, next_timeout);
 	} else {
 		LOG_DBG("FMDN: setting RPA timeout to %u [s]", next_timeout);
 	}
 
-	if (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) {
-		static int64_t last_utp_rotation;
-		int64_t current_time = k_uptime_get();
-		if (current_time - last_utp_rotation < (SEC_PER_DAY * MSEC_PER_SEC)) {
-			LOG_DBG("FMDN: UTP_MODE enabled, skip rotate the current RPA "
-			"(24h not elapsed)");
-			rpa_expired = false;
-		} else {
-			LOG_DBG("FMDN: UTP_MODE enabled, allowing RPA rotation after 24h");
-			last_utp_rotation = current_time;
-		}
-	}
-
 	LOG_DBG("FMDN: update adv payload");
 
-	if (fp_fmdn_adv_set_payload(true)) {
+	if (fp_fmdn_adv_set_payload(eid_needs_rotate)) {
 		LOG_ERR("Failed to refresh FMDN advertising payload");
 	}
 
@@ -336,6 +367,18 @@ static void fp_fmdn_adv_stop(void)
 static void fp_fmdn_adv_start(void)
 {
 	int err;
+
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+	/* Undetectable (0x04): no advertisements. */
+	if (pc_adv_suppress) {
+		LOG_INF("FMDN: Persistent Undetectable - no advertisements");
+		if (fmdn_adv_set) {
+			fp_fmdn_adv_stop();
+		}
+		return;
+	}
+#endif
+
 	if (!fmdn_adv_set) {
 		fmdn_adv_param.id = fp_conn_get_bt_id(FP_FMDN_ADV_BT_ID);
 		LOG_INF("%s advertising on BT_ID %u",
@@ -363,32 +406,61 @@ static void fp_fmdn_adv_start(void)
 		fmdn_adv_param.interval_min = FMDN_ADV_NONDISCOVER_INT_MIN;
 		fmdn_adv_param.interval_max = FMDN_ADV_NONDISCOVER_INT_MAX;
 #endif
-
 		/* Reset options to base state before setting mode-specific flags */
 		fmdn_adv_param.options = BT_LE_ADV_OPT_CONN;
 
-		if (fp_fmdn_use_merged_adv()) {
-			/* Merged advertising: Extended + Connectable (no scannable) */
-			fmdn_adv_param.options |= BT_LE_ADV_OPT_EXT_ADV;
-		} else {
-#ifdef CONFIG_FMDN_ECC_SECP256R1
-			/* Non-merged with SECP256R1: Extended + Connectable */
-			fmdn_adv_param.options |= BT_LE_ADV_OPT_EXT_ADV;
-#else
-			/* Non-merged without SECP256R1: Legacy connectable advertising */
-			/* BT_LE_ADV_OPT_EXT_ADV not set */
-#endif
+		bool use_ext_adv =
+			fp_fmdn_use_merged_adv() || IS_ENABLED(CONFIG_FMDN_ECC_SECP256R1);
+
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+		/* PC overrides default/PLR interval while active. */
+		if (pc_adv_active && pc_adv_param.interval_ms) {
+			uint32_t pc_int_ms = pc_adv_param.interval_ms;
+			uint32_t int_min_ms = (pc_int_ms > FMDN_ADV_INTERVAL_RANGE_MS)
+						      ? (pc_int_ms - FMDN_ADV_INTERVAL_RANGE_MS)
+						      : pc_int_ms;
+			fmdn_adv_param.interval_min = BT_GAP_MS_TO_ADV_INTERVAL(int_min_ms);
+			fmdn_adv_param.interval_max = BT_GAP_MS_TO_ADV_INTERVAL(pc_int_ms);
+			LOG_INF("FMDN: Persistent connection adv interval %ums", pc_int_ms);
+			/* When adv interval > 10.24s (0x4000), use EXT_ADV */
+			use_ext_adv = use_ext_adv ||
+				      (fmdn_adv_param.interval_max > BT_LE_ADV_INTERVAL_MAX);
 		}
+#endif
+		if (use_ext_adv) {
+			fmdn_adv_param.options |= BT_LE_ADV_OPT_EXT_ADV;
+		}
+
+#ifdef CONFIG_FMDN_CS_EXT_ADV_NO_2M
+		/* Force the EXT_ADV secondary channel to 1M PHY. Without this,
+		 * the default 2M secondary channel competes with the ACL PHY
+		 * update (1M->2M), leaving phyTxPower[2M] UNMANAGED in the
+		 * controller and causing CS Procedure Enable to fail with HCI
+		 * error 0x20 (Unsupported LL Parameter Value).
+		 */
+		if (fmdn_adv_param.options & BT_LE_ADV_OPT_EXT_ADV) {
+			fmdn_adv_param.options |= BT_LE_ADV_OPT_NO_2M;
+		}
+#endif /* CONFIG_FMDN_CS_EXT_ADV_NO_2M */
+
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+		/* Detectable (0x03): non-connectable. */
+		if (pc_adv_active && !pc_adv_param.connectable) {
+			fmdn_adv_param.options &= ~BT_LE_ADV_OPT_CONN;
+			LOG_INF("FMDN: Persistent Detectable - non-connectable advertisements");
+		}
+#endif
 
 		/* Set RPA timeout */
 		uint16_t rpa_timeout = fp_mode_rpa_timeout();
-		int err = bt_le_set_rpa_timeout(rpa_timeout);
+		err = bt_le_set_rpa_timeout(rpa_timeout);
 		if (err) {
 			LOG_ERR("FMDN create ADV set_rpa_timeout failed: %d for %u [s]", err,
 				rpa_timeout);
 		} else {
 			LOG_DBG("FMDN create ADV: setting RPA timeout to %u [s]", rpa_timeout);
 		}
+		bt_le_adv_param_set_tx_power(&fmdn_adv_param, CONFIG_FMDN_ADV_TX_POWER_DBM);
 		err = bt_le_ext_adv_create(&fmdn_adv_param, &adv_cb, &fmdn_adv_set);
 		if (err) {
 			LOG_ERR("Failed to create advertising set (err %d)", err);
@@ -432,4 +504,57 @@ void fp_fmdn_adv_recreate(bool force_stop, bool stop_only)
 	if (fp_mode_is_provisioned() && !stop_only) {
 		atm_work_submit_to_app_work_q(&fp_fmdn_adv_start_action);
 	}
+}
+
+#ifdef CONFIG_FMDN_PERSISTENT_CONNECTION
+/* Deferred recreate from the PC callback. */
+static void fp_fmdn_adv_pc_recreate_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	fp_fmdn_adv_recreate(true, false);
+}
+K_WORK_DEFINE(fp_fmdn_adv_pc_recreate_action, fp_fmdn_adv_pc_recreate_handler);
+
+void fp_fmdn_adv_pc_state_cb(bool is_active, uint8_t conn_type)
+{
+	if (is_active) {
+		int err = fp_fmdn_persistent_conn_get_adv_param(conn_type, &pc_adv_param);
+		if (err) {
+			LOG_WRN("FMDN: PC adv param lookup failed (type=0x%02x): %d", conn_type,
+				err);
+			pc_adv_active = false;
+			pc_adv_suppress = false;
+			return;
+		}
+		/* Undetectable (0x04): interval_ms == 0 means no adv. */
+		pc_adv_suppress = (pc_adv_param.interval_ms == 0);
+		pc_adv_active = !pc_adv_suppress;
+		LOG_INF("FMDN: PC state cb active type=0x%02x interval=%ums connectable=%d "
+			"suppress=%d",
+			conn_type, pc_adv_param.interval_ms, pc_adv_param.connectable,
+			pc_adv_suppress);
+	} else {
+		pc_adv_active = false;
+		pc_adv_suppress = false;
+		LOG_INF("FMDN: PC state cb inactive - restoring default adv");
+	}
+
+	atm_work_submit_to_app_work_q(&fp_fmdn_adv_pc_recreate_action);
+}
+#endif /* CONFIG_FMDN_PERSISTENT_CONNECTION */
+
+int fp_fmdn_adv_get_adv_set_addr(bt_addr_le_t *addr)
+{
+	if (!fmdn_adv_set) {
+		LOG_ERR("FMDN adv set not created");
+		return -ENODEV;
+	}
+	struct bt_le_ext_adv_info info;
+	int err = bt_le_ext_adv_get_info(fmdn_adv_set, &info);
+	if (err) {
+		LOG_ERR("Failed to get FMDN adv set info (err %d)", err);
+		return err;
+	}
+	bt_addr_le_copy(addr, info.addr);
+	return 0;
 }

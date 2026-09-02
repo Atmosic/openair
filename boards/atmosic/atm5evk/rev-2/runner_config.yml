@@ -1,0 +1,6 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+openocd_config: "ZEPHYR_BASE/../openair/modules/hal_atmosic/ATM5xxx/rev-2/openocd/atm5_openocd.cfg"
+otp_script: "ZEPHYR_BASE/../openair/tools/scripts/atm_otp/ATM5xxx/atm_otp.py"

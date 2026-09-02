@@ -14,8 +14,13 @@ tests:
   tests.drivers.batt_model.atm.dry:
     extra_configs:
       - CONFIG_BATT_MODEL_DRY=y
-  tests.drivers.batt_model.atm.hsc_liion:
+  tests.drivers.batt_model.atm.hsc_liion.gcov:
+    tags:
+      - gcov
     depends_on:
+      - gcov_capable
       - energy_harvesting
+    timeout: 180
     extra_configs:
       - CONFIG_BATT_MODEL_HSC_LIION=y
+      - CONFIG_UU_TEST_OPENAIR="batt_model_hsc_liion.c"

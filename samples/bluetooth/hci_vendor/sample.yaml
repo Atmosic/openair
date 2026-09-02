@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 sample:
   description: Atmosic HCI vendor sample
   name: Atmosic HCI vendor sample
@@ -15,11 +19,19 @@ common:
     - CONFIG_BT_SETTINGS=y
 tests:
   samples.bluetooth.hci_vendor.atm.pd50:
+    tags:
+      - openair_release
     extra_configs:
       - CONFIG_ATMWSTK_PD50=y
   samples.bluetooth.hci_vendor.atm: &base_config
+    tags:
+      - openair_release
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.hci_vendor.atm.rx_dc_cal:
+    <<: *base_config
+    extra_configs:
+      - CONFIG_ATM_HCI_RESET_RX_DC_CAL=y
   samples.bluetooth.hci_vendor.atm.gcov:
     <<: *base_config
     tags:
@@ -80,3 +92,37 @@ tests:
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.hci_vendor.atm.pytest_psm:
+    tags:
+      - bluetooth
+      - psm
+    harness: pytest
+    timeout: 300
+    harness_config:
+      pytest_root: ["pytest/test_hci_vendor_psm.py"]
+      pytest_dut_scope: class
+      pytest_args:
+        - "-v"
+        - "-k"
+        - "not test_psm_hibernate"
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+      - EXTRA_DTC_OVERLAY_FILE=system_level_test.overlay
+      - OVERLAY_CONFIG=system_level_test.conf
+  samples.bluetooth.hci_vendor.atm.pytest_psm_hibernate:
+    tags:
+      - bluetooth
+      - psm
+    harness: pytest
+    timeout: 120
+    harness_config:
+      pytest_root: ["pytest/test_hci_vendor_psm.py"]
+      pytest_dut_scope: class
+      pytest_args:
+        - "-v"
+        - "-k"
+        - "test_psm_hibernate"
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+      - EXTRA_DTC_OVERLAY_FILE=system_level_test.overlay
+      - OVERLAY_CONFIG=system_level_test.conf

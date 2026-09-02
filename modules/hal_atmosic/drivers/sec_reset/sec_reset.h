@@ -25,7 +25,8 @@
 extern "C" {
 #endif
 
-#if (defined(MCUBOOT) || defined(CONFIG_MCUBOOT))
+#if (defined(MCUBOOT) || defined(CONFIG_MCUBOOT) || \
+    defined(CONFIG_ATM_SEC_RESET_FULL_API_TEST))
 
 typedef enum {
     SECURE_RESET_TYPE_UNKNOWN,
@@ -52,14 +53,16 @@ uint32_t secure_reset_get_syndrome(void);
  */
 secure_reset_type secure_reset_get_type(void);
 
-#else
+#endif
+
+#if !defined(MCUBOOT) && !defined(CONFIG_MCUBOOT)
 /**
  * @brief Read and clear reset syndrome
  * @return Reset syndrome value
  *
  */
 uint32_t secure_rclr_reset_syndrome(void);
-#endif // MCUBOOT
+#endif
 
 #ifdef __cplusplus
 }

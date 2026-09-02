@@ -6,6 +6,8 @@ common:
     - role_central
 tests:
   samples.bluetooth.central_hr.atm:
+    tags:
+      - openair_release
     sysbuild: true
     harness: console
     harness_config:

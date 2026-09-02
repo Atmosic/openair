@@ -90,6 +90,13 @@ static bool brwnout_disabled;
 static sw_event_id_t brwnout_event_id;
 #endif
 
+#ifdef CONFIG_BROWNOUT_IMMEDIATELY
+#define BROWNOUT_RAMFUNC __ramfunc
+#else
+#define BROWNOUT_RAMFUNC
+#endif
+
+BROWNOUT_RAMFUNC
 static void brwnout_plf_off(void)
 {
     // Increase VBAT brownout threshold for hysteresis
@@ -100,11 +107,13 @@ static void brwnout_plf_off(void)
     pmu_set_good2start_thr_vstore(GOODTOSTART_THR_BRWNOUT);
 #endif
 
+#ifndef CONFIG_BROWNOUT_IMMEDIATELY
     uint32_t pmu_status;
     WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
 	pmu_status = CMSDK_PSEQ->PMU_STATUS;
     } WRPR_CTRL_POP();
     DEBUG_TRACE("pmu stat: %#" PRIx32, pmu_status);
+#endif
 
 #ifndef CONFIG_SOC_FAMILY_ATM
     pmu_set_socoff_energy_wakeup(true);
@@ -122,8 +131,14 @@ static void brwnout_plf_off(void)
     pseq_soc_off(WAKEUP_DURATION);
 #else // CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_PM
+    WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+    {
+	// Set bit in PERSISTENT7 to recognize as a falling brownout wakeup
+	CMSDK_PSEQ->PERSISTENT7 |= PSEQ_PERSISTENT7_BROWNOUT_FALLING;
+    }
+    WRPR_CTRL_POP();
     brwnout_set_trigger(2);
-    atm_pseq_hibernate(IDLE_FOREVER);
+    atm_pseq_hibernate(0, ATM_PD_URGENCY_URGENT);
 #else
     STATIC_ASSERT(false, "CONFIG_PM needs to be set for brownout support");
 #endif
@@ -138,7 +153,7 @@ static void brwnout_plf_off_async(sw_event_id_t event_id,
     sw_event_clear(brwnout_event_id);
     brwnout_plf_off();
 }
-#else
+#elif !defined(CONFIG_BROWNOUT_IMMEDIATELY)
 static void brwnout_plf_off_async(struct k_work *work)
 {
     brwnout_plf_off();
@@ -153,6 +168,7 @@ K_WORK_DEFINE(brwnout_event, brwnout_plf_off_async);
  * Called by central PMU_Handler() in pmu.c when brownout interrupt fires.
  * The interrupt source is cleared in pmu_isr_source() before this is called.
  */
+BROWNOUT_RAMFUNC
 void brwnout_pmu_handler(void)
 {
     if (brwnout_disabled) {
@@ -162,9 +178,12 @@ void brwnout_pmu_handler(void)
 #ifndef CONFIG_SOC_FAMILY_ATM
     // Allow any interrupted operation to finish before hibernation
     sw_event_set(brwnout_event_id);
+#elif defined(CONFIG_BROWNOUT_IMMEDIATELY)
+    // Trigger the power-off sequence immediately in interrupt context
+    brwnout_plf_off();
 #else
     k_work_submit(&brwnout_event);
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 }
 
 static void brwnout_set_thresholds(void)

@@ -32,7 +32,7 @@ extern "C" {
 #define ADV_RINGING_INTERVAL_MS 30
 
 /// Action nonce length in bytes
-#define ADV_RINGING_NONCE_LEN 1
+#define ADV_RINGING_NONCE_LEN 2
 
 /// HMAC-SHA256 signature length (first 8 bytes of full 32-byte digest)
 #define ADV_RINGING_SIGNATURE_LEN 8
@@ -45,7 +45,7 @@ extern "C" {
 /// Advertisement-based ringing state
 typedef struct {
 	bool active;            ///< Whether advertisement-based ringing is active
-	uint8_t current_nonce;  ///< Current action nonce (incremented per request)
+	uint16_t current_nonce; ///< Current action nonce (incremented per request)
 	uint64_t start_time_ms; ///< Start time of advertisement in milliseconds
 } fp_fmdn_reverse_ringing_adv_state_t;
 

@@ -1,13 +1,7 @@
-/**
- *******************************************************************************
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
- * @file ble_dtm.h
- *
- * @brief This file contains the Bluetooth LE DTM (Direct Test Mode) definitions
- *
- * Copyright (C) Atmosic 2025-2026
- *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #pragma once
@@ -46,6 +40,11 @@ extern "C" {
 #define DTM_CTRL_READ_TEST_FEAT 0x04 // read test features
 #define DTM_CTRL_READ_PDU_SUPP  0x05 // read PDU RX/TX supported values
 #define DTM_CTRL_SET_TX_PWR_LVL 0x09 // set transmitter power level
+// 0x06-0x08: standard CTE (Constant Tone Extension) controls
+// 0x0A-0x3F: Reserved for future use by spec
+#ifdef CONFIG_DTM_2WIRE_RESET_RX_DC_CAL
+#define DTM_CTRL_BYPASS_RX_DC_CAL 0x3F // used as vendor-specific: bypass RX DC offset cal on reset
+#endif
 
 // in the 4.2 and 5.0 spec, the param field starts at bit 2 (0..1 are don't
 // cares) but in 5.1, they reclaimed bits 0..1 but kept the param values shifted

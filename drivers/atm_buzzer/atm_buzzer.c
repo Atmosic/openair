@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025-2026, Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <errno.h>
@@ -67,12 +67,12 @@ static bool atm_buzzer_cal_hi_lo_duration(const struct device *dev, uint32_t fre
 
 static bool atm_buzzer_check_valid(const struct device *dev)
 {
-	const struct atm_buzzer_config *config = dev->config;
-
 	if (!dev) {
 		LOG_ERR("device is NULL");
 		return false;
 	}
+
+	const struct atm_buzzer_config *config = dev->config;
 
 	if (!device_is_ready(config->pwm_dt.dev)) {
 		LOG_ERR("PWM device not ready");

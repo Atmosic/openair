@@ -159,6 +159,22 @@ static volatile uint32_t m_testcase_index __attribute__((section(".noinit.test_w
  */
 static volatile uint32_t m_testvalue __attribute__((section(".noinit.test_wdt")));
 
+#ifdef CONFIG_COVERAGE
+static volatile uint32_t m_coverage_callback_count;
+static volatile bool m_coverage_arm_callback_seen;
+static uint32_t m_coverage_arm_callback_deadline;
+
+static void wdt_int_coverage_cb(const struct device *wdt_dev, int channel_id)
+{
+	ARG_UNUSED(wdt_dev);
+	ARG_UNUSED(channel_id);
+	m_coverage_callback_count++;
+	if ((int32_t)(k_uptime_get_32() - m_coverage_arm_callback_deadline) >= 0) {
+		m_coverage_arm_callback_seen = true;
+	}
+}
+#endif
+
 static void wdt_int_cb0(const struct device *wdt_dev, int channel_id)
 {
 	ARG_UNUSED(wdt_dev);
@@ -719,6 +735,78 @@ static bool test_wdt_pmu_reset_socoff(void)
 }
 #endif /* CONFIG_ATM_PMU_WDT_ENABLE */
 
+#ifdef CONFIG_COVERAGE
+/**
+ * @brief Exercise the unified watchdog API without reset for gcov.
+ *
+ * This test runs all API checks in one boot with WDT_FLAG_RESET_NONE.
+ */
+static bool test_wdt_coverage_api(void)
+{
+	const struct device *const wdt = DEVICE_DT_GET(WDT_NODE);
+	struct wdt_timeout_cfg invalid_cfg = {
+		.callback = NULL,
+		.flags = WDT_FLAG_RESET_NONE,
+		.window.max = 0U,
+	};
+	struct wdt_timeout_cfg cfg_wdt = {
+		.callback = wdt_int_coverage_cb,
+		.flags = WDT_FLAG_RESET_NONE,
+		.window.max = 7000U,
+	};
+	int err;
+
+	zassert_true(device_is_ready(wdt), "WDT device is not ready");
+
+	err = wdt_disable(wdt);
+	zassert_equal(err, -EFAULT, "Unexpected disable result: %d", err);
+	err = wdt_feed(wdt, 0);
+	zassert_equal(err, -EAGAIN, "Unexpected feed result: %d", err);
+
+	err = wdt_install_timeout(wdt, &invalid_cfg);
+	zassert_equal(err, -EINVAL, "Invalid timeout result: %d", err);
+
+	m_coverage_callback_count = 0U;
+	err = wdt_install_timeout(wdt, &cfg_wdt);
+	zassert_true(err >= 0, "Watchdog install error: %d", err);
+
+	err = wdt_setup(wdt, 0);
+	zassert_true(err >= 0, "Watchdog setup error: %d", err);
+
+	err = wdt_setup(wdt, 0);
+	zassert_equal(err, -EBUSY, "Unexpected second setup result: %d", err);
+
+	err = wdt_feed(wdt, 0);
+	zassert_true(!err, "Watchdog feed error: %d", err);
+	m_coverage_callback_count = 0U;
+	m_coverage_arm_callback_seen = false;
+	m_coverage_arm_callback_deadline = k_uptime_get_32() + cfg_wdt.window.max - 500U;
+
+#ifdef CONFIG_ATM_PMU_WDT_ENABLE
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+
+	/* Wait for the PMU warning and ARM watchdog callbacks. */
+	for (uint32_t i = 0U; i < 24U && !m_coverage_arm_callback_seen; i++) {
+		k_sleep(K_MSEC(500));
+	}
+
+#ifdef CONFIG_ATM_PMU_WDT_ENABLE
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+
+	zassert_true(m_coverage_arm_callback_seen, "ARM watchdog callback did not fire");
+	zassert_true(m_coverage_callback_count > 0U, "Watchdog callback was not invoked");
+
+	err = wdt_disable(wdt);
+	zassert_true(!err, "Watchdog disable error: %d", err);
+	err = wdt_disable(wdt);
+	zassert_equal(err, -EFAULT, "Unexpected second disable result: %d", err);
+
+	return true;
+}
+#endif /* CONFIG_COVERAGE */
+
 /**
  * @brief Main watchdog test orchestrator - handles test sequencing across resets
  *
@@ -893,5 +981,12 @@ ZTEST(wdt_unified_api_test_suite, test_wdt_cycle)
 
 	zassert_true(test_passed, "Watchdog test %" PRIu32 " should pass", m_testcase_index);
 }
+
+#ifdef CONFIG_COVERAGE
+ZTEST(wdt_unified_api_test_suite, test_wdt_coverage_api)
+{
+	zassert_true(test_wdt_coverage_api(), "Coverage watchdog test should pass");
+}
+#endif /* CONFIG_COVERAGE */
 
 ZTEST_SUITE(wdt_unified_api_test_suite, NULL, NULL, NULL, NULL, NULL);

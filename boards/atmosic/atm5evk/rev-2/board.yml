@@ -1,0 +1,5 @@
+boards:
+- extend: ATMEVK-5205-NQK-2
+- extend: ATMEVK-5305-NBV-2
+- extend: ATMEVK-5305-NQK-2
+- extend: ATMEVK-5305e-NQN-2

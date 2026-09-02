@@ -64,24 +64,21 @@ typedef struct {
 /// These events inform the application about the status of the phone (Seeker) ringing,
 /// NOT about the tag ringing (the tag doesn't ring in reverse ringing!)
 typedef enum {
-	RR_EVENT_RR_ADV_CONNECTED,           ///< Encryption enabled on adv-based connection
+	RR_EVENT_PHONE_FAILED,           ///< Phone failed to start ringing (STATE 0x01)
+	RR_EVENT_PHONE_STARTED,          ///< Phone confirmed ringing started (STATE 0x00)
+	RR_EVENT_PHONE_STOPPED_PROVIDER, ///< Phone stopped ringing, tag requested (STATE 0x04)
+	RR_EVENT_PHONE_STOPPED_TIMEOUT,  ///< Phone stopped ringing, timeout (STATE 0x02)
+	RR_EVENT_PHONE_STOPPED_USER,     ///< Phone stopped ringing, user dismissed (STATE 0x03)
+	RR_EVENT_RR_ADV_CONNECTED,       ///< Encryption enabled on adv-based connection
+	RR_EVENT_RR_ADV_STARTED,         ///< Advertisement started for adv-based ringing
+	RR_EVENT_RR_ADV_START_FAILED,    ///< Advertisement failed to start for adv-based ringing
+	RR_EVENT_RR_ADV_TIMEOUT,         ///< ADV window expired with no Seeker connection (15-20s)
+	RR_EVENT_TIMEOUT_LOCAL,          ///< Provider 60s timeout; ADV path, no stop WRITE received
+	RR_EVENT_PHONE_START_TIMEOUT,    ///< Provider 60s timeout; persistent path after START ACK
 	RR_EVENT_START_INDICATION_CONFIRMED, ///< START indication ACKed on persistent connection
 	RR_EVENT_STOP_INDICATION_CONFIRMED,  ///< STOP indication ACKed on persistent connection
-	RR_EVENT_PHONE_STARTED, ///< Phone confirmed it started ringing (STATE 0x00 received)
-	RR_EVENT_PHONE_FAILED,  ///< Phone failed to start ringing (STATE 0x01 received)
-	RR_EVENT_PHONE_STOPPED_TIMEOUT,  ///< Phone stopped ringing due to timeout (STATE 0x02
-					 ///< received)
-	RR_EVENT_PHONE_STOPPED_USER,     ///< Phone stopped ringing - user dismissed (STATE 0x03
-					 ///< received)
-	RR_EVENT_PHONE_STOPPED_PROVIDER, ///< Phone stopped ringing - tag requested (STATE 0x04
-					 ///< received)
-	RR_EVENT_TIMEOUT_LOCAL,          ///< Tag's local timeout expired (stop tracking)
+	RR_EVENT_PHONE_STOPPED_DISCONNECTED, ///< Connection dropped while phone was ringing
 } fp_fmdn_reverse_ringing_event_t;
-
-/// Callback function for reverse ringing action
-/// This callback is invoked when reverse ringing starts or stops
-/// @param action true=start ringing, false=stop ringing
-typedef void (*fp_fmdn_reverse_ringing_action_cb)(bool action);
 
 /// Callback function for reverse ringing events
 /// This callback informs the application about phone ringing status, NOT tag ringing!
@@ -94,14 +91,6 @@ int fp_fmdn_reverse_ringing_init(void);
 
 /// Deinitialize reverse ringing module
 void fp_fmdn_reverse_ringing_deinit(void);
-
-/// Register reverse ringing action callback
-/// @param hdlr Callback function to handle ringing actions
-/// @note This should be called before or during initialization to register the application's
-///       ringing action handler. The callback will be invoked when a reverse ringing request
-///       is received via GATT (Data ID 0x12).
-__NONNULL_ALL
-void fp_fmdn_reverse_ringing_action_reg(fp_fmdn_reverse_ringing_action_cb const hdlr);
 
 /// Handle reverse ringing configuration request (Data ID 0x11)
 /// @param conn BLE connection
@@ -120,6 +109,14 @@ int fp_fmdn_reverse_ringing_state_update(struct bt_conn *conn, uint8_t state);
 /// Get current reverse ringing state
 /// @return Pointer to reverse ringing state
 const fp_fmdn_reverse_ringing_state_t *fp_fmdn_reverse_ringing_get_state(void);
+
+/// Check whether reverse ringing is enabled (configured by Seeker)
+/// @return true if enabled
+bool fp_fmdn_is_reverse_ringing_enabled(void);
+
+/// Check whether reverse ringing is currently active (phone is ringing)
+/// @return true if ringing is in progress
+bool fp_fmdn_is_reverse_ringing_started(void);
 
 /// Handle connection disconnection
 /// @param conn BLE connection

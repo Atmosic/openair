@@ -8,21 +8,31 @@
 @brief West extension for managing OTP
 """
 
+import argparse
+import importlib.util
 import binascii
-import tempfile
-from textwrap import dedent
-
-from west.commands import WestCommand, Verbosity
 import os
 import sys
+import tempfile
+from textwrap import dedent
 
 sys.path.append(
     os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools", "scripts"
     )
 )
-from atm_otp.atm_otp import Atmx3_OTPArray, Atm34_OTPArray
+sys.path.append(
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "tools",
+        "scripts",
+        "atm_otp",
+    )
+)
 import atm_openocd
+import atm_otp_base
+
+from west.commands import WestCommand, Verbosity
 
 from atm_west_utils import wrap_color, TermColors
 
@@ -42,6 +52,7 @@ class AtmOtpCommand(WestCommand):
             ),
         )
         self.atm_otp = None
+        self.OTParray = None
 
     def create_default_subparser(self, subparsers, subcmd_str, help_str):
         """adds subparser with default arguments.
@@ -51,7 +62,9 @@ class AtmOtpCommand(WestCommand):
             subcmd_str (str): name of sub command
             help_str (str): help string
         """
-        s_parser = subparsers.add_parser(subcmd_str, help=help_str)
+        s_parser = subparsers.add_parser(
+            subcmd_str, help=help_str, formatter_class=argparse.RawTextHelpFormatter
+        )
         s_parser.add_argument(
             "--jlink", required=False, action="store_true", help="if using JLINK"
         )
@@ -91,11 +104,17 @@ class AtmOtpCommand(WestCommand):
         )
 
         burn_parser = self.create_default_subparser(
-            subparsers, "burn", "Burns a single OTP bit"
+            subparsers, "burn", "Burns OTP bit(s)"
         )
         burn_parser.add_argument(
             "--otp",
-            help="OTP Bit to burn, can either be either absolute index (e.g. 23) or <NAME>.<IDX> or <NAME>.<SUB_NAME>",
+            help=dedent(
+                """\
+                OTP to burn. Supported formats:
+                  Single bit: absolute index (e.g. 23), <NAME>.<IDX>, or <NAME>.<SUB_NAME>
+                  Group value: <NAME>=<VALUE> (VALUE may be decimal, hex (0x...), or binary (0b...))
+                """
+            ),
         )
 
         get_parser = self.create_default_subparser(
@@ -148,11 +167,85 @@ class AtmOtpCommand(WestCommand):
         """
         self.pull_otp()
         otpArray = self.OTParray(self.atm_otp)
+
+        # Group-value mode: NAME=VALUE
+        if "=" in args.otp:
+            name, value_str = args.otp.split("=", 1)
+            otp = otpArray.get_otp_group_by_name(name)
+            try:
+                new_value = int(value_str, 0)
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"Invalid value '{value_str}'. Use decimal, hex (0x...), or binary (0b...)."
+                ) from exc
+            max_value = (1 << otp.size) - 1
+            if new_value < 0 or new_value > max_value:
+                raise RuntimeError(
+                    f"Value {hex(new_value)} out of range for {otp.name} "
+                    f"(size={otp.size} bits, max={hex(max_value)})"
+                )
+            # Bits that are currently 1 but would need to become 0 — impossible
+            conflict = otp.value & (~new_value & max_value)
+            if conflict:
+                raise RuntimeError(
+                    f"Cannot burn {otp.name}={hex(new_value)}: "
+                    f"bits {[i for i in range(otp.size) if conflict >> i & 1]} "
+                    f"are already burned to 1 and cannot be cleared."
+                )
+            # Compute new full 64-bit OTP word (OR in the group bits)
+            mask = max_value << otp.idx
+            new_full_value = (otpArray.value & ~mask) | (new_value << otp.idx)
+            if new_full_value == otpArray.value:
+                print(f"{otp.name} already equals {hex(new_value)}. Nothing to burn.")
+                return
+
+            print(
+                wrap_color(
+                    "WARNING: This is an irreversible process. "
+                    "Once burned, OTP bits cannot be reversed",
+                    TermColors.RED,
+                )
+            )
+            print(
+                wrap_color(
+                    f"Current value of {otp.name}: {hex(otp.value)}", TermColors.RED
+                )
+            )
+            print(
+                wrap_color(f"New value of {otp.name}: {hex(new_value)}", TermColors.RED)
+            )
+            print(
+                wrap_color(
+                    f"Full OTP word (current): {hex(otpArray.value)}", TermColors.RED
+                )
+            )
+            print(
+                wrap_color(
+                    f"Full OTP word (new):     {hex(new_full_value)}", TermColors.RED
+                )
+            )
+            print(
+                f"Are you sure you want to burn {otp.name}={hex(new_value)}? (yes/no)"
+            )
+            answer = input()
+            if answer.lower() == "no":
+                return
+            if answer.lower() != "yes":
+                print("Please enter yes or no.")
+                return
+            cmd_ret, _, stderr = self.openocd.execute_cmd(
+                [f"otp_burn {new_full_value}"]
+            )
+            if cmd_ret != 0:
+                print(f"{stderr}")
+            return
+
+        # Single-bit mode: absolute index, NAME.IDX, or NAME.SUB_NAME
         otp, idx = otpArray.get_otp_group_and_idx(args.otp)
         if idx is None:
             raise RuntimeError(
-                "Can only burn single bits at a time. Cannot burn an entire multi-bit OTP config. "
-                "Please use <NAME>.<IDX> to burn a single bit"
+                "Please use <NAME>.<IDX> to burn a single bit, "
+                "or <NAME>=<VALUE> to burn a group value."
             )
         curr_val = otp.get_idx(idx)
         if curr_val == 1:
@@ -160,7 +253,8 @@ class AtmOtpCommand(WestCommand):
 
         print(
             wrap_color(
-                "WARNING: This is an irreversible process. Once burned, OTP bits cannot be reversed",
+                "WARNING: This is an irreversible process. "
+                "Once burned, OTP bits cannot be reversed",
                 TermColors.RED,
             )
         )
@@ -203,10 +297,22 @@ class AtmOtpCommand(WestCommand):
     def do_run(self, args, unknown_args):
         self.board = args.board
 
-        if "33" in self.board:
-            self.OTParray = Atmx3_OTPArray
-        elif "34" in self.board:
-            self.OTParray = Atm34_OTPArray
+        atm_otp_file = atm_otp_base.get_atm_otp_script_from_board(self.board)
+        if atm_otp_file is not None:
+            if atm_otp_file.exists():
+                spec = importlib.util.spec_from_file_location(
+                    "atm_otp_module", atm_otp_file
+                )
+                otp_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(otp_module)
+                get_otp_array = getattr(otp_module, "get_otp_array", None)
+            else:
+                get_otp_array = None
+        else:
+            get_otp_array = None
+
+        if callable(get_otp_array) and (otp_array := get_otp_array(self.board)):
+            self.OTParray = otp_array
         else:
             raise RuntimeError("Unsupported platform")
 

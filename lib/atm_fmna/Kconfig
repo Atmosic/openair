@@ -1,9 +1,10 @@
 # Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ATM_FMNA
 	bool "Atmosic Apple FindMy Network service"
+	select ATM_DULT
 
 config HEAP_MEM_POOL_ADD_SIZE_ATM_FMNA
 	int "Heap memory pool size for FMNA service"
@@ -37,6 +38,15 @@ config ATM_FMNA_LIB_DEBUG
 	bool "Atmosic FMNA static library enable debug log"
 	default y if ATM_FMNA_LIB
 	depends on ATM_FMNA_LIB
+
+config ATM_FMNA_GATT_DEBUG
+	bool "Atmosic FMNA enable GATT debug characteristic"
+	default y if ATM_FMNA_LIB_DEBUG || !ATM_FMNA_LIB
+	depends on ATM_FMNA
+	help
+	  Include the FMNA debug control-point characteristic in the Find My
+	  Network GATT service. Disable for release firmware to remove the debug
+	  characteristic entirely.
 
 config USE_UARP
 	bool "OTA with Apple UARP"

@@ -55,7 +55,7 @@ extern "C" {
 /**
  * @brief Callback for ranging capability requests
  * @param tech_id Technology ID (rt_id_t)
- * @param capability Discriminated union containing capability structure
+ * @param capability Struct containing the capability pointer for tech_id
  * @return 0 on success, negative on error
  */
 typedef int (*atm_gfp_ranging_capability_cb_t)(rt_id_t tech_id, ranging_capability_t *capability);
@@ -63,7 +63,7 @@ typedef int (*atm_gfp_ranging_capability_cb_t)(rt_id_t tech_id, ranging_capabili
 /**
  * @brief Callback for ranging configuration requests
  * @param tech_id Technology ID (rt_id_t)
- * @param config Discriminated union containing configuration data
+ * @param config Struct containing the config pointer for tech_id
  * @param start_immediately Whether to start immediately
  * @return 0 on success, negative on error
  */
@@ -159,6 +159,76 @@ typedef enum {
 	 * Application should turn off any active feedback (LED/beep).
 	 */
 	ATM_GFP_RR_EVENT_STOPPED,
+
+	/**
+	 * @brief Tag started RR ADV (no persistent conn); phone rings on detecting it.
+	 *
+	 * Show searching feedback (e.g. slow LED blink) while waiting for Seeker connection.
+	 */
+	ATM_GFP_RR_EVENT_ADV_STARTED,
+
+	/**
+	 * @brief Tag failed to start RR ADV (no persistent conn).
+	 *
+	 * Show started fail feedback (e.g. play error tone).
+	 */
+	ATM_GFP_RR_EVENT_ADV_START_FAILED,
+
+	/**
+	 * @brief ADV window (15-20s) expired with no Seeker connection; phone never rang.
+	 *
+	 * Stop searching feedback started on ATM_GFP_RR_EVENT_ADV_STARTED.
+	 */
+	ATM_GFP_RR_EVENT_ADV_TIMEOUT,
+
+	/**
+	 * @brief Seeker WRITE 0x01: phone could not start ringing.
+	 *
+	 * Stop searching feedback and play error tone.
+	 */
+	ATM_GFP_RR_EVENT_PHONE_FAILED,
+
+	/**
+	 * @brief Provider 60s timeout: Seeker connected via ADV but sent no stop WRITE.
+	 *
+	 * Stop searching feedback and play error tone.
+	 */
+	ATM_GFP_RR_EVENT_TIMEOUT_LOCAL,
+
+	/**
+	 * @brief Seeker WRITE 0x02: phone's own ring session timed out.
+	 *
+	 * Turn off active ringing feedback.
+	 */
+	ATM_GFP_RR_EVENT_PHONE_TIMEOUT,
+
+	/**
+	 * @brief ATT-layer ACK for START indication (persistent path only).
+	 *
+	 * Arrives before ATM_GFP_RR_EVENT_STARTED; use for immediate feedback.
+	 */
+	ATM_GFP_RR_EVENT_START_CONFIRMED,
+
+	/**
+	 * @brief ATT-layer ACK for STOP indication (persistent path only).
+	 *
+	 * Arrives before ATM_GFP_RR_EVENT_STOPPED; use for immediate feedback.
+	 */
+	ATM_GFP_RR_EVENT_STOP_CONFIRMED,
+
+	/**
+	 * @brief Provider 60s timeout on persistent path after START indication ACKed.
+	 *
+	 * Ringing state cleared; keep connection open. Stop active ringing feedback.
+	 */
+	ATM_GFP_RR_EVENT_PHONE_START_TIMEOUT,
+
+	/**
+	 * @brief BLE connection dropped while phone was ringing.
+	 *
+	 * Ringing state cleared; application should stop active ringing feedback.
+	 */
+	ATM_GFP_RR_EVENT_PHONE_STOPPED_DISCONNECTED,
 } atm_gfp_reverse_ringing_event_t;
 #endif
 
@@ -225,10 +295,13 @@ typedef struct atm_gfp_hdlrs_s {
 	 * @param action true to start playing sound, false to stop
 	 * @param ring_op ring operation
 	 * @param ring_vol_lvl ring volume level
-	 * @param ring_to_ds ring timeout in deciseconds
+	 * @param ring_to_ds ring timeout in deciseconds requested by the seeker
+	 * @return effective ring duration in deciseconds when action=true; return
+	 *         @p ring_to_ds unchanged to keep the seeker-requested duration.
+	 *         Ignored when action=false.
 	 */
-	void (*sound_action_cb)(bool action, atm_gfp_ring_op_t ring_op,
-				atm_gfp_ring_vol_t ring_vol_lvl, uint16_t ring_to_ds);
+	uint16_t (*sound_action_cb)(bool action, atm_gfp_ring_op_t ring_op,
+				    atm_gfp_ring_vol_t ring_vol_lvl, uint16_t ring_to_ds);
 
 #ifdef CONFIG_ATM_GFPS
 	/**
@@ -275,20 +348,23 @@ typedef struct atm_gfp_hdlrs_s {
 	 * @brief Enable or disable motion sensor hardware for DULT UT detection.
 	 *
 	 * Called by atm_gfp at DULT init to pass the platform HW control
-	 * function to the DULT service.  DULT owns its own polling loop and
-	 * calls this when it needs to start or stop the sensor.
+	 * function to the DULT service.  DULT calls this when it needs to
+	 * start or stop the sensor.
 	 *
 	 * @param enable  true to power on the sensor, false to power it off.
 	 */
 	void (*dult_motion_hw_enable_cb)(bool enable);
 
+#ifndef CONFIG_DULT_MOTION_DETECT_TRIGGER
 	/**
-	 * @brief Raw motion snapshot getter for DULT UT detection.
+	 * @brief Raw motion snapshot getter for DULT UT detection (poll mode).
 	 *
 	 * Registered at DULT init time.  DULT calls this on each poll tick to
-	 * read the current tilt angle in whole degrees (0–90).
+	 * read the current tilt angle in whole degrees (0–90).  Not used when
+	 * CONFIG_DULT_MOTION_DETECT_TRIGGER is enabled.
 	 */
 	uint8_t (*dult_motion_raw_get_cb)(void);
+#endif
 #endif
 
 #ifdef CONFIG_FMDN_REVERSE_RINGING
@@ -387,6 +463,20 @@ void atm_gfp_button_notify(void);
  * @note The actual behavior is determined by the Fast Pair state machine
  */
 void atm_gfp_button_double_notify(void);
+
+/**
+ * @brief Check if reverse ringing is enabled by the Seeker.
+ *
+ * @return true if the Seeker has enabled reverse ringing, false otherwise.
+ */
+bool atm_gfp_is_reverse_ringing_enabled(void);
+
+/**
+ * @brief Check if reverse ringing is currently active (phone is ringing).
+ *
+ * @return true if the phone is currently ringing, false otherwise.
+ */
+bool atm_gfp_is_reverse_ringing_started(void);
 #endif
 
 /**
@@ -565,7 +655,44 @@ int atm_gfp_fmdn_clock_save(void);
  * can start with clock value of 0.
  */
 void atm_gfp_fmdn_clock_reset(void);
+
+/**
+ * @brief Overwrite the active ringing safety timer duration (one-shot), in seconds
+ *
+ * Convenience wrapper; @p duration_s is converted to deciseconds internally.
+ * See atm_gfp_set_active_ring_duration_ds() for full details.
+ *
+ * @param duration_s ring duration in seconds; 0 stops ringing immediately
+ *
+ * @note Must be called from the application work queue context; not ISR-safe.
+ */
+void atm_gfp_set_active_ring_duration(uint8_t duration_s);
+
+/**
+ * @brief Overwrite the active ringing safety timer duration (one-shot), in deciseconds
+ *
+ * Applies to the current ring session only. The safety timer is rescheduled
+ * immediately and the seeker is notified of the new duration. The override is
+ * cleared automatically when ringing stops.
+ *
+ * @param duration_ds ring duration in deciseconds; 0 stops ringing immediately
+ *
+ * @note Must be called from the application work queue context; not ISR-safe.
+ * @note Duration is in deciseconds, aligned with the GATT protocol specification.
+ */
+void atm_gfp_set_active_ring_duration_ds(uint16_t duration_ds);
 #endif
+
+#if defined(CONFIG_DULT_MOTION_DETECT_TRIGGER) || defined(CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER)
+/**
+ * @brief Signal a hardware-detected motion event to the DULT UT state machine.
+ *
+ * Called by the platform when the motion sensor interrupt fires.  Routes to
+ * dult_ut_motion_event() which submits the notify work to the app work queue.
+ * Safe to call from any context.
+ */
+void atm_gfp_motion_trigger_event(void);
+#endif /* CONFIG_DULT_MOTION_DETECT_TRIGGER || CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER */
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 # Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if(CONFIG_ATM_DULT)
   zephyr_library()

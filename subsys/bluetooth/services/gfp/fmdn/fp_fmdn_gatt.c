@@ -37,19 +37,11 @@
 
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 
-#define FMDN_CONN_INTERVAL_MIN 760
-#define FMDN_CONN_INTERVAL_MAX 800
-#define FMDN_CONN_LATENCY      0
-#define FMDN_CONN_TIMEOUT      800
-
 /// Calibrated RSSI at 0m when CONFIG_MAX_TX_PWR = 0 dBm
 #define FP_CALIBRATED_TX_PWR_0M ((int8_t)CONFIG_FAST_PAIR_TX_PWR_CALIBRATION_0M)
 
 /// FMDN Read Beacon Parameters TX Power (RSSI@0m adjusted for CONFIG_MAX_TX_PWR)
 #define FP_APP_TX_PWR_0M ((uint8_t)(int8_t)(FP_CALIBRATED_TX_PWR_0M + (int8_t)CONFIG_MAX_TX_PWR))
-
-static struct bt_le_conn_param const fmdn_conn_params = BT_LE_CONN_PARAM_INIT(
-	FMDN_CONN_INTERVAL_MIN, FMDN_CONN_INTERVAL_MAX, FMDN_CONN_LATENCY, FMDN_CONN_TIMEOUT);
 
 static fp_fmdn_utp_mode_cb utp_mode_cb;
 static fp_fmdn_ring_action_cb ring_action_cb;
@@ -237,8 +229,8 @@ static uint16_t bcna_auth_validate(bcna_conn_ctx_t *conn_context, bcna_write_dat
 	// check with all accout keys
 	conn_context->secret_key_len = FP_ACCOUNT_KEY_LEN;
 	uint8_t account_key_list[FP_ACCOUNT_KEY_CNT * FP_ACCOUNT_KEY_LEN];
-	uint8_t acnt_key_len = fp_storage_account_key_list_get(account_key_list);
-	for (uint8_t i = 0; i < acnt_key_len; i += FP_ACCOUNT_KEY_LEN) {
+	size_t acnt_key_len = fp_storage_account_key_list_get(account_key_list);
+	for (size_t i = 0; i < acnt_key_len; i += FP_ACCOUNT_KEY_LEN) {
 		memcpy(conn_context->secret_key, account_key_list + i, FP_ACCOUNT_KEY_LEN);
 		if (!bcna_auth_seg_gen_validate(conn_context, req)) {
 			return 0;
@@ -601,9 +593,14 @@ static uint16_t fp_fmdn_bcna_ring_state_resp_handler(bcna_write_data_t *resp, ui
 	return 0;
 }
 
-static void fp_fmdn_gatt_ring_stop_noti_send(struct k_work *work)
+/* Shared core: build, auth-sign and send a Data ID 0x05 notification.
+ * release_conn=true  → ring has stopped: free ring_info afterward.
+ * release_conn=false → ring still active (duration override): keep ring_info.
+ */
+static void fp_fmdn_gatt_ring_noti_send_common(bool release_conn)
 {
 	if (!ring_info || !fmdn_attr) {
+		LOG_WRN("BCNA ring notify: no active connection");
 		return;
 	}
 	bcna_conn_ctx_t *conn_context = &conn_contexts[bt_conn_index(ring_info->conn)];
@@ -615,19 +612,37 @@ static void fp_fmdn_gatt_ring_stop_noti_send(struct k_work *work)
 	if (!ring_noti_len) {
 		return;
 	}
-	/// update auth key from resp data
 	uint8_t auth_seg_resp[GFP_CRYPTO_SHA256_DIG_LEN];
 	if (!bcna_auth_seg_gen(conn_context, &ring_noti, auth_seg_resp, FP_FMDN_AUTH_DATA_RES)) {
-		LOG_WRN("BCNA ring notify bcna_auth_seg_gen failed");
+		LOG_WRN("BCNA ring notify: auth gen failed");
 		return;
 	}
 	memcpy(ring_noti.auth_key, auth_seg_resp, BCNA_AUTH_KEY_LEN);
-	LOG_INF("BCNA ring stop send notify");
+	if (release_conn) {
+		LOG_INF("BCNA ring stop send notify");
+	} else {
+		LOG_INF("BCNA ring override send notify (duration_ds=%u)", cur_ring_to_ds);
+	}
 	fp_fmdn_bcna_resp_send(ring_info->conn, fmdn_attr, (uint8_t *)&ring_noti, ring_noti_len);
-	k_free(ring_info);
-	ring_info = NULL;
+	if (release_conn) {
+		k_free(ring_info);
+		ring_info = NULL;
+	}
+}
+
+static void fp_fmdn_gatt_ring_stop_noti_send(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	fp_fmdn_gatt_ring_noti_send_common(true);
 }
 K_WORK_DEFINE(fp_fmdn_gatt_ring_stop_noti, fp_fmdn_gatt_ring_stop_noti_send);
+
+static void fp_fmdn_gatt_ring_override_noti_send(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	fp_fmdn_gatt_ring_noti_send_common(false);
+}
+K_WORK_DEFINE(fp_fmdn_gatt_ring_override_noti, fp_fmdn_gatt_ring_override_noti_send);
 
 static void fp_fmdn_ring_state_stop(uint8_t state)
 {
@@ -652,13 +667,48 @@ K_WORK_DELAYABLE_DEFINE(fp_fmdn_ring_timer_id, fp_fmdn_ring_timeout_handler);
 static void fp_fmnd_gatt_ring_update(bool en, uint16_t to_ds, uint8_t ring_op, uint8_t ring_vol_lvl)
 {
 	if (ring_action_cb) {
-		ring_action_cb(en, ring_op, ring_vol_lvl, to_ds);
+		uint16_t app_to_ds = ring_action_cb(en, ring_op, ring_vol_lvl, to_ds);
+		/* When starting, always use the application's returned duration so
+		 * the GATT response and read-ringing-state handler both reflect the
+		 * effective value without requiring a separate override notification.
+		 * The app returns ring_to_ds unchanged if it does not want to override.
+		 */
+		if (en) {
+			to_ds = app_to_ds;
+			cur_ring_to_ds = to_ds;
+		}
 	}
 	if (en && to_ds) {
 		uint16_t to_s = to_ds / 10;
 		atm_work_reschedule_for_app_work_q(&fp_fmdn_ring_timer_id, K_SECONDS(to_s));
 	} else {
 		k_work_cancel_delayable(&fp_fmdn_ring_timer_id);
+	}
+}
+
+void fp_fmdn_gatt_set_ring_duration_override(uint16_t duration_ds)
+{
+	if (!gatt_ring_en) {
+		return;
+	}
+	if (duration_ds) {
+		/* Reschedule the safety timer for the ongoing ring session only.
+		 * Also reset the ring state reference point so that
+		 * fp_fmdn_bcna_ring_read_ringing_state_handle reports remaining
+		 * time consistent with the rescheduled timer.
+		 */
+		cur_ring_to_ds = duration_ds;
+		ring_start_time_ms = k_uptime_get();
+		atm_work_reschedule_for_app_work_q(&fp_fmdn_ring_timer_id,
+						   K_MSEC((uint32_t)duration_ds * 100));
+		/* Notify the seeker of the overridden duration via an unsolicited
+		 * Data ID 0x05 notification so it knows the actual ring duration.
+		 */
+		atm_work_submit_to_app_work_q(&fp_fmdn_gatt_ring_override_noti);
+	} else {
+		/* Zero duration — stop ringing immediately. */
+		k_work_cancel_delayable(&fp_fmdn_ring_timer_id);
+		fp_fmdn_ring_state_stop(FP_FMDN_RING_STATE_STOPED_TIMEOUT);
 	}
 }
 
@@ -1058,15 +1108,11 @@ static void fp_fmdn_security_changed(struct bt_conn *conn, bt_security_t level,
 	fp_fhpf_gatt_security_changed(conn, level, err);
 #endif
 
-	// Log successful pairing for FMDN connection
-	if (level >= BT_SECURITY_L2) {
+	// Log successful Security Mode 1 Level 4 connection for FMDN reverse ringing
+	if (level >= BT_SECURITY_L4) {
 		LOG_INF("FMDN connection secured: %s level:%u", addr, level);
-		if (fp_mode_is_provisioned()) {
-			bt_conn_le_param_update(conn, &fmdn_conn_params);
-		}
-
 #ifdef CONFIG_FMDN_REVERSE_RINGING
-		// Handle reverse ringing encryption enabled
+		// Handle reverse ringing Security Mode 1 Level 4 enabled
 		fp_fmdn_reverse_ringing_encryption_enabled(conn);
 #endif
 	}
@@ -1220,3 +1266,15 @@ void fp_fmdn_ranging_handler_register(fp_fmdn_ranging_handler_t const *handler)
 	fp_fhpf_gatt_ranging_handler_register(handler);
 }
 #endif
+
+#ifdef CONFIG_ZTEST
+void fp_fmdn_gatt_test_set_ring_en(bool en)
+{
+	gatt_ring_en = en;
+}
+
+bool fp_fmdn_gatt_test_get_ring_en(void)
+{
+	return gatt_ring_en;
+}
+#endif /* CONFIG_ZTEST */

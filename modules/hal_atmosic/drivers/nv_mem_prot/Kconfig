@@ -1,0 +1,18 @@
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
+
+config ATM_NV_MEM_ROM_PROT
+	bool "Atmosic ROM protection"
+	depends on DT_HAS_ATMOSIC_SEC_NV_MEM_ROM_PROT_ENABLED
+	help
+	  This option enables the Atmosic ROM protection
+	  driver
+
+config ATM_NV_MEM_FLASH_PROT
+	bool "Atmosic FLASH protection"
+	depends on DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
+	help
+	  This option enables the Atmosic Flash read/write
+	  protection driver.

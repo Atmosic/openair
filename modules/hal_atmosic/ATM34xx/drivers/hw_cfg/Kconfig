@@ -13,6 +13,10 @@ config ATM_HW_CFG
 	default y if ENTROPY_ATM_TRNG
 	default y if PM
 	default y if ATM_BROWNOUT
+	# hw_cfg_init() applies the journalled PMU configuration and consults the
+	# boot status to decide what has to be reapplied
+	select ATM_PMU
+	select ATM_RESET
 
 config ATM_MAX_TX_POWER_DBM
 	int "Maximum TX power possible on this chip, in dBm"

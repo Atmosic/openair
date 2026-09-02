@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 identifier: ATMEVK-3405-PQK-5/ATM34xx-5
 name: ATMEVK-3405-PQK-5
 type: mcu
@@ -8,14 +12,17 @@ supported:
   - adc
   - atlc
   - bluetooth
+  - brownout_hib
   - ccbm
   - channel_sounding
   - entropy
   - gpio
   - i2c
   - i2c_clock_stretching
+  - ir
   - lis2dh
   - mikrobus
+  - pdm
   - pwm
   - rram
   - sha2_multi_context

@@ -175,6 +175,7 @@ input_kbd_matrix: input_kbd_matrix@14a000 {
 	compatible = "atmosic,input-kbd-matrix";
 	reg = <0x0014a000 0x1000>;
 	interrupts = <43 2>;
+	t3-zero-war;
 	status = "disabled";
 };
 

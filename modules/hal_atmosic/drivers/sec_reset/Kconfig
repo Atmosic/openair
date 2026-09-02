@@ -6,3 +6,13 @@
 config ATM_SEC_RESET
 	bool "Atmosic Secure Reset module"
 	default y if TRUSTED_EXECUTION_SECURE
+
+if ATM_SEC_RESET
+
+config ATM_SEC_RESET_FULL_API_TEST
+	bool "Enable full reset API testing"
+	depends on ZTEST
+	help
+	  Use only for testing.
+
+endif

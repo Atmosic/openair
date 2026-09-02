@@ -1,0 +1,126 @@
+/*
+ * Copyright (c) 2024-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+#include <arm/armv8-m.dtsi>
+#include <zephyr/dt-bindings/adc/adc.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+#if !defined(ATM_SPE_APP) && !defined(ATM_NS_APP)
+#define ATM_NO_TZ
+#endif
+
+#if !defined(ATM_DTS_MCUBOOT) && (defined(ATM_NO_TZ) || defined(ATM_NS_APP))
+// device tree is being processed as the user application in
+// either a no-TZ image or an NS image configurations
+#define ATM_DTS_USER_APP
+#endif
+
+/ {
+	power-states {
+		idle: idle {
+			compatible = "zephyr,power-state";
+			power-state-name = "runtime-idle";
+			min-residency-us = <10>;
+		};
+		sleep: sleep {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			min-residency-us = <1000>;
+		};
+		retain: retain {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-ram";
+			min-residency-us = <3000>;
+
+			/* Carefully measured in simulation - DO NOT ADJUST */
+			exit-latency-us = <2500>;
+		};
+		hibernate: hibernate {
+			compatible = "zephyr,power-state";
+			power-state-name = "soft-off";
+			substate-id = <0>;
+			min-residency-us = <100000>;
+		};
+		soc_off: soc_off {
+			compatible = "zephyr,power-state";
+			power-state-name = "soft-off";
+			substate-id = <1>;
+			min-residency-us = <100000>;
+			status = "disabled";
+		};
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-m33f";
+			reg = <0>;
+			cpu-power-states = <&idle &sleep &retain &hibernate>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			mpu: mpu@e000ed90 {
+				compatible = "arm,armv8m-mpu";
+				reg = <0xe000ed90 0x40>;
+			};
+		};
+	};
+
+	sysclk: system-clock {
+		compatible = "fixed-clock";
+#ifdef INIT_BP_FREQ
+		clock-frequency = <INIT_BP_FREQ>;
+#else
+		clock-frequency = <32000000>;
+#endif
+		#clock-cells = <0>;
+	};
+
+	clk_16M: alt-clock {
+		compatible = "fixed-clock";
+		clock-frequency = <16000000>;
+		#clock-cells = <0>;
+	};
+
+	soc {
+#ifdef ATM_NS_APP
+		peripheral@40000000 {
+#else
+		peripheral@50000000 {
+#endif
+			#address-cells = <1>;
+			#size-cells = <1>;
+#ifdef ATM_NS_APP
+			ranges = <0x0 0x40000000 0x10000000>;
+#else
+			ranges = <0x0 0x50000000 0x10000000>;
+#endif
+
+			#include "ATM5_peripherals.dtsi"
+		};
+
+		retained_mem_hib: retained-memory {
+			compatible = "atmosic,retained-hib";
+		};
+	};
+
+	aliases {
+		watchdog0 = &wdog0;
+	};
+};
+
+&nvic {
+	arm,num-irq-priority-bits = <4>;
+};
+
+&systick {
+	external-clock-source;
+};

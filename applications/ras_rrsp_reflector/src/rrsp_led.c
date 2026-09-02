@@ -105,11 +105,19 @@ static struct rrsp_led_wrok_info {
 
 static const struct device *const rrsp_led = DEVICE_DT_GET_ONE(gpio_leds);
 static bool led_lock;
+/* Protects led_lock and the check→PM-call→update sequence.
+ * rrsp_led_lock_sleep is called from multiple thread contexts:
+ * BT callbacks, system work queue, and app work queue.
+ */
+K_MUTEX_DEFINE(led_lock_mutex);
 static bool rrsp_led_lock_sleep(bool lock)
 {
 	LOG_DBG("led lock:%d", lock);
 
+	k_mutex_lock(&led_lock_mutex, K_FOREVER);
+
 	if (led_lock == lock) {
+		k_mutex_unlock(&led_lock_mutex);
 		return true;
 	}
 	if (lock) {
@@ -119,6 +127,7 @@ static bool rrsp_led_lock_sleep(bool lock)
 			LOG_ERR("Unexpected lock:%u' %u",
 				rrsp_led_work[RRSP_LED_WORK_EVT].active_pattern,
 				rrsp_led_work[RRSP_LED_WORK_BG].active_pattern);
+			k_mutex_unlock(&led_lock_mutex);
 			return false;
 		}
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
@@ -129,12 +138,14 @@ static bool rrsp_led_lock_sleep(bool lock)
 			LOG_INF("Wait unlock:%u' %u",
 				rrsp_led_work[RRSP_LED_WORK_EVT].active_pattern,
 				rrsp_led_work[RRSP_LED_WORK_BG].active_pattern);
+			k_mutex_unlock(&led_lock_mutex);
 			return false;
 		}
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
 
 	led_lock = lock;
+	k_mutex_unlock(&led_lock_mutex);
 	return true;
 }
 

@@ -1,7 +1,9 @@
 # Coin Cell Battery Management (CCBM) Driver
 #
-# Copyright (C) Atmosic 2026
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 menuconfig ATM_CCBM
 	bool "Coin Cell Battery Management (CCBM) Driver"

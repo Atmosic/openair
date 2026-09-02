@@ -16,12 +16,15 @@ common:
 tests:
   # Main application runtime test (includes AT command support)
   applications.sensor_beacon.atm:
+    tags:
+      - openair_release
     extra_configs:
       - CONFIG_LOG_DEFAULT_LEVEL=3
       - CONFIG_SENSOR_BEACON_LOG_LEVEL_INF=y
   applications.sensor_beacon.atm.mcuboot.dfu:
     tags:
       - mcuboot
+      - openair_release_mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -45,3 +48,10 @@ tests:
     extra_configs:
       - CONFIG_LOG_DEFAULT_LEVEL=3
       - CONFIG_SENSOR_BEACON_LOG_LEVEL_INF=y
+  applications.sensor_beacon.atm.two_dev:
+    tags:
+      - two_dev
+    extra_configs:
+      - CONFIG_LOG_DEFAULT_LEVEL=3
+      - CONFIG_SENSOR_BEACON_LOG_LEVEL_INF=y
+      - CONFIG_SENSOR_BEACON_FAST_ADV=y

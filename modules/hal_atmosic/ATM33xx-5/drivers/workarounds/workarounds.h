@@ -1,13 +1,13 @@
 /*****************************************************************************************
-*
-* @file workarounds.h
-*
-* @brief ROM initialization workarounds
-*
-* Copyright (C) Atmosic 2018-2019
-*
-*
-*****************************************************************************************/
+ *
+ * @file workarounds.h
+ *
+ * @brief ROM initialization workarounds
+ *
+ * Copyright (C) Atmosic 2018-2026
+ *
+ *
+ *****************************************************************************************/
 
 #ifndef __WORKAROUNDS_H__
 #define __WORKAROUNDS_H__
@@ -29,8 +29,10 @@ extern "C" {
  * Normally called during late ROM init.
  * User applications that never return to the ROM (and third party OSes)
  * must call this during initialization.
+ *
+ * @return Number of workaround tags that were successfully processed.
  */
-void workarounds_init(void);
+int workarounds_init(void);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,20 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+tests:
+  tests.lib.atm_bthci_utils.atm: &base_config
+    sysbuild: true
+    harness: ztest
+    tags:
+      - atm_bthci_utils
+    timeout: 60
+  tests.lib.atm_bthci_utils.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="atm_bthci_utils_dump.c"

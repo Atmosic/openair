@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2023-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atm34_adc
@@ -40,6 +40,7 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 #endif
 #include "timer.h"
 #include "sec_jrnl.h"
+#include "atm_adc.h"
 
 #define Z_CMSDK_GADC CMSDK_GADC
 
@@ -65,6 +66,10 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 		    GADC_ADC_FULL_SCALE))
 /* OTP gain_temp0 is U-6.22 fixed-point (22 fractional bits); units: degC/LSB */
 #define GADC_CAL_TEMP_FRAC_BITS 22
+/* temperature gain (no OTP) */
+#define GADC_CAL_TEMP_GAIN_NOM   47384U
+/* temperature offset (no OTP); +256 degC biased, hence negative */
+#define GADC_CAL_TEMP_OFFSET_NOM (-3613)
 
 /* Enumeration of GADC channels in SoC */
 typedef enum {
@@ -176,6 +181,10 @@ typedef enum {
 
 static uint16_t gcal_len;
 
+#ifdef CONFIG_ATM_ADC_CAL_TEST_HOOKS
+static bool gcal_test_no_tag;
+#endif
+
 #ifndef DGADC_CTRL1__RTRIM_IC__WRITE
 static hw_cfg_cal_data_t gcal;
 #else  /* !DGADC_CTRL1__RTRIM_IC__WRITE */
@@ -190,19 +199,6 @@ static bool firstcal[GAIN_EXT_END];
 static gadc_gain_ext_t gext[CHANNEL_NUM_MAX];
 static gadc_gain_ext_t const gextmap[CHANNEL_NUM_MAX][GAIN_EXT_MAX] = {
 	{GAIN_EXT_END}, // unused, invalid channel
-#ifdef CONFIG_ATM_ADC_PGA_BYPASS
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-	{GAIN_EXT_X1, GAIN_EXT_END},
-#else /* CONFIG_ATM_ADC_PGA_BYPASS */
 #ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	{GAIN_EXT_EIGHTH, GAIN_EXT_QUARTER, GAIN_EXT_END},
 	{GAIN_EXT_EIGHTH, GAIN_EXT_QUARTER, GAIN_EXT_END},
@@ -228,7 +224,6 @@ static gadc_gain_ext_t const gextmap[CHANNEL_NUM_MAX][GAIN_EXT_MAX] = {
 #endif
 	{GAIN_EXT_EIGHTH, GAIN_EXT_QUARTER, GAIN_EXT_HALF, GAIN_EXT_X1, GAIN_EXT_END},
 #endif /* DGADC_CTRL1__RTRIM_IC__WRITE */
-#endif /* CONFIG_ATM_ADC_PGA_BYPASS */
 };
 
 /* Per-channel sample-avg values from DT, indexed by channel reg (GADC_CHANNEL_ID).
@@ -303,10 +298,6 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable, GADC_CHANNEL_ID ch)
 			} else if (ch == PORT4_SINGLE_ENDED) {
 				GADC_GADC_CTRL__EXT_VBAT_SEL__SET(gadc_ctrl);
 			}
-#ifdef CONFIG_ATM_ADC_PGA_BYPASS
-			GADC_GADC_CTRL__PGA_EN__CLR(gadc_ctrl);
-			GADC_GADC_CTRL__BYPASS_PGA__SET(gadc_ctrl);
-#endif
 			PMU_GADC_WRITE(GADC_CTRL_REG_ADDR, gadc_ctrl);
 		}
 		WRPR_CTRL_POP();
@@ -354,18 +345,29 @@ static int32_t gadc_atm_apply_cal(uint32_t raw, uint8_t ch)
 		int32_t vbatt_mv = (prod_q16 >> GADC_CAL_VBAT_FRAC_BITS) + carry;
 		return vbatt_mv * GADC_ADC_FULL_SCALE / ATM_GADC_VREF_VOL;
 	}
-	case TEMP:
-		if (!gcal_len) {
-			return (int32_t)raw;
-		}
+	case TEMP: {
 		/*
-		 * gain_temp0 : U-6.22 (22 frac bits), degC/LSB — unsigned slope
-		 * offset_temp0: S8.8  ( 8 frac bits), degC     — signed intercept
-		 * output      : S8.8  ( 8 frac bits), degC
+		 * OTP format:
+		 *   gain_temp0  : U-6.22 slope in degC/LSB
+		 *   offset_temp0: S8.8   y-intercept in degC, biased by +256 degC (ATE
+		 *                 uses the same bias); the un-biased PTAT intercept is
+		 *                 ~-273 degC, so the stored value is normally negative
+		 *
+		 * Compute in Q22 with round-to-nearest (carry-in method):
+		 *   prod_q22 = raw * gain_temp0 + offset_temp0 * 2^14 - 256 * 2^22  [Q22 degC]
+		 *   carry    = bit 13 of prod_q22                                   [round bit]
+		 *   result   = (prod_q22 >> 14) + carry                             [S8.8 degC]
 		 */
-		return (int32_t)(((int32_t)raw * (int32_t)gcal.gain_temp0) >>
-				 (GADC_CAL_TEMP_FRAC_BITS - 8)) +
-		       gcal.offset_temp0;
+		uint16_t gain = gcal_len ? gcal.gain_temp0 : GADC_CAL_TEMP_GAIN_NOM;
+		int16_t offset = gcal_len ? gcal.offset_temp0 : GADC_CAL_TEMP_OFFSET_NOM;
+		/* sensor output is positive; clamp faults that would underflow below */
+		int32_t sample = (int32_t)raw > 0 ? (int32_t)raw : 0;
+		int32_t prod_q22 = sample * (int32_t)gain +
+				   ((int32_t)offset << (GADC_CAL_TEMP_FRAC_BITS - 8)) -
+				   (256 << GADC_CAL_TEMP_FRAC_BITS);
+		int32_t carry = (prod_q22 >> (GADC_CAL_TEMP_FRAC_BITS - 8 - 1)) & 1;
+		return (prod_q22 >> (GADC_CAL_TEMP_FRAC_BITS - 8)) + carry;
+	}
 	default:
 		return (int32_t)raw;
 	}
@@ -666,9 +668,6 @@ static int gadc_atm_channel_setup(struct device const *dev,
 	}
 
 	gadc_gain_ext_t gainext;
-#ifdef CONFIG_ATM_ADC_PGA_BYPASS
-	gainext = GAIN_EXT_X1;
-#else
 	switch (channel_cfg->gain) {
 	case ADC_GAIN_1_8:
 		gainext = GAIN_EXT_EIGHTH;
@@ -686,7 +685,6 @@ static int gadc_atm_channel_setup(struct device const *dev,
 		LOG_ERR("Invalid channel gain");
 		return -EINVAL;
 	}
-#endif
 
 	if (!gadc_ext_valid(channel_cfg->channel_id, gainext)) {
 		LOG_ERR("Invalid gext (%d) for channel (%d)", gainext, channel_cfg->channel_id);
@@ -752,6 +750,25 @@ static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 		// need to invert sign
 		sample_signed *= -1;
 	} else if (ch == TEMP) {
+#if DT_PROP(DT_NODELABEL(adc), temp_channel_new)
+		// T = (V - V_0) / k + T_0
+		// V = sample * V_r / 2^15
+		// T = sample * (V_r / (k * 2^15)) - (V_0 / k - T_0)
+		// Use fixed-point with 16 bits of precision, and return value in 0.01°C units
+		// T * 100 * 2^16 = sample * (100 * 2 * V_r / k) - 100 * 2^16 (V_0 / k - T_0)
+		// T * 100 * 2^16 = sample * DEF_REF_SLOPE - DEF_REF_INTERCEPT
+		// k = 1.497842 mV / K, V_0 = 449.35 mV, V_r = 600 mV, T_0 = 25 C
+#define DEF_REF_SLOPE     80115
+#define DEF_REF_INTERCEPT 1802228624
+
+		// Given a 16 bit sample, the result will fit in a 32 bit signed integer
+		int32_t result = sample_signed * DEF_REF_SLOPE - DEF_REF_INTERCEPT;
+		result = (result + (1 << 15)) >> 16; // Round and divide
+		LOG_DBG("channel: %d, raw: %#x, result: %u.%u C", ch, raw_fifo.sample, result / 100,
+			result % 100);
+		// return value in 0.01°C units
+		return result;
+#else
 #define DEF_REF_TEMP     25.0f
 #define TMP117_LSB       0.0078125f
 #define CELSIUS_PER_VOLT 925.93f
@@ -769,6 +786,7 @@ static int32_t gadc_process_samples(struct device const *dev, GADC_CHANNEL_ID ch
 		LOG_DBG("channel: %d, raw: %#x, result: %f C", ch, raw_fifo.value, (double)result);
 		// return value in 0.01°C units
 		return (int32_t)(result * 100.0f);
+#endif
 	}
 
 	LOG_DBG("channel: %d, raw: %#x, sample_signed: %" PRId32 "\n", ch, raw_fifo.value,
@@ -810,6 +828,45 @@ static void gadc_atm_isr(void const *arg)
 #endif
 }
 
+// Fetch the GADC calibration tag from the secure journal
+static void gadc_fetch_cal(void)
+{
+	gcal_len = sizeof(gcal);
+	sec_jrnl_ret_status_t status = SEC_JRNL_NO_TAG;
+#ifdef CONFIG_ATM_ADC_CAL_TEST_HOOKS
+	if (!gcal_test_no_tag)
+#endif
+	{
+		status = nsc_sec_jrnl_get(ATM_TAG_GADC_CAL, &gcal_len, (uint8_t *)&gcal);
+	}
+	if (status != SEC_JRNL_OK) {
+		LOG_INF("GADC_CAL tag not found: %#x", status);
+		gcal_len = 0;
+	}
+}
+
+#ifdef CONFIG_ATM_ADC_CAL_RELOAD
+void atm_adc_reload_cal(bool override)
+{
+	if (override) {
+		gadc_fetch_cal();
+		return;
+	}
+
+	/* Keep the cached calibration when the journal has no tag, so a
+	 * journal that only carries unrelated tags does not discard a
+	 * previously detected calibration. */
+	uint16_t prev_len = gcal_len;
+	__typeof__(gcal) prev = gcal;
+
+	gadc_fetch_cal();
+	if (!gcal_len) {
+		gcal = prev;
+		gcal_len = prev_len;
+	}
+}
+#endif
+
 static int gadc_atm_init(struct device const *dev)
 {
 	struct gadc_atm_data *data = DEV_DATA(dev);
@@ -820,18 +877,13 @@ static int gadc_atm_init(struct device const *dev)
 		    0);
 
 	// Fetch GADC calibration
-	gcal_len = sizeof(gcal);
-	sec_jrnl_ret_status_t status;
-	status = nsc_sec_jrnl_get(ATM_TAG_GADC_CAL, &gcal_len, (uint8_t *)&gcal);
-	if (status != SEC_JRNL_OK) {
-		LOG_INF("GADC_CAL tag not found: %#x", status);
-		gcal_len = 0;
-	}
+	gadc_fetch_cal();
 
 #ifdef DGADC_CTRL1__RTRIM_IC__WRITE
 	// Fetch chip info
 	chipinfo_len = sizeof(chipinfo);
-	status = nsc_sec_jrnl_get(ATM_TAG_CHIP_INFO, &chipinfo_len, (uint8_t *)&chipinfo);
+	sec_jrnl_ret_status_t status =
+		nsc_sec_jrnl_get(ATM_TAG_CHIP_INFO, &chipinfo_len, (uint8_t *)&chipinfo);
 	if (status != SEC_JRNL_OK) {
 		LOG_INF("CHIP_INFO tag not found: %#x", status);
 		chipinfo_len = 0;
@@ -916,4 +968,41 @@ cleanup:
 
 	return ret;
 }
+
+#ifdef DGADC_CTRL1__RTRIM_IC__WRITE
+uint16_t const atm_adc_test_cal_stable_len = __OFFSET(gcal, offset_comp0);
+#else
+uint16_t const atm_adc_test_cal_stable_len = sizeof(gcal);
+#endif
+
+int atm_adc_test_get_cal(void *buf, size_t buf_size, uint16_t *out_len)
+{
+	if (!buf || !out_len) {
+		return -EINVAL;
+	}
+	if (buf_size < sizeof(gcal)) {
+		return -ENOMEM;
+	}
+
+	memcpy(buf, &gcal, sizeof(gcal));
+	*out_len = gcal_len;
+
+	return 0;
+}
+
 #endif /* CONFIG_ATM_ADC_TEST_API */
+
+#ifdef CONFIG_ATM_ADC_CAL_TEST_HOOKS
+
+void atm_adc_test_invalidate_cal(void)
+{
+	/* Only clobber what a successful fetch writes back. */
+	memset(&gcal, 0xa5, gcal_len);
+	gcal_len = 0;
+}
+
+void atm_adc_test_set_cal_missing(bool missing)
+{
+	gcal_test_no_tag = missing;
+}
+#endif /* CONFIG_ATM_ADC_CAL_TEST_HOOKS */

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: LicenseRef-Atmosic
 #
 
-if(CONFIG_ATM_RADIO_CAL AND (CONFIG_ATM_RADIO_CAL_REPEAT_MS GREATER 0))
+if(CONFIG_ATM_RADIO_CAL)
+  zephyr_include_directories(.)
   zephyr_sources(radio_cal.c)
 endif()

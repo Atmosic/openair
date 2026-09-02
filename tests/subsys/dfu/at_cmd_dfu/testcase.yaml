@@ -34,7 +34,7 @@ tests:
         - "-v"
         - "--dfu-mode=single"
 
-  tests.subsys.dfu.at_cmd_dfu.atm.mcuboot.pytest.flash_xip.dual_image:
+  tests.subsys.dfu.at_cmd_dfu.atm.mcuboot.flash_xip.pytest.dual_image:
     harness: pytest
     tags:
       - flash_xip

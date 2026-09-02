@@ -1,7 +1,7 @@
 #
 # atm_flash.tcl
 # Production APIs for flash operations
-# Copyright (C) Atmosic 2018-2022
+# Copyright (C) Atmosic 2018-2026
 #
 source [find atm_reg_wrappers.tcl]
 
@@ -1371,20 +1371,21 @@ proc atm_macronix_dump_otp { image {len 8192} } {
     spi_macronix_exit_secured_otp SPI2
 }
 
-proc atm_erase_flash {{len 0x78000} {start_off 0x0}} {
+proc atm_erase_flash {{region_size 0x78000} {region_start 0x0}} {
     reset halt
     enable_spi2
-    lassign [atm_discover_flash $len] flash size
+    set region_end [expr {$region_start + $region_size}]
+    lassign [atm_discover_flash $region_end] flash size
 
     if {[info exists ::env(ERASE_WHOLE)]} {
 	puts [format "Erasing whole device"]
 	atm_${flash}_erase_whole
     } else {
-	if { [expr {$start_off % 0x1000}] != 0} {
-	    error "Must Erase along a sector boundary! [expr {$start_off % 0x1000}]"
+	if {$region_start % 0x1000 != 0} {
+	    error "Must Erase along a sector boundary! [expr {$region_start % 0x1000}]"
 	}
-	puts [format "Erasing flash @0x%x, len=0x%x" $start_off $len]
-	atm_${flash}_erase $start_off $len
+	puts [format "Erasing flash @0x%x, size=0x%x" $region_start $region_size]
+	atm_${flash}_erase $region_start $region_end
 	if {[info exists ::env(ERASE_UPGRADE_DATA)]} {
 	    atm_erase_upgd_data $flash $size
 	}

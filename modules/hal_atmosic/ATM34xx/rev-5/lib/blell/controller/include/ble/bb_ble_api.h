@@ -9,7 +9,7 @@
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
  *
- *  Copyright (C) Atmosic 2026
+ *  Copyright (C) 2026 Atmosic
  *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
@@ -238,6 +238,15 @@ void BbBleAuxAdvSlaveInit(void);
 
 /*************************************************************************************************/
 /*!
+ *  \brief      Initialize for periodic advertising slave operations.
+ *
+ *  Update the operation table with periodic advertising slave operations routines.
+ */
+/*************************************************************************************************/
+void BbBleSlvPerAdvInit(void);
+
+/*************************************************************************************************/
+/*!
  *  \brief      Initialize for connectable slave operations.
  *
  *  Update the operation table with connectable slave operations routines.
@@ -256,21 +265,12 @@ void BbBleTestInit(void);
 
 /*************************************************************************************************/
 /*!
- *  \brief      Initialize for CS initiator operations.
+ *  \brief      Initialize for CS operations.
  *
- *  Update the operation table with CS central operations routines.
+ *  Update the operation table with CS operations routines.
  */
 /*************************************************************************************************/
-void BbBleCsInitiatorInit(void);
-
-/*************************************************************************************************/
-/*!
- *  \brief      Initialize for CS reflector operations.
- *
- *  Update the operation table with CS central operations routines.
- */
-/*************************************************************************************************/
-void BbBleCsReflectorInit(void);
+void BbBleCsInit(void);
 
 /*************************************************************************************************/
 /*!

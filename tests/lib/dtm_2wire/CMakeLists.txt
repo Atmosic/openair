@@ -15,4 +15,5 @@ target_sources(app PRIVATE
   src/test_dtm_hci_bridge.c
   src/test_dtm_message_processing.c
   src/test_dtm_state_machine.c
+  src/test_dtm_simulated_rx.c
 )

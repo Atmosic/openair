@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file platform.c
- *
- * @brief Platform For Multimode Consumer Tag
- *
- * Copyright (C) Atmosic 2025-2026
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <errno.h>
@@ -86,7 +78,6 @@ BUILD_ASSERT("DT_NODE_EXISTS BUTTON0");
 
 static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(BUTTON0, gpios, {0});
 
-
 uint8_t platform_tag_supported_mode_mask_get(void)
 {
 	uint8_t mask = 0;
@@ -122,7 +113,8 @@ static int platform_tag_settings_set(char const *name, size_t len, settings_read
 
 	if (len != sizeof(persisted_mode_mask)) {
 		LOG_ERR("Invalid tag mode settings size: %zu", len);
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(),
 				     AT_CMD_TAG_ERR_INVALID_PARAM);
 		return -EINVAL;
 	}
@@ -130,7 +122,8 @@ static int platform_tag_settings_set(char const *name, size_t len, settings_read
 	int rc = read_cb(cb_arg, &persisted_mode_mask, sizeof(persisted_mode_mask));
 	if (rc < 0) {
 		LOG_ERR("Failed to read tag mode settings: %d", rc);
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(),
 				     AT_CMD_TAG_ERR_INTERNAL);
 		return rc;
 	}
@@ -167,7 +160,8 @@ static int platform_tag_mode_save(uint8_t mode)
 
 	if (err) {
 		LOG_ERR("Failed to save tag mode mask 0x%02X: %d", mode, err);
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(),
 				     AT_CMD_TAG_ERR_INTERNAL);
 		return err;
 	}
@@ -183,7 +177,8 @@ static void platform_tag_mode_clear(void)
 
 	if (err && (err != -ENOENT)) {
 		LOG_ERR("Failed to clear tag mode settings: %d", err);
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(),
 				     AT_CMD_TAG_ERR_INTERNAL);
 		return;
 	}

@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file fp_storage.h
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Storage Middleware
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -27,25 +31,31 @@ extern "C" {
 #endif
 
 /**
- * @brief fp save account key and ownerkey
+ * @brief Save an account key and select it as the owner key on first access
  * @param[in] account_key account key
  *
- * @return 0 if successful. Otherwise, a (negative) error code is returned
+ * @return Packed-list position (>= 0) when a new key is written to a slot
+ *         (including FIFO eviction of an old key).
+ *         -EALREADY when the key already exists (no slot change).
+ *         -ENOMEM when no slot is available.
  */
 __NONNULL_ALL
 int fp_storage_account_key_save(uint8_t const *account_key);
 
 /**
- * @brief fp delete saved account key
+ * @brief Delete a non-owner account key
  * @param[in] account_key account key
  *
- * @return 0 if successful. Otherwise, a (negative) error code is returned
+ * @return 0 if successful, -EPERM when @p account_key is the owner key, or
+ *         another negative error code on failure
  */
 __NONNULL_ALL
 int fp_storage_account_key_delete(uint8_t const *account_key);
 
 /**
- * @brief fp delete all saved account key
+ * @brief Delete all saved account keys and the owner key
+ *
+ * This function is reserved for unprovisioning or factory-reset handling.
  *
  * @return 0 if successful. Otherwise, a (negative) error code is returned
  */
@@ -270,7 +280,9 @@ int fp_storage_cur_account_key_get(uint8_t *key);
 bool fp_storage_check_is_owner_key(uint8_t const *key);
 
 /**
- * @brief fp clear saved owner key
+ * @brief Clear all account keys and the owner key during reset
+ *
+ * This function must only be called by the unprovisioning or factory-reset path.
  */
 void fp_storage_owner_key_clear(void);
 
@@ -309,12 +321,13 @@ size_t fp_storage_account_key_filter_size(size_t count);
 
 /**
  * @brief fp get saved account key list
- * @param[out] key_list saved account key list
+ * @param[out] key_list saved account key list, must hold at least
+ *             FP_ACCOUNT_KEY_CNT * FP_ACCOUNT_KEY_LEN bytes
  *
- * @return 0 if successful. Otherwise, a (negative) error code is returned
+ * @return number of bytes written to @p key_list, 0 when no key is stored
  */
 __NONNULL_ALL
-uint8_t fp_storage_account_key_list_get(uint8_t *key_list);
+size_t fp_storage_account_key_list_get(uint8_t *key_list);
 
 #ifdef CONFIG_FAST_PAIR_FMDN
 /**

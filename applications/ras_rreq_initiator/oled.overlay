@@ -1,0 +1,47 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/*
+ * GME OLED on the Arduino I2C header, for CONFIG_RREQ_USE_DISPLAY.
+ * cs_display.c binds through chosen/zephyr,display, so that property is what
+ * actually selects the panel. Mirrors samples/drivers/display/gme/app.overlay.
+ *
+ * Apply on top of the default app.overlay:
+ *   -DEXTRA_DTC_OVERLAY_FILE=oled.overlay -DCONFIG_RREQ_USE_DISPLAY=y
+ *
+ * arduino_i2c and the i2c0 pinctrl live behind ATM_DTS_USER_APP in the board
+ * .dts, which is set automatically for the non-secure application image, so no
+ * extra DTS_EXTRA_CPPFLAGS are needed here.
+ */
+
+/ {
+	chosen {
+		zephyr,display = &oled_display;
+	};
+};
+
+&arduino_i2c {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+
+	oled_display: oled@3c {
+		compatible = "atmosic,gme-oled";
+		reg = <0x3c>;
+		width = <128>;
+		height = <64>;
+		display-offset = <0>;
+		multiplex-ratio = <63>;
+		segment-remap;
+		com-invdir;
+
+		/* Both modules' datasheets ask for these two. */
+		prechargep = <0xf1>;
+		vcom-desel-level = <0x40>;
+
+		max-write-len = <8>;
+		write-gap-us = <2000>;
+	};
+};

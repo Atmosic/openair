@@ -60,6 +60,8 @@ typedef enum {
     ATM_REQ_BLE_OFFSET_FROM_PRIOR_ABSOLUTE_TIME,
     /** Use time as a delta from the end of the last TX or RX packet */
     ATM_REQ_BLE_OFFSET_FROM_PRIOR_END_TIME,
+    /** Start the operation immediately. Only valid for TX */
+    ATM_REQ_BLE_NOW,
 } atm_req_ble_time_reference_t;
 
 /**

@@ -1,6 +1,6 @@
-# Copyright (c) Atmosic 2024-2025
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if(CONFIG_ATM_VENDOR)
     zephyr_include_directories(.)
@@ -36,6 +36,7 @@ if(CONFIG_ATM_VENDOR)
     zephyr_compile_definitions_ifdef(CONFIG_VND_PMU_RADIO_REGW CFG_VND_PMU_RADIO_REGW)
     zephyr_compile_definitions_ifdef(CONFIG_VND_XTAL_32K_PIN_OUT CFG_VND_XTAL_32K_PIN_OUT)
     zephyr_compile_definitions_ifdef(CONFIG_VND_SET_TX_PWR CFG_VND_SET_TX_PWR)
+    zephyr_compile_definitions_ifdef(CONFIG_VND_BYPASS_RX_DC_CAL CFG_VND_BYPASS_RX_DC_CAL)
 endif()
 
 if(CONFIG_ATM_VENDOR_API)

@@ -1,5 +1,5 @@
-# Copyright (c) 2025 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if WATCHDOG
 
@@ -22,7 +22,17 @@ config WDT_ATM_UNIFIED
 	  transitions (retention, hibernation, SOC_OFF) and operates
 	  independently of the ARM watchdog.
 
-endif
+config WDOG_ATMOSIC_CMSDK
+	bool "Atmosic CMSDK Watchdog Driver with QSPI WAR"
+	default y
+	depends on DT_HAS_ATMOSIC_CMSDK_WATCHDOG_ENABLED
+	help
+	  Enable Atmosic CMSDK APB Watchdog Driver with integrated
+	  QSPI reset workaround support. This driver extends the standard
+	  ARM CMSDK watchdog to always execute QSPI WAR before reset to
+	  ensure flash is ready for ROM code.
+
+endif # WATCHDOG
 
 config ATM_PMU_WDT_ENABLE
 	bool "Enable PMU Watchdog"
@@ -97,3 +107,19 @@ config ATM_WDT_UNIFIED_LOG_LEVEL
 	  4 = DEBUG
 
 endif # WDT_ATM_UNIFIED
+
+if WDOG_ATMOSIC_CMSDK
+
+module = WDOG_ATMOSIC_CMSDK
+module-str = Atmosic CMSDK Watchdog
+source "subsys/logging/Kconfig.template.log_config"
+
+config WDOG_CMSDK_APB_START_AT_BOOT
+	bool "Start Watchdog during boot"
+	help
+	  Enable this setting to allow WDOG to be automatically started
+	  during device initialization. Note that once WDOG is started
+	  it must be reloaded before the counter reaches 0, otherwise
+	  the MCU will be reset.
+
+endif # WDOG_ATMOSIC_CMSDK

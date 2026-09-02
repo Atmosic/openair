@@ -8,7 +8,6 @@ tests:
     timeout: 100
     tags:
       - audio
-
   tests.subsys.audio.stream.i2s_stress.atm.gcov:
     <<: *base_config
     tags:
@@ -17,4 +16,4 @@ tests:
       - gcov_capable
     timeout: 180
     extra_configs:
-      - CONFIG_UU_TEST_OPENAIR="i2s_atm.c"
+      - CONFIG_UU_TEST_OPENAIR="audio_stream.c"

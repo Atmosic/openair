@@ -23,6 +23,7 @@
 #include "pc_ctr_sleep.h"
 #endif
 #include "at_lc_regs_core_macro.h"
+#include "atm_bp_clock.h"
 
 #include "ll_init_api.h"
 #include "chci_tr.h"
@@ -37,6 +38,13 @@
 #include "wsf_trace.h"
 #include "bb_ble_sniffer_api.h"
 #include "bb_ble_api_op.h"
+#ifdef CONFIG_ATM_ENA_SW_LA
+#include "pal_sw_dbg.h"
+#ifdef CONFIG_ATM_ENA_SW_LA_DUMP_ON_HARDFAULT
+#include <zephyr/fatal.h>
+#include <zephyr/logging/log_ctrl.h>
+#endif
+#endif
 #include "pal_bb.h"
 #include "pal_cfg.h"
 #include "pal_sys.h"
@@ -95,6 +103,10 @@
 #endif
 #define BLE_NUM_HCI_BUFS (BLE_NUM_HCI_CMD_BUFS + BLE_NUM_HCI_EVT_BUFS)
 
+#ifdef CONFIG_ATM_ENA_SW_LA
+static __noinit PalSwDbgEntry_t sw_la_dump_table[CONFIG_ATM_SW_LA_ENTRY_NUM];
+#endif
+
 static BbRtCfg_t pc_ctr_bb_rt_cfg;
 static LlRtCfg_t pc_ctr_ll_rt_cfg;
 
@@ -103,6 +115,18 @@ static uint8_t bt_ver_cfg = BT_VER_OVERRIDE;
 #else
 static uint8_t bt_ver_cfg = BT_VER;
 #endif
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CONFIG_PRINTK
+#define PC_CTR_PRINTF printk
+#else
+#define PC_CTR_PRINTF(...) \
+    do { \
+    } while (0)
+#endif
+#else // CONFIG_SOC_FAMILY_ATM
+#define PC_CTR_PRINTF printf
+#endif // CONFIG_SOC_FAMILY_ATM
 
 #ifdef CONFIG_ATM_LCROM_IFACE
 #include "lcrom_iface.h"
@@ -156,6 +180,13 @@ void pc_ctr_bt_ver_config(uint8_t bt_ver)
 {
     bt_ver_cfg = bt_ver;
 }
+
+#ifndef CONFIG_SOC_ATM5XXX_2
+void pc_ctr_set_dtm_pkt_interval(uint8_t slots)
+{
+    pc_ctr_ll_rt_cfg.dtmOptPktIntervalSlot = slots;
+}
+#endif
 
 static void pc_ctr_load_config(void)
 {
@@ -243,11 +274,14 @@ static void pc_ctr_load_config(void)
     pc_ctr_ll_rt_cfg.csOptTFcsTimesSup = 0;
     pc_ctr_ll_rt_cfg.csTSwTimeSup = 10;
 #endif
-#ifdef DTM_PACKET_INTERVAL_OVERRIDE
+#if defined(DTM_PACKET_INTERVAL_OVERRIDE) && !defined(CONFIG_SOC_ATM5XXX_2)
     pc_ctr_ll_rt_cfg.dtmOptPktIntervalSlot = DTM_PACKET_INTERVAL_OVERRIDE;
 #endif
 #ifdef CONFIG_ATM_BLE_CS_NUM_ANTENNAS
     pc_ctr_ll_rt_cfg.csNumAntSup = CONFIG_ATM_BLE_CS_NUM_ANTENNAS;
+#endif
+#ifdef CONFIG_ATM_BLE_CS_MAX_ANT_PATHS
+    pc_ctr_ll_rt_cfg.csMaxAntPathsSup = CONFIG_ATM_BLE_CS_MAX_ANT_PATHS;
 #endif
 #if !defined(ENA_LL_FEAT_CENTRAL) && !defined(ENA_LL_FEAT_PERIPHERAL) && \
     !defined(ENA_LL_FEAT_EXT_ADV)
@@ -255,6 +289,8 @@ static void pc_ctr_load_config(void)
     // ext-adv feature
     pc_ctr_ll_rt_cfg.phy2mSup = false;
     pc_ctr_ll_rt_cfg.phyCodedSup = false;
+#elif !defined(CONFIG_ATM_ENA_LL_PHY_2M)
+    pc_ctr_ll_rt_cfg.phy2mSup = false;
 #endif
     // Configure Channel Sounding Sync PHY support
     // csOptCsSyncPhysSup bit definitions:
@@ -283,7 +319,7 @@ static void pc_ctr_load_config(void)
 #ifdef BLE_CS_DBG_VECTOR
     pc_ctr_ll_rt_cfg.defaultOpModeFlags |= LL_OP_MODE_FLAG_ENA_CS_DBG_VECTOR;
 #endif
-#ifdef BLE_CS_TEST_UNSYNC_MODE
+#if defined(BLE_CS_TEST_UNSYNC_MODE) && !defined(CONFIG_SOC_ATM5XXX_2)
     pc_ctr_ll_rt_cfg.defaultOpModeFlags |=
 	LL_OP_MODE_FLAG_ENA_CS_TEST_UNSYNC_MODE;
 #endif
@@ -293,6 +329,10 @@ static void pc_ctr_load_config(void)
 #ifdef DIS_CONN_PARAM_REQ_PROC
     pc_ctr_ll_rt_cfg.defaultOpModeFlags |=
 	LL_OP_MODE_FLAG_DIS_CONN_PARAM_REQ_PROC;
+#endif
+#ifdef CONFIG_ATM_BLE_FILTER_PEER_SUBRATE_EVT
+    pc_ctr_ll_rt_cfg.defaultOpModeFlags |=
+	LL_OP_MODE_FLAG_FILTER_PEER_SUBRATE_EVT;
 #endif
 }
 
@@ -420,7 +460,7 @@ static void pc_ctr_assert_fail_crit(uint32_t assert_addr)
 #elif defined(CFG_DBG) || defined(CFG_PLF_DEBUG)
     ASSERT_INFO(false, assert_addr, 0);
 #else
-    printf("ll asserted at: 0x%" PRIx32, assert_addr);
+    PC_CTR_PRINTF("ll asserted at: 0x%" PRIx32, assert_addr);
 #endif
 }
 
@@ -577,8 +617,42 @@ void pc_ctr_main(void)
         [BB_BLE_OP_INIT_CS_EVENT] = 500,
         [BB_BLE_OP_REFL_CS_EVENT] = 500,
     };
-    BbBleOverwriteSetupDelayTable(bleSetupDelaysUs, BB_BLE_OP_NUM);
+    uint32_t bp_freq = atm_bp_clock_get();
+    if (bp_freq >= 32000000) {
+	BbBleOverwriteSetupDelayTable(bleSetupDelaysUs, BB_BLE_OP_NUM);
+    }
+#ifdef CONFIG_ATM_ENA_SW_LA
+    PalSwDbgInit(sw_la_dump_table, CONFIG_ATM_SW_LA_ENTRY_NUM,
+	CONFIG_ATM_SW_LA_TRACE_MASK);
+#endif
 }
+
+#ifdef CONFIG_ATM_ENA_SW_LA_DUMP_ON_HARDFAULT
+void k_sys_fatal_error_handler(unsigned int reason, const struct arch_esf *esf)
+{
+    ARG_UNUSED(esf);
+    LOG_PANIC();
+    uint32_t sw_dbg_dump_start_time = 0;
+    if (!(CONFIG_ATM_SW_LA_TRACE_MASK & SW_DBG_USE_LC_TIME)) {
+	sw_dbg_dump_start_time = atm_get_sys_time();
+    }
+    PC_CTR_PRINTF("SW LA DUMP start\n");
+    uint16_t sw_dbg_idx = PalSwDbgGetIndex();
+    for (uint16_t i = 0; i < CONFIG_ATM_SW_LA_ENTRY_NUM; i++) {
+	uint16_t idx = (i + sw_dbg_idx) % CONFIG_ATM_SW_LA_ENTRY_NUM;
+
+	PC_CTR_PRINTF("&! %" PRIx32 ",%" PRIx32 ",%" PRIx32 "\n",
+	    sw_la_dump_table[idx].type, sw_la_dump_table[idx].time,
+	    sw_la_dump_table[idx].value);
+    }
+    if (!(CONFIG_ATM_SW_LA_TRACE_MASK & SW_DBG_USE_LC_TIME)) {
+	PC_CTR_PRINTF("&! %" PRIx32 ",%" PRIx32 ",%" PRIx32 "\n",
+	    (uint32_t)SW_DBG_DUMP_START, sw_dbg_dump_start_time, reason);
+    }
+    PC_CTR_PRINTF("SW LA DUMP end\n");
+    k_fatal_halt(reason);
+}
+#endif
 
 bool pc_ctr_schedule(void)
 {

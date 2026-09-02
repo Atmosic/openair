@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
+/*
+ * Copyright (c) 2021-2026 Atmosic
  *
- * @file at_cmd.h
- *
- * @brief Atmosic AT Command Core
- *
- * Copyright (C) Atmosic 2021-2026
- *
- * SPDX-License-Identifier: Apache-2.0
- *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #pragma once
@@ -50,44 +42,49 @@ extern "C" {
 #endif
 #endif // AT_CMD_RSP_FMT_MAX_LEN
 
+/// Length of the AT command prefix string (excludes null terminator)
+#ifdef CONFIG_AT_CMD_PREFIX
+#define AT_CMD_PREFIX_LEN (sizeof(CONFIG_AT_CMD_PREFIX) - 1)
+#else
+#define AT_CMD_PREFIX_LEN (sizeof("AT+") - 1)
+#endif
+
 /// Invalid channel number
 #define AT_CMD_INVALID_CH 0xFF
 
-/// The transfer layer support number
-#ifndef AT_CMD_XFER_MAX_NUM
-#define AT_CMD_XFER_MAX_NUM 3
-#endif // AT_CMD_XFER_MAX_NUM
 
 /// Command type
 typedef enum {
-    /// Test command. "AT+<x>=?"
-    at_cmd_type_test,
-    /// Read command. "AT+<x>?"
-    at_cmd_type_query,
-    /// Exec command. "AT+<x>="
-    at_cmd_type_exec
+	/// Test command. "AT+<x>=?"
+	at_cmd_type_test,
+	/// Read command. "AT+<x>?"
+	at_cmd_type_query,
+	/// Exec command. "AT+<x>="
+	at_cmd_type_exec
 } at_cmd_type_t;
 
 /// AT command error code
 typedef enum {
-    /// No error
-    AT_CMD_ERR_NO_ERROR,
-    /// Command not support
-    AT_CMD_ERR_NOT_SUPPORT,
-    /// Wrong argument count
-    AT_CMD_ERR_WRONG_ARGU_CNT,
-    /// Wrong argument range
-    AT_CMD_ERR_WRONG_ARGU_RANGE,
-    /// Wrong argument type
-    AT_CMD_ERR_WRONG_ARGU_TYPE,
-    /// Wrong argument type or range
-    AT_CMD_ERR_WRONG_ARGU_TYPE_OR_RANGE,
-    /// Wrong argument content
-    AT_CMD_ERR_WRONG_ARGU_CONTENT,
-    /// Wrong execute type
-    AT_CMD_ERR_WRONG_EXECUTE_TYPE,
-    /// Specific error
-    AT_CMD_ERR_SPECIFIC_ERR = 0x80
+	/// No error
+	AT_CMD_ERR_NO_ERROR,
+	/// Command not support
+	AT_CMD_ERR_NOT_SUPPORT,
+	/// Wrong argument count
+	AT_CMD_ERR_WRONG_ARGU_CNT,
+	/// Wrong argument range
+	AT_CMD_ERR_WRONG_ARGU_RANGE,
+	/// Wrong argument type
+	AT_CMD_ERR_WRONG_ARGU_TYPE,
+	/// Wrong argument type or range
+	AT_CMD_ERR_WRONG_ARGU_TYPE_OR_RANGE,
+	/// Wrong argument content
+	AT_CMD_ERR_WRONG_ARGU_CONTENT,
+	/// Wrong execute type
+	AT_CMD_ERR_WRONG_EXECUTE_TYPE,
+	/// Channel is locked — command rejected
+	AT_CMD_ERR_LOCKED,
+	/// Specific error
+	AT_CMD_ERR_SPECIFIC_ERR = 0x80,
 } at_cmd_err_t;
 
 /// AT command channel
@@ -116,6 +113,8 @@ typedef struct {
 	char const *rsp_fmt;
 	/// Number of response parameters
 	uint16_t rsp_num;
+	/// When true, command bypasses the channel lock check (passes through even when locked).
+	bool lock_exempt;
 } at_cmd_t;
 
 /// AT command parameter for handler
@@ -141,19 +140,18 @@ typedef struct at_cmd_param_t {
 } at_cmd_param_t;
 
 typedef enum {
-    /// AT command response (prefix)
-    at_prefix = 1,
-    /// AT command response (data)
-    at_data = (1 << 1),
-    /// AT command response (postfix)
-    at_postfix = (1 << 2),
-    /// AT command response (prefix + data + postfix)
-    at_all = at_prefix | at_data | at_postfix
+	/// AT command response (prefix)
+	at_prefix = 1,
+	/// AT command response (data)
+	at_data = (1 << 1),
+	/// AT command response (postfix)
+	at_postfix = (1 << 2),
+	/// AT command response (prefix + data + postfix)
+	at_all = at_prefix | at_data | at_postfix
 } at_cmd_resp_flag_t;
 
 /// The AT command response handler
-typedef void (*at_cmd_resp_hdlr_t)(at_cmd_ch_t ch, void const *resp,
-    uint16_t len);
+typedef void (*at_cmd_resp_hdlr_t)(at_cmd_ch_t ch, void const *resp, uint16_t len);
 
 /**
  *******************************************************************************
@@ -163,18 +161,17 @@ typedef void (*at_cmd_resp_hdlr_t)(at_cmd_ch_t ch, void const *resp,
  * @param[in, out] len The length of data string
  *******************************************************************************
  */
-typedef char const *(*at_cmd_xfer_hdlr_t)(at_cmd_ch_t ch, void const *data,
-    uint16_t *len);
+typedef char const *(*at_cmd_xfer_hdlr_t)(at_cmd_ch_t ch, void const *data, uint16_t *len);
 
 /// Built-in transport for UART
 #define AT_CMD_DFT_XFER_UART ((at_cmd_xfer_hdlr_t)0x1)
 
 /// The context of AT command allocate
 typedef struct {
-    /// Transport layer handler
-    at_cmd_xfer_hdlr_t xfer;
-    /// AT command response handler
-    at_cmd_resp_hdlr_t resp;
+	/// Transport layer handler
+	at_cmd_xfer_hdlr_t xfer;
+	/// AT command response handler
+	at_cmd_resp_hdlr_t resp;
 } at_cmd_alloc_ctx_t;
 
 /**
@@ -225,7 +222,47 @@ typedef struct {
 
 /**
  *******************************************************************************
+ * @brief Define AT command that bypasses the channel lock check.
+ *
+ * Use this instead of AT_COMMAND for commands that must be accessible even
+ * when the channel is locked (e.g. AT+SYSLOCK, AT+SYSUNLOCK, AT+SYSUNLOCKKEY).
+ *******************************************************************************
+ */
+#define AT_COMMAND_LOCK_EXEMPT(cmd, fmt, num, hdl, test, rsp_fmt, rsp_num)                         \
+	AT_COMMAND_VAR_LOCK_EXEMPT(p##hdl, cmd, fmt, num, hdl, test, rsp_fmt, rsp_num)
+
+#define AT_COMMAND_VAR_LOCK_EXEMPT(var, cmd, fmt, num, hdl, test, rsp_fmt, rsp_num)                \
+	static const at_cmd_t __attribute__((section(".at_cmd." cmd), used))                       \
+	var = {cmd, fmt, num, hdl, test, rsp_fmt, rsp_num, true}
+
+/**
+ *******************************************************************************
+ * @brief Check if an AT command channel is locked
+ * @param[in] ch The channel got from @ref at_cmd_alloc
+ * @return true if the channel is locked, false otherwise
+ *******************************************************************************
+ */
+#ifdef CONFIG_AT_CMD_LOCK_SET
+bool at_cmd_is_locked(at_cmd_ch_t ch);
+
+/**
+ *******************************************************************************
+ * @brief Set the lock state of an AT command channel
+ * @param[in] ch The channel got from @ref at_cmd_alloc
+ * @param[in] lock true to lock, false to unlock
+ *******************************************************************************
+ */
+void at_cmd_lock(at_cmd_ch_t ch, bool lock);
+#endif /* CONFIG_AT_CMD_LOCK_SET */
+
+/**
+ *******************************************************************************
  * @brief Allocate and configure AT command context
+ *
+ * @internal Use at_cmd_set_uart_ch_init() for UART transport or
+ *           at_cmd_set_custom_ch_init() for custom transports instead of calling
+ *           this directly.
+ *
  * @param[in] ctx The context of AT command
  * @return Channel number if successful; otherwise return AT_CMD_INVALID_CH
  *******************************************************************************

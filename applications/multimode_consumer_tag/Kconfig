@@ -6,11 +6,6 @@ module = MULTIMODE_CONSUMER_TAG
 module-str = multimode_consumer_tag
 source "subsys/logging/Kconfig.template.log_config"
 
-module = AT_CMD_UART
-parent-module = MULTIMODE_CONSUMER_TAG
-module-str = at_cmd_uart
-source "subsys/logging/Kconfig.template.log_config_inherit"
-
 config FMNA_TAG
 	bool "Enable FMNA Tag"
 	select ATM_FMNA
@@ -20,6 +15,7 @@ config FHN_TAG
 	bool "Enable FHN Tag"
 	select ATM_GFP
 	select ATM_GFP_MUTLIMODE_TAG if FMNA_TAG || STF_TAG
+	imply FAST_PAIR_AUTH_CB_GLOBAL if !FMNA_TAG && !STF_TAG
 	default y
 
 config STF_TAG
@@ -108,8 +104,10 @@ config FHN_FW_VERSION
 
 config FHN_MOTION_DETECT_SUPPORT
 	bool
-	default y if TAG_MOTION_DETECT
+	default y if !TAG_MOTION_SENSOR_TYPE_NONE || AT_CMD_TAGMOTIONRPT
 	select DULT_MOTION_DETECT
+	select DULT_MOTION_DETECT_TRIGGER if AT_CMD_TAGMOTIONRPT || (TAG_MOTION_SENSOR_TYPE_LIS2DH && LIS2DH_TRIGGER)
+	select FMDN_OOB_MOTION_DETECT_TRIGGER if CONFIG_FMDN_PRECISION_FINDING && (AT_CMD_TAGMOTIONRPT || (TAG_MOTION_SENSOR_TYPE_LIS2DH && LIS2DH_TRIGGER))
 
 endif # FHN_TAG
 
@@ -139,23 +137,57 @@ config TAG_BTN_BATT_REPORT
 	help
 	  Quick press button 5 times to show battery level with LED indication.
 
-config TAG_BTN_OTA_MODE
-	bool "Enable OTA mode entry with button"
-	depends on TAG_BUTTON
+config TAG_OTA_MODE
+	bool "Enable OTA mode"
 	default y if BOOTLOADER_MCUBOOT && MCUMGR_TRANSPORT_BT
 	help
-	  Quick press button 10 times to enter OTA mode.
-	  System will reboot and start advertising with device name "Atmosic OTA".
+	  Enable OTA firmware update mode. Enables platform_ctrl_ota and
+	  allows entry via button tap or long press.
 
-config TAG_BTN_OTA_LONG_PRESS
-	bool "Enable OTA mode entry via 7-second button hold"
-	depends on TAG_BTN_OTA_MODE
-	default y if !TAG_BTN_FACTORY_RESET
+config TAG_BTN_OTA_TAP_CNT
+	int "Number of taps to enter OTA mode (0 to disable)"
+	depends on TAG_OTA_MODE
+	default 10
+	range 0 20
 	help
-	  Hold the button for 7 seconds to enter OTA mode.
-	  Cannot be enabled together with TAG_BTN_FACTORY_RESET: since
-	  platform_ctrl_ota_enter() reboots the device, the 10-second factory
-	  reset threshold would never be reached.
+	  Quick press button this many times to enter OTA mode.
+	  Set to 0 to disable tap entry.
+
+config TAG_BTN_OTA_LONG_PRESS_MS
+	int "Button hold duration to enter OTA mode in ms (0 to disable)"
+	depends on TAG_OTA_MODE
+	default 0 if TAG_BTN_FACTORY_RESET
+	default 7000
+	range 0 60000
+	help
+	  Hold the button for this many milliseconds to enter OTA mode.
+	  Set to 0 to disable long press entry.
+
+config TAG_BTN_OTA_BOOT_WINDOW_MS
+	int "Boot window for OTA mode entry in ms (0 to disable)"
+	depends on TAG_OTA_MODE
+	default 0
+	range 0 3600000
+	help
+	  OTA mode can only be entered within this many milliseconds of booting.
+	  After the window expires, tap and long-press will no longer trigger OTA
+	  mode entry. Set to 0 to allow entry at any time.
+
+config TAG_OTA_TIMEOUT_MS
+	int "OTA mode inactivity timeout in ms (0 to disable)"
+	depends on TAG_OTA_MODE
+	default 0
+	range 0 3600000
+	help
+	  Timeout in ms before the device reboots back to normal mode if no
+	  DFU transfer completes. Set to 0 to disable the timeout.
+
+config TAG_OTA_DEVICE_NAME
+	string "OTA mode BLE device name"
+	depends on TAG_OTA_MODE
+	default "Atmosic OTA"
+	help
+	  BLE device name advertised when the device is in OTA mode.
 
 config TAG_BTN_FMNA_SN_LOOKUP
 	bool "Enable FMNA SN lookup with button short press 6 times"
@@ -224,10 +256,6 @@ config TAG_MOTION_SENSOR_TYPE_NONE
 	bool "No motion detection"
 
 endchoice
-
-config TAG_MOTION_DETECT
-	bool
-	default y if !TAG_MOTION_SENSOR_TYPE_NONE || AT_CMD_TAGMOTIONRPT
 
 config ATM_LL_HEAP_SIZE
 	int "Override LL heap size"

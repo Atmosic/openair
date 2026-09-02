@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/drivers/gpio/gpio_utils.h>
@@ -491,3 +491,58 @@ static const struct gpio_driver_api kts162x_drv_api = {
 			      POST_KERNEL, CONFIG_GPIO_KTS162X_INIT_PRIORITY, &kts162x_drv_api);
 
 DT_INST_FOREACH_STATUS_OKAY(GPIO_KTS162X_INST);
+
+#ifdef CONFIG_ZTEST
+
+int kts162x_test_set_reg(const struct device *dev, uint8_t *value, uint8_t reg)
+{
+	return kts162x_set_reg(dev, value, reg);
+}
+
+int kts162x_test_set_regs(const struct device *dev, uint32_t value, uint8_t reg)
+{
+	return kts162x_set_regs(dev, value, reg);
+}
+
+int kts162x_test_get_regs(const struct device *dev, uint32_t *value, uint8_t reg)
+{
+	return kts162x_get_regs(dev, value, reg);
+}
+
+void kts162x_test_trigger_work_handler(const struct device *dev)
+{
+	struct kts162x_drv_data *drv_data = dev->data;
+
+	kts162x_work_handler(&drv_data->work);
+}
+
+void *kts162x_test_get_drv_data(const struct device *dev)
+{
+	return dev->data;
+}
+
+void kts162x_test_update_data(const struct device *dev, uint32_t *dst, uint32_t src)
+{
+	struct kts162x_drv_data *drv_data = dev->data;
+
+	kts162x_update_data(&drv_data->lock, dst, src);
+}
+
+/* Call kts162x_int_gpio_handler directly via the device's gpio_cb,
+ * exercising the CONTAINER_OF + k_work_submit path without a real IRQ. */
+void kts162x_test_int_gpio_handler(const struct device *dev)
+{
+	struct kts162x_drv_data *drv_data = dev->data;
+
+	kts162x_int_gpio_handler(dev, &drv_data->gpio_cb, 0);
+}
+
+/* Directly call kts162x_pin_interrupt_configure, bypassing the
+ * gpio_pin_interrupt_configure() wrapper's port_pin_mask assertion. */
+int kts162x_test_pin_interrupt_configure(const struct device *dev, gpio_pin_t pin,
+					 enum gpio_int_mode mode, enum gpio_int_trig trig)
+{
+	return kts162x_pin_interrupt_configure(dev, pin, mode, trig);
+}
+
+#endif /* CONFIG_ZTEST */

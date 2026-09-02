@@ -1,0 +1,52 @@
+boards:
+- name: ATMEVK-5205-NQK-2
+  full_name: ATMEVK-5205-NQK-2
+  vendor: atmosic
+  revision:
+    format: custom
+    default: normal
+    revisions:
+    - name: mcuboot
+    - name: mcuboot_bl
+    - name: normal
+  socs:
+    - name: ATM5xxx-2
+
+- name: ATMEVK-5305-NBV-2
+  full_name: ATMEVK-5305-NBV-2
+  vendor: atmosic
+  revision:
+    format: custom
+    default: normal
+    revisions:
+    - name: mcuboot
+    - name: mcuboot_bl
+    - name: normal
+  socs:
+    - name: ATM5xxx-2
+
+- name: ATMEVK-5305-NQK-2
+  full_name: ATMEVK-5305-NQK-2
+  vendor: atmosic
+  revision:
+    format: custom
+    default: normal
+    revisions:
+    - name: mcuboot
+    - name: mcuboot_bl
+    - name: normal
+  socs:
+    - name: ATM5xxx-2
+
+- name: ATMEVK-5305e-NQN-2
+  full_name: ATMEVK-5305e-NQN-2
+  vendor: atmosic
+  revision:
+    format: custom
+    default: normal
+    revisions:
+    - name: mcuboot
+    - name: mcuboot_bl
+    - name: normal
+  socs:
+    - name: ATM5xxx-2

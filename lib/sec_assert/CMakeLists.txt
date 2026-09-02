@@ -1,6 +1,8 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
-zephyr_include_directories_ifdef(CONFIG_TRUSTED_EXECUTION_SECURE .)
-zephyr_sources_ifdef(CONFIG_TRUSTED_EXECUTION_SECURE sec_assert.c)
+if(CONFIG_TRUSTED_EXECUTION_SECURE OR CONFIG_ZTEST)
+    zephyr_include_directories(.)
+    zephyr_sources(sec_assert.c)
+endif()

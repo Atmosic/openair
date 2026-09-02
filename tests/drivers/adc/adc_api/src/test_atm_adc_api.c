@@ -4,7 +4,10 @@
  * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
+#include <string.h>
+
 #include <zephyr/devicetree.h>
+#include <zephyr/drivers/adc.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/ztest.h>
@@ -125,3 +128,142 @@ ZTEST(adc_basic, test_atm_adc_test_bit_sampling_statistics)
 			     TEST_ITER, min);
 	}
 }
+
+#if defined(CONFIG_ATM_ADC_CAL_RELOAD)
+
+#define CAL_BUF_SIZE 128U /* covers any gcal layout */
+
+ZTEST(adc_basic, test_atm_adc_reload_cal_idempotent)
+{
+	static uint8_t before[CAL_BUF_SIZE];
+	static uint8_t merged[CAL_BUF_SIZE];
+	static uint8_t replaced[CAL_BUF_SIZE];
+	uint16_t before_len, merged_len, replaced_len;
+
+	zassert_ok(atm_adc_test_get_cal(before, sizeof(before), &before_len),
+		   "atm_adc_test_get_cal failed");
+
+	atm_adc_reload_cal(false);
+	zassert_ok(atm_adc_test_get_cal(merged, sizeof(merged), &merged_len),
+		   "atm_adc_test_get_cal failed");
+
+	atm_adc_reload_cal(true);
+	zassert_ok(atm_adc_test_get_cal(replaced, sizeof(replaced), &replaced_len),
+		   "atm_adc_test_get_cal failed");
+
+	/* Trailing offset compensation is re-computed during measurements. */
+	uint16_t cmp_len = MIN(before_len, atm_adc_test_cal_stable_len);
+
+	zassert_equal(merged_len, before_len,
+		      "atm_adc_reload_cal(false) changed the cal length: %u -> %u", before_len,
+		      merged_len);
+	zassert_mem_equal(merged, before, cmp_len,
+			  "atm_adc_reload_cal(false) changed the cached calibration");
+
+	zassert_equal(replaced_len, before_len,
+		      "atm_adc_reload_cal(true) changed the cal length: %u -> %u", before_len,
+		      replaced_len);
+	zassert_mem_equal(replaced, before, cmp_len,
+			  "atm_adc_reload_cal(true) changed the cached calibration");
+}
+
+#if defined(CONFIG_ATM_ADC_CAL_TEST_HOOKS)
+
+ZTEST(adc_basic, test_atm_adc_reload_cal_refetches)
+{
+	static uint8_t before[CAL_BUF_SIZE];
+	static uint8_t invalid[CAL_BUF_SIZE];
+	static uint8_t merged[CAL_BUF_SIZE];
+	static uint8_t replaced[CAL_BUF_SIZE];
+	uint16_t before_len, invalid_len, merged_len, replaced_len;
+
+	zassert_ok(atm_adc_test_get_cal(before, sizeof(before), &before_len),
+		   "atm_adc_test_get_cal failed");
+	if (!before_len) {
+		/* No GADC_CAL tag provisioned; invalidation could not be undone. */
+		ztest_test_skip();
+	}
+
+	atm_adc_test_invalidate_cal();
+	int invalid_rc = atm_adc_test_get_cal(invalid, sizeof(invalid), &invalid_len);
+
+	atm_adc_reload_cal(false);
+	int merged_rc = atm_adc_test_get_cal(merged, sizeof(merged), &merged_len);
+
+	atm_adc_test_invalidate_cal();
+	atm_adc_reload_cal(true);
+	int replaced_rc = atm_adc_test_get_cal(replaced, sizeof(replaced), &replaced_len);
+
+	uint16_t cmp_len = MIN(before_len, atm_adc_test_cal_stable_len);
+
+	zassert_ok(invalid_rc, "atm_adc_test_get_cal failed");
+	zassert_ok(merged_rc, "atm_adc_test_get_cal failed");
+	zassert_ok(replaced_rc, "atm_adc_test_get_cal failed");
+
+	zassert_equal(invalid_len, 0, "invalidated cache still reports a length: %u", invalid_len);
+	zassert_true(memcmp(invalid, before, cmp_len) != 0,
+		     "invalidation left the cache unchanged");
+
+	zassert_equal(merged_len, before_len,
+		      "atm_adc_reload_cal(false) did not restore the cal length: %u -> %u",
+		      before_len, merged_len);
+	zassert_mem_equal(merged, before, cmp_len,
+			  "atm_adc_reload_cal(false) did not re-read the journal");
+
+	zassert_equal(replaced_len, before_len,
+		      "atm_adc_reload_cal(true) did not restore the cal length: %u -> %u",
+		      before_len, replaced_len);
+	zassert_mem_equal(replaced, before, cmp_len,
+			  "atm_adc_reload_cal(true) did not re-read the journal");
+}
+
+ZTEST(adc_basic, test_atm_adc_reload_cal_tag_absent)
+{
+	static uint8_t before[CAL_BUF_SIZE];
+	static uint8_t kept[CAL_BUF_SIZE];
+	static uint8_t dropped[CAL_BUF_SIZE];
+	static uint8_t restored[CAL_BUF_SIZE];
+	uint16_t before_len, kept_len, dropped_len, restored_len;
+
+	zassert_ok(atm_adc_test_get_cal(before, sizeof(before), &before_len),
+		   "atm_adc_test_get_cal failed");
+	if (!before_len) {
+		ztest_test_skip();
+	}
+
+	atm_adc_test_set_cal_missing(true);
+
+	atm_adc_reload_cal(false);
+	int kept_rc = atm_adc_test_get_cal(kept, sizeof(kept), &kept_len);
+
+	atm_adc_reload_cal(true);
+	int dropped_rc = atm_adc_test_get_cal(dropped, sizeof(dropped), &dropped_len);
+
+	/* Restore before asserting so a failure cannot leak into later tests. */
+	atm_adc_test_set_cal_missing(false);
+	atm_adc_reload_cal(true);
+	int restored_rc = atm_adc_test_get_cal(restored, sizeof(restored), &restored_len);
+
+	uint16_t cmp_len = MIN(before_len, atm_adc_test_cal_stable_len);
+
+	zassert_ok(kept_rc, "atm_adc_test_get_cal failed");
+	zassert_ok(dropped_rc, "atm_adc_test_get_cal failed");
+	zassert_ok(restored_rc, "atm_adc_test_get_cal failed");
+
+	zassert_equal(kept_len, before_len,
+		      "atm_adc_reload_cal(false) dropped the cal length: %u -> %u", before_len,
+		      kept_len);
+	zassert_mem_equal(kept, before, cmp_len,
+			  "atm_adc_reload_cal(false) discarded the cached calibration");
+
+	zassert_equal(dropped_len, 0, "atm_adc_reload_cal(true) kept the cal length: %u",
+		      dropped_len);
+
+	zassert_equal(restored_len, before_len, "cal length not restored: %u -> %u", before_len,
+		      restored_len);
+	zassert_mem_equal(restored, before, cmp_len, "cached calibration not restored");
+}
+
+#endif /* CONFIG_ATM_ADC_CAL_TEST_HOOKS */
+
+#endif /* CONFIG_ATM_ADC_CAL_RELOAD */

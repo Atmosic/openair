@@ -1,7 +1,7 @@
 # ATM SPI configuration options
 
-# Copyright (c) 2021-2023 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2021-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 menuconfig SPI_ATM
 	bool "Atmosic SPI driver"

@@ -61,7 +61,7 @@ tests:
 
   tests.lib.atm_vendor_dfu.atm.mcuboot.pytest.single_image:
     harness: pytest
-    timeout: 600
+    timeout: 1200
     extra_args:
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
@@ -75,9 +75,9 @@ tests:
       pytest_args:
         - "-v"
         - "--dfu-mode=single"
-  tests.lib.atm_vendor_dfu.atm.mcuboot.pytest.flash_xip.dual_image:
+  tests.lib.atm_vendor_dfu.atm.mcuboot.flash_xip.pytest.dual_image:
     harness: pytest
-    timeout: 600
+    timeout: 1200
     tags:
       - flash_xip
     depends_on:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 """
 pack_combined_image.py - Pack two MCUboot signed binaries into a single
 combined-image OTA binary consumed by openair/lib/atm_vendor_dfu.

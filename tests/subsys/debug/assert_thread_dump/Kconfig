@@ -1,0 +1,11 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+source "Kconfig.zephyr"
+
+config TEST_TRIGGER_ASSERT_INFO
+	bool "Trigger ASSERT_INFO (assert_param) instead of ASSERT_ERR"
+
+config TEST_TRIGGER_K_PANIC
+	bool "Trigger k_panic (fatal error path) instead of ASSERT_ERR"

@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file fp_tag_platform.c
- *
- * @brief Platform For fp tag
- *
- * Copyright (C) Atmosic 2025-2026
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <zephyr/drivers/gpio.h>
@@ -106,8 +98,8 @@ static void fp_tag_mode_state(fp_mode_t mode)
 	}
 }
 
-static void fp_tag_platform_buzzer_action(bool action, atm_gfp_ring_op_t ring_op,
-					  atm_gfp_ring_vol_t ring_vol_lvl, uint16_t ring_to_ds)
+static uint16_t fp_tag_platform_buzzer_action(bool action, atm_gfp_ring_op_t ring_op,
+					      atm_gfp_ring_vol_t ring_vol_lvl, uint16_t ring_to_ds)
 {
 	LOG_DBG("action: %s", action ? "ON" : "OFF");
 	if (action) {
@@ -128,6 +120,7 @@ static void fp_tag_platform_buzzer_action(bool action, atm_gfp_ring_op_t ring_op
 		platform_indicate_buzzer(TAG_BUZZER_EVT_GFP_RING_OFF, NULL);
 	}
 #endif
+	return ring_to_ds;
 }
 
 #if (defined(CONFIG_FAST_PAIR_FMDN_V2) && defined(CONFIG_FMDN_REVERSE_RINGING))
@@ -139,18 +132,63 @@ static void fp_tag_platform_buzzer_action(bool action, atm_gfp_ring_op_t ring_op
 static void fp_tag_platform_reverse_ringing_event(atm_gfp_reverse_ringing_event_t event)
 {
 	switch (event) {
+	case ATM_GFP_RR_EVENT_ADV_STARTED:
+		LOG_INF("RR: Advertisement started, waiting for phone to connect");
+		/* TODO: Show searching feedback (e.g. slow LED blink) */
+		break;
+	case ATM_GFP_RR_EVENT_ADV_START_FAILED:
+		LOG_INF("RR: Advertisement failed to start");
+		/* TODO: Show start failed feedback (e.g. beep a error tone) */
+		break;
+	case ATM_GFP_RR_EVENT_ADV_TIMEOUT:
+		LOG_INF("RR: ADV window timed out, phone never connected");
+		/* TODO: Turn off searching feedback */
+		break;
 	case ATM_GFP_RR_EVENT_CONNECTED:
 		LOG_INF("RR: Connected via RR advertisement, encryption enabled");
 		/* TODO: Show active ringing feedback (e.g. LED on, beep) */
+		break;
+	case ATM_GFP_RR_EVENT_START_CONFIRMED:
+		LOG_INF("RR: START indication ACKed (persistent fast feedback)");
+		/* TODO: Show active ringing feedback immediately on persistent path */
 		break;
 	case ATM_GFP_RR_EVENT_STARTED:
 		LOG_INF("RR: Ringing started");
 		/* TODO: Show active ringing feedback (e.g. LED on, beep) */
 		break;
 
+	case ATM_GFP_RR_EVENT_STOP_CONFIRMED:
+		LOG_INF("RR: STOP indication ACKed (persistent fast feedback)");
+		/* TODO: Turn off ringing feedback immediately on persistent path */
+		break;
 	case ATM_GFP_RR_EVENT_STOPPED:
 		LOG_INF("RR: Ringing stopped");
 		/* TODO: Turn off LED or stop beep */
+		break;
+
+	case ATM_GFP_RR_EVENT_PHONE_FAILED:
+		LOG_INF("RR: Phone failed to start ringing");
+		/* TODO: Stop searching feedback and play error indication */
+		break;
+
+	case ATM_GFP_RR_EVENT_TIMEOUT_LOCAL:
+		LOG_INF("RR: Provider ringing timeout");
+		/* TODO: Stop searching feedback and play error indication */
+		break;
+
+	case ATM_GFP_RR_EVENT_PHONE_TIMEOUT:
+		LOG_INF("RR: Phone ringing timed out");
+		/* TODO: Turn off active ringing feedback */
+		break;
+
+	case ATM_GFP_RR_EVENT_PHONE_START_TIMEOUT:
+		LOG_INF("RR: Persistent path ringing timed out (60s)");
+		/* TODO: Stop active ringing feedback */
+		break;
+
+	case ATM_GFP_RR_EVENT_PHONE_STOPPED_DISCONNECTED:
+		LOG_INF("RR: Connection dropped while phone was ringing");
+		/* TODO: Stop active ringing feedback */
 		break;
 
 	default:
@@ -188,11 +226,6 @@ static const char *fp_tag_get_fw_version(void)
 }
 
 #if defined(CONFIG_FMDN_PRECISION_FINDING) || defined(CONFIG_DULT_MOTION_DETECT)
-static uint8_t fp_platform_motion_get_raw(void)
-{
-	return platform_ctrl_motion_detect_get_raw_data(MOTION_RAW_UNIT_DEG);
-}
-
 /* Reference count — tracks how many consumers (FMDN, DULT) have the sensor
  * enabled.  The hardware is started on the first enable and stopped only when
  * the last consumer releases it, so one consumer disabling never pulls the
@@ -218,24 +251,60 @@ static void fp_platform_motion_hw_enable(bool enable)
 		}
 	}
 }
+
+#if defined(CONFIG_FMDN_PRECISION_FINDING) || !defined(CONFIG_DULT_MOTION_DETECT_TRIGGER)
+static uint8_t fp_platform_motion_get_raw(void)
+{
+	return platform_ctrl_motion_detect_get_raw_data(MOTION_RAW_UNIT_DEG);
+}
+#endif
 #endif /* CONFIG_FMDN_PRECISION_FINDING || CONFIG_DULT_MOTION_DETECT */
+
+#if defined(CONFIG_LIS2DH_TRIGGER) || defined(CONFIG_AT_CMD_TAGMOTIONRPT)
+static void fp_platform_motion_trigger_event(void)
+{
+	atm_gfp_motion_trigger_event();
+}
+#endif /* CONFIG_LIS2DH_TRIGGER || CONFIG_AT_CMD_TAGMOTIONRPT */
+
+#if defined(CONFIG_DULT_MOTION_DETECT_TRIGGER) || defined(CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER)
+static void fp_platform_motion_trigger_hw_enable(bool enable)
+{
+	fp_platform_motion_hw_enable(enable);
+#if defined(CONFIG_LIS2DH_TRIGGER) || defined(CONFIG_AT_CMD_TAGMOTIONRPT)
+	// Register on arm (not init) so the last consumer to arm owns the shared cb.
+	if (enable) {
+		platform_ctrl_motion_detect_set_event_cb(fp_platform_motion_trigger_event);
+	}
+	platform_ctrl_motion_detect_trigger_enable(enable);
+#endif
+}
+#endif /* CONFIG_DULT_MOTION_DETECT */
 
 #ifdef CONFIG_FMDN_PRECISION_FINDING
 static int fp_platform_ranging_motion_cb(atm_gfp_motion_raw_get_t *get_raw)
 {
 	if (get_raw) {
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+		fp_platform_motion_trigger_hw_enable(true);
+#else
 		fp_platform_motion_hw_enable(true);
+#endif
 		if (!motion_use_count) {
 			/* init failed inside fp_platform_motion_hw_enable */
 #ifdef CONFIG_AT_CMD_TAG_SET
-			at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
+			at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(), AT_CMD_TAG_MODE_FHN,
 					     AT_CMD_TAG_ERR_MOTION_SENSOR);
 #endif
 			return -ENODEV;
 		}
 		*get_raw = fp_platform_motion_get_raw;
 	} else {
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+		fp_platform_motion_trigger_hw_enable(false);
+#else
 		fp_platform_motion_hw_enable(false);
+#endif
 	}
 	return 0;
 }
@@ -264,9 +333,17 @@ static void fp_tag_platform_init(tag_state_notify_cb fn_cb)
 		.motion_cb = fp_platform_ranging_motion_cb,
 #endif
 #ifdef CONFIG_DULT_MOTION_DETECT
+#ifdef CONFIG_DULT_MOTION_DETECT_TRIGGER
+		.dult_motion_hw_enable_cb = fp_platform_motion_trigger_hw_enable,
+#else
 		.dult_motion_hw_enable_cb = fp_platform_motion_hw_enable,
+		/* Provide polling getter only when no HW trigger is available.
+		 * With CONFIG_DULT_MOTION_DETECT_TRIGGER the platform uses the
+		 * event-driven path (dult_ut_motion_event) and the poll loop is
+		 * excluded from the build. */
 		.dult_motion_raw_get_cb = fp_platform_motion_get_raw,
 #endif
+#endif /* CONFIG_DULT_MOTION_DETECT */
 #if (defined(CONFIG_FAST_PAIR_FMDN_V2) && defined(CONFIG_FMDN_REVERSE_RINGING))
 		.reverse_ringing_event_cb = fp_tag_platform_reverse_ringing_event,
 #endif

@@ -55,6 +55,7 @@ typedef enum {
     ATM_MAC_MGR_PROT_NONE, /*!< No protocol */
     ATM_MAC_MGR_PROT_BLE, /*!< BLE */
     ATM_MAC_MGR_PROT_154, /*!< 15.4 */
+    ATM_MAC_MGR_PROT_TRNG, /*!< Random number generation */
     ATM_MAC_MGR_PROT_FLASH, /*!< Flash operations */
     ATM_MAC_MGR_PROT_CAL, /*!< Periodic calibration */
     ATM_MAC_MGR_PROT_NUM,

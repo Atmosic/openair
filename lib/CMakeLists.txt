@@ -1,11 +1,11 @@
 # Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 add_subdirectory(app_batt)
 add_subdirectory(app_work_q)
+add_subdirectory(ariad)
 add_subdirectory(at_cmd)
-add_subdirectory(at_cmd_set)
 add_subdirectory(atm_asm)
 add_subdirectory(atm_bthci_utils)
 add_subdirectory(atm_cs)
@@ -24,8 +24,11 @@ add_subdirectory(atm_utils_reg)
 add_subdirectory(atm_utils_slist)
 add_subdirectory(atm_vendor)
 add_subdirectory(atm_vendor_dfu)
+add_subdirectory(atvv)
+add_subdirectory(audio_codec)
 add_subdirectory(dtm_2wire)
 add_subdirectory(gfp_crypto)
+add_subdirectory(hogp)
 add_subdirectory(mcuboot_hooks)
 add_subdirectory(micro-ecc)
 add_subdirectory(ranging_oob_de)

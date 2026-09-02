@@ -1,13 +1,15 @@
+/*
+ * Copyright (c) 2022-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  ******************************************************************************
  *
  * @file reset.c
  *
  * @brief Reset Driver
- *
- * Copyright (C) Atmosic 2022-2026
- *
- * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  ******************************************************************************
  */
@@ -32,12 +34,62 @@
 #include "sec_reset.h"
 #include "pseq_status.h"
 
+/*
+ * Test-stub hooks.
+ *
+ * When CONFIG_RESET_TEST_STUB is enabled, boot_status() calls into the stub
+ * helpers defined in reset_stub.c so that unit tests can fake the PSEQ / PMU
+ * register reads.  When the option is disabled, every macro collapses to an
+ * identity expression or a no-op, so the production code path is identical to
+ * what the raw hardware reads would produce and the stub translation unit is
+ * not even compiled (see CMakeLists.txt).
+ *
+ * Defining the stub/real selection in one place here keeps the body of
+ * boot_status() free of scattered #ifdef CONFIG_RESET_TEST_STUB guards.
+ */
+#ifdef __PSEQ_WDOG_STATUS_MACRO__
+#define RESET_STUB_WDOG_PTR(p) (p)
+#else
+#define RESET_STUB_WDOG_PTR(p) NULL
+#endif
+
+#ifdef CONFIG_RESET_TEST_STUB
+#define RESET_STUB_OVERRIDE_PSEQ(ps, wdog) \
+    reset_stub_override_pseq_status((ps), (wdog))
+#define RESET_STUB_PMU_WKUP_DET(v) reset_stub_pmu_wkup_det(v)
+#define RESET_STUB_PMU_SOC_WDOG_RESET(v) reset_stub_pmu_soc_wdog_reset(v)
+#define RESET_STUB_PMU_PMU_WDOG_RESET(v) reset_stub_pmu_pmu_wdog_reset(v)
+#else
+#define RESET_STUB_OVERRIDE_PSEQ(ps, wdog) ((void)0)
+#define RESET_STUB_PMU_WKUP_DET(v) (v)
+#define RESET_STUB_PMU_SOC_WDOG_RESET(v) (v)
+#define RESET_STUB_PMU_PMU_WDOG_RESET(v) (v)
+#endif
+
 #if defined(CMSDK_SYSCON) || defined(SYS_CTRL_REG)
 static uint32_t reset_syndrome;
+#ifdef CONFIG_RESET_TEST_STUB
+uint32_t *reset_get_syndrome_ptr(void)
+{
+    return &reset_syndrome;
+}
+#endif
+#endif
+
+static boot_status_t cached_boot_status;
+#ifdef CONFIG_RESET_TEST_STUB
+uint32_t *reset_get_cached_boot_status_ptr(void)
+{
+    return &cached_boot_status;
+}
 #endif
 
 boot_status_t boot_status(void)
 {
+    if (cached_boot_status) {
+	return cached_boot_status;
+    }
+
 #ifdef CMSDK_SYSCON
     if (reset_syndrome & CMSDK_SYSCON_RSTINFO_LOCKUPRESET_Msk) {
 	return BOOT_STATUS_RESET_LOCKUP;
@@ -103,24 +155,27 @@ boot_status_t boot_status(void)
 #endif
     }
     WRPR_CTRL_SET(CMSDK_PSEQ, WRPR_CTRL__CLK_DISABLE);
+    RESET_STUB_OVERRIDE_PSEQ(&pseq_boot_status,
+	RESET_STUB_WDOG_PTR(&pseq_wdog_status));
 
     boot_status_t status = 0;
 
     if (!pseq_boot_status) {
 #if !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_PMU)
 	uint8_t pmu_wkup_det = pmu_get_wkup_det();
+	pmu_wkup_det = RESET_STUB_PMU_WKUP_DET(pmu_wkup_det);
 	if (!pmu_wkup_det) {
 #ifdef SYS_CTRL_REG
 	    ASSERT_ERR(reset_syndrome &
 		SYS_CTRL_REG_SSE200_RESET_SYNDROME_PoR_Msk);
 #endif
 #ifdef PMU_PMU_RB5__SOC_WDOG_RESET__READ
-	    if (pmu_get_soc_wdog_reset()) {
+	    if (RESET_STUB_PMU_SOC_WDOG_RESET(pmu_get_soc_wdog_reset())) {
 		return BOOT_STATUS_SOC_RESET_PSEQ_WDOG;
 	    }
 #endif
 #ifdef __PMU_PMU_WDOG_CTRL_MACRO__
-	    if (pmu_get_pmu_wdog_reset()) {
+	    if (RESET_STUB_PMU_PMU_WDOG_RESET(pmu_get_pmu_wdog_reset())) {
 		return BOOT_STATUS_SOC_RESET_PMU_WDOG;
 	    }
 #endif
@@ -360,6 +415,12 @@ static void reset_print(void)
 	DEBUG_TRACE("SOC off wakeup");
     }
 }
+#ifdef CONFIG_RESET_TEST_STUB
+void (*reset_get_print_fn(void))(void)
+{
+    return reset_print;
+}
+#endif
 #endif // !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_RESET_PRINT)
 
 #ifdef CONFIG_SOC_FAMILY_ATM
@@ -377,6 +438,8 @@ static int reset_sys_init(void)
     reset_syndrome = secure_rclr_reset_syndrome();
 #endif
 #endif // SYS_CTRL_REG
+
+    cached_boot_status = boot_status();
 
 #ifdef CONFIG_RESET_PRINT
     reset_print();

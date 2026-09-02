@@ -1,0 +1,45 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+mainmenu "DMIC Sample"
+
+source "Kconfig.zephyr"
+
+choice SAMPLE_RATE_CHOICE
+	prompt "PCM sample rate"
+	default SAMPLE_RATE_16KHZ
+	help
+	  PCM sample rate requested from the dmic_atm driver. The driver
+	  (openair/drivers/audio/dmic_atm.c, rate_to_sel()) only supports
+	  8000 Hz and 16000 Hz.
+
+config SAMPLE_RATE_8KHZ
+	bool "8 kHz"
+
+config SAMPLE_RATE_16KHZ
+	bool "16 kHz"
+
+endchoice
+
+config SAMPLE_RATE_HZ
+	int
+	default 8000 if SAMPLE_RATE_8KHZ
+	default 16000 if SAMPLE_RATE_16KHZ
+
+config HW_CHANNEL_INDEX
+	int "Hardware controller index"
+	default 0
+	help
+	  Selects the PDM hardware controller index passed to
+	  dmic_build_channel_map().  0 selects pdm0.
+
+config DMIC_BENCH_DURATION_S
+	int "Bench-test streaming duration (seconds)"
+	default 2
+	range 1 5
+	help
+	  How long to stream PDM audio before stopping and dumping the
+	  captured samples. Kept short because the whole run is dumped
+	  as hex over the console after stopping, and that dump is far
+	  slower than the capture.

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <zephyr/logging/log.h>
 #include "at_cmd.h"
+#include "at_cmd_set.h"
 #include "at_cmd_set_common.h"
 
 #define CMD_NAME           "BLEADVLEGACYPARM"
@@ -49,6 +50,7 @@ static void fn_cmd_handler(at_cmd_param_t *param)
 		ctx->adv_intv_min[idx] = intv_min;
 		ctx->adv_intv_max[idx] = intv_max;
 		ctx->adv_duration[idx] = duration;
+#ifdef CONFIG_AT_CMD_BLEADVENABLE
 		if (ctx->adv_enabled[idx]) {
 			at_cmd_result_t result = at_cmd_adv_restart(idx);
 			AT_CMD_RESULT_TO_PARAM(result, param);
@@ -56,6 +58,13 @@ static void fn_cmd_handler(at_cmd_param_t *param)
 				return;
 			}
 		}
+#endif
+
+#ifdef CONFIG_AT_CMD_BLEADVLEGACYPARM_CB
+		if (ctx->callbacks.advlegacyparm_set_cb) {
+			ctx->callbacks.advlegacyparm_set_cb(idx, intv_min, intv_max, duration);
+		}
+#endif
 	} else if (param->type == at_cmd_type_query) {
 		for (uint8_t i = 0; i < AT_CMD_ADV_MAX_INST; i++) {
 			AT_CMD_RSP_REPEAT(param->ch, param->cmd, i, AT_CMD_ADV_MAX_INST, 4, i,

@@ -12,12 +12,16 @@ config ATM_VOLT_CHECK_THR
         int "Initial voltage check threshold"
         default 20
         help
-            Controls the VBAT/VBATLI threshold to allow SW boot
-            For VBAT level <= 1.8V,
-                VBAT threshold = 0.9 + 0.025X, where 0 <= X <= 31
+            Controls the VBAT/VBATLI threshold to allow SW boot.
+            The effective threshold is the register value X plus an intrinsic offset of 3 (X does not include the offset).
+
             For VBAT level > 1.8V,
-                VBAT threshold = 1.4 + 0.05X, where 0 <= X <= 31
+                VBAT threshold = 1.4V + 0.05V * (X+3), where 0 <= X <= 31
+            For VBAT level <= 1.8V,
+                VBAT threshold = 0.9V + 0.025V * (X+3), where 0 <= X <= 31
 	    For VBATLI,
-		VBATLI threshold = 2.4V + 0.050X, where 2 <= X <= 31
+		VBATLI threshold = 2.4V + 0.050V * (X+3), where 2 <= X <= 31
+            For VBATLI level <= 1.8V, (Unprogrammed OTP only)
+                VBATLI threshold =  1.9V + 0.025V * (X+3), where 2 <= X <= 31
 
 endif

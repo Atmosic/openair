@@ -7,6 +7,7 @@
 #pragma once
 
 #include "arch.h"
+#include "at_cmd.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -114,6 +115,9 @@ typedef enum {
 	/* 0x82 reserved */
 	AT_ERR_GATT_DYN_NO_SVC = 0x83,  /* no ADDSERVICE issued, or all svcs already active */
 	AT_ERR_GATT_DYN_NO_CHAR = 0x84, /* no ADDCHAR issued before ADDDESC */
+
+	/* Access control errors (0x90-0x9F) */
+	AT_ERR_ACCESS_INVALID_KEY = 0x90, /* Invalid unlock key */
 } at_cmd_app_err_t;
 
 /**
@@ -177,6 +181,19 @@ BUILD_ASSERT(CONFIG_AT_CMD_ADV_MAX_INST <= CONFIG_BT_EXT_ADV_MAX_ADV_SET,
  * Callback registration structure for AT command set features
  */
 typedef struct {
+#ifdef CONFIG_AT_CMD_BLEGAPDEVNAME_CB
+	/** Called after a successful AT+BLEGAPDEVNAME set */
+	void (*devname_set_cb)(const char *name);
+#endif
+#ifdef CONFIG_AT_CMD_BLEADVLEGACYPARM_CB
+	/** Called after AT+BLEADVLEGACYPARM stores new advertising parameters */
+	void (*advlegacyparm_set_cb)(uint8_t idx, uint16_t intv_min, uint16_t intv_max,
+				     uint16_t duration);
+#endif
+#ifdef CONFIG_AT_CMD_BLEADVDATA_CB
+	/** Called after AT+BLEADVDATA stores advertising data in ctx */
+	int (*advdata_set_cb)(uint8_t idx, const uint8_t *data, uint16_t len);
+#endif
 #ifdef CONFIG_AT_CMD_TAG_SET
 	at_cmd_set_tag_callbacks_t tag_cb;
 #endif
@@ -205,26 +222,34 @@ typedef struct {
 	uint8_t adv_bt_id[AT_CMD_ADV_MAX_INST];
 	/* Advertising enabled flag */
 	bool adv_enabled[AT_CMD_ADV_MAX_INST];
+#endif
+
 #ifdef CONFIG_BT_EXT_ADV
 	struct bt_le_ext_adv *adv_set[AT_CMD_ADV_MAX_INST];
 #endif
 
+#if defined(CONFIG_AT_CMD_BLEADVLEGACYPARM) || defined(CONFIG_AT_CMD_BLEEXTADVPARM)
 	/* Advertising parameters per instance */
 	uint16_t adv_intv_min[AT_CMD_ADV_MAX_INST];
 	uint16_t adv_intv_max[AT_CMD_ADV_MAX_INST];
 	uint16_t adv_duration[AT_CMD_ADV_MAX_INST];
+#endif
+
 #ifdef CONFIG_BT_EXT_ADV
 	uint8_t adv_primary_phy[AT_CMD_ADV_MAX_INST];
 #endif
 
+#ifdef CONFIG_AT_CMD_BLEADVDATA
 	/* Advertising data per instance */
 	uint8_t adv_data[AT_CMD_ADV_MAX_INST][AT_CMD_MAX_ADV_DATA_LEN];
 	uint16_t adv_data_len[AT_CMD_ADV_MAX_INST];
+#endif
 
+#ifdef CONFIG_AT_CMD_BLESCANRSPDATA
 	/* Scan response data per instance */
 	uint8_t scan_data[AT_CMD_ADV_MAX_INST][AT_CMD_MAX_ADV_DATA_LEN];
 	uint16_t scan_data_len[AT_CMD_ADV_MAX_INST];
-#endif // CONFIG_AT_CMD_BLEADVENABLE
+#endif
 
 #ifdef CONFIG_AT_CMD_SET_CALLBACKS
 	/* AT command set callbacks */
@@ -269,6 +294,54 @@ at_cmd_ctx_t *at_cmd_ctx_get(void);
  * @param ch AT command channel
  */
 void at_cmd_set_channel(uint8_t ch);
+
+/**
+ * @brief Allocate and initialize a custom AT command channel
+ *
+ * For non-UART transports (e.g. BLE GATT). Calls at_cmd_ctx_init()
+ * and allocates a channel slot with the provided transport context.
+ * Does NOT call at_cmd_set_channel() — call it explicitly afterwards
+ * if unsolicited events should be routed to this channel.
+ *
+ * @param ctx  Transport context
+ *
+ * @return Allocated AT command channel on success, AT_CMD_INVALID_CH on failure
+ */
+__NONNULL_ALL
+at_cmd_ch_t at_cmd_set_custom_ch_init(at_cmd_alloc_ctx_t const *ctx);
+
+#ifdef CONFIG_ATM_AT_CMD_UART_TRANSPORT
+
+/**
+ * @brief Initialize AT command UART transport and set as primary event channel
+ *
+ * Sets up UART IRQ, RX parser, work queue, allocates a channel, and
+ * calls at_cmd_set_channel() internally. One call is sufficient for
+ * UART-only use. Use at_cmd_set_uart_ch_get() if the channel number is needed.
+ *
+ * @param uart_dev  UART device to use for AT command transport
+ *
+ * @return 0 on success, negative error code on failure
+ */
+int at_cmd_set_uart_ch_init(const struct device *uart_dev);
+
+/**
+ * @brief Get the AT command channel allocated by at_cmd_set_uart_ch_init()
+ *
+ * @return Allocated AT command channel, or AT_CMD_INVALID_CH if not yet
+ *         initialized
+ */
+at_cmd_ch_t at_cmd_set_uart_ch_get(void);
+
+/**
+ * @brief Called for every received UART byte before AT parsing
+ *
+ * @param byte  Received byte
+ * @return true if byte was consumed, false to continue normal AT parsing
+ */
+bool at_cmd_set_uart_rx_passthrough(uint8_t byte);
+
+#endif /* CONFIG_ATM_AT_CMD_UART_TRANSPORT */
 
 #ifdef CONFIG_AT_CMD_SET_CALLBACKS
 

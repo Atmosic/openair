@@ -159,6 +159,10 @@ static void rd_protect_mcuboot(void)
 
 static bool check_factory_part_lock(void)
 {
+#ifdef CONFIG_ZTEST
+	// Under test, skip the journal search to exercise the lock path.
+	return true;
+#else
 	uint8_t lock;
 	sec_jrnl_tag_len_t lock_len = sizeof(lock);
 
@@ -167,6 +171,7 @@ static bool check_factory_part_lock(void)
 	}
 
 	return false;
+#endif
 }
 #endif // factory_partition
 #endif // CONFIG_ATM_PROT

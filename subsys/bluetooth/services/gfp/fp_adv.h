@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file fp_adv.h
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Advertisement Middleware
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -70,6 +74,20 @@ __NONNULL_ALL
 void fp_adv_get_non_disc_service_data(struct bt_data *ad);
 
 /**
+ * @brief Get the current advertising address from the Fast Pair advertising set
+ *
+ * Returns the live address the controller is advertising with (RPA when
+ * privacy is active, identity address when @c BT_LE_ADV_OPT_USE_IDENTITY is
+ * set).
+ *
+ * @param[out] addr Pointer to receive the current advertising address
+ * @return 0 on success, -ENODEV if the advertising set has not been created
+ *         yet, or another negative errno forwarded from bt_le_ext_adv_get_info()
+ */
+__NONNULL_ALL
+int fp_adv_get_adv_set_addr(bt_addr_le_t *addr);
+
+/**
  * @brief fp adv recreate with fp mode
  */
 void fp_adv_recreate(void);
@@ -77,5 +95,15 @@ void fp_adv_recreate(void);
 #ifdef __cplusplus
 }
 #endif
+
+#if defined(CONFIG_ZTEST)
+#include <zephyr/bluetooth/bluetooth.h>
+
+void fp_adv_test_adv_sent(void);
+void fp_adv_test_connected(void);
+uint16_t fp_adv_test_data_salt(void);
+void fp_adv_test_data_salt_update(void);
+void fp_adv_test_get_non_disc_service_data(struct bt_data *ad);
+#endif /* CONFIG_ZTEST */
 
 ///@}

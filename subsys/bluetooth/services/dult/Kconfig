@@ -74,6 +74,25 @@ config DULT_MOTION_DETECT
 	  capable of detecting an orientation change of +-10 degrees along any
 	  two axes of the accessory.
 
+config DULT_MOTION_DETECT_TRIGGER
+	bool "Enable trigger-based motion detection for DULT UT"
+	depends on DULT_MOTION_DETECT
+	help
+	  Enable interrupt-driven (trigger) motion event path for DULT UT.
+	  When selected, the platform signals motion via dult_ut_motion_event()
+	  on each hardware interrupt instead of using the polling loop.  Only the
+	  polling infrastructure (poll handler and periodic poll work) is excluded
+	  from the build; the 20s fast-phase backoff timer remains active in both
+	  modes.
+
+config DULT_MOTION_DETECT_SOUND_DURATION_MS
+	int "DULT motion detect sound duration in milliseconds"
+	default 500
+	range 1 65535
+	depends on DULT_MOTION_DETECT
+	help
+	  The duration of the sound played when motion is detected.
+
 config DULT_ACCESSORY_CAPABILITIES
     hex "The capability value from DULT specification the accessory most closely resembles"
     default 0xB if DULT_MOTION_DETECT  # play sound + motion detector UT + BLE lookup
@@ -112,5 +131,13 @@ config DULT_ADV_SUPPORT
     bool "DULT advertising support"
     help
 	Enable DULT advertising support.
+
+config DULT_SEPARATION_DETECT
+	bool "DULT owner-disconnection separation detection"
+	default n
+	help
+	  Enable the legacy 30-minute owner-disconnection timer that changes the
+	  DULT mode to separated. When disabled, applications such as FMDN can
+	  control the separated mode state through their own protocol.
 
 endif # ATM_DULT

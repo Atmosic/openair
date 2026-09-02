@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 identifier: ATMBTCSTAG-3405@mcuboot/ATM34xx-5
 name: ATMBTCSTAG-3405_mcuboot
 type: mcu
@@ -8,15 +12,18 @@ supported:
   - adc
   - atlc
   - bluetooth
+  - brownout_hib
   - ccbm
   - channel_sounding
   - entropy
   - flash
   - gpio
+  - ir
   - lis2dh
   - i2c
   - i2c_clock_stretching
   - mikrobus
+  - pdm
   - pwm
   - rram
   - sha2_multi_context

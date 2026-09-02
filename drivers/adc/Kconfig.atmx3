@@ -1,7 +1,7 @@
 # ADC configuration options
 
-# Copyright (c) 2021-2023 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2021-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ADC_ATMx3
 	bool "Atmosic ATMx3 ADC driver"

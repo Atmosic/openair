@@ -23,6 +23,7 @@ from dfu_host import DEFAULT_BAUD_RATE, DEFAULT_RESPONSE_TIMEOUT_S, DfuHost
 logger = logging.getLogger(__name__)
 
 V2_VERSION = "2.0.0"
+V3_VERSION = "3.0.0"
 SKIP_CACHE_KEYS = {
     "TC_NAME",
     "TC_RUNID",
@@ -39,6 +40,7 @@ def pytest_addoption(parser):
     parser.addoption("--dfu-baud", type=int, default=DEFAULT_BAUD_RATE)
     parser.addoption("--dfu-timeout", type=float, default=DEFAULT_RESPONSE_TIMEOUT_S)
     parser.addoption("--v2-bin", default=None, help="Pre-built v2 image path")
+    parser.addoption("--v3-bin", default=None, help="Pre-built v3 image path")
 
 
 def _board_string(build_info: dict) -> str:
@@ -87,13 +89,8 @@ def _find_image(v2_dir: Path, mode: str) -> Path:
     raise FileNotFoundError(f"No v2 image under {v2_dir}")
 
 
-@pytest.fixture(scope="session")
-def v2_image(request, device_object) -> Path:  # pylint: disable=redefined-outer-name
-    """Build (or accept) the v2 signed image for the swap."""
-    explicit = request.config.getoption("--v2-bin")
-    if explicit:
-        return Path(explicit)
-
+def _build_versioned_image(request, device_object, version: str) -> Path:
+    """Build a signed test image at *version* and return its path."""
     build_dir = Path(device_object.device_config.build_dir)
     info = yaml.safe_load((build_dir / "build_info.yml").read_text())
     src_dir = next(
@@ -106,21 +103,21 @@ def v2_image(request, device_object) -> Path:  # pylint: disable=redefined-outer
     args = _override(
         args,
         "-Datm_vendor_dfu_CONFIG_ATM_VENDOR_DFU_TEST_APP_VERSION=",
-        f'"{V2_VERSION}"',
+        f'"{version}"',
     )
     args = _override(
         args,
         "-Dmcuboot_CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION=",
-        f'"{V2_VERSION}"',
+        f'"{version}"',
     )
-    v2_dir = Path(tempfile.mkdtemp(prefix="atm_dfu_v2_"))
+    out_dir = Path(tempfile.mkdtemp(prefix=f"atm_dfu_{version}_"))
     cmd = [
         "west",
         "build",
         "-p",
         "always",
         "-d",
-        str(v2_dir),
+        str(out_dir),
         "-b",
         _board_string(info),
         "--sysbuild",
@@ -128,12 +125,30 @@ def v2_image(request, device_object) -> Path:  # pylint: disable=redefined-outer
         "--",
         *args,
     ]
-    logger.info("Building v2 image: %s", " ".join(cmd))
+    logger.info("Building v%s image: %s", version, " ".join(cmd))
     subprocess.run(cmd, check=True)
-    image = _find_image(v2_dir, request.config.getoption("--dfu-mode"))
-    logger.info("v2 image: %s (%d bytes)", image, image.stat().st_size)
-    request.addfinalizer(lambda: shutil.rmtree(v2_dir, ignore_errors=True))
+    image = _find_image(out_dir, request.config.getoption("--dfu-mode"))
+    logger.info("v%s image: %s (%d bytes)", version, image, image.stat().st_size)
+    request.addfinalizer(lambda: shutil.rmtree(out_dir, ignore_errors=True))
     return image
+
+
+@pytest.fixture(scope="session")
+def v2_image(request, device_object) -> Path:  # pylint: disable=redefined-outer-name
+    """Build (or accept) the v2 signed image for the first swap."""
+    explicit = request.config.getoption("--v2-bin")
+    if explicit:
+        return Path(explicit)
+    return _build_versioned_image(request, device_object, V2_VERSION)
+
+
+@pytest.fixture(scope="session")
+def v3_image(request, device_object) -> Path:  # pylint: disable=redefined-outer-name
+    """Build (or accept) the v3 signed image for the second consecutive swap."""
+    explicit = request.config.getoption("--v3-bin")
+    if explicit:
+        return Path(explicit)
+    return _build_versioned_image(request, device_object, V3_VERSION)
 
 
 @pytest.fixture(scope="session")

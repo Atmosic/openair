@@ -127,4 +127,15 @@ bool fp_mode_power_loss_is_periodic(void);
 }
 #endif
 
+#if defined(CONFIG_ZTEST)
+void fp_mode_test_adv_sync(void);
+void fp_mode_test_adv_sync_plr_state(void);
+void fp_mode_test_adv_sync_plr_periodic(void);
+void fp_mode_test_plr_start(void);
+void fp_mode_test_plr_stop(void);
+bool fp_mode_test_plr_is_periodic(void);
+void fp_mode_test_plr_timeout(void);
+void fp_mode_test_plr_periodic(void);
+#endif /* CONFIG_ZTEST */
+
 ///@}

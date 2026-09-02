@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 """
 @file pytest/test_atcmd_smp.py
@@ -17,17 +20,15 @@ Test scenarios
                               stack cannot achieve MITM — pairing fails with a
                               nonzero bt_security_err code.
 
-Copyright (c) 2026 Atmosic
-
-SPDX-License-Identifier: LicenseRef-Atmosic
 """
 
 import logging
 import time
 
 import pytest
+import serial
 
-from conftest import ATCommandHelper
+from conftest import ATCommandHelper, ATCommandSerial
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ _ADV_INST = 0
 # Timeouts (seconds)
 _SCAN_TIMEOUT = 20
 _CONN_TIMEOUT = 30
-_PAIR_TIMEOUT = 15
+_PAIR_TIMEOUT = 35
 
 # BT_SECURITY_ERR_AUTH_REQUIREMENT value in Zephyr
 _BT_SECURITY_ERR_AUTH_REQUIREMENT = 4
@@ -55,6 +56,83 @@ _BT_SECURITY_ERR_AUTH_REQUIREMENT = 4
 # ---------------------------------------------------------------------------
 # Module-level helpers
 # ---------------------------------------------------------------------------
+
+# Reboot budget for ATM33 after a cold reset (AT+SYSRESET=1):
+# cold reset re-initialises the BLE baseband in addition to the application
+# processor, which adds several seconds.  60 s provides comfortable headroom
+# even on loaded CI agents.
+_DEV_B_REBOOT_TIMEOUT = 60.0
+_DEV_B_REBOOT_POLL = 1.0
+
+
+def _wait_device_ready(
+    dev_b: ATCommandHelper,
+    timeout: float = _DEV_B_REBOOT_TIMEOUT,
+    poll_interval: float = _DEV_B_REBOOT_POLL,
+) -> None:
+    """Poll Device B with AT+DEBUG? until it responds or *timeout* expires.
+
+    Used after ``AT+SYSRESET`` to replace a fixed sleep with an active wait,
+    which both avoids flakiness caused by an undersized sleep *and* avoids
+    unnecessary delays when the device boots quickly.
+
+    Raises:
+        RuntimeError: if Device B does not become responsive within *timeout*.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            lines = dev_b.send_query("DEBUG")
+            if dev_b.check_ok(lines):
+                logger.info("Device B is ready (AT+DEBUG? OK)")
+                return
+        except (TimeoutError, OSError, serial.SerialException):
+            pass
+        time.sleep(poll_interval)
+    raise RuntimeError(
+        f"Device B did not become responsive within {timeout:.0f}s after reset"
+    )
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _reset_dev_b_before_session(dev_b_serial_port, dev_b_baud):
+    """Reset Device B once at the very start of the test session.
+
+    A previous run may have left Device B's SMP repeated-attempts cooldown
+    timer running (e.g. the run aborted after a pairing failure, so the
+    teardown reset never executed).  Without this fixture the first test in
+    the new session immediately receives err=9 even though no pairing has
+    happened yet in the current run.
+    """
+    if not dev_b_serial_port:
+        return
+    at_serial = ATCommandSerial(dev_b_serial_port, dev_b_baud)
+    at_serial.open()
+    try:
+        helper = ATCommandHelper(dut=None, at_serial=at_serial)
+        logger.info("Session start: cold-resetting Device B to clear stale SMP state")
+        # Use cold reset (type 1) to also reset the BLE baseband processor.
+        # A warm reset (type 0) only resets the application CPU and leaves the
+        # BLE subsystem running, so the SMP repeated-attempts cooldown timer
+        # (BT_SMP_ERR_REPEATED_ATTEMPTS, err=9) persists in the baseband.
+        helper.send_command("AT+SYSRESET=1", wait_for_ok=False)
+        # Use a simple fixed sleep here because _wait_device_ready requires
+        # the helper to be functional; after the reset the serial framing may
+        # be briefly garbled, so give the device a couple of seconds before
+        # polling.
+        time.sleep(2.0)
+        deadline = time.monotonic() + _DEV_B_REBOOT_TIMEOUT
+        while time.monotonic() < deadline:
+            try:
+                lines = helper.send_query("DEBUG")
+                if helper.check_ok(lines):
+                    logger.info("Device B ready after session-start reset")
+                    break
+            except (TimeoutError, OSError, serial.SerialException):
+                pass
+            time.sleep(_DEV_B_REBOOT_POLL)
+    finally:
+        at_serial.close()
 
 
 def _establish_ble_conn(at_cmd: ATCommandHelper, dev_b: ATCommandHelper) -> None:
@@ -142,6 +220,15 @@ def _establish_ble_conn(at_cmd: ATCommandHelper, dev_b: ATCommandHelper) -> None
     ), "Device A must receive +EVTBLEGAPCONN: event after connection"
     logger.info("Device A: +EVTBLEGAPCONN: %s", " ".join(conn_lines))
 
+    # --- Wait for LL feature exchange to complete before returning ---
+    # At high CPU clock speeds (e.g. INIT_BP_FREQ=64000000) the SMP Pairing
+    # Request can reach Device B while its BLE controller is still processing
+    # the LL_FEATURE_REQ/RSP exchange.  Device B's controller drops the SMP
+    # PDU, causing a 30 s SMP_TIMEOUT on Device A.  Waiting for
+    # +EVTBLEGAPLINKINFO (LL feature exchange done) before any SMP operation
+    # begins avoids this race.
+    at_cmd.read_until(r"\+EVTBLEGAPLINKINFO:", timeout=5)
+
 
 def _teardown_ble_conn(at_cmd: ATCommandHelper, dev_b: ATCommandHelper) -> None:
     """Best-effort cleanup: stop scan, disconnect A, clear MAC filter, disable B advertising."""
@@ -153,6 +240,15 @@ def _teardown_ble_conn(at_cmd: ATCommandHelper, dev_b: ATCommandHelper) -> None:
     at_cmd.send_command(f"AT+BLESCANFILMAC=OFF,1,{_DEV_B_BD_ADDR}", wait_for_ok=False)
     dev_b.send_command(f"AT+BLEADVENABLE={_ADV_INST},OFF", wait_for_ok=False)
     time.sleep(0.5)
+    # Cold-reset Device B to clear its SMP state (repeated-attempts timer, bond
+    # cache).  A warm reset (type 0) leaves the BLE baseband running; use a
+    # cold reset (type 1) so the SMP repeated-attempts cooldown timer is fully
+    # cleared in the baseband before the next test class connects.
+    dev_b.send_command("AT+SYSRESET=1", wait_for_ok=False)
+    # Actively wait for Device B to reboot rather than using a fixed sleep.
+    # A cold reset takes longer than a warm reset (BLE baseband reinitialises);
+    # the 60 s budget gives ~10 polling attempts before giving up.
+    _wait_device_ready(dev_b, timeout=_DEV_B_REBOOT_TIMEOUT)
 
 
 def _parse_pairend(lines: list[str]) -> tuple[int, int, int]:

@@ -109,4 +109,51 @@ config ATM_BT_VER
 	int "Override BT version"
 	default 0
 
+config ATM_ENA_SW_LA
+	bool "Enable software logic analyzer"
+	help
+	  Enable software logic analyzer trace recording for the link layer
+	  controller.
+
+config ATM_SW_LA_TRACE_MASK
+	hex "Software logic analyzer trace mask"
+	default 0x3db
+	range 0x0 0xffffffff
+	depends on ATM_ENA_SW_LA
+	help
+	  Runtime trace mask passed to PalSwDbgInit(). See pal_sw_dbg.h for
+	  the available trace bit definitions.
+
+config ATM_SW_LA_ENTRY_NUM
+	int "Software logic analyzer entry count"
+	default 1024
+	range 1 65535
+	depends on ATM_ENA_SW_LA
+	help
+	  Number of entries in the caller-owned software logic analyzer trace
+	  buffer.
+
+config ATM_ENA_SW_LA_DUMP_ON_HARDFAULT
+	bool "Dump software logic analyzer trace on hard fault"
+	default y
+	depends on ATM_ENA_SW_LA
+	help
+	  Dump the software logic analyzer trace when a CPU exception is
+	  reported by the Zephyr fatal error handler.
+
+config ATM_ENA_LL_PHY_2M
+	bool "When available, enable 2M PHY support"
+	default y
+	help
+	  Enable 2M PHY support in the link layer. When disabled,
+	  phy2mSup is forced to false regardless of other feature flags.
+
+config ATM_BLE_FILTER_PEER_SUBRATE_EVT
+	bool "Filter LE Subrate Change Event for peer-initiated subrate changes"
+	depends on ATM_ENA_LL_FEAT_ECU
+	help
+	  When enabled, filters LE Subrate Change Events that are initiated
+	  by the peer device. Self-initiated subrate change events will still
+	  be reported.
+
 endif # ATM_PC_CTR

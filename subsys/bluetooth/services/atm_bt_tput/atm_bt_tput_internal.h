@@ -1,6 +1,7 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #pragma once
@@ -11,21 +12,20 @@
 extern "C" {
 #endif
 
-#define THROUGHPUT_SERVICE_UUID_VAL								    \
+#define THROUGHPUT_SERVICE_UUID_VAL                                                                \
 	BT_UUID_128_ENCODE(0x991ad067, 0xe278, 0x40ff, 0x86c0, 0xb624eae2360a)
-#define THROUGHPUT_WRITE_CHARACTERISTIC_UUID_VAL						    \
+#define THROUGHPUT_WRITE_CHARACTERISTIC_UUID_VAL                                                   \
 	BT_UUID_128_ENCODE(0x12f2a2e8, 0xf0e4, 0x449c, 0xb4c2, 0x4ec9eaa33f6e)
-#define THROUGHPUT_READ_CHARACTERISTIC_UUID_VAL							    \
+#define THROUGHPUT_READ_CHARACTERISTIC_UUID_VAL                                                    \
 	BT_UUID_128_ENCODE(0x6c0e7f3b, 0xaae0, 0x4a12, 0x91ad, 0xc3d16afc92a3)
-#define THROUGHPUT_NOTIFY_CHARACTERISTIC_UUID_VAL						    \
+#define THROUGHPUT_NOTIFY_CHARACTERISTIC_UUID_VAL                                                  \
 	BT_UUID_128_ENCODE(0xb359d6fc, 0xaf9a, 0x4341, 0x84e7, 0x464cffcf86fd)
-#define THROUGHPUT_SERVICE_UUID									    \
-	BT_UUID_DECLARE_128(THROUGHPUT_SERVICE_UUID_VAL)
-#define THROUGHPUT_WRITE_CHARACTERISTIC_UUID							    \
+#define THROUGHPUT_SERVICE_UUID BT_UUID_DECLARE_128(THROUGHPUT_SERVICE_UUID_VAL)
+#define THROUGHPUT_WRITE_CHARACTERISTIC_UUID                                                       \
 	BT_UUID_DECLARE_128(THROUGHPUT_WRITE_CHARACTERISTIC_UUID_VAL)
-#define THROUGHPUT_READ_CHARACTERISTIC_UUID							    \
+#define THROUGHPUT_READ_CHARACTERISTIC_UUID                                                        \
 	BT_UUID_DECLARE_128(THROUGHPUT_READ_CHARACTERISTIC_UUID_VAL)
-#define THROUGHPUT_NOTIFY_CHARACTERISTIC_UUID							    \
+#define THROUGHPUT_NOTIFY_CHARACTERISTIC_UUID                                                      \
 	BT_UUID_DECLARE_128(THROUGHPUT_NOTIFY_CHARACTERISTIC_UUID_VAL)
 
 /**
@@ -120,6 +120,42 @@ struct atm_tput_data {
  * @return Total size including type, length, and value
  */
 #define ATM_TPUT_TLV_SIZE(value_len) (ATM_TPUT_TLV_HEADER_SIZE + (value_len))
+
+#ifdef CONFIG_ZTEST
+#include <zephyr/bluetooth/gatt.h>
+
+void reset_test_params(void);
+ssize_t atm_tput_test_write_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+			       const void *buf, uint16_t len, uint16_t offset, uint8_t flags);
+void atm_tput_test_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);
+void atm_tput_test_indicate_cb(struct bt_conn *conn, struct bt_gatt_indicate_params *params,
+			       uint8_t err);
+uint8_t atm_tput_test_notify_func(struct bt_conn *conn, struct bt_gatt_subscribe_params *params,
+				  const void *data, uint16_t length);
+
+/* Pre-set notify_crch, notify_params.attr and ind_params.attr with a non-NULL
+ * fake attr so bt_gatt_notify_cb / bt_gatt_indicate pass their assertion
+ * "params->attr || params->uuid" in tests without bt_enable(). */
+void atm_tput_test_set_notify_crch(struct bt_gatt_attr *attr);
+
+void atm_tput_test_notify_cb(struct bt_conn *conn);
+ssize_t atm_tput_test_read_throughput_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+					 void *buf, uint16_t len, uint16_t offset);
+void atm_tput_test_c2s_write_cb(struct bt_conn *conn, uint8_t err,
+				struct bt_gatt_write_params *params);
+uint8_t atm_tput_test_read_func(struct bt_conn *conn, uint8_t err,
+				struct bt_gatt_read_params *params, const void *data,
+				uint16_t length);
+/* Call atm_tput_service_connect() first to initialise discover_params. */
+uint8_t atm_tput_test_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr);
+void atm_tput_test_read_throughput_metrics(struct bt_conn *conn, uint16_t handle);
+/* Set non-zero handles to prevent __ASSERT inside atm_tput_measure_* / client_done. */
+void atm_tput_test_set_gatt_handles(uint16_t write_hdl, uint16_t read_hdl);
+/* Set notify and ccc_handle so bt_gatt_subscribe assertions pass. */
+void atm_tput_test_set_subscribe_params(uint16_t ccc_hdl);
+void atm_tput_test_set_callback_measure(atm_tput_measurement_cb cb);
+
+#endif /* CONFIG_ZTEST */
 
 #ifdef __cplusplus
 }

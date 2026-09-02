@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 # This is a wrapper module for the Samsung TagSDK.
 # The actual TagSDK sources are in vendor/TagSDK.

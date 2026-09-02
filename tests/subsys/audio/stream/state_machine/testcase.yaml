@@ -3,7 +3,16 @@
 ## SPDX-License-Identifier: LicenseRef-Atmosic
 #
 tests:
-  tests.subsys.audio.stream.state_machine.atm:
+  tests.subsys.audio.stream.state_machine.atm: &base_config
     sysbuild: true
     tags:
       - audio
+  tests.subsys.audio.stream.state_machine.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="audio_stream.c"

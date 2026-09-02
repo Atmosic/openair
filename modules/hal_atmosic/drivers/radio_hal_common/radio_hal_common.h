@@ -138,8 +138,6 @@ enum {
 
 typedef void (*atm_mac_idle_callback_t)(void);
 typedef bool (*atm_mac_irq_handler_t)(void);
-typedef void (*atm_mac_switch_callback_t)(bool mode_154);
-typedef void (*atm_mac_switch_ch_base_callback_t)(uint32_t ch_base);
 typedef bool (*atm_mac_atlc_prof_check_callback_t)(uint16_t latency);
 
 extern bool volatile atm_mac_is_sleeping;
@@ -201,16 +199,6 @@ __NONNULL(1)
 void atm_mac_register_irq_handler(atm_mac_irq_handler_t handler);
 
 /**
- * @brief Register ATLC Mode Switch Callback
- *
- * This function is used to register a callback when switching ATLC modes.
- *
- * @param[in]    callback       Callback Function
- */
-__NONNULL(1)
-void atm_mac_register_switch_callback(atm_mac_switch_callback_t callback);
-
-/**
  * @brief Stop ATLC Radio
  *
  * This function is used to stop radio for TX/RX command of the ATLC.
@@ -227,36 +215,6 @@ __STATIC_INLINE void atm_mac_radio_stop(void)
     // Handle sleep interrupt separately from stopping the radio
     CMSDK_ATLC_NONSECURE->LC_IRQC = ~ATLC_LC_IRQC__WU_SLP__MASK;
 }
-
-/**
- * @brief Switch ATLC Mode
- *
- * This function is used to switch ATLC modes.
- *
- * @param[in]    mode_154       True for 15.4, False for BLE
- */
-void atm_mac_radio_switch_mode(bool mode_154);
-
-/**
- * @brief Register ATLC Channel Base Switch Callback
- *
- * This function is used to register a callback when switching ATLC radio base
- * channel.
- *
- * @param[in]    callback       Callback Function
- */
-__NONNULL(1)
-void atm_mac_register_switch_ch_base_callback(atm_mac_switch_ch_base_callback_t
-    callback);
-
-/**
- * @brief Switch ATLC Channel Base
- *
- * This function is used to switch ATLC Radio Channel Base.
- *
- * @param[in]    ch_base      Radio channel base configuration
- */
-void atm_mac_radio_switch_ch_base(uint32_t ch_base);
 
 /**
  * @brief Register atlc profile check callback

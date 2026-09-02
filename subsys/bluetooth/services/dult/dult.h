@@ -21,6 +21,7 @@
 
 #include "compiler.h" // __NONNULL_ALL inline functions
 #include <zephyr/bluetooth/uuid.h>
+#include <zephyr/bluetooth/gatt.h>
 #include "dult_common.h"
 
 #ifdef __cplusplus
@@ -80,6 +81,36 @@ void dult_reset(void);
 void dult_enable(bool en);
 
 /**
+ * @brief Get the DULT Accessory Non-Owner GATT service.
+ *
+ * Lets another module reuse this single service instance instead of defining a
+ * second service with the same standard UUID (which would collide in the GATT DB).
+ *
+ * @return Pointer to the DULT non-owner GATT service.
+ */
+struct bt_gatt_service_static const *dult_svc_get(void);
+
+/**
+ * @brief Redirect writes to the DULT non-owner characteristic to a custom handler.
+ *
+ * While set, the DULT write handler forwards every write to @p write_handler
+ * instead of the default DULT handling, so another user of the shared service can
+ * process writes while its connection is active. Assumes only one user is active
+ * at a time. Call dult_restore_write_handler() to revert.
+ *
+ * @param[in] write_handler GATT write callback to route writes to.
+ */
+void dult_overwrite_write_handler(ssize_t (*write_handler)(struct bt_conn *conn,
+							   const struct bt_gatt_attr *attr,
+							   const void *buf, uint16_t len,
+							   uint16_t offset, uint8_t flags));
+
+/**
+ * @brief Restore the default DULT non-owner write handler.
+ */
+void dult_restore_write_handler(void);
+
+/**
  * @brief DULT node update
  * @param[in] mode dult mode type
  */
@@ -101,8 +132,10 @@ typedef struct dult_hdlrs_s {
 #ifdef CONFIG_DULT_MOTION_DETECT
 	/// Enable or disable motion sensor hardware; called by the DULT UT state machine
 	void (*motion_hw_enable_cb)(bool enable);
+#ifndef CONFIG_DULT_MOTION_DETECT_TRIGGER
 	/// Raw motion snapshot getter (degrees 0–90); polled by the DULT UT state machine
 	uint8_t (*motion_raw_get_cb)(void);
+#endif
 #endif
 } dult_hdlrs_t;
 

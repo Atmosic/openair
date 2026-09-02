@@ -218,6 +218,29 @@ uint8_t LlCsTestEnd(void);
 
 /*************************************************************************************************/
 /*!
+ *  \brief     Set CS security requirements for a specific connection.
+ *
+ *  \param     connHandle   Connection handle.
+ *  \param     csSecReqs    CS security requirements bitmask (8 octets).
+ *
+ *  \return    Status error code.
+ */
+/*************************************************************************************************/
+uint8_t LlCsSetSecurityRequirements(uint16_t connHandle, uint64_t csSecReqs);
+
+/*************************************************************************************************/
+/*!
+ *  \brief     Set default CS security requirements for all future ACL connections.
+ *
+ *  \param     csSecReqs    CS security requirements bitmask (8 octets).
+ *
+ *  \return    Status error code.
+ */
+/*************************************************************************************************/
+uint8_t LlCsSetDefaultSecurityRequirements(uint64_t csSecReqs);
+
+/*************************************************************************************************/
+/*!
  *  \brief      Initialize LL subsystem for operation for peripheral channel sounding.
  *
  *  This function initializes the LL subsystem for peripheral channel sounding.

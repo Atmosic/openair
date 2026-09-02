@@ -1,14 +1,7 @@
-/**
- *******************************************************************************
+/*
+ * Copyright (c) 2024-2026 Atmosic
  *
- * @file atm_hci_uart.c
- *
- * @brief ATM HCI data from uart to another device/CPU using and handle vendor
- * command with hci_raw module for zephyr only.
- *
- * Copyright (C) Atmosic 2024-2025
- *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <errno.h>
@@ -39,6 +32,10 @@
 #endif
 #include "atm_hci_uart.h"
 #include "atm_utils_c.h"
+#ifdef CONFIG_ATM_HCI_RESET_RX_DC_CAL
+#include "radio_cal.h"
+#include "atm_vendor.h"
+#endif
 #ifdef CONFIG_AUTO_TEST
 #include "atm_test_common.h"
 #endif
@@ -191,6 +188,9 @@ ATM_VS_HDLR(BLE_REG_RD_CMD)
 #ifdef CONFIG_VND_BLE_REGW
 ATM_VS_HDLR(BLE_REG_WR_CMD)
 #endif
+#ifdef CONFIG_VND_PSM
+ATM_VS_HDLR(PSM_CMD)
+#endif
 #ifdef CONFIG_VND_MALLOC
 ATM_VS_HDLR(MALLOC_CMD)
 #endif
@@ -216,45 +216,54 @@ ATM_VS_HDLR(EN_TXCW_CMD)
 ATM_VS_HDLR(FREQCAL_CMD)
 ATM_VS_HDLR(MM_R_CMD)
 ATM_VS_HDLR(PV_TEST_CMD)
+#ifdef CONFIG_VND_BYPASS_RX_DC_CAL
+ATM_VS_HDLR(BYPASS_RX_DC_CAL_CMD)
+#endif
 
 static struct bt_hci_raw_cmd_ext cmd_ext[] = {
 #ifdef CONFIG_VND_DBG_MMR
-    ATM_VS_SET(RD_MEM_CMD),
+	ATM_VS_SET(RD_MEM_CMD),
 #endif
 #ifdef CONFIG_VND_DBG_MMW
-    ATM_VS_SET(WR_MEM_CMD),
+	ATM_VS_SET(WR_MEM_CMD),
 #endif
 #ifdef CONFIG_VND_BLE_REGR
-    ATM_VS_SET(BLE_REG_RD_CMD),
+	ATM_VS_SET(BLE_REG_RD_CMD),
 #endif
 #ifdef CONFIG_VND_BLE_REGW
-    ATM_VS_SET(BLE_REG_WR_CMD),
+	ATM_VS_SET(BLE_REG_WR_CMD),
+#endif
+#ifdef CONFIG_VND_PSM
+	ATM_VS_SET(PSM_CMD),
 #endif
 #ifdef CONFIG_VND_MALLOC
-    ATM_VS_SET(MALLOC_CMD),
+	ATM_VS_SET(MALLOC_CMD),
 #endif
 #ifdef CONFIG_VND_WFI
-    ATM_VS_SET(WFI_CMD),
+	ATM_VS_SET(WFI_CMD),
 #endif
 #ifdef CONFIG_VND_NO_CLOCK
-    ATM_VS_SET(NO_CLOCK_CMD),
+	ATM_VS_SET(NO_CLOCK_CMD),
 #endif
 #ifdef CONFIG_VND_WHILE_ONE
-    ATM_VS_SET(WHILE_ONE_CMD),
+	ATM_VS_SET(WHILE_ONE_CMD),
 #endif
 #ifdef CONFIG_VND_PMU_RADIO_REGR
-    ATM_VS_SET(PMU_RADIO_REG_RD_CMD),
+	ATM_VS_SET(PMU_RADIO_REG_RD_CMD),
 #endif
 #ifdef CONFIG_VND_PMU_RADIO_REGW
-    ATM_VS_SET(PMU_RADIO_REG_WR_CMD),
+	ATM_VS_SET(PMU_RADIO_REG_WR_CMD),
 #endif
 #ifdef CONFIG_VND_XTAL_32K_PIN_OUT
-    ATM_VS_SET(XTAL_32K_PIN_OUT_CMD),
+	ATM_VS_SET(XTAL_32K_PIN_OUT_CMD),
 #endif
-    ATM_VS_SET(EN_TXCW_CMD),
-    ATM_VS_SET(FREQCAL_CMD),
-    ATM_VS_SET(MM_R_CMD),
-    ATM_VS_SET(PV_TEST_CMD),
+	ATM_VS_SET(EN_TXCW_CMD),
+	ATM_VS_SET(FREQCAL_CMD),
+	ATM_VS_SET(MM_R_CMD),
+	ATM_VS_SET(PV_TEST_CMD),
+#ifdef CONFIG_VND_BYPASS_RX_DC_CAL
+	ATM_VS_SET(BYPASS_RX_DC_CAL_CMD),
+#endif
 };
 
 #endif // CONFIG_BT_HCI_RAW_CMD_EXT
@@ -535,6 +544,31 @@ static void tx_thread(void *p1, void *p2, void *p3)
     }
 }
 
+#ifdef CONFIG_ATM_HCI_RESET_RX_DC_CAL
+/*
+ * HCI reset complete event pattern (H4-encapsulated):
+ *   [0] 0x04  H4_EVT
+ *   [1] 0x0E  BT_HCI_EVT_CMD_COMPLETE
+ *   [2] 0x04  param_len
+ *   [3] 0x01  num_hci_cmd_packets
+ *   [4] 0x03  opcode LSB (HCI_Reset = 0x0C03)
+ *   [5] 0x0C  opcode MSB
+ *   [6] 0x00  status (success)
+ */
+#define HCI_RESET_COMPLETE_LEN 7
+static bool is_hci_reset_complete(struct net_buf const *buf)
+{
+    if (buf->len < HCI_RESET_COMPLETE_LEN) {
+	return false;
+    }
+    return (buf->data[0] == BT_HCI_H4_EVT) &&
+	   (buf->data[1] == BT_HCI_EVT_CMD_COMPLETE) &&
+	   (buf->data[4] == (BT_HCI_OP_RESET & 0xFF)) &&
+	   (buf->data[5] == (BT_HCI_OP_RESET >> 8)) &&
+	   (buf->data[6] == BT_HCI_ERR_SUCCESS);
+}
+#endif
+
 static void rx_thread(void *p1, void *p2, void *p3)
 {
     /* incoming events and data from the controller */
@@ -545,6 +579,22 @@ static void rx_thread(void *p1, void *p2, void *p3)
 
     for (;;) {
 	struct net_buf *buf = k_fifo_get(&rx_queue, K_FOREVER);
+
+#ifdef CONFIG_ATM_HCI_RESET_RX_DC_CAL
+	static bool rx_dc_cal_done;
+
+	/* Trigger on-demand RX DC offset calibration on the first successful
+	 * HCI_reset after boot, unless bypassed by the BYPASS_RX_DC_CAL vendor
+	 * command (for MPTool production testing).
+	 */
+	if (!rx_dc_cal_done && !atm_vendor_rx_dc_cal_is_bypassed() &&
+	    is_hci_reset_complete(buf)) {
+	    LOG_DBG("HCI reset complete: triggering RX DC cal");
+	    atm_radio_cal_request();
+	    rx_dc_cal_done = true;
+	}
+#endif
+
 	int err = atm_hci_uart_h4_send(buf);
 	if (err) {
 	    LOG_ERR("Failed to send atm_hci_uart_h4_send");

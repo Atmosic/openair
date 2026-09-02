@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file fp_adv.c
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Advertisement Middleware
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -34,7 +38,7 @@
 LOG_MODULE_REGISTER(fp, CONFIG_ATM_FP_LOG_LEVEL);
 
 // Advertising interval in discoverable
-#define FP_ADV_DISCOVER_MS     100
+#define FP_ADV_DISCOVER_MS 100
 #define FP_ADV_DISCOVER_INT_MIN                                                                    \
 	BT_GAP_MS_TO_ADV_INTERVAL(FP_ADV_DISCOVER_MS - FP_ADV_INTERVAL_RANGE_MS)
 #define FP_ADV_DISCOVER_INT_MAX BT_GAP_MS_TO_ADV_INTERVAL(FP_ADV_DISCOVER_MS)
@@ -307,17 +311,21 @@ static bool fp_adv_rpa_expired(struct bt_le_ext_adv *adv)
 		LOG_DBG("the last timeout has occurred %" PRId64 " [s] ago",
 			(k_uptime_delta(&uptime) / MSEC_PER_SEC));
 	}
-	bool skip_timeout = false;
+	bool fmdn_owns_rpa = false;
 #if defined(CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR) &&                                       \
 	!defined(CONFIG_FAST_PAIR_FMDN_MERGED_ADV)
 	/* Shared BT_ID, non-merged: FMDN's rpa_expired fires on the same expiry event
-	 * when provisioned. Skip here to avoid two bt_le_set_rpa_timeout() calls with
-	 * different random values — FMDN is the authoritative timeout owner post-provisioning.
-	 * When not provisioned, FMDN is inactive so FP must set the timeout itself.
+	 * and is the sole authoritative owner of both the timeout and the RPA rotation
+	 * decision once provisioned. Skip here so that FP's vote does not cause the
+	 * shared RPA to rotate independently of FMDN's EID-sync check — if FP returned
+	 * true, the shared RPA would rotate at the FP period (~900s) even though FMDN's
+	 * callback returned false to defer until the EID boundary (~1024s).
 	 */
-	skip_timeout = fp_mode_is_provisioned();
+	fmdn_owns_rpa = fp_mode_is_provisioned();
 #endif
-	if (!skip_timeout) {
+	if (fmdn_owns_rpa) {
+		rpa_expired = false;
+	} else {
 		uint16_t next_timeout = fp_mode_rpa_timeout();
 		int err = bt_le_set_rpa_timeout(next_timeout);
 		if (err) {
@@ -325,11 +333,11 @@ static bool fp_adv_rpa_expired(struct bt_le_ext_adv *adv)
 		} else {
 			LOG_DBG("setting RPA timeout to %u [s]", next_timeout);
 		}
-	}
-	//  BLE address shall not be rotated before paired
-	if (fp_mode_get() < FP_MODE_PAIRED) {
-		LOG_DBG("fp_adv_rpa_expired expire_rpa false");
-		rpa_expired = false;
+		//  BLE address shall not be rotated before paired
+		if (fp_mode_get() < FP_MODE_PAIRED) {
+			LOG_DBG("fp_adv_rpa_expired expire_rpa false");
+			rpa_expired = false;
+		}
 	}
 
 	LOG_DBG("update adv payload");
@@ -381,27 +389,7 @@ static void fp_adv_start(fp_mode_t mode)
 		}
 	}
 
-	/*
-	 * Address mode for Fast Pair advertising:
-	 *
-	 * WAR: The FHN spec (ID rotation) requires RPA for all Fast Pair non-discoverable
-	 * frames on non-dual-mode devices. However, the Google Fast Pair Validator requires
-	 * discoverable advertisement to use the identity (static random) address to correctly
-	 * identify the device during certification testing. To satisfy both requirements,
-	 * the identity address is used by default for Fast Pair advertising.
-	 *
-	 * Exception - PLR with shared BT_ID (CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR):
-	 * During power-loss recovery, Fast Pair advertising runs alongside FMDN advertising
-	 * on the same BT_ID. The FHN spec mandates that FHN frames use RPA, and since both
-	 * sets share the same BT_ID, Fast Pair must also use RPA so that both advertisements
-	 * rotate the BLE address at the same time per the FHN "ID rotation" requirement.
-	 * The identity flag is therefore omitted in this case.
-	 */
-	if (!IS_ENABLED(CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR) ||
-	    !fp_mode_power_loss_recovery_required_adv(mode)) {
-		adv_param.options |= BT_LE_ADV_OPT_USE_IDENTITY;
-	}
-
+	bt_le_adv_param_set_tx_power(&adv_param, CONFIG_FAST_PAIR_ADV_TX_POWER_DBM);
 	int err = bt_le_ext_adv_create(&adv_param, &adv_cb, &fp_adv_set);
 	if (err) {
 		LOG_ERR("Failed to create advertising set (err %d)", err);
@@ -462,3 +450,60 @@ void fp_adv_recreate(void)
 {
 	atm_work_submit_to_app_work_q(&fp_adv_action);
 }
+
+int fp_adv_get_adv_set_addr(bt_addr_le_t *addr)
+{
+	if (!fp_adv_set) {
+		LOG_ERR("FP adv set not created");
+		return -ENODEV;
+	}
+	struct bt_le_ext_adv_info info;
+	int err = bt_le_ext_adv_get_info(fp_adv_set, &info);
+	if (err) {
+		LOG_ERR("Failed to get FP adv set info (err %d)", err);
+		return err;
+	}
+	bt_addr_le_copy(addr, info.addr);
+	return 0;
+}
+
+// Restart advertising when the Fast Pair connection drops.
+// fp_adv owns this reaction so fp_gatt does not need to depend on fp_adv.
+static void fp_adv_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	if (!fp_conn_validate(conn)) {
+		return;
+	}
+	fp_adv_recreate();
+}
+
+BT_CONN_CB_DEFINE(fp_adv_conn_callbacks) = {
+	.disconnected = fp_adv_disconnected,
+};
+
+#if defined(CONFIG_ZTEST)
+void fp_adv_test_adv_sent(void)
+{
+	fp_adv_adv_sent(NULL, NULL);
+}
+
+void fp_adv_test_connected(void)
+{
+	fp_adv_connected(NULL, NULL);
+}
+
+uint16_t fp_adv_test_data_salt(void)
+{
+	return fp_adv_data_salt();
+}
+
+void fp_adv_test_data_salt_update(void)
+{
+	fp_adv_data_salt_update();
+}
+
+void fp_adv_test_get_non_disc_service_data(struct bt_data *ad)
+{
+	fp_adv_get_non_disc_service_data(ad);
+}
+#endif /* CONFIG_ZTEST */

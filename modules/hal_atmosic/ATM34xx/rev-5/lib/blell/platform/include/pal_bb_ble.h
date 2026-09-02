@@ -40,6 +40,11 @@ extern "C" {
 #define LL_ENABLE_TESTER        0       /*!< Enable LL tester extensions. */
 #endif
 
+#ifndef BB_BLE_TX_NOW_ENABLE
+/*! \brief  Enable immediate BLE transmits. */
+#define BB_BLE_TX_NOW_ENABLE    false
+#endif
+
 #define PAL_BB_MAX_SW_PATT      5       /*!< Maximum number of switch patterns. */
 
 /**************************************************************************************************
@@ -151,6 +156,9 @@ typedef struct
 
   uint32_t          dueUsec;        /*!< Due time of the first packet in microseconds. */
   uint32_t          rxTimeoutUsec;  /*!< Receive timeout in microseconds. */
+#if (BB_BLE_TX_NOW_ENABLE)
+  bool              txNow;          /*!< If set, transmit immediately, ignoring dueUsec */
+#endif
 } PalBbBleDataParam_t;
 
 /*! \brief    Operation parameters. */
@@ -448,6 +456,13 @@ void PalBbBleCancelTifs(void);
  */
 /*************************************************************************************************/
 void PalBbBleCancelData(void);
+
+/*************************************************************************************************/
+/*!
+ *  \brief      Release a pending BLE radio-manager operation without starting radio activity.
+ */
+/*************************************************************************************************/
+void PalBbBleReleasePending(void);
 
 /*! \} */    /* PAL_BB_BLE_DATA */
 

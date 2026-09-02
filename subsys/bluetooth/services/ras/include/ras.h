@@ -63,6 +63,13 @@ extern "C" {
 #define BT_RAS_MAX_STEPS_PER_SUBEVENT      160
 
 #define BT_RAS_CP_FILTER_MASK 0x3FFF
+
+/// The RAS On-demand Ranging Data header
+#define BT_RAS_RD_HEADER_RANGING_COUNTER_MASK_ONDEMAND 0xFFFFFFFF
+
+/// The RAS Real-time Ranging Data header stores the ranging counter in a 12-bit field
+#define BT_RAS_RD_HEADER_RANGING_COUNTER_MASK_REALTIME 0xFFF
+
 /// RAS Filter Mode
 typedef enum ras_filter_mode_e {
 	RAS_FILTER_MODE_0,

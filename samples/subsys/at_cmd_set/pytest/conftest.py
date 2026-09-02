@@ -11,17 +11,81 @@
 """
 
 import logging
+import os
 import re
+import shutil
+import subprocess
+import tempfile
 import time
+from pathlib import Path
 
 import pytest
 import serial
+import yaml
+
+from at_cmd_dfu_host import DEFAULT_RESPONSE_TIMEOUT_S, AtCmdDfuHost
 
 logger = logging.getLogger(__name__)
 
 # Default timeout for AT command responses
 DEFAULT_TIMEOUT = 5.0
 DEFAULT_BAUD_RATE = 115200
+
+
+_V2_VERSION = "2.0.0"
+_SKIP_CACHE_KEYS = {
+    "TC_NAME",
+    "TC_RUNID",
+    "EXTRA_GEN_EDT_ARGS",
+    "ZEPHYR_TOOLCHAIN_VARIANT",
+    "Python3_EXECUTABLE",
+}
+
+
+def _board_string(build_info: dict) -> str:
+    board = build_info["cmake"]["board"]
+    name = board["name"]
+    revision = board.get("revision")
+    qualifiers = board.get("qualifiers")
+    if revision:
+        name = f"{name}@{revision}"
+    if qualifiers:
+        name = f"{name}/{qualifiers}"
+    return name
+
+
+def _parse_sysbuild_args(cache_path: Path) -> list:
+    args = []
+    cli_re = re.compile(r"^CLI_(.+?):INTERNAL=(.*)$")
+    user_re = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):UNINITIALIZED=(.*)$")
+    for raw in cache_path.read_text().splitlines():
+        m = cli_re.match(raw)
+        if m:
+            args.append(f"-D{m.group(1)}={m.group(2)}")
+            continue
+        m = user_re.match(raw)
+        if m and m.group(1) not in _SKIP_CACHE_KEYS:
+            args.append(f"-D{m.group(1)}={m.group(2)}")
+    return args
+
+
+def _override(args: list, prefix: str, value: str) -> list:
+    kept = [a for a in args if not a.startswith(prefix)]
+    kept.append(f"{prefix}{value}")
+    return kept
+
+
+def _find_image(v2_dir: Path, mode: str) -> Path:
+    candidates = [
+        v2_dir / "at_cmd_set" / "zephyr" / "combined_fw_upd.bin",
+        v2_dir / "at_cmd_set" / "zephyr" / "zephyr.signed.bin",
+    ]
+    if mode == "single":
+        candidates.reverse()
+    for path in candidates:
+        if path.exists():
+            return path
+    raise FileNotFoundError(f"No v2 image under {v2_dir}")
 
 
 def pytest_addoption(parser):
@@ -74,16 +138,35 @@ def pytest_addoption(parser):
         action="store",
         type=int,
         default=10,
-        help="GPIO0 pin for SYSFUNCPIN output tests (default: 10, Blue LED on Cairo/ATM53xx). "
-        "Override for Paris/ATM33xx: 7 (LED1); Perth/ATM34xx: 7 (LED0).",
+        help="GPIO0 pin for SYSFUNCPIN output tests (default: 10, Blue LED on ATM5). "
+        "Override for ATM33: 7 (LED1); ATM34: 7 (LED0).",
     )
     parser.addoption(
         "--funcpin-in-pin",
         action="store",
         type=int,
         default=9,
-        help="GPIO0 pin for SYSFUNCPIN input tests (default: 9, Green LED on Cairo/ATM53xx). "
-        "Override for Paris/ATM33xx: 8 (Button0); Perth/ATM34xx: 5 (Button0).",
+        help="GPIO0 pin for SYSFUNCPIN input tests (default: 9, Green LED on ATM5). "
+        "Override for ATM33: 8 (Button0); ATM34: 5 (Button0).",
+    )
+    parser.addoption(
+        "--dfu-mode",
+        choices=["single", "dual"],
+        default="single",
+        help="MCUboot DFU mode: single-image swap-scratch or dual-image XIP (default: single)",
+    )
+    parser.addoption(
+        "--dfu-timeout",
+        action="store",
+        type=float,
+        default=DEFAULT_RESPONSE_TIMEOUT_S,
+        help=f"Timeout for DFU AT command responses (default: {DEFAULT_RESPONSE_TIMEOUT_S}s)",
+    )
+    parser.addoption(
+        "--v2-bin",
+        action="store",
+        default=None,
+        help="Path to a pre-built v2 signed image (skips automatic rebuild)",
     )
 
 
@@ -107,6 +190,10 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "gatt_two_dev: two-device GATT client/server AT command tests"
+    )
+    config.addinivalue_line(
+        "markers",
+        "sensor_beacon: two-device sensor_beacon AT command tests via BLE GATT relay",
     )
 
 
@@ -132,10 +219,10 @@ def base_timeout(request):
 def funcpin_out_pin(request):
     """GPIO0 pin number for SYSFUNCPIN output tests.
 
-    Defaults to 10 (Blue LED on Cairo/ATM53xx EVK). Override via
+    Defaults to 10 (Blue LED on ATM5 EVK). Override via
     ``--funcpin-out-pin`` when running on other platforms:
-    - Paris/ATM33xx: pin 7 (LED1 on gpio0)
-    - Perth/ATM34xx: pin 7 (LED0 on gpio0)
+    - ATM33: pin 7 (LED1 on gpio0)
+    - ATM34: pin 7 (LED0 on gpio0)
 
     """
     return request.config.getoption("--funcpin-out-pin")
@@ -145,10 +232,10 @@ def funcpin_out_pin(request):
 def funcpin_in_pin(request):
     """GPIO0 pin number for SYSFUNCPIN input tests.
 
-    Defaults to 9 (Green LED on Cairo/ATM53xx EVK). Override via
+    Defaults to 9 (Green LED on ATM5 EVK). Override via
     ``--funcpin-in-pin`` when running on other platforms:
-    - Paris/ATM33xx: pin 8 (Button0/sw0 on gpio0)
-    - Perth/ATM34xx: pin 5 (Button0/sw0 on gpio0)
+    - ATM33: pin 8 (Button0/sw0 on gpio0)
+    - ATM34: pin 5 (Button0/sw0 on gpio0)
 
     """
     return request.config.getoption("--funcpin-in-pin")
@@ -623,3 +710,91 @@ def dev_b_at_cmd(
         f"Device B failed to respond to AT command handshake after {max_retries} attempts. "
         "Check --dev-b-serial port and that the device is running the AT command sample."
     )
+
+
+# ---------------------------------------------------------------------------
+# SYSDFU fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def dfu_serial_port(at_cmd_serial_port):  # pylint: disable=redefined-outer-name
+    """Resolve the AT command UART port for DFU testing (uart0 / if00).
+
+    Reuses --at-cmd-serial; falls back to ZEPHYR_DFU_UART / ZEPHYR_UART0.
+    Skips the session when none of these are available.
+    """
+    port = at_cmd_serial_port
+    if not port:
+        port = os.environ.get("ZEPHYR_DFU_UART") or os.environ.get("ZEPHYR_UART0")
+    if not port:
+        pytest.skip("DFU UART not provided (--at-cmd-serial / ZEPHYR_UART0)")
+    return port
+
+
+@pytest.fixture(scope="session")
+def v2_image(request, device_object) -> Path:
+    """Build (or accept) the v2 signed image for the MCUboot swap test."""
+    explicit = request.config.getoption("--v2-bin")
+    if explicit:
+        return Path(explicit)
+
+    build_dir = Path(device_object.device_config.build_dir)
+    info = yaml.safe_load((build_dir / "build_info.yml").read_text())
+    src_dir = next(
+        Path(img["source-dir"])
+        for img in info["cmake"]["images"]
+        if img["type"] == "MAIN"
+    )
+    cache = next(build_dir.glob("*_sysbuild_cache.txt"))
+    args = _parse_sysbuild_args(cache)
+    args = _override(
+        args,
+        "-Dat_cmd_set_CONFIG_AT_CMD_SET_SAMPLE_APP_VERSION=",
+        f'"{_V2_VERSION}"',
+    )
+    args = _override(
+        args,
+        "-Dmcuboot_CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION=",
+        f'"{_V2_VERSION}"',
+    )
+    v2_dir = Path(tempfile.mkdtemp(prefix="at_cmd_set_v2_"))
+    cmd = [
+        "west",
+        "build",
+        "-p",
+        "always",
+        "-d",
+        str(v2_dir),
+        "-b",
+        _board_string(info),
+        "--sysbuild",
+        str(src_dir),
+        "--",
+        *args,
+    ]
+    logger.info("Building v2 image: %s", " ".join(cmd))
+    subprocess.run(cmd, check=True)
+    mode = request.config.getoption("--dfu-mode")
+    image = _find_image(v2_dir, mode)
+    logger.info("v2 image: %s (%d bytes)", image, image.stat().st_size)
+    request.addfinalizer(lambda: shutil.rmtree(v2_dir, ignore_errors=True))
+    return image
+
+
+@pytest.fixture
+def at_cmd_dfu_host(
+    request, dfu_serial_port, at_cmd_baud
+):  # pylint: disable=redefined-outer-name
+    """Open an AT command DFU host on uart0 for one test function."""
+    timeout = request.config.getoption("--dfu-timeout")
+    host = AtCmdDfuHost(dfu_serial_port, baud=at_cmd_baud, timeout=timeout)
+    try:
+        host.open()
+    except (serial.SerialException, OSError) as exc:
+        pytest.skip(f"Cannot open DFU UART {dfu_serial_port}: {exc}")
+    host.clear_input()
+    try:
+        yield host
+    finally:
+        host.close()

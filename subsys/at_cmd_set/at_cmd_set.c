@@ -9,6 +9,14 @@
 #include "at_cmd_gatt.h"
 #include <zephyr/logging/log.h>
 
+#ifdef CONFIG_ATM_AT_CMD_UART_TRANSPORT
+#include "at_cmd_uart_transport.h"
+#endif
+
+#ifdef CONFIG_AT_CMD_SYSDFU
+#include "at_cmd_sysdfu_proc.h"
+#endif
+
 #ifdef CONFIG_AT_CMD_SET_EVENTS
 #include "app_work_q.h"
 #endif
@@ -151,3 +159,56 @@ int at_cmd_evt_submit(at_cmd_evt_handler_t handler, uint8_t ch, void const *evt_
 }
 
 #endif /* CONFIG_AT_CMD_SET_EVENTS */
+
+#ifdef CONFIG_ATM_AT_CMD_UART_TRANSPORT
+
+at_cmd_ch_t at_cmd_set_uart_ch_get(void)
+{
+	return at_cmd_uart_ch_get();
+}
+
+#endif /* CONFIG_ATM_AT_CMD_UART_TRANSPORT */
+
+at_cmd_ch_t at_cmd_set_custom_ch_init(at_cmd_alloc_ctx_t const *ctx)
+{
+	at_cmd_ctx_init();
+	return at_cmd_alloc(ctx);
+}
+
+#ifdef CONFIG_ATM_AT_CMD_UART_TRANSPORT
+
+int at_cmd_set_uart_ch_init(const struct device *uart_dev)
+{
+	at_cmd_ctx_init();
+
+	at_cmd_ch_t ch = at_cmd_uart_init(uart_dev);
+
+	if (ch == AT_CMD_INVALID_CH) {
+		return -ENODEV;
+	}
+
+	at_cmd_set_channel(ch);
+	return 0;
+}
+
+bool at_cmd_set_uart_rx_passthrough(uint8_t byte)
+{
+#ifdef CONFIG_AT_CMD_SYSDFU
+	if (at_cmd_sysdfu_is_active()) {
+		at_cmd_sysdfu_feed_byte(byte);
+		return true;
+	}
+#endif
+#ifdef CONFIG_AT_CMD_SYSUARTRAW
+	if (at_cmd_sysuartraw_is_active()) {
+		at_cmd_sysuartraw_rx_byte(byte);
+		return true;
+	}
+#endif
+#if !defined(CONFIG_AT_CMD_SYSDFU) && !defined(CONFIG_AT_CMD_SYSUARTRAW)
+	ARG_UNUSED(byte);
+#endif
+	return false;
+}
+
+#endif /* CONFIG_ATM_AT_CMD_UART_TRANSPORT */

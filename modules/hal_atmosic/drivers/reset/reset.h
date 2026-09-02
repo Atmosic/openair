@@ -1,13 +1,15 @@
+/*
+ * Copyright (c) 2022-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  ******************************************************************************
  *
  * @file reset.h
  *
- * @brief Reset driver
- *
- * Copyright (C) Atmosic 2022-2026
- *
- * SPDX-License-Identifier: LicenseRef-Atmosic
+ * @brief Reset Driver
  *
  ******************************************************************************
  */
@@ -232,6 +234,38 @@ typedef enum {
     BOOT_STATUS_HIB_WKUP_RF = BOOT_STATUS(TYPE_HIB, BOOT_MASK(HIB_RFWAKE)),
 } boot_status_t;
 
+#ifdef CONFIG_RESET_TEST_STUB
+/**
+ * @brief Boot status test inputs for mocking hardware registers.
+ */
+struct reset_test_inputs {
+    uint32_t syndrome;
+    uint32_t pseq_status;
+    uint32_t pseq_wdog_status;
+    uint8_t pmu_wkup_det;
+    bool pmu_soc_wdog_reset;
+    bool pmu_pmu_wdog_reset;
+};
+
+/**
+ * @brief Set the test inputs for the reset driver.
+ *
+ * @param inputs Pointer to the test inputs, or NULL to use real hardware.
+ */
+void reset_test_set_inputs(struct reset_test_inputs const *inputs);
+
+void reset_stub_override_pseq_status(uint32_t *pseq_boot_status,
+    uint32_t *pseq_wdog_status);
+uint8_t reset_stub_pmu_wkup_det(uint8_t hw_val);
+bool reset_stub_pmu_soc_wdog_reset(bool hw_val);
+bool reset_stub_pmu_pmu_wdog_reset(bool hw_val);
+#if defined(CMSDK_SYSCON) || defined(SYS_CTRL_REG)
+uint32_t *reset_get_syndrome_ptr(void);
+#endif
+void (*reset_get_print_fn(void))(void);
+uint32_t *reset_get_cached_boot_status_ptr(void);
+#endif // CONFIG_RESET_TEST_STUB
+
 /**
  * @brief Get boot status
  *
@@ -270,7 +304,7 @@ __STATIC_FORCEINLINE bool is_boot_reason(boot_status_t sts)
 __STATIC_FORCEINLINE bool is_boot_unretained(void)
 {
     return (is_boot_type(TYPE_POWER_ON) || is_boot_type(TYPE_SOCOFF) ||
-	is_boot_type(TYPE_SOC_RESET) || is_boot_type(TYPE_RESET));
+	is_boot_type(TYPE_RESET));
 }
 
 /**

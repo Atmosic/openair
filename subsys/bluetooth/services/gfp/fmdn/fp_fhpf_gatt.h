@@ -26,7 +26,7 @@ extern "C" {
 /**
  * @brief Callback for ranging capability events
  * @param tech_id Technology ID
- * @param capability Discriminated union containing capability structure
+ * @param capability Struct containing the capability pointer for tech_id
  * @return 0 on success, negative on error
  */
 typedef int (*fp_fmdn_ranging_capability_cb)(rt_id_t tech_id, ranging_capability_t *capability);
@@ -34,7 +34,7 @@ typedef int (*fp_fmdn_ranging_capability_cb)(rt_id_t tech_id, ranging_capability
 /**
  * @brief Callback for ranging configuration events
  * @param tech_id Technology ID
- * @param config Discriminated union containing configuration data
+ * @param config Struct containing the config pointer for tech_id
  * @param start_immediately Whether to start immediately
  * @return 0 on success, negative on error
  */
@@ -201,6 +201,18 @@ void fp_fhpf_gatt_conn_event(struct bt_conn *conn, bool connected);
  */
 void fp_fhpf_gatt_security_changed(struct bt_conn *conn, bt_security_t level,
 				   enum bt_security_err err);
+
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+/**
+ * @brief Signal a hardware-detected motion event to the FHPF state machine.
+ *
+ * Called by the platform when the motion sensor interrupt fires. Routes to
+ * fp_fhpf_motion_trigger_event() which to get the raw motion status and cache
+ * the peak value. The 2-second periodic work will poll the cached value and
+ * trigger a notification if motion is detected.
+ */
+void fp_fhpf_motion_trigger_event(void);
+#endif /* CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER */
 
 #endif /* CONFIG_FMDN_PRECISION_FINDING */
 

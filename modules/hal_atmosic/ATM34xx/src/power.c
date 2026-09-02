@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #ifdef CONFIG_POWER_OFF_SBRK
@@ -32,10 +32,10 @@ LOG_MODULE_REGISTER(soc_power, CONFIG_SOC_LOG_LEVEL);
 #include "sec_service.h"
 #endif
 #include "power.h"
-#ifdef CONFIG_ATM_ATLC
-#include "at_lc_regs_core_macro.h"
-#endif
 #include "vectors.h"
+#if defined(CONFIG_PM) && defined(CONFIG_PM_CUSTOM_TICKS_HOOK) && defined(CONFIG_ATM_ATLC)
+#include "ble_driver.h"
+#endif
 
 #define PSEQ_INTERNAL_DIRECT_INCLUDE_GUARD
 #include "pseq.ih"
@@ -46,6 +46,12 @@ bool wurx0_enabled, wurx1_enabled;
 /* Debugs - to enable, change undef to define */
 #undef DEBUG_HIBERNATE
 #undef DEBUG_WAKE_MASK
+
+#ifdef CONFIG_BROWNOUT_IMMEDIATELY
+#define BRWNOUT_RAMFUNC __ramfunc
+#else
+#define BRWNOUT_RAMFUNC
+#endif
 
 #define XTAL_FORCE \
 	(PSEQ_OVERRIDES__FORCE_PRECISION_VAL__MASK | PSEQ_OVERRIDES__FORCE_PRECISION_REQ__MASK)
@@ -64,7 +70,7 @@ unsigned int secure_irq_lock(void);
 void secure_irq_unlock(unsigned int key);
 #endif
 
-#ifdef CONFIG_PM
+#if defined(CONFIG_PM) || defined(CONFIG_ATM_PD)
 #include "hw_cfg.h"
 #include "pmu.h"
 
@@ -83,14 +89,16 @@ void pseq_enable_gpio_pulse_detection(bool enable)
 #endif
 #endif /* CONFIG_DETECT_PULSE_IN_RETENTION */
 
+#ifdef CONFIG_PM
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
-static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
+static void atm_power_mode_retain(uint32_t lpc, uint32_t *int_set)
 {
 	uint32_t duration;
-	if (idle != IDLE_FOREVER) {
-		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(retain), exit_latency_us, 0));
-		/* Convert ticks to lpcycles */
-		duration = atm_to_lpc(Z_HZ_ticks, idle);
+	if (lpc) {
+		uint32_t latency =
+			atm_us_to_lpc(DT_PROP_OR(DT_NODELABEL(retain), exit_latency_us, 0));
+		/* Never bottom out at 0: that means an indefinite stay */
+		duration = (lpc > latency) ? (lpc - latency) : 1;
 #ifdef PSEQ_TEST_TORTURE_RETAIN
 		if (duration > 0x100) {
 			duration = 0x100;
@@ -143,16 +151,17 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 	pseq_core_enter_retain(wurx0_enabled, wurx1_enabled);
 }
 #endif // power_states/retain
+#endif // CONFIG_PM
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
-static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
+static void atm_power_mode_hibernate(uint32_t lpc, uint32_t *int_set)
 {
 	uint32_t duration;
-	if (idle != IDLE_FOREVER) {
-		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(hibernate), exit_latency_us,
-							0));
-		/* Convert ticks to lpcycles */
-		duration = atm_to_lpc(Z_HZ_ticks, idle);
+	if (lpc) {
+		uint32_t latency =
+			atm_us_to_lpc(DT_PROP_OR(DT_NODELABEL(hibernate), exit_latency_us, 0));
+		/* Never bottom out at 0: that means an indefinite stay */
+		duration = (lpc > latency) ? (lpc - latency) : 1;
 
 #if CONFIG_PM_MAX_SLEEP_DURATION_SEC
 		/* Apply maximum duration cap if configured */
@@ -200,14 +209,15 @@ static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
 #endif // power_states/hibernate
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
-static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
+static void atm_power_mode_soc_off(uint32_t lpc, uint32_t *int_set)
 {
 	uint64_t duration;
 
-	if (idle != IDLE_FOREVER) {
-		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
-		/* Convert ticks to lpcycles */
-		duration = atm_to_lpc(Z_HZ_ticks, idle);
+	if (lpc) {
+		uint32_t latency =
+			atm_us_to_lpc(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
+		/* Never bottom out at 0: that means an indefinite stay */
+		duration = (lpc > latency) ? (lpc - latency) : 1;
 
 #if CONFIG_PM_MAX_SLEEP_DURATION_SEC
 		/* Apply maximum duration cap if configured */
@@ -255,6 +265,7 @@ static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
 #define PSEQ_USE_FSM
 #define BP_DOUBLER_FREQ 32000000U
 
+#ifdef CONFIG_PM
 static void pseq_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 {
 #ifdef PSEQ_TEST_MIN_FREQ
@@ -263,6 +274,7 @@ static void pseq_bp_throttle(uint32_t bp_freq, uint32_t *min_freq)
 	}
 #endif
 }
+#endif // CONFIG_PM
 
 #ifdef PSEQ_USE_FSM
 static uint32_t pseq_pending_fsm_bp_freq;
@@ -279,6 +291,7 @@ static uint32_t pseq_get_system_freq(void)
 	return atm_bp_clock_get();
 }
 
+#ifdef CONFIG_PM
 static uint32_t pseq_scale_back_bp(uint32_t min_freq, uint32_t *slow_freq)
 {
 	uint32_t bp_freq = pseq_get_system_freq();
@@ -291,6 +304,7 @@ static uint32_t pseq_scale_back_bp(uint32_t min_freq, uint32_t *slow_freq)
 	}
 	return bp_freq;
 }
+#endif // CONFIG_PM
 
 /*
  * Locate in RAM - avoid waking RRAM from nap or shutdown
@@ -356,6 +370,7 @@ __STATIC_FORCEINLINE void pseq_reset_fsm(void)
 }
 #endif
 
+#ifdef CONFIG_PM
 /*
  * Locate in RAM - avoid waking RRAM from nap or shutdown
  */
@@ -483,8 +498,10 @@ __ramfunc static void pseq_rram_nap_slow_wfi(uint32_t bp_freq, uint32_t slow_fre
 		WRPR_CTRL_POP();
 	}
 }
+#endif // CONFIG_PM
 #endif // systick external_clock_source
 
+#ifdef CONFIG_PM
 /*
  * Locate in RAM - avoid waking RRAM from nap
  */
@@ -505,8 +522,10 @@ __ramfunc static void atm_power_rram_nap_wfi(void)
 		WRPR_CTRL_POP();
 	}
 }
+#endif // CONFIG_PM
 
-static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set), uint32_t idle)
+BRWNOUT_RAMFUNC
+static void atm_power_pseq_setup(void (*mode)(uint32_t lpc, uint32_t *int_set), uint32_t lpc)
 {
 	uint32_t int_set[INT_REG_NUM];
 
@@ -519,7 +538,7 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 #endif
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
-		mode(idle, int_set);
+		mode(lpc, int_set);
 	}
 	WRPR_CTRL_POP();
 
@@ -618,10 +637,25 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	irq_unlock(0);
 }
 
-static void atm_power_pseq_control(void (*mode)(uint32_t idle, uint32_t *int_set))
+#ifdef CONFIG_PM
+static void atm_power_pseq_control(void (*mode)(uint32_t lpc, uint32_t *int_set))
 {
-	atm_power_pseq_setup(mode, _kernel.idle);
+	uint32_t idle = _kernel.idle;
+	/* Convert Zephyr idle ticks to lpcycles; IDLE_FOREVER maps to 0 (indefinite) */
+	uint32_t lpc = (idle == IDLE_FOREVER) ? 0 : atm_to_lpc(Z_HZ_ticks, idle);
+	atm_power_pseq_setup(mode, lpc);
 }
+
+#ifdef CONFIG_PM_CUSTOM_TICKS_HOOK
+int64_t pm_policy_next_custom_ticks(void)
+{
+#ifdef CONFIG_ATM_ATLC
+	return atm_ble_sleep_remaining_ticks();
+#else
+	return K_TICKS_FOREVER;
+#endif
+}
+#endif /* CONFIG_PM_CUSTOM_TICKS_HOOK */
 
 /**
  * @brief Prevent reentering retention/hibernation after a wakeup
@@ -683,8 +717,25 @@ void pm_state_set(enum pm_state state, uint8_t substate_id)
 #ifdef CONFIG_ATM_PMU_WDT_ENABLE
 		pmu_set_pmu_wdog_reset(false);
 
-		// Check and process any wakeup due to PMU interrupt
-		PMU_Handler();
+		bool wdog_warn;
+
+		WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+		{
+			wdog_warn = CMSDK_PSEQ->PMU_STATUS & PSEQ_PMU_STATUS__PMU_WDOG_WARN__MASK;
+			if (wdog_warn) {
+				uint32_t expan = CMSDK_PSEQ->PMU_INTERRUPT_EXPAN;
+
+				PSEQ_PMU_INTERRUPT_EXPAN__CLEAR_RE_PMU_WDOG_WARN__SET(expan);
+				PSEQ_PMU_INTERRUPT_EXPAN__CLEAR_FE_PMU_WDOG_WARN__SET(expan);
+				CMSDK_PSEQ->PMU_INTERRUPT_EXPAN = expan;
+			}
+		}
+		WRPR_CTRL_POP();
+
+		if (wdog_warn) {
+			NVIC_ClearPendingIRQ(DT_IRQ_BY_NAME(DT_NODELABEL(pmu), pmu, irq));
+			wdt_pmu_handler();
+		}
 #endif
 
 		WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
@@ -740,31 +791,31 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 		break;
 	}
 }
+#endif // CONFIG_PM
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
-void atm_pseq_soc_off(uint32_t ticks)
+void atm_pseq_soc_off(uint32_t lpc, enum atm_pd_urgency urgency)
 {
 	__disable_irq();
-	atm_power_pseq_setup(atm_power_mode_soc_off, ticks);
+
+	atm_pd_prep_run(ATM_PD_METHOD_SOC_OFF, urgency);
+
+	atm_power_pseq_setup(atm_power_mode_soc_off, lpc);
 }
 #endif // power_states/soc_off
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
-void atm_pseq_hibernate(uint32_t ticks)
+BRWNOUT_RAMFUNC
+void atm_pseq_hibernate(uint32_t lpc, enum atm_pd_urgency urgency)
 {
 	__disable_irq();
 
-#ifdef CONFIG_ATM_ATLC
-	// Force ATLC to sleep
-	ATLC_LC_LP_CTRL0__SW_WU_REQ__CLR(CMSDK_ATLC_NONSECURE->LC_LP_CTRL0);
-	CMSDK_ATLC_NONSECURE->LC_LP_CTRL2 = ATLC_LC_LP_CTRL2__SLP_TM__WRITE(0);
-	CMSDK_ATLC_NONSECURE->LC_LP_CTRL3 = ATLC_LC_LP_CTRL3__SLP__MASK;
-#endif
+	atm_pd_prep_run(ATM_PD_METHOD_HIBERNATE, urgency);
 
-	atm_power_pseq_setup(atm_power_mode_hibernate, ticks);
+	atm_power_pseq_setup(atm_power_mode_hibernate, lpc);
 }
 #endif // power_states/hibernate
-#endif /* CONFIG_PM */
+#endif /* CONFIG_PM || CONFIG_ATM_PD */
 
 #ifdef SECURE_PROC_ENV
 __SPE_NSC
@@ -783,6 +834,62 @@ void secure_irq_unlock(unsigned int key)
 void atm_socoff_wakeup_gpio_set(bool enable)
 {
 	gpio_wakeup_enabled = enable;
+}
+
+void atm_power_pseq_release_latch(enum atm_pseq_hib_latch latch)
+{
+	uint32_t ctrl0_mask;
+
+	switch (latch) {
+#ifdef PSEQ_CTRL0__GPIO_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_GPIO:
+		ctrl0_mask = PSEQ_CTRL0__GPIO_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__PINPU_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_PINPU:
+		ctrl0_mask = PSEQ_CTRL0__PINPU_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__PINSEL_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_PINSEL:
+		ctrl0_mask = PSEQ_CTRL0__PINSEL_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__I2C_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_I2C:
+		ctrl0_mask = PSEQ_CTRL0__I2C_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_SPI:
+		ctrl0_mask = PSEQ_CTRL0__SPI_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__KSM_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_KSM:
+		ctrl0_mask = PSEQ_CTRL0__KSM_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__PWM_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_PWM:
+		ctrl0_mask = PSEQ_CTRL0__PWM_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__UART_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_UART:
+		ctrl0_mask = PSEQ_CTRL0__UART_LATCH_OPEN__MASK;
+		break;
+#endif
+	default:
+		return;
+	}
+
+	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+	{
+		CMSDK_PSEQ->CTRL0 &= ~ctrl0_mask;
+	}
+	WRPR_CTRL_POP();
 }
 
 static int atm_power_init(void)

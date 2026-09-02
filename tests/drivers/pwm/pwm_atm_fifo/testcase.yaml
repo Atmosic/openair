@@ -21,4 +21,4 @@ tests:
       - gcov_capable
     timeout: 180
     extra_configs:
-      - CONFIG_UU_TEST_OPENAIR="pwm_atm.c"
+      - CONFIG_UU_TEST_OPENAIR="pwm_atm.c;dma.c"

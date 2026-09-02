@@ -26,7 +26,7 @@ extern "C" {
 /**
  * @brief Handle ranging capability requests
  * @param tech_id Technology ID (UWB/CS)
- * @param capability Discriminated union containing capability structure to populate
+ * @param capability Struct containing the capability pointer for tech_id
  * @return 0 on success, negative on error
  */
 __NONNULL(2)
@@ -35,7 +35,7 @@ int fp_platform_ranging_capability_cb(rt_id_t tech_id, ranging_capability_t *cap
 /**
  * @brief Handle ranging configuration requests
  * @param tech_id Technology ID being configured
- * @param config Discriminated union containing configuration data
+ * @param config Struct containing the config pointer for tech_id
  * @param start_immediately Whether to start immediately
  * @return 0 on success, negative on error
  */

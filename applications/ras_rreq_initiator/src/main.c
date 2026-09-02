@@ -9,6 +9,9 @@
 
 #include "app_work_q.h"
 #include "rreq_smf.h"
+#if defined(CONFIG_RREQ_USE_ARIAD) && defined(CONFIG_RREQ_USE_DISPLAY)
+#include "cs_display.h"
+#endif
 
 LOG_MODULE_REGISTER(rreq, CONFIG_RREQ_LOG_LEVEL);
 
@@ -48,6 +51,10 @@ int main(void)
 
 	k_work_init_delayable(&wdt_poke_work, wdt_poke_work_handler);
 	atm_work_schedule_for_app_work_q(&wdt_poke_work, WDT_POKE_TIME);
+
+#if defined(CONFIG_RREQ_USE_ARIAD) && defined(CONFIG_RREQ_USE_DISPLAY)
+	cs_display_init();
+#endif
 
 	rreq_smf_init();
 

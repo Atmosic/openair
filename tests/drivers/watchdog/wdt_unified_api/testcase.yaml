@@ -13,3 +13,12 @@ tests:
     sysbuild: true
     tags:
       - wdt_unified_api
+  tests.drivers.watchdog.wdt_unified_api.atm.gcov:
+    sysbuild: true
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="wdt_atm_unified.c"

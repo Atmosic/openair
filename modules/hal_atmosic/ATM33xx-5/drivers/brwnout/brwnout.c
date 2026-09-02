@@ -130,7 +130,7 @@ static void brwnout_plf_off(void)
     pseq_soc_off(WAKEUP_DURATION);
 #else
 #ifdef CONFIG_PM
-    atm_pseq_soc_off(WAKEUP_DURATION);
+    atm_pseq_soc_off(WAKEUP_DURATION, ATM_PD_URGENCY_URGENT);
 #endif
 #endif
 }

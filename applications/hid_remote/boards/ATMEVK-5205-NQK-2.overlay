@@ -1,0 +1,39 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+&pinctrl {
+	pdm0_clk_default: pdm0_clk_default {
+		pinmux = <30 PINMUX_PDM0_CLK>;
+	};
+
+	pdm0_data_default: pdm0_data_default {
+		pinmux = <13 PINMUX_PDM0_IN>;
+	};
+};
+
+&pdm0 {
+	mic-bias-gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
+};
+
+&input_kbd_matrix {
+	row0-pin = <26>;
+	row0-ksi = <0>;
+	row1-pin = <39>;
+	row1-ksi = <8>;
+	row2-pin = <37>;
+	row2-ksi = <6>;
+	row3-pin = <38>;
+	row3-ksi = <7>;
+	col0-pin = <14>;
+	col0-kso = <1>;
+	col1-pin = <15>;
+	col1-kso = <2>;
+	col2-pin = <16>;
+	col2-kso = <3>;
+	col3-pin = <17>;
+	col3-kso = <4>;
+	status = "okay";
+};

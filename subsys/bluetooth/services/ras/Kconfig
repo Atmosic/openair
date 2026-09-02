@@ -1,6 +1,6 @@
 # Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config BT_RAS
 	bool "Support for GATT Ranging Service"
@@ -54,6 +54,13 @@ config RAS_FILTER_RD
 	  bit1: Phase Correction Term
 	  bit2: Quality Indicator and Extension Indicator
 
+config BT_RAS_TEST
+	bool "Enable RAS internal test accessors"
+	depends on ZTEST
+	help
+	  Exposes internal buffer management and filter functions through
+	  wrapper symbols (ras_test_*) for use in unit tests.
+
 module = BT_RAS
 module-str = BT_RAS
 source "subsys/logging/Kconfig.template.log_config"
@@ -64,6 +71,7 @@ config BT_RAS_CLIENT
 	bool "Support for GATT Ranging Service Client"
 	select BT_GATT_CLIENT
 	select BT_CHANNEL_SOUNDING
+	select APP_WORK_Q
 
 if BT_RAS_CLIENT
 

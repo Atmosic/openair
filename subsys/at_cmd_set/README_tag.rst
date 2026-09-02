@@ -53,6 +53,9 @@ The following table shows which tag protocol or configuration each command depen
    * - ``AT+TAGMOTIONRPT``
      - Report XYZ acceleration from host
      - ``CONFIG_AT_CMD_TAGMOTIONRPT`` (default)
+   * - ``AT+TAGADDR``
+     - Query advertising BT address for a given protocol
+     - ``CONFIG_AT_CMD_TAGADDR`` (default)
 
 AT+TAGINFO — Tag Information
 ****************************
@@ -263,7 +266,7 @@ tilt angle from horizontal magnitude).
 :Format:   ``+EVTTAGSTATE:<protocol>,<state>``
 
 ``<protocol>`` is the active protocol bitmask (same encoding as ``AT+TAGMODE``).
-``<state>`` is one of the following values (``at_cmd_evt_tag_state_t``):
+``<state>`` is one of the following values (``tag_indication_state_t`` in ``platform_indicate.h``):
 
 .. list-table::
    :header-rows: 1
@@ -276,15 +279,21 @@ tilt angle from horizontal magnitude).
      - ``BOOTED``
      - System booted
    * - ``1``
+     - ``POWER_ON``
+     - Tag powered on
+   * - ``2``
+     - ``POWER_OFF``
+     - Tag powered off
+   * - ``3``
      - ``INIT_DONE``
      - Tag initialized, ready for pairing
-   * - ``2``
+   * - ``4``
      - ``UNPAIRED``
      - Tag unpaired
-   * - ``3``
+   * - ``5``
      - ``PAIRING``
      - Tag in pairing mode
-   * - ``4``
+   * - ``6``
      - ``PAIRED``
      - Tag successfully paired with host
    * - ``0x60``
@@ -301,13 +310,12 @@ tilt angle from horizontal magnitude).
      - OTA image confirmed, update complete
 
 .. note::
-   These values differ from ``tag_state_t`` in ``platform_common.h``.
-   ``platform_mode_notify()`` converts ``tag_state_t`` to
-   ``at_cmd_evt_tag_state_t`` before sending events.
+   State values are aligned with ``tag_indication_state_t`` in ``platform_indicate.h``
+   and passed directly via ``platform_indicate_state()``.
 
 .. code-block:: text
 
-   +EVTTAGSTATE:7,1
+   +EVTTAGSTATE:7,3
 
 +EVTTAGERROR — Tag Error
 ************************
@@ -347,6 +355,33 @@ Reports GFP reverse ringing phone status events. ``<evt>`` values:
    * - ``2``
      - ``STOPPED``
      - Phone stopped ringing (any reason)
+   * - ``3``
+     - ``ADV_STARTED``
+     - Tag started advertising for adv-based reverse ringing; no connection yet
+   * - ``4``
+     - ``ADV_TIMEOUT``
+     - ADV window expired; phone never connected, never rang
+   * - ``5``
+     - ``PHONE_FAILED``
+     - Phone reported it could not start ringing
+   * - ``6``
+     - ``TIMEOUT_LOCAL``
+     - Provider-side ringing timeout after seeker connected
+   * - ``7``
+     - ``PHONE_TIMEOUT``
+     - Phone's own ring session timed out (Seeker WRITE 0x02)
+   * - ``8``
+     - ``START_CONFIRMED``
+     - START indication ACKed at ATT layer; persistent path fast feedback only
+   * - ``9``
+     - ``STOP_CONFIRMED``
+     - STOP indication ACKed at ATT layer; persistent path fast feedback only
+   * - ``10``
+     - ``PHONE_STOPPED_DISCONNECTED``
+     - BLE connection dropped while phone was ringing
+   * - ``11``
+     - ``PHONE_START_TIMEOUT``
+     - Persistent path 60s timeout after START indication ACKed
 
 .. code-block:: text
 
@@ -386,6 +421,38 @@ Used to synchronize motion sensor control between tag and host.
 
    +EVTTAGMOTIONCTL:1
    +EVTTAGMOTIONCTL:0
+
+AT+TAGADDR — Query Advertising BT Address
+******************************************
+
+:Kconfig:   ``CONFIG_AT_CMD_TAGADDR``
+:Execute:   ``AT+TAGADDR=<protocol>``
+:Query:     not supported
+:Response:  ``+TAGADDR:<protocol>,<adv_addr>``
+
+Returns the live advertising Bluetooth address for the specified protocol.
+Intended for debugging purposes. The tag must be started (``AT+TAGSTART=1``)
+before advertising is active.
+
+``<protocol>`` values (single protocol only):
+
+- ``0x01`` — FMNA
+- ``0x02`` — FHN
+- ``0x04`` — STF (requires ``CONFIG_ATM_STF_MULTI_MODE``)
+
+``<adv_addr>`` is the 6-byte BT address in big-endian (MSB first) hex format.
+
+Returns ``AT_CMD_TAG_ERR_INTERNAL`` if the protocol is not advertising.
+
+.. code-block:: text
+
+   AT+TAGADDR=1
+   +TAGADDR:1,C0:11:22:33:44:55
+   OK
+
+   AT+TAGADDR=2
+   +TAGADDR:2,D1:AA:BB:CC:DD:EE
+   OK
 
 Tag AT Command Error Codes
 ===========================

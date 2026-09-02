@@ -1,0 +1,37 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_BROWNOUT
+	bool "Enable brownout support"
+	default y if PM
+
+if ATM_BROWNOUT
+
+config BROWNOUT_THR_VBAT
+        int "VBAT brownout threshold"
+        range 3 14
+        default 3
+        help
+            Controls the VBAT brownout threshold.
+            For boost mode,
+                VBAT threshold = 0.875 + 0.025X, where 3 <= X <= 14
+            For buck mode,
+                VBAT threshold = 1.75 + 0.05X, where 3 <= X <= 14
+
+config BROWNOUT_THR_VBAT_HYSTERESIS_DELTA
+        int "VBAT brownout hysteresis delta"
+        range 0 11
+        default 5
+        help
+            Delta value added to BROWNOUT_THR_VBAT when increasing the VBAT
+            brownout threshold for hysteresis during hibernation entry.
+
+            When entering hibernation due to brownout, the VBAT threshold is
+            temporarily increased by this delta to provide hysteresis and
+            prevent rapid on/off cycling near the brownout threshold.
+
+            The hardware will always add about 100 mV of hysteresis to the
+            value computed here.
+
+endif

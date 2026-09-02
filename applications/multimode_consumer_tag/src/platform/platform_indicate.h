@@ -29,7 +29,7 @@ typedef enum {
 	TAG_IND_STATE_UNPAIRED,  /**< Tag unpaired */
 	TAG_IND_STATE_PAIRING,   /**< Tag in pairing mode */
 	TAG_IND_STATE_PAIRED,    /**< Tag successfully paired with host */
-#ifdef CONFIG_TAG_BTN_OTA_MODE
+#ifdef CONFIG_TAG_OTA_MODE
 	TAG_IND_STATE_OTA_IN_PROGRESS = 0x60, /**< OTA transfer in progress, advertising started */
 	TAG_IND_STATE_OTA_COMPLETE,  /**< OTA transfer complete, pending image confirmation */
 	TAG_IND_STATE_OTA_CONFIRMED, /**< OTA image confirmed, update complete */

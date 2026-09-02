@@ -36,8 +36,9 @@ LOG_MODULE_REGISTER(uart_atm_rx_idle, CONFIG_UART_LOG_LEVEL);
 #endif
 #ifdef CONFIG_PM
 #include "at_clkrstgen.h"
-#include "timer.h"
 #endif
+#include "timer.h"
+#include "power.h"
 
 #ifdef CMSDK_AT_UART0_NONSECURE
 #include "at_apb_uart_regs_core_macro.h"
@@ -112,6 +113,12 @@ struct uart_atm_dev_data {
 
 static const struct uart_driver_api uart_atm_driver_api;
 
+/* Number of bit times to wait before releasing TX constraint after TX FIFO empty.
+ * This ensures the shift register has finished transmitting the last byte.
+ * 10 bit times covers: 1 start bit + 8 data bits + 0 parity bit + 1 stop bits
+ */
+#define TX_CONSTRAINT_RELEASE_BIT_TIMES 10
+
 #ifdef CONFIG_PM
 /*
  * Low priority work queue for TX constraint release.
@@ -163,9 +170,6 @@ static void uart_atm_pm_tx_constraint_set(const struct device *dev)
 	/* Signal any pending release delay to exit early */
 	data->tx_constraint_release_cancel = true;
 
-	/* Cancel any pending work */
-	k_work_cancel(&data->tx_constraint_release_work);
-
 	if (!data->pm_tx_constraint_on) {
 		data->pm_tx_constraint_on = true;
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
@@ -183,12 +187,6 @@ static void uart_atm_pm_tx_constraint_release(const struct device *dev)
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
 }
-
-/* Number of bit times to wait before releasing TX constraint after TX FIFO empty.
- * This ensures the shift register has finished transmitting the last byte.
- * 10 bit times covers: 1 start bit + 8 data bits + 0 parity bit + 1 stop bits
- */
-#define TX_CONSTRAINT_RELEASE_BIT_TIMES 10
 
 static void uart_atm_pm_tx_constraint_release_work_handler(struct k_work *work)
 {
@@ -779,7 +777,7 @@ static int uart_atm_err_check(const struct device *dev)
 static int uart_atm_fifo_fill(const struct device *dev, const uint8_t *tx_data, int len)
 {
 	const struct uart_atm_config *const dev_cfg = dev->config;
-	uint8_t num_tx = 0U;
+	int num_tx = 0;
 
 	unsigned int key = irq_lock();
 
@@ -808,7 +806,7 @@ static int uart_atm_fifo_fill(const struct device *dev, const uint8_t *tx_data, 
 static int uart_atm_fifo_read(const struct device *dev, uint8_t *rx_data, const int size)
 {
 	const struct uart_atm_config *const dev_cfg = dev->config;
-	uint8_t num_rx = 0U;
+	int num_rx = 0;
 
 	while (size - num_rx > 0) {
 		/*
@@ -1324,6 +1322,69 @@ static struct k_timer uart_atm_pm_rx_timer##inst;                               
 	ATMOSIC_UART_IRQ_HANDLER(inst)
 
 DT_INST_FOREACH_STATUS_OKAY(ATMOSIC_UART_INIT)
+
+#ifdef CONFIG_ATM_PD
+/*
+ * Forced-power-down prep: drain the TX shift register before the PSEQ latches
+ * the UART pads, so the last bytes aren't truncated. On an urgent
+ * (power-failing) entry the drain is skipped and truncation is accepted.
+ */
+__FAST static void uart_atm_pd_drain(const struct device *dev, enum atm_pd_urgency urgency)
+{
+	if (urgency == ATM_PD_URGENCY_URGENT) {
+		return;
+	}
+	/* This hook is emitted at link time for every status-okay instance, so
+	 * it can run for an instance whose init never completed (e.g. a delayed
+	 * POST_KERNEL init that has not run yet) or whose transmitter is
+	 * disabled. Skip those: the block may be unclocked/idle and the drain
+	 * below would spin forever. The readiness check is a pure RAM read (it
+	 * mirrors device_is_ready()), so it is safe before touching registers.
+	 */
+	if (!dev->state->initialized || (dev->state->init_res != 0U)) {
+		return;
+	}
+	const struct uart_atm_config *const dev_cfg = dev->config;
+	if (!(dev_cfg->uart->CTRL & CMSDK_UART_CTRL_TXEN_Msk)) {
+		return;
+	}
+	/* Override CTS so a flow-controlled-off peer can't stall the drain; the
+	 * spin is then bounded by FIFO depth at the line rate.
+	 */
+	uint32_t save_hw_flow_ovrd = dev_cfg->uart->HW_FLOW_OVRD;
+	dev_cfg->uart->HW_FLOW_OVRD |= CMSDK_UART_HW_FLOW_OVRD_NCTS_OVRD_Msk;
+#ifdef CMSDK_AT_UART_STATE__TX_IDLE__READ
+	while (!CMSDK_AT_UART_STATE__TX_IDLE__READ(dev_cfg->uart->STATE)) {
+	}
+#else
+	/* No TX_IDLE status bit: wait for the TX FIFO to drain, then wait one
+	 * frame (10 bit times: 1 start + 8 data + 1 stop) at the configured baud
+	 * rate so the shift register finishes the final octet before the pads
+	 * latch.
+	 */
+	struct uart_atm_dev_data *const data = dev->data;
+	while (dev_cfg->uart->TX_FIFO_SPACES != CMSDK_AT_UART_TX_FIFO_SPACES__RESET_VALUE) {
+	}
+	uint32_t lpc_ticks = atm_to_lpc_round_up(data->baudrate, TX_CONSTRAINT_RELEASE_BIT_TIMES);
+	atm_timer_lpc_delay(lpc_ticks);
+#endif
+	dev_cfg->uart->HW_FLOW_OVRD = save_hw_flow_ovrd;
+}
+
+/* Register a prep hook for every status-okay instance; the drain itself skips
+ * urgent entries and instances that are not initialized or have TX disabled.
+ */
+#define UART_ATM_PD_PREP(inst)                                                                     \
+	__FAST static void uart_atm_pd_prep##inst(enum atm_pd_method method,                       \
+						  enum atm_pd_urgency urgency)                     \
+	{                                                                                          \
+		ARG_UNUSED(method);                                                                \
+		uart_atm_pd_drain(DEVICE_DT_INST_GET(inst), urgency);                              \
+	}                                                                                          \
+	ATM_PD_PREP_DEFINE(uart_atm##inst, 20, uart_atm_pd_prep##inst);
+
+DT_INST_FOREACH_STATUS_OKAY(UART_ATM_PD_PREP)
+#endif /* CONFIG_ATM_PD */
 
 #ifdef CONFIG_UART_ATM_HOST_DETECT
 

@@ -3,9 +3,14 @@
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
 tests:
-  tests.drivers.spi.spi_loopback.atm:
+  tests.drivers.spi.spi_loopback.atm.gcov:
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
     sysbuild: true
     harness: ztest
     extra_configs:
       - CONFIG_SPI_LOOPBACK_MODE_LOOP=y
       - CONFIG_SPI_IDEAL_TRANSFER_DURATION_SCALING=30
+      - CONFIG_UU_TEST_OPENAIR="spi_atm.c;pinctrl_atm.c"

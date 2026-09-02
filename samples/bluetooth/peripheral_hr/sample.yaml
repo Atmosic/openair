@@ -6,6 +6,8 @@ common:
     - role_peripheral
 tests:
   samples.bluetooth.peripheral_hr.atm:
+    tags:
+      - openair_release
     sysbuild: true
     harness: console
     harness_config:

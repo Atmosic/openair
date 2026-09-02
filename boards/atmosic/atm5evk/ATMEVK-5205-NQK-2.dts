@@ -1,0 +1,168 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/dts-v1/;
+#include <arm/atmosic/ATM5xxx.dtsi>
+#include <dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <atm5xxx_2_pinmux.h>
+#include "pinctrl.dtsi"
+
+/ {
+	model = "Atmosic ATM52 EVK template";
+	compatible = "atmosic,ATMEVK-5xxx";
+
+	chosen {
+		zephyr,console = &uart1;
+		zephyr,uart-mcumgr = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash-controller = &flash_controller;
+		zephyr,flash = &flash0;
+		zephyr,entropy = &trng;
+#ifdef ATM_DTS_USER_APP
+		zephyr,shell-uart = &uart1;
+		zephyr,bt-mon-uart = &uart1;
+		zephyr,bt-c2h-uart = &uart0;
+#endif
+	};
+
+#ifdef ATM_DTS_USER_APP
+	leds {
+		compatible = "gpio-leds";
+		led0: led_0 {
+			gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+			label = "Red LED";
+		};
+		led1: led_1 {
+			gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
+			label = "Green LED";
+		};
+		led2: led_2 {
+			gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
+			label = "Blue LED";
+		};
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_led0: pwm_led_0 {
+			pwms = <&pwm0 0 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+			label = "Red LED";
+		};
+		pwm_led1: pwm_led_1 {
+			pwms = <&pwm1 1 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+			label = "Green LED";
+		};
+		pwm_led2: pwm_led_2 {
+			pwms = <&pwm2 2 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+			label = "Blue LED";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+			label = "Button1";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+		button1: button_1 {
+			gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+			label = "Button2";
+			zephyr,code = <INPUT_KEY_1>;
+		};
+	};
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		i2c-1 = &i2c0;
+		led0 = &led0;
+		pwm-0 = &pwm0;
+		pwm-test = &pwm0;
+		pwm-led0 = &pwm_led0;
+		pwm-led1 = &pwm_led1;
+		pwm-led2 = &pwm_led2;
+		sw0 = &button0;
+	};
+#endif
+
+	zephyr,user {
+		pin-arrangement = "5X5";
+	};
+};
+
+&uart1 {
+	tx-pin = <27>;
+};
+
+&uart0 {
+	rx-pin = <28>;
+	tx-pin = <29>;
+	rts-pin = <17>;
+	cts-pin = <30>;
+};
+
+&flash_controller {
+	clk-pin = <52>;
+	csn-pin = <50>;
+	d0-pin = <51>;
+	d1-pin = <49>;
+	d2-pin = <48>;
+	d3-pin = <53>;
+};
+
+#ifdef ATM_DTS_USER_APP
+arduino_i2c: &i2c0 {};
+arduino_spi: &spi1 {};
+
+&atm_antenna {
+	status = "okay";
+	power-source-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+};
+
+&i2c0 {
+	pinctrl-0 = <&i2c0_sda_default &i2c0_scl_default>;
+	pinctrl-names = "default";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+};
+
+&pwm0 {
+	pin = <8>;
+	status = "okay";
+};
+
+&pwm1 {
+	pin = <9>;
+	status = "okay";
+};
+
+&pwm2 {
+	pin = <10>;
+	status = "okay";
+};
+
+&pwm3 {
+	pin = <29>;
+};
+
+&spi0 {
+	pinctrl-0 = <&spi0_clk_default &spi0_cs_default &spi0_mosi_default &spi0_miso_default>;
+	pinctrl-names = "default";
+};
+
+&spi1 {
+	pinctrl-0 = <&spi1_clk_default &spi1_cs_default &spi1_mosi_default &spi1_miso_default>;
+	pinctrl-names = "default";
+};
+
+&i2s {
+	sck-out-pin = <9>;
+	ws-out-pin = <13>;
+	sd-out-pin = <11>;
+};
+
+mikrobus_pwm: &pwm6 {};
+#endif

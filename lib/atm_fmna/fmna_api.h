@@ -278,6 +278,17 @@ void fmna_le_param_updated(struct bt_conn *conn, uint16_t interval,
 void fmna_sn_lookup_enable(void);
 
 /**
+ * @brief Notify FMNA of a motion event from a hardware trigger.
+ *
+ * When the platform has a motion-sensor interrupt (CONFIG_LIS2DH_TRIGGER),
+ * the application calls this from its motion event callback so a detected
+ * motion is handled promptly instead of waiting for the next passive poll
+ * tick. No effect unless motion detection is currently active (separated
+ * state). Must be safe to call from work-queue context.
+ */
+void fmna_motion_detection_notify(void);
+
+/**
  * @brief Get the FMNA advertising address.
  *
  * Retrieves the Bluetooth LE address of the active FMNA advertising set via

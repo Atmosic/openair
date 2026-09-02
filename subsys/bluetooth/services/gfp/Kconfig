@@ -265,6 +265,53 @@ config FP_MAX_CONNECTIONS
     help
       Maximum concurrent connections for Fast Pair.
 
+config FAST_PAIR_AUTH_CB_GLOBAL
+    bool "Register Fast Pair auth callbacks globally instead of per-connection overlay"
+    default n
+    select BT_SMP_APP_PAIRING_ACCEPT
+    help
+      Selects how fp_auth installs its pairing_accept gate (which rejects
+      pairing unless Key-based Pairing crypto has been verified).
+
+      When enabled, fp_auth_init registers fp_auth_pairing_callbacks via
+      bt_conn_auth_cb_register(), so the gate is active for every connection
+      from the start. This eliminates the connect-time race where
+      bt_conn_auth_cb_overlay()'s one-shot CAS can be lost to latch_auth_cb.
+      Use this only on Fast-Pair-only devices where Fast Pair owns the global
+      auth-cb slot. Not compatible with applications that register their own
+      bt_conn_auth_cb (multi-mode devices should leave this disabled).
+
+      When disabled (default), fp_auth installs the gate per connection via
+      bt_conn_auth_cb_overlay() at connect time and retries at KBP time. This
+      coexists with an application-owned global bt_auth, but is subject to the
+      one-shot overlay race.
+
+config FAST_PAIR_ADV_TX_POWER_DBM
+    int "Fast Pair advertising TX power (dBm)"
+    depends on BT_EXT_ADV
+    default 0
+    range -127 20
+    help
+      Requested TX power level (dBm) for the Fast Pair advertising set.
+      The controller selects the nearest supported level; the actual value
+      selected is available via bt_le_ext_adv_info.tx_power after the set
+      is created.
+      The valid range matches the HCI advertising TX power limits
+      (BT_HCI_LE_ADV_TX_POWER_MIN to BT_HCI_LE_ADV_TX_POWER_MAX).
+
+config FMDN_ADV_TX_POWER_DBM
+    int "FMDN advertising TX power (dBm)"
+    depends on BT_EXT_ADV && FAST_PAIR_FMDN
+    default 0
+    range -127 20
+    help
+      Requested TX power level (dBm) for the FMDN advertising set.
+      The controller selects the nearest supported level; the actual value
+      selected is available via bt_le_ext_adv_info.tx_power after the set
+      is created.
+      The valid range matches the HCI advertising TX power limits
+      (BT_HCI_LE_ADV_TX_POWER_MIN to BT_HCI_LE_ADV_TX_POWER_MAX).
+
 if FP_FMDN_VALIDATOR_TEST
 
 config FP_FMDN_VALIDATOR_TEST_ADV_INT

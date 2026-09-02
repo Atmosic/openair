@@ -1,0 +1,55 @@
+# Copyright (c) 2024-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
+
+config ATM_SEC_JRNL_OTP
+	bool "Atmosic sec_jrnl OTP journal present"
+	default y if $(dt_nodelabel_has_prop,sec_jrnl,otp-journal-size)
+	help
+	  Indicates that the sec_jrnl node in the Device Tree has an
+	  otp-journal-size property, meaning OTP-based journal storage is
+	  available on this platform.
+
+if ATM_SEC_JRNL_OTP
+
+config ATM_SEC_JRNL_PRESENT
+	bool "Atmosic platform has access to sec_jrnl functions"
+	default y
+	help
+	  Enable access to sec_jrnl API declarations (header + include path).
+
+config ATM_SEC_JRNL
+	bool "Atmosic sec_jrnl module"
+	default y if !TRUSTED_EXECUTION_NONSECURE
+	help
+	  Build the sec_jrnl driver implementation.
+	  On TrustZone-enabled SoCs this is compiled only in the secure (SPE)
+	  image; the non-secure image calls it via Non-Secure Callable entries.
+	  On non-TrustZone SoCs (or plain NS test images without TrustZone
+	  Kconfig) the implementation is compiled directly into the image.
+
+config ATM_SEC_JRNL_RAM
+	bool "Enable RAM journal fallback"
+	depends on ATM_SEC_JRNL && !TRUSTED_EXECUTION_SECURE
+	help
+	  When enabled, sec_jrnl_get() will fall back to a RAM-based
+	  journal when a tag is not found in OTP (or Flash).  The RAM
+	  journal must be populated at boot via sec_jrnl_ram_init().
+	  This option is not available on TrustZone-enabled platforms
+
+config ATM_SEC_JRNL_MOCK_DATA
+	bool "Enable sec_jrnl mock-data mode"
+	depends on ATM_SEC_JRNL
+	help
+	  For internal unit testing only. Not intended for customer use.
+
+config ATM_SEC_JRNL_MOCK_DATA_MUTABLE
+	bool "sec_jrnl mock-data is mutable"
+	depends on ATM_SEC_JRNL_MOCK_DATA
+	help
+	  For internal unit testing only.  Allows the mock journal to be
+	  mutable instead of a constant table.  Allows for tests that
+	  need to assemble the journal at runtime.
+
+endif # ATM_SEC_JRNL_OTP

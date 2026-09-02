@@ -1,6 +1,6 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config PINCTRL_ATMOSIC_ATM
 	bool "Atmosic Pin controller driver"
@@ -9,3 +9,14 @@ config PINCTRL_ATMOSIC_ATM
 	           DT_HAS_ATMOSIC_ATM34_PINCTRL_ENABLED
 	help
 	  Enable pin control driver for Atmosic MCU's
+
+config ATM_PINCTRL_CLEAR_PUPD_OVRD_ON_GPIO
+	bool "Clear WRPR PUPD_OVRD when switching pin to GPIO mode"
+	depends on PINCTRL_ATMOSIC_ATM
+	help
+	  When enabled, clears the WRPR PUPD_OVRD override for a pin before
+	  applying GPIO controller pull settings. WRPR overrides take priority
+	  over GPIO controller pull registers, so GPIO-level bias-pull-up/down
+	  would be ineffective without clearing it first. A write mask guards
+	  the call so PIN_PULL_CLR is only invoked on pins that actually
+	  support the PUPD_OVRD register bit.

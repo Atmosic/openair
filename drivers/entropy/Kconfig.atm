@@ -1,7 +1,7 @@
 # Atmosic TRNG configuration
 
-# Copyright (c) 2023 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2023-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ENTROPY_ATM_TRNG
 	bool "Atmosic True Random Number Generator (TRNG) Driver"

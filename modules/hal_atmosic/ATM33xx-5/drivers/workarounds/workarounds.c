@@ -5,7 +5,7 @@
  *
  * @brief SoC initialization workarounds
  *
- * Copyright (C) Atmosic 2018-2024
+ * Copyright (C) Atmosic 2018-2026
  *
  *******************************************************************************
  */
@@ -23,7 +23,9 @@
 
 #include "workarounds.h"
 #include "calibration.h"
+#if defined(CONFIG_ATM_PMU_WORKAROUNDS) || !defined(CONFIG_SOC_FAMILY_ATM)
 #include "spi.h"
+#endif
 
 #ifdef USE_SEC_JRNL
 #include "sec_jrnl.h"
@@ -42,6 +44,7 @@ struct wa_module_state {
 #ifdef APB2_NUM_MODULES
     struct wa_wrpr_state apb2;
 #endif
+    int count; /**< number of workaround tags successfully processed */
 };
 
 #ifndef APB0_NONSECURE_BASE
@@ -158,11 +161,13 @@ struct mem_rmw {
     };
 };
 
+#if defined(CONFIG_ATM_PMU_WORKAROUNDS) || !defined(CONFIG_SOC_FAMILY_ATM)
 struct pmu_w {
     uint8_t block;
     uint8_t addr;
     uint32_t data;
 } __PACKED;
+#endif /* CONFIG_ATM_PMU_WORKAROUNDS || !CONFIG_SOC_FAMILY_ATM */
 
 static int wa_walk_callback(uint8_t tag,
 #ifdef USE_SEC_JRNL
@@ -177,6 +182,7 @@ static int wa_walk_callback(uint8_t tag,
     struct wa_module_state *mod_state = ctx;
 
     switch (tag) {
+#if defined(CONFIG_ATM_PMU_WORKAROUNDS) || !defined(CONFIG_SOC_FAMILY_ATM)
 	case ATM_TAG_PMU_W: {
 	    struct pmu_w pmu_op;
 #ifdef USE_SEC_JRNL
@@ -188,6 +194,7 @@ static int wa_walk_callback(uint8_t tag,
 #else
 	    nvds_read(addr, len, (uint8_t*)&pmu_op);
 #endif
+	    mod_state->count++;
 	    DEBUG_TRACE("Writing %#" PRIx32 " to PMU block %#x, addr %#x",
 		pmu_op.data, pmu_op.block, pmu_op.addr);
 	    wa_enable_module(mod_state, spi_pmu.base);
@@ -200,6 +207,7 @@ static int wa_walk_callback(uint8_t tag,
 #endif
 	    break;
 	}
+#endif /* CONFIG_ATM_PMU_WORKAROUNDS || !CONFIG_SOC_FAMILY_ATM */
 	case ATM_TAG_MEM_W: {
 	    struct mem_rmw rmw_op;
 #ifdef USE_SEC_JRNL
@@ -211,6 +219,7 @@ static int wa_walk_callback(uint8_t tag,
 #else
 	    nvds_read(addr, len, (uint8_t*)&rmw_op);
 #endif
+	    mod_state->count++;
 	    if (len == __OFFSET(rmw_op.w, mask)) {
 		wa_enable_module(mod_state, rmw_op.w.addr);
 		*rmw_op.w.addr = rmw_op.w.data;
@@ -234,6 +243,7 @@ static int wa_walk_callback(uint8_t tag,
 #else
 	    nvds_read(addr, len, (uint8_t*)&rmw_op);
 #endif
+	    mod_state->count++;
 	    if (len == sizeof(rmw_op.w)) {
 		wa_enable_module(mod_state, rmw_op.w.addr);
 		*rmw_op.w.addr = (*rmw_op.w.addr & ~rmw_op.w.mask) |
@@ -255,8 +265,7 @@ static int wa_walk_callback(uint8_t tag,
     return 0;
 }
 
-void
-workarounds_init(void)
+int workarounds_init(void)
 {
     uint32_t apb0_ctrl_save[APB0_NUM_MODULES];
     uint32_t apb1_ctrl_save[APB1_NUM_MODULES];
@@ -264,11 +273,12 @@ workarounds_init(void)
     uint32_t apb2_ctrl_save[APB2_NUM_MODULES];
 #endif
     struct wa_module_state mod_state = {
-	{ 0, apb0_ctrl_save },
-	{ 0, apb1_ctrl_save },
+	.apb0 = {0, apb0_ctrl_save},
+	.apb1 = {0, apb1_ctrl_save},
 #ifdef APB2_NUM_MODULES
-	{ 0, apb2_ctrl_save },
+	.apb2 = {0, apb2_ctrl_save},
 #endif
+	/* .count will be zeroed automatically */
     };
 
 #ifdef USE_SEC_JRNL
@@ -287,6 +297,7 @@ workarounds_init(void)
 #endif
 
     wa_restore_modules(&mod_state);
+    return mod_state.count;
 }
 
 #endif // ((PLF_NVDS) || defined(USE_SEC_JRNL)

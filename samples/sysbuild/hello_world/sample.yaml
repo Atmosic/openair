@@ -13,10 +13,13 @@ common:
     - introduction
     - atm_test_with_spe
 tests:
-  samples.sysbuild.hello_world.atm: {}
+  samples.sysbuild.hello_world.atm:
+    tags:
+      - openair_release
   samples.sysbuild.hello_world.atm.mcuboot:
     tags:
       - mcuboot
+      - openair_release_mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y

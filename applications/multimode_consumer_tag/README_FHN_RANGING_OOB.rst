@@ -442,7 +442,7 @@ The ``sample.yaml`` file defines several test configurations:
 
    # Build with BLE CS ranging OOB support
    west build -p always -b <BOARD>//ns openair/applications/multimode_consumer_tag -T applications.multimode_consumer_tag.atm.fhn_only.oob_de
-   west flash --no-rebuild --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+   west flash --no-rebuild --verify --device <DEVICE_ID> --jlink [--erase_all]
 
 This test item configuration automatically enables:
 

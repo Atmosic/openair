@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) Atmosic 2025-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_input_kbd_matrix
@@ -16,6 +16,7 @@
 #include <zephyr/device.h>
 #include <zephyr/input/input.h>
 #include <zephyr/sys_clock.h>
+#include <zephyr/sys/util.h>
 
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/byteorder.h>
@@ -402,6 +403,14 @@ LOG_MODULE_REGISTER(input_atm_kbd_matrix, CONFIG_INPUT_LOG_LEVEL);
 
 static uint8_t row[MAX_KSI + 1];
 static uint8_t col[MAX_KSO + 1];
+static uint32_t ksi_valid_mask;
+static uint32_t kso_valid_mask;
+static bool ksm_ksi0_used;
+
+#define KSM_T3_ZERO_WAR_ACTIVE                                                                     \
+	(DT_PROP(DT_NODELABEL(input_kbd_matrix), t3_zero_war) && !ksm_ksi0_used)
+#define KSM_T3_VALUE       (KSM_T3_ZERO_WAR_ACTIVE ? 0 : 1)
+#define KSM_MATRIX_NUM_ROW (KSM_T3_ZERO_WAR_ACTIVE ? (MAX_KSI + 1) : MAX_KSI)
 
 #ifndef CMSDK_KSM_NONSECURE
 #define KSI_(x) KSI_##x##_
@@ -430,12 +439,15 @@ static uint8_t col[MAX_KSO + 1];
 	do {                                                                                       \
 		PINMUX_KSO_SET(x);                                                                 \
 		col[DT_PROP(DT_NODELABEL(input_kbd_matrix), col##x##_kso)] = x;                    \
+		kso_valid_mask |= BIT(DT_PROP(DT_NODELABEL(input_kbd_matrix), col##x##_kso));      \
 	} while (0)
 
 #define KSM_ROW_SET(x)                                                                             \
 	do {                                                                                       \
 		PINMUX_KSI_SET(x);                                                                 \
 		row[DT_PROP(DT_NODELABEL(input_kbd_matrix), row##x##_ksi)] = x;                    \
+		ksi_valid_mask |= BIT(DT_PROP(DT_NODELABEL(input_kbd_matrix), row##x##_ksi));      \
+		ksm_ksi0_used |= (DT_PROP(DT_NODELABEL(input_kbd_matrix), row##x##_ksi) == 0);     \
 	} while (0)
 
 #define RC2IDX(__r, __c) (((__r)*MAX_COL) + (__c))
@@ -445,10 +457,34 @@ static uint8_t col[MAX_KSO + 1];
 #endif
 
 #ifndef KTP1
-#define KTP1 (KSM_TIME_PARAM1__T3__WRITE(1) | KSM_TIME_PARAM1__T4__WRITE(0))
+#define KTP1 (KSM_TIME_PARAM1__T3__WRITE(KSM_T3_VALUE) | KSM_TIME_PARAM1__T4__WRITE(0))
 #endif
 
-#define CTRL0_GO (KSM_CTRL0__CONSECSCAN__WRITE(1) | KSM_CTRL0__GO__MASK)
+#define KSM_POP_WAIT_TIMEOUT_US 1000U
+
+/* Limit synchronous draining so a continuous scan burst cannot starve IRQs. */
+#define KSM_DRAIN_BATCH_MAX 8U
+
+#if defined(KSM_CTRL0__KSM_CLK64_EN__WRITE) &&                                                     \
+	DT_PROP(DT_NODELABEL(input_kbd_matrix), enable_64khz_scan)
+#define CTRL0_KSM_CLK64 KSM_CTRL0__KSM_CLK64_EN__WRITE(1)
+#else
+#define CTRL0_KSM_CLK64 0
+#endif
+
+#if defined(KSM_CTRL0__DISABLE_GK__WRITE) &&                                                       \
+	DT_PROP(DT_NODELABEL(input_kbd_matrix), disable_ghost_key)
+#define CTRL0_GO                                                                                   \
+	(KSM_CTRL0__CONSECSCAN__WRITE(1) | KSM_CTRL0__GO__MASK | CTRL0_KSM_CLK64 |                 \
+	 KSM_CTRL0__DISABLE_GK__WRITE(1))
+#else
+#define CTRL0_GO (KSM_CTRL0__CONSECSCAN__WRITE(1) | KSM_CTRL0__GO__MASK | CTRL0_KSM_CLK64)
+#endif
+
+static inline uint32_t keyboard_ctrl0_go(void)
+{
+	return CTRL0_GO | (CMSDK_KSM->CTRL0 & KSM_CTRL0__LOOPBACK__MASK);
+}
 
 static K_SEM_DEFINE(input_kbd_matrix_sem, 0, 1);
 struct k_thread input_kbd_matrix_thread_data;
@@ -483,7 +519,7 @@ static bool keyboard_check_overflow(const struct device *dev, uint32_t KSM_INTER
 #ifdef CONFIG_PM
 	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 #endif
-	CMSDK_KSM->CTRL0 = CTRL0_GO | KSM_CTRL0__FLUSH__MASK;
+	CMSDK_KSM->CTRL0 = keyboard_ctrl0_go() | KSM_CTRL0__FLUSH__MASK;
 	CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT3__MASK;
 
 	/* Report overflow event as special coordinates */
@@ -496,9 +532,22 @@ static bool keyboard_check_overflow(const struct device *dev, uint32_t KSM_INTER
 
 static void keyboard_pkt_handler(const struct device *dev, uint32_t pkt)
 {
-	bool pressed = KSM_KEYBOARD_PACKET__PRESSED_RELEASED_N__READ(pkt) != 0;
 	unsigned int ksi = KSM_KEYBOARD_PACKET__ROW__READ(pkt);
 	unsigned int kso = KSM_KEYBOARD_PACKET__COL__READ(pkt);
+
+	/*
+	 * Some hardware revisions may put a KSI0 packet in the FIFO when T3 is
+	 * zero.  Do not use the mapping arrays before validating the packet:
+	 * unconfigured entries are zero-initialized and would otherwise look like
+	 * a real row/column.
+	 */
+	if ((ksi > MAX_KSI) || (kso > MAX_KSO) || !(ksi_valid_mask & BIT(ksi)) ||
+	    !(kso_valid_mask & BIT(kso))) {
+		LOG_DBG("Ignoring invalid KSM packet: KSI/KSO=(%u, %u)", ksi, kso);
+		return;
+	}
+
+	bool pressed = KSM_KEYBOARD_PACKET__PRESSED_RELEASED_N__READ(pkt) != 0;
 
 	LOG_DBG("KSIO: (%u, %u) => RC: (%u, %u)", ksi, kso, row[ksi], col[kso]);
 
@@ -506,6 +555,41 @@ static void keyboard_pkt_handler(const struct device *dev, uint32_t pkt)
 	input_report_abs(dev, INPUT_ABS_X, col[kso], false, K_FOREVER);
 	input_report_abs(dev, INPUT_ABS_Y, row[ksi], false, K_FOREVER);
 	input_report_key(dev, INPUT_BTN_TOUCH, pressed, true, K_FOREVER);
+}
+
+/*
+ * A POP is completed asynchronously by the KSM command engine.  Normally
+ * INTRPT2 wakes the driver for the next packet.  Poll briefly while already
+ * handling a packet so a burst is drained in one driver invocation; the
+ * interrupt path remains the fallback for a slower or clock-gated KSM.
+ */
+static bool keyboard_clear_pop_interrupt(void)
+{
+	CMSDK_KSM->INTERRUPT_CLEAR = KSM_INTERRUPT_CLEAR__CLEAR_INTRPT2__MASK;
+	CMSDK_KSM->INTERRUPT_CLEAR = 0;
+
+	for (uint32_t elapsed_us = 0; elapsed_us < KSM_POP_WAIT_TIMEOUT_US; elapsed_us++) {
+		if (!(CMSDK_KSM->INTERRUPTS & KSM_INTERRUPTS__INTRPT2__MASK)) {
+			return true;
+		}
+
+		k_busy_wait(1);
+	}
+
+	return false;
+}
+
+static bool keyboard_wait_for_pop(bool clear_interrupt)
+{
+	for (uint32_t elapsed_us = 0; elapsed_us < KSM_POP_WAIT_TIMEOUT_US; elapsed_us++) {
+		if (CMSDK_KSM->INTERRUPTS & KSM_INTERRUPTS__INTRPT2__MASK) {
+			return clear_interrupt ? keyboard_clear_pop_interrupt() : true;
+		}
+
+		k_busy_wait(1);
+	}
+
+	return false;
 }
 
 static void keyboard_event(const struct device *dev)
@@ -520,7 +604,7 @@ static void keyboard_event(const struct device *dev)
 
 	if (KSM_INTERRUPTS & KSM_INTERRUPTS__INTRPT3__MASK) {
 		// Flush completed
-		CMSDK_KSM->CTRL0 = CTRL0_GO;
+		CMSDK_KSM->CTRL0 = keyboard_ctrl0_go();
 
 		CMSDK_KSM->INTERRUPT_CLEAR = KSM_INTERRUPT_CLEAR__CLEAR_INTRPT3__MASK;
 		CMSDK_KSM->INTERRUPT_CLEAR = 0;
@@ -540,34 +624,83 @@ static void keyboard_event(const struct device *dev)
 	}
 
 	if (KSM_INTERRUPTS & KSM_INTERRUPTS__INTRPT2__MASK) {
-		// Pop now ready
-		CMSDK_KSM->CTRL0 = CTRL0_GO;
+		/* A POP is ready; drain the FIFO in bounded batches. */
+		uint8_t drained = 0;
 
-		CMSDK_KSM->INTERRUPT_CLEAR = KSM_INTERRUPT_CLEAR__CLEAR_INTRPT2__MASK;
-		CMSDK_KSM->INTERRUPT_CLEAR = 0;
-
-		uint32_t pkt = CMSDK_KSM->KEYBOARD_PACKET;
-		if (pkt & KSM_KEYBOARD_PACKET__EMPTY__MASK) {
-#ifdef DEBUG_KEYBOARD_INT
-			LOG_DBG("KSM FIFO empty");
-#endif
-#ifdef CONFIG_PM
-			pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-#endif
-			CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT1__MASK |
-						    KSM_INTERRUPT_MASK__MASK_INTRPT0__MASK;
+		CMSDK_KSM->CTRL0 = keyboard_ctrl0_go();
+		if (!keyboard_clear_pop_interrupt()) {
+			CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT2__MASK;
 			return;
 		}
 
-		keyboard_pkt_handler(dev, pkt);
+		for (;;) {
+			CMSDK_KSM->CTRL0 = keyboard_ctrl0_go();
 
-		CMSDK_KSM->INTERRUPT_CLEAR = KSM_INTERRUPT_CLEAR__CLEAR_INTRPT0__MASK;
-		CMSDK_KSM->INTERRUPT_CLEAR = 0;
+			uint32_t pkt = CMSDK_KSM->KEYBOARD_PACKET;
+			if (pkt & KSM_KEYBOARD_PACKET__EMPTY__MASK) {
+#ifdef DEBUG_KEYBOARD_INT
+				LOG_DBG("KSM FIFO empty");
+#endif
+				/* A packet may arrive between the POP completion and EMPTY read. */
+				if (CMSDK_KSM->INTERRUPTS & KSM_INTERRUPTS__INTRPT0__MASK) {
+					CMSDK_KSM->CTRL0 =
+						KSM_CTRL0__POP__MASK | keyboard_ctrl0_go();
+					if (!keyboard_wait_for_pop(true)) {
+						CMSDK_KSM->INTERRUPT_MASK =
+							KSM_INTERRUPT_MASK__MASK_INTRPT2__MASK;
+						return;
+					}
+					continue;
+				}
 
-		// Pop the next event.  INTRPT2 will fire when ready.
-		CMSDK_KSM->CTRL0 = KSM_CTRL0__POP__MASK | CTRL0_GO;
-		CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT2__MASK;
-		return;
+				CMSDK_KSM->INTERRUPT_CLEAR =
+					KSM_INTERRUPT_CLEAR__CLEAR_INTRPT0__MASK;
+				CMSDK_KSM->INTERRUPT_CLEAR = 0;
+#ifdef CONFIG_PM
+				pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+				CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT1__MASK |
+							    KSM_INTERRUPT_MASK__MASK_INTRPT0__MASK;
+				return;
+			}
+
+			keyboard_pkt_handler(dev, pkt);
+
+			CMSDK_KSM->INTERRUPT_CLEAR = KSM_INTERRUPT_CLEAR__CLEAR_INTRPT0__MASK;
+			CMSDK_KSM->INTERRUPT_CLEAR = 0;
+
+			/*
+			 * Only the T3=0 workaround path needs synchronous FIFO draining.
+			 * Keep the original one-POP-per-IRQ flow for other KSM variants.
+			 */
+			if (!KSM_T3_ZERO_WAR_ACTIVE) {
+				CMSDK_KSM->CTRL0 = KSM_CTRL0__POP__MASK | keyboard_ctrl0_go();
+				CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT2__MASK;
+				return;
+			}
+
+			/* Pop the next event and drain it without waiting for another IRQ. */
+			CMSDK_KSM->CTRL0 = KSM_CTRL0__POP__MASK | keyboard_ctrl0_go();
+			if (++drained >= KSM_DRAIN_BATCH_MAX) {
+				/* Complete the POP, but leave INTRPT2 asserted for the next IRQ. */
+				if (keyboard_wait_for_pop(false)) {
+					CMSDK_KSM->INTERRUPT_MASK =
+						KSM_INTERRUPT_MASK__MASK_INTRPT2__MASK;
+					/* Ensure the pending packet is handled even if no new IRQ
+					 * edge occurs. */
+					k_sem_give(&input_kbd_matrix_sem);
+					return;
+				}
+
+				CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT2__MASK;
+				return;
+			}
+
+			if (!keyboard_wait_for_pop(true)) {
+				CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT2__MASK;
+				return;
+			}
+		}
 	}
 
 	CMSDK_KSM->INTERRUPT_CLEAR = KSM_INTERRUPT_CLEAR__CLEAR_INTRPT0__MASK;
@@ -577,7 +710,7 @@ static void keyboard_event(const struct device *dev)
 #ifdef CONFIG_PM
 	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 #endif
-	CMSDK_KSM->CTRL0 = KSM_CTRL0__POP__MASK | CTRL0_GO;
+	CMSDK_KSM->CTRL0 = KSM_CTRL0__POP__MASK | keyboard_ctrl0_go();
 	CMSDK_KSM->INTERRUPT_MASK = KSM_INTERRUPT_MASK__MASK_INTRPT2__MASK;
 }
 
@@ -827,14 +960,10 @@ static int input_atm_kbd_matrix_init(const struct device *dev)
 	CMSDK_KSM->TIME_PARAM0 = KTP0;
 	CMSDK_KSM->TIME_PARAM1 = KTP1;
 
-	// Configure rows and cols
-	CMSDK_KSM->MATRIX_SIZE =
-		KSM_MATRIX_SIZE__NUM_ROW__WRITE((MAX_KSI > KSM_MATRIX_SIZE__NUM_ROW__RESET_VALUE) ?
-							      MAX_KSI :
-							      KSM_MATRIX_SIZE__NUM_ROW__RESET_VALUE) |
-		KSM_MATRIX_SIZE__NUM_COL__WRITE((MAX_KSO > KSM_MATRIX_SIZE__NUM_COL__RESET_VALUE) ?
-							      MAX_KSO :
-							      KSM_MATRIX_SIZE__NUM_COL__RESET_VALUE);
+	// MATRIX_SIZE fields use the maximum KSI/KSO index; reset values are defaults, not
+	// minimums.
+	CMSDK_KSM->MATRIX_SIZE = KSM_MATRIX_SIZE__NUM_ROW__WRITE(KSM_MATRIX_NUM_ROW) |
+				 KSM_MATRIX_SIZE__NUM_COL__WRITE(MAX_KSO);
 
 #ifndef CMSDK_KSM_NONSECURE
 	CMSDK_WRPR->INTRPT_CFG_14 = INTISR_SRC_KSM;
@@ -843,7 +972,7 @@ static int input_atm_kbd_matrix_init(const struct device *dev)
 	CMSDK_KSM->INTERRUPT_MASK =
 		KSM_INTERRUPT_MASK__MASK_INTRPT1__MASK | KSM_INTERRUPT_MASK__MASK_INTRPT0__MASK;
 
-	CMSDK_KSM->CTRL0 = CTRL0_GO;
+	CMSDK_KSM->CTRL0 = keyboard_ctrl0_go();
 	keyboard_pseq_latch_close();
 
 	/* Connect and enable interrupt */

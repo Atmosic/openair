@@ -7,6 +7,7 @@
 #include <string.h>
 #include <zephyr/logging/log.h>
 #include "at_cmd.h"
+#include "at_cmd_set.h"
 #include "at_cmd_set_common.h"
 
 #define CMD_NAME          "BLEADVDATA"
@@ -54,6 +55,7 @@ static void fn_cmd_handler(at_cmd_param_t *param)
 		memcpy(ctx->adv_data[idx], arr, arr_len);
 		ctx->adv_data_len[idx] = arr_len;
 		LOG_DBG("Set adv data idx=%u, len=%u", idx, arr_len);
+#ifdef CONFIG_AT_CMD_BLEADVENABLE
 		if (ctx->adv_enabled[idx]) {
 			at_cmd_result_t result = at_cmd_adv_update_data(ctx, idx);
 			AT_CMD_RESULT_TO_PARAM(result, param);
@@ -66,6 +68,18 @@ static void fn_cmd_handler(at_cmd_param_t *param)
 				" advertising is started",
 				idx);
 		}
+#endif
+
+#ifdef CONFIG_AT_CMD_BLEADVDATA_CB
+		if (ctx->callbacks.advdata_set_cb) {
+			int ret = ctx->callbacks.advdata_set_cb(idx, arr, arr_len);
+			if (ret) {
+				LOG_ERR("advdata_set_cb failed: %d", ret);
+				AT_CMD_ERRNO_TO_PARAM(ret, param);
+				return;
+			}
+		}
+#endif
 	} else if (param->type == at_cmd_type_query) {
 		for (uint8_t i = 0; i < AT_CMD_ADV_MAX_INST; i++) {
 			AT_CMD_RSP_REPEAT(param->ch, param->cmd, i, AT_CMD_ADV_MAX_INST, 2, i,

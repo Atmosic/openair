@@ -1,0 +1,42 @@
+/**
+ ******************************************************************************
+ *
+ * @file brwnout.ih
+ *
+ * @brief Brownout internal APIs
+ *
+ * Copyright (C) Atmosic 2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
+ ******************************************************************************
+ */
+
+#pragma once
+
+#ifndef BROWNOUT_INTERNAL_GUARD
+#error "brwnout.ih should only be included in brwnout source files"
+#endif
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void brwnout_enable_intr(void);
+void brwnout_clear_intr(void);
+/**
+ * @brief Set brownout edge/level detection mode
+ * @param trigger Brownout detection mode:
+ *                0 = Level triggered (brownout asserted)
+ *                1 = Rising edge (brownout goes high - voltage dropped)
+ *                2 = Falling edge (brownout goes low - voltage restored)
+ *                3 = Negate level (brownout de-asserted)
+ */
+void brwnout_set_trigger(int trigger);
+
+#ifdef __cplusplus
+}
+#endif

@@ -23,6 +23,9 @@
 
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 
+/* EID rotation period exponent K=10 → 2^10 = 1024 seconds per FHN spec */
+#define FMDN_EID_ROT_PERIOD_EXP 10
+
 static uint8_t fmdn_eid[FP_FMDN_STATE_EID_LEN] = {0};
 static bool is_eid_generated;
 static uint8_t latest_eid_hash_sig;
@@ -291,7 +294,7 @@ void fp_fmdn_key_clock_reset(void)
 static uint32_t fmdn_eid_clock_checkpoint;
 void fp_fmdn_key_gen_eid(uint8_t const *fmdn_eid_key, bool force)
 {
-#define FMDN_EID_SEED_ROT_PERIOD_EXP   10 // to be update with utp mode
+#define FMDN_EID_SEED_ROT_PERIOD_EXP   FMDN_EID_ROT_PERIOD_EXP
 #define FMDN_EID_SEED_PADDING_TYPE_ONE 0xFF
 #define FMDN_EID_SEED_PADDING_TYPE_TWO 0x00
 	uint8_t eid_seed_data[FP_EIK_LEN] = {0};
@@ -316,7 +319,7 @@ void fp_fmdn_key_gen_eid(uint8_t const *fmdn_eid_key, bool force)
 			return;
 		}
 	}
-	fmdn_eid_clock_checkpoint = fmdn_clock;
+	fmdn_eid_clock_checkpoint = fmdn_clock & ~BIT_MASK(FMDN_EID_SEED_ROT_PERIOD_EXP);
 
 	/* Prepare the EID seed data. */
 	fp_fmdn_key_eid_construct_data(eid_seed_data, fmdn_clock, rotation_period_exponent);
@@ -363,6 +366,24 @@ void fp_fmdn_key_clear_eid(void)
 	latest_eid_hash_sig = 0;
 	memset(fmdn_eid, 0, FP_FMDN_STATE_EID_LEN);
 	is_eid_generated = false;
+}
+
+bool fp_fmdn_key_eid_needs_rotate(void)
+{
+	if (!is_eid_generated) {
+		/* Safe default: allow rotation if EID not yet generated. */
+		return true;
+	}
+	uint32_t masked_clock = fp_fmdn_key_clock_read() & ~BIT_MASK(FMDN_EID_ROT_PERIOD_EXP);
+
+	return masked_clock != fmdn_eid_clock_checkpoint;
+}
+
+uint32_t fp_fmdn_key_secs_until_eid_rotate(void)
+{
+	uint32_t secs_in_window = fp_fmdn_key_clock_read() & BIT_MASK(FMDN_EID_ROT_PERIOD_EXP);
+
+	return (1U << FMDN_EID_ROT_PERIOD_EXP) - secs_in_window;
 }
 
 void fp_fmdn_key_update_eid(void)

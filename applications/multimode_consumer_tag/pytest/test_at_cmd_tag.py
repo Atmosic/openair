@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 """
 @file pytest/test_at_cmd_tag.py
 
 @brief Pytest integration test for AT command tag functionality
 
 Tests AT commands for tag operations.
-
-Copyright (C) Atmosic 2025-2026
-
-SPDX-License-Identifier: LicenseRef-Atmosic
 """
 
 # Pytest tests for multimode_consumer_tag TAG AT command set.
@@ -68,7 +68,7 @@ class TagState(IntEnum):
     UNPAIRED = 4
     PAIRING = 5
     PAIRED = 6
-    # OTA states (0x60+ available via CONFIG_TAG_BTN_OTA_MODE button-triggered OTA)
+    # OTA states (0x60+ available via CONFIG_TAG_OTA_MODE button-triggered OTA)
     OTA_IN_PROGRESS = 0x60
     OTA_COMPLETE = 0x61
     OTA_CONFIRMED = 0x62
@@ -268,11 +268,16 @@ class TestTagReset:
         lines = at_cmd.send_command("AT+TAGRESET=0")
         assert at_cmd.check_ok(lines), f"Expected OK, got: {lines}"
 
-        # Wait for reboot
+        # Wait for reboot, then drain any lingering boot events
+        # (e.g. +EVTTAGSTATE) before querying.  reset_input_buffer() alone
+        # is racy -- the event may arrive just after the clear.  Using
+        # read_until with a pattern that never matches consumes all data
+        # that arrives during the timeout window.
         dut.readlines_until(regex=r"AT command UART ready on", timeout=30.0)
-        time.sleep(1.0)
         if at_cmd.at_serial:
-            at_cmd.at_serial.clear_buffer()
+            at_cmd.at_serial.read_until(r"NEVER_MATCH_THIS_PATTERN", timeout=2.0)
+        else:
+            time.sleep(1.0)
 
         lines2 = at_cmd.send_command("AT+TAGMODE?")
         val = at_cmd.get_value(lines2, "+TAGMODE:")
@@ -291,11 +296,12 @@ class TestTagReset:
         lines = at_cmd.send_command("AT+TAGRESET=1")
         assert at_cmd.check_ok(lines), f"Expected OK, got: {lines}"
 
-        # Wait for reboot
+        # Wait for reboot, then drain any lingering boot events before querying.
         dut.readlines_until(regex=r"AT command UART ready on", timeout=30.0)
-        time.sleep(1.0)
         if at_cmd.at_serial:
-            at_cmd.at_serial.clear_buffer()
+            at_cmd.at_serial.read_until(r"NEVER_MATCH_THIS_PATTERN", timeout=2.0)
+        else:
+            time.sleep(1.0)
 
         lines2 = at_cmd.send_command("AT+TAGMODE?")
         val = at_cmd.get_value(lines2, "+TAGMODE:")
@@ -527,3 +533,112 @@ class TestTagGFPInd:
         lines = at_cmd.send_command("AT+TAGGFPIND")
         assert at_cmd.check_error(lines), f"Expected error for no params, got: {lines}"
         logger.info("AT+TAGGFPIND (no param) correctly rejected")
+
+
+class TestTagAddr:
+    """Tests for AT+TAGADDR command (query advertising BT address per protocol)."""
+
+    _VALID_PROTOCOLS = (0x01, 0x02, 0x04)  # FMNA, FHN, STF
+    # +TAGADDR:<protocol>,<12-hex-char address>
+    _ADDR_RE = re.compile(r"\+TAGADDR:(\d+),([0-9A-Fa-f]{12})")
+
+    def _parse_addr_line(self, lines):
+        """Return (protocol, addr_hex) from +TAGADDR: line, or None."""
+        for line in lines:
+            m = self._ADDR_RE.search(line)
+            if m:
+                return int(m.group(1)), m.group(2)
+        return None
+
+    def test_tagaddr_fmna(self, at_cmd: ATCommandHelper):
+        """AT+TAGADDR=1 (FMNA) returns +TAGADDR:1,<addr> OK, or ERR if not advertising."""
+        lines = at_cmd.send_command("AT+TAGADDR=1")
+        assert any(
+            s in " ".join(lines) for s in ["OK", "ERR"]
+        ), f"Expected OK or ERR, got: {lines}"
+        if at_cmd.check_ok(lines):
+            parsed = self._parse_addr_line(lines)
+            assert parsed, f"No valid +TAGADDR: in OK response: {lines}"
+            proto, addr = parsed
+            assert proto == 0x01, f"Protocol mismatch: expected 1, got {proto}"
+            logger.info("FMNA adv addr: %s", addr)
+        else:
+            logger.info("AT+TAGADDR=1 returned ERR (FMNA not advertising)")
+
+    def test_tagaddr_fhn(self, at_cmd: ATCommandHelper):
+        """AT+TAGADDR=2 (FHN) returns +TAGADDR:2,<addr> OK, or ERR if not advertising."""
+        lines = at_cmd.send_command("AT+TAGADDR=2")
+        assert any(
+            s in " ".join(lines) for s in ["OK", "ERR"]
+        ), f"Expected OK or ERR, got: {lines}"
+        if at_cmd.check_ok(lines):
+            parsed = self._parse_addr_line(lines)
+            assert parsed, f"No valid +TAGADDR: in OK response: {lines}"
+            proto, addr = parsed
+            assert proto == 0x02, f"Protocol mismatch: expected 2, got {proto}"
+            logger.info("FHN adv addr: %s", addr)
+        else:
+            logger.info("AT+TAGADDR=2 returned ERR (FHN not advertising)")
+
+    def test_tagaddr_stf(self, at_cmd: ATCommandHelper):
+        """AT+TAGADDR=4 (STF) returns +TAGADDR:4,<addr> OK, or ERR if not advertising."""
+        lines = at_cmd.send_command("AT+TAGADDR=4")
+        assert any(
+            s in " ".join(lines) for s in ["OK", "ERR"]
+        ), f"Expected OK or ERR, got: {lines}"
+        if at_cmd.check_ok(lines):
+            parsed = self._parse_addr_line(lines)
+            assert parsed, f"No valid +TAGADDR: in OK response: {lines}"
+            proto, addr = parsed
+            assert proto == 0x04, f"Protocol mismatch: expected 4, got {proto}"
+            logger.info("STF adv addr: %s", addr)
+        else:
+            logger.info("AT+TAGADDR=4 returned ERR (STF not advertising)")
+
+    def test_tagaddr_combination_rejected(self, at_cmd: ATCommandHelper):
+        """AT+TAGADDR=3 (0x01|0x02 combination) should be rejected."""
+        lines = at_cmd.send_command("AT+TAGADDR=3")
+        assert at_cmd.check_error(
+            lines
+        ), f"Expected error for combined protocol bits, got: {lines}"
+        logger.info("AT+TAGADDR=3 (combination) correctly rejected")
+
+    def test_tagaddr_all_bits_rejected(self, at_cmd: ATCommandHelper):
+        """AT+TAGADDR=7 (all bits) should be rejected."""
+        lines = at_cmd.send_command("AT+TAGADDR=7")
+        assert at_cmd.check_error(
+            lines
+        ), f"Expected error for all-bits combination, got: {lines}"
+        logger.info("AT+TAGADDR=7 (all bits) correctly rejected")
+
+    def test_tagaddr_zero_rejected(self, at_cmd: ATCommandHelper):
+        """AT+TAGADDR=0 should be rejected (out of range 1-7)."""
+        lines = at_cmd.send_command("AT+TAGADDR=0")
+        assert at_cmd.check_error(lines), f"Expected error for protocol=0, got: {lines}"
+        logger.info("AT+TAGADDR=0 correctly rejected")
+
+    def test_tagaddr_query_returns_ok(self, at_cmd: ATCommandHelper):
+        """AT+TAGADDR? (query type) returns OK per AT command framework behaviour."""
+        lines = at_cmd.send_command("AT+TAGADDR?")
+        assert at_cmd.check_ok(lines), f"Expected OK for query type, got: {lines}"
+        logger.info("AT+TAGADDR? returns OK (WRONG_EXECUTE_TYPE handled by framework)")
+
+    def test_tagaddr_response_format(self, at_cmd: ATCommandHelper):
+        """When OK, +TAGADDR response must be <protocol>,<12-hex-char address>."""
+        for protocol in self._VALID_PROTOCOLS:
+            lines = at_cmd.send_command(f"AT+TAGADDR={protocol}")
+            if not at_cmd.check_ok(lines):
+                logger.info("AT+TAGADDR=%d ERR - skipping format check", protocol)
+                continue
+            parsed = self._parse_addr_line(lines)
+            assert (
+                parsed
+            ), f"+TAGADDR: line missing or malformed for protocol {protocol}: {lines}"
+            proto, addr = parsed
+            assert (
+                proto == protocol
+            ), f"Protocol echo mismatch: sent {protocol}, got {proto}"
+            assert (
+                len(addr) == 12
+            ), f"Address should be 12 hex chars, got {len(addr)}: {addr}"
+            logger.info("Protocol 0x%02x addr: %s", protocol, addr)

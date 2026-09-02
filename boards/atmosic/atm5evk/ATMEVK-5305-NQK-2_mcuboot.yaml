@@ -1,0 +1,32 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+identifier: ATMEVK-5305-NQK-2@mcuboot/ATM5xxx-2
+name: ATMEVK-5305-NQK-2_mcuboot
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+supported:
+  - adc
+  - atlc
+  - bluetooth
+  - channel_sounding
+  - entropy
+  - flash
+  - gcov_capable
+  - gpio
+  - i2c
+  - i2c_clock_stretching
+  - nv_mem_protect
+  - pdm
+  - pwm
+  - qspi_war
+  - radio_hal_burst
+  - sha2_multi_context
+  - sec_jrnl_otp_flash
+  - spi
+  - uart
+  - watchdog
+vendor: atmosic

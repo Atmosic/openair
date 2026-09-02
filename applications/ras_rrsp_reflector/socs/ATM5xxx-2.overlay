@@ -1,0 +1,24 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/ {
+    aliases {
+        sw0 = &button1;
+    };
+};
+
+&atm_antenna {
+	status = "okay";
+	power-source-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+	ant-out5-pin = <13>;
+	mdm-ant-rx-3to0 = <0x00002000>;
+	mdm-ant-tx-3to0 = <0x00002000>;
+	mdm-ant-idle = <0x0>;
+};
+
+&wdog0 {
+	status = "okay";
+};

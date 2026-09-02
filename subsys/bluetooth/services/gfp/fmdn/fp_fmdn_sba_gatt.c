@@ -19,6 +19,7 @@
 #include <zephyr/bluetooth/gatt.h>
 #include "fp_fmdn_sba_gatt.h"
 #include "fp_fmdn_internal.h"
+#include "fp_fmdn_adv.h"
 #include "fp_fmdn_persistent_conn.h"
 #include "fp_fmdn_reverse_ringing.h"
 #include "fp_storage.h"
@@ -212,6 +213,8 @@ void fp_fmdn_sba_gatt_init(struct bt_gatt_attr *attr)
 	if (err) {
 		LOG_ERR("SBA: Failed to initialize persistent connection module: %d", err);
 	}
+	/* Register the FMDN adv set as a PC state listener. */
+	fp_fmdn_persistent_conn_register_state_cb(fp_fmdn_adv_pc_state_cb);
 #endif
 
 #ifdef CONFIG_FMDN_REVERSE_RINGING

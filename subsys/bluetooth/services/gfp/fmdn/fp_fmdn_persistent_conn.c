@@ -33,39 +33,59 @@ static fp_fmdn_persistent_conn_state_t pc_state = {
 #define PC_SHORT_CI_RESTORE_TIMEOUT_SEC   60U
 /// Timeout to revert from Persistent Interactive mode to the previous type (seconds)
 #define PC_INTERACTIVE_REVERT_TIMEOUT_SEC (5U * 60U)
-/// Watchdog CE multiplier for CI negotiation (configurable via Kconfig, range 10-50).
-#define PC_NEGO_WATCHDOG_CE_COUNT         CONFIG_FMDN_PC_NEGO_WATCHDOG_CE_COUNT
 
 /// Connection type active before the last transition into Persistent Interactive mode.
 /// Determines the revert target when the 5-minute timer fires.
 static uint8_t pc_prev_conn_type;
 
+/// Set in pc_le_param_req to the conn that proposed a central parameter update.
+/// Cleared in pc_le_param_updated after consuming it, and on PC conn disconnect.
+static struct bt_conn *pc_central_update_conn;
+
+/// Remaining negotiation retry attempts for the current negotiation session.
+static uint8_t pc_nego_retry_remaining;
+
+/// Adv listener for persistent connection state changes.
+static fp_fmdn_pc_state_cb_t pc_state_cb;
+
+void fp_fmdn_persistent_conn_register_state_cb(fp_fmdn_pc_state_cb_t cb)
+{
+	pc_state_cb = cb;
+}
+
+/// Notify the registered listener of the current PC state.
+/// Only fires when is_active or conn_type actually changes to avoid
+/// spurious advertising restarts (e.g. during CS ranging setup).
+static void pc_notify_state_changed(void)
+{
+	if (!pc_state_cb) {
+		return;
+	}
+
+	static bool last_active;
+	static uint8_t last_conn_type;
+
+	if (last_active == pc_state.is_active && last_conn_type == pc_state.conn_type) {
+		return;
+	}
+	last_active = pc_state.is_active;
+	last_conn_type = pc_state.conn_type;
+	pc_state_cb(pc_state.is_active, pc_state.conn_type);
+}
+
 static void pc_short_ci_restore_handler(struct k_work *work);
 static void pc_interactive_revert_handler(struct k_work *work);
-static void pc_nego_watchdog_handler(struct k_work *work);
+static void pc_nego_retry_handler(struct k_work *work);
 
 static K_WORK_DELAYABLE_DEFINE(pc_short_ci_restore_work, pc_short_ci_restore_handler);
 static K_WORK_DELAYABLE_DEFINE(pc_interactive_revert_work, pc_interactive_revert_handler);
-static K_WORK_DELAYABLE_DEFINE(pc_nego_watchdog_work, pc_nego_watchdog_handler);
+static K_WORK_DELAYABLE_DEFINE(pc_nego_retry_work, pc_nego_retry_handler);
 
 static bool pc_is_non_interactive_persistent(uint8_t conn_type_lsb)
 {
 	return (conn_type_lsb == PC_CONN_TYPE_PERSISTENT_CONNECTABLE) ||
 	       (conn_type_lsb == PC_CONN_TYPE_PERSISTENT_DETECTABLE) ||
 	       (conn_type_lsb == PC_CONN_TYPE_PERSISTENT_UNDETECTABLE);
-}
-
-/// Compute the negotiation watchdog timeout in milliseconds based on the current CI.
-/// Formula: CONFIG_FMDN_PC_NEGO_WATCHDOG_CE_COUNT * current_CI.
-static uint32_t pc_nego_watchdog_timeout_ms(struct bt_conn *conn)
-{
-	struct bt_conn_info info;
-
-	if (bt_conn_get_info(conn, &info)) {
-		/* Fallback: assume minimum non-interactive CI (500 ms per FHN spec). */
-		return (uint32_t)PC_NEGO_WATCHDOG_CE_COUNT * 500U;
-	}
-	return (PC_NEGO_WATCHDOG_CE_COUNT * info.le.interval_us) / USEC_PER_MSEC;
 }
 
 static void pc_restore_low_power_interval(void)
@@ -76,14 +96,22 @@ static void pc_restore_low_power_interval(void)
 	if (err) {
 		return;
 	}
+	/* Guard: configure may have preempted and already started its own negotiation.
+	 * If the restore work was already submitted to the queue before configure ran,
+	 * k_work_cancel_delayable would have failed silently — this check prevents a
+	 * duplicate bt_conn_le_param_update.
+	 */
+	if (pc_state.negotiation_pending) {
+		LOG_INF("PC: Negotiation already pending, skipping low-power interval restore");
+		return;
+	}
+	pc_nego_retry_remaining = CONFIG_FMDN_PC_NEGO_RETRY_COUNT;
 	pc_state.negotiation_pending = true;
 	err = bt_conn_le_param_update(pc_state.conn, &params);
 	if (err) {
 		pc_state.negotiation_pending = false;
 		LOG_WRN("PC: Failed to restore low-power interval: %d", err);
 	} else {
-		k_work_reschedule(&pc_nego_watchdog_work,
-				  K_MSEC(pc_nego_watchdog_timeout_ms(pc_state.conn)));
 		LOG_INF("PC: Re-initiated low-power interval restoration");
 	}
 }
@@ -133,23 +161,30 @@ static void pc_interactive_revert_handler(struct k_work *work)
 		PC_INTERACTIVE_REVERT_TIMEOUT_SEC, revert_to);
 	pc_state.conn_type = revert_to;
 
+	/* Adv params depend on conn_type; reconfigure even if CI nego fails. */
+	pc_notify_state_changed();
+
 	struct bt_le_conn_param params;
 	int err = fp_fmdn_persistent_conn_get_conn_param(revert_to, &params);
 
-	if (!err) {
-		pc_state.negotiation_pending = true;
-		err = bt_conn_le_param_update(pc_state.conn, &params);
-		if (err) {
-			pc_state.negotiation_pending = false;
-			LOG_WRN("PC: Failed to update params on interactive revert: %d", err);
-		} else {
-			k_work_reschedule(&pc_nego_watchdog_work,
-					  K_MSEC(pc_nego_watchdog_timeout_ms(pc_state.conn)));
-		}
+	if (err) {
+		return;
+	}
+	/* Guard: a concurrent configure may have already started a negotiation. */
+	if (pc_state.negotiation_pending) {
+		LOG_INF("PC: Negotiation already pending, skipping interactive revert");
+		return;
+	}
+	pc_nego_retry_remaining = CONFIG_FMDN_PC_NEGO_RETRY_COUNT;
+	pc_state.negotiation_pending = true;
+	err = bt_conn_le_param_update(pc_state.conn, &params);
+	if (err) {
+		pc_state.negotiation_pending = false;
+		LOG_WRN("PC: Failed to update params on interactive revert: %d", err);
 	}
 }
 
-static void pc_nego_watchdog_handler(struct k_work *work)
+static void pc_nego_retry_handler(struct k_work *work)
 {
 	ARG_UNUSED(work);
 
@@ -157,29 +192,36 @@ static void pc_nego_watchdog_handler(struct k_work *work)
 		return;
 	}
 
-	if (!pc_state.negotiation_pending) {
-		/* Negotiation already completed normally via pc_le_param_updated */
+	struct bt_le_conn_param params;
+	int err = fp_fmdn_persistent_conn_get_conn_param(pc_state.conn_type, &params);
+
+	if (err) {
 		return;
 	}
 
-	uint8_t conn_type_lsb = pc_state.conn_type & PC_CONN_TYPE_LSB_MASK;
-
-	if (!pc_is_non_interactive_persistent(conn_type_lsb)) {
-		/* No disconnect required for this type - just clear the stuck flag */
-		return;
+	LOG_INF("PC: Retrying negotiation (remaining=%u)", pc_nego_retry_remaining);
+	pc_state.negotiation_pending = true;
+	err = bt_conn_le_param_update(pc_state.conn, &params);
+	if (err) {
+		pc_state.negotiation_pending = false;
+		LOG_WRN("PC: Retry - failed to initiate param update: %d", err);
+		fp_fmdn_persistent_conn_param_nego_complete(pc_state.conn, err);
 	}
-
-	LOG_WRN("PC: Negotiation watchdog timeout on type 0x%02x - treating as failure",
-		conn_type_lsb);
-	pc_state.negotiation_pending = false;
-	fp_fmdn_persistent_conn_param_nego_complete(pc_state.conn, -ETIMEDOUT);
 }
 
 static bool pc_le_param_req(struct bt_conn *conn, struct bt_le_conn_param *param)
 {
-	LOG_DBG("PC: le_param_req min=%u max=%u latency=%u timeout=%u is_active=%d conn_match=%d",
+	LOG_INF("PC: le_param_req min=%u max=%u latency=%u timeout=%u is_active=%d conn_match=%d",
 		param->interval_min, param->interval_max, param->latency, param->timeout,
 		pc_state.is_active, (pc_state.conn == conn));
+
+	/* Track the CPR conn when not yet in a PC session (CPR may arrive before
+	 * configure establishes pc_state.conn), or when it is the PC conn itself.
+	 * Ignore CPR from other connections while PC is active to avoid overwriting.
+	 */
+	if (!pc_state.is_active || (pc_state.conn == conn)) {
+		pc_central_update_conn = conn;
+	}
 
 	if (!pc_state.is_active || (pc_state.conn != conn)) {
 		return true;
@@ -206,53 +248,122 @@ static void pc_le_param_updated(struct bt_conn *conn, uint16_t interval, uint16_
 		interval, latency, timeout, pc_state.is_active, (pc_state.conn == conn));
 
 	if (!pc_state.is_active || (pc_state.conn != conn)) {
+		/* Clear CPR tracking even on early return: if this conn's CPR
+		 * le_param_updated fires before configure sets is_active, we must
+		 * not carry the stale pointer into the post-configure negotiation's
+		 * le_param_updated where it would cause a false from_central=true.
+		 */
+		if (pc_central_update_conn == conn) {
+			pc_central_update_conn = NULL;
+		}
 		return;
 	}
 
 	if (!pc_state.negotiation_pending) {
-		/* Central-initiated update (e.g. short CI request) — not our negotiation.
-		 * Short-CI restore timer is handled by pc_le_param_req; no nego_complete here.
-		 */
+		/* No active negotiation from our side. */
 		LOG_INF("PC: le_param_updated - not our negotiation, ignoring");
 		return;
 	}
 
-	pc_state.negotiation_pending = false;
-	k_work_cancel_delayable(&pc_nego_watchdog_work);
+	bool from_central = (pc_central_update_conn == conn);
 
+	pc_central_update_conn = NULL;
+
+	/* Outcome-based check: regardless of who initiated the update, if the
+	 * resulting interval satisfies our requirements the negotiation goal is
+	 * achieved.  This handles the race where our LL request and the central's
+	 * CPR are both in flight — the one that completes first may carry the right
+	 * interval even though pc_central_update_pending is still set.
+	 */
 	struct bt_le_conn_param expected;
 	int err = fp_fmdn_persistent_conn_get_conn_param(pc_state.conn_type, &expected);
 
 	if (err) {
 		LOG_ERR("PC: le_param_updated - failed to get expected params: %d", err);
+		pc_state.negotiation_pending = false;
 		fp_fmdn_persistent_conn_param_nego_complete(conn, err);
 		return;
 	}
 
-	bool success = (interval >= expected.interval_min) && (interval <= expected.interval_max);
+	bool satisfies = (interval >= expected.interval_min) && (interval <= expected.interval_max);
 
-	LOG_INF("PC: le_param_updated interval=%u (expected %u-%u) latency=%u timeout=%u -> %s",
+	LOG_INF("PC: le_param_updated interval=%u (expected %u-%u) latency=%u timeout=%u "
+		"from=%s -> %s",
 		interval, expected.interval_min, expected.interval_max, latency, timeout,
-		success ? "OK" : "MISMATCH");
+		from_central ? "central" : "us", satisfies ? "OK" : "MISMATCH");
 
-	fp_fmdn_persistent_conn_param_nego_complete(conn, success ? 0 : -EINVAL);
+	if (satisfies) {
+		/* Negotiation goal achieved — accept regardless of initiator. */
+		pc_state.negotiation_pending = false;
+		fp_fmdn_persistent_conn_param_nego_complete(conn, 0);
+	} else if (from_central) {
+		/* Central changed CI to a different range; our request is still
+		 * pending (stored in Zephyr or in-flight) — keep negotiation_pending.
+		 */
+		LOG_INF("PC: Central update doesn't satisfy our params, negotiation still pending");
+	} else {
+		/* Our request completed but with wrong interval — MISMATCH. */
+		pc_state.negotiation_pending = false;
+		fp_fmdn_persistent_conn_param_nego_complete(conn, -EINVAL);
+	}
 }
+
+#ifdef CONFIG_BT_USER_CONN_PARAM_REJECTED
+static void pc_le_param_update_rejected(struct bt_conn *conn, uint8_t hci_err)
+{
+	LOG_DBG("PC: le_param_update_rejected hci_err=0x%02x is_active=%d conn_match=%d", hci_err,
+		pc_state.is_active, (pc_state.conn == conn));
+
+	if (!pc_state.is_active || (pc_state.conn != conn)) {
+		return;
+	}
+
+	if (!pc_state.negotiation_pending) {
+		LOG_INF("PC: le_param_update_rejected - not our negotiation, ignoring");
+		return;
+	}
+
+	pc_state.negotiation_pending = false;
+	uint8_t conn_type_lsb = pc_state.conn_type & PC_CONN_TYPE_LSB_MASK;
+
+	/* Collision errors are transient — the remote was busy with another LL
+	 * procedure.  Allow the retry mechanism to recover.
+	 * All other rejection reasons indicate a fundamental parameter problem;
+	 * exhaust retries immediately so nego_complete disconnects right away.
+	 */
+	bool retriable = (hci_err == BT_HCI_ERR_LL_PROC_COLLISION) ||
+			 (hci_err == BT_HCI_ERR_DIFF_TRANS_COLLISION);
+
+	if (!retriable) {
+		pc_nego_retry_remaining = 0;
+	}
+
+	LOG_WRN("PC: Negotiation rejected (hci_err=0x%02x) on type 0x%02x (%s)", hci_err,
+		conn_type_lsb, retriable ? "retriable" : "fatal");
+	fp_fmdn_persistent_conn_param_nego_complete(pc_state.conn, -ECONNREFUSED);
+}
+#endif /* CONFIG_BT_USER_CONN_PARAM_REJECTED */
 
 BT_CONN_CB_DEFINE(pc_conn_cb) = {
 	.le_param_req = pc_le_param_req,
 	.le_param_updated = pc_le_param_updated,
+#ifdef CONFIG_BT_USER_CONN_PARAM_REJECTED
+	.le_param_update_rejected = pc_le_param_update_rejected,
+#endif
 };
 
 static void fp_fmdn_persistent_conn_reset(void)
 {
 	k_work_cancel_delayable(&pc_short_ci_restore_work);
 	k_work_cancel_delayable(&pc_interactive_revert_work);
-	k_work_cancel_delayable(&pc_nego_watchdog_work);
+	k_work_cancel_delayable(&pc_nego_retry_work);
 	pc_state.conn = NULL;
 	pc_state.client_id = PC_CLIENT_ID_NONE;
 	pc_state.conn_type = 0;
 	pc_state.is_active = false;
 	pc_state.negotiate_interval = false;
+	pc_state.negotiation_pending = false;
+	pc_central_update_conn = NULL;
 }
 
 int fp_fmdn_persistent_conn_init(void)
@@ -334,9 +445,14 @@ pc_result_t fp_fmdn_persistent_conn_configure(struct bt_conn *conn, uint8_t flag
 	uint8_t old_conn_type_lsb = pc_state.conn_type & PC_CONN_TYPE_LSB_MASK;
 
 	/* Update persistent connection state (common for all paths) */
-	if (!reconfigure_only) {
-		pc_state.conn = conn;
-		pc_state.is_active = true;
+	if (conn_type_lsb != PC_CONN_TYPE_NON_PERSISTENT) {
+		if (!reconfigure_only) {
+			pc_state.conn = conn;
+			pc_state.is_active = true;
+		}
+	} else {
+		pc_state.is_active = false;
+		pc_state.conn = NULL;
 	}
 	/* When releasing to non-persistent, always restore client_id to NONE */
 	pc_state.client_id =
@@ -344,7 +460,7 @@ pc_result_t fp_fmdn_persistent_conn_configure(struct bt_conn *conn, uint8_t flag
 	pc_state.conn_type = conn_type;
 	/* Cancel any in-flight negotiation from a timer handler; this configure supersedes it. */
 	pc_state.negotiation_pending = false;
-	k_work_cancel_delayable(&pc_nego_watchdog_work);
+	k_work_cancel_delayable(&pc_nego_retry_work);
 	pc_state.negotiate_interval = (flags & PC_FLAG_NEGOTIATE) != 0;
 
 	/* Manage timers for short-CI restoration and Interactive revert.
@@ -433,6 +549,7 @@ pc_result_t fp_fmdn_persistent_conn_configure(struct bt_conn *conn, uint8_t flag
 
 		if (err) {
 			LOG_ERR("PC: Failed to get connection parameters: %d", err);
+			pc_notify_state_changed();
 			return PC_RESULT_SUCCESS;
 		}
 
@@ -440,6 +557,7 @@ pc_result_t fp_fmdn_persistent_conn_configure(struct bt_conn *conn, uint8_t flag
 			"latency=%u timeout=%u",
 			conn_type_lsb, pc_conn_params.interval_min, pc_conn_params.interval_max,
 			pc_conn_params.latency, pc_conn_params.timeout);
+		pc_nego_retry_remaining = CONFIG_FMDN_PC_NEGO_RETRY_COUNT;
 		pc_state.negotiation_pending = true;
 		err = bt_conn_le_param_update(conn, &pc_conn_params);
 		LOG_INF("PC: bt_conn_le_param_update ret=%d", err);
@@ -451,15 +569,12 @@ pc_result_t fp_fmdn_persistent_conn_configure(struct bt_conn *conn, uint8_t flag
 				pc_state.is_active = false;
 				pc_state.conn = NULL;
 			}
+			pc_notify_state_changed();
 			return PC_RESULT_SUCCESS;
-		}
-
-		if (pc_is_non_interactive_persistent(conn_type_lsb)) {
-			k_work_reschedule(&pc_nego_watchdog_work,
-					  K_MSEC(pc_nego_watchdog_timeout_ms(conn)));
 		}
 	}
 
+	pc_notify_state_changed();
 	return PC_RESULT_SUCCESS;
 }
 
@@ -476,36 +591,66 @@ void fp_fmdn_persistent_conn_param_nego_complete(struct bt_conn *conn, int statu
 
 	LOG_INF("PC: Param negotiation complete - status=%d", status);
 
-	if (status) {
-		/* Per spec: disconnect on negotiation failure, except for types 0x00 and 0x01 */
-		uint8_t conn_type_lsb = pc_state.conn_type & PC_CONN_TYPE_LSB_MASK;
-		bool disconnect_on_nego_fail =
-			(conn_type_lsb != PC_CONN_TYPE_NON_PERSISTENT) &&
-			(conn_type_lsb != PC_CONN_TYPE_PERSISTENT_INTERACTIVE);
+	if (!status) {
+		pc_nego_retry_remaining = CONFIG_FMDN_PC_NEGO_RETRY_COUNT;
+		return;
+	}
 
-		if (disconnect_on_nego_fail) {
-			LOG_WRN("PC: Parameter negotiation failed, disconnecting");
-			bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
-			pc_state.is_active = false;
-			pc_state.conn = NULL;
-		} else {
-			LOG_WRN("PC: Parameter negotiation failed (type=0x%02x), keeping "
-				"connection",
-				conn_type_lsb);
-		}
+	/* Per spec: disconnect on negotiation failure, except for types 0x00 and 0x01 */
+	uint8_t conn_type_lsb = pc_state.conn_type & PC_CONN_TYPE_LSB_MASK;
+	bool disconnect_on_nego_fail = (conn_type_lsb != PC_CONN_TYPE_NON_PERSISTENT) &&
+				       (conn_type_lsb != PC_CONN_TYPE_PERSISTENT_INTERACTIVE);
+
+	if (disconnect_on_nego_fail && pc_nego_retry_remaining) {
+		pc_nego_retry_remaining--;
+		LOG_WRN("PC: Negotiation failed, retrying in %u ms (remaining=%u)",
+			CONFIG_FMDN_PC_NEGO_RETRY_INTERVAL_MS, pc_nego_retry_remaining);
+		k_work_reschedule(&pc_nego_retry_work,
+				  K_MSEC(CONFIG_FMDN_PC_NEGO_RETRY_INTERVAL_MS));
+		return;
+	}
+
+	if (disconnect_on_nego_fail) {
+		LOG_WRN("PC: Parameter negotiation failed (all retries exhausted), disconnecting");
+		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+		pc_state.is_active = false;
+		pc_state.conn = NULL;
+		pc_state.negotiation_pending = false;
+		k_work_cancel_delayable(&pc_short_ci_restore_work);
+		k_work_cancel_delayable(&pc_interactive_revert_work);
+		k_work_cancel_delayable(&pc_nego_retry_work);
+		/* pc_state.conn is already NULL, so the later disconnected() handler
+		 * skips its notify block — notify here to restore default advertising.
+		 * client_id/conn_type are intentionally preserved (disconnect ≠ release).
+		 */
+		pc_notify_state_changed();
+	} else {
+		LOG_WRN("PC: Parameter negotiation failed (type=0x%02x), keeping connection",
+			conn_type_lsb);
 	}
 }
 
 void fp_fmdn_persistent_conn_disconnected(struct bt_conn *conn)
 {
-	if (pc_state.is_active && (pc_state.conn == conn)) {
+	if (pc_state.conn == conn) {
 		LOG_INF("PC: Persistent connection disconnected");
-		k_work_cancel_delayable(&pc_short_ci_restore_work);
-		k_work_cancel_delayable(&pc_interactive_revert_work);
-		k_work_cancel_delayable(&pc_nego_watchdog_work);
-		pc_state.is_active = false;
-		pc_state.conn = NULL;
-		pc_state.negotiation_pending = false;
+		if (pc_state.is_active) {
+			k_work_cancel_delayable(&pc_short_ci_restore_work);
+			k_work_cancel_delayable(&pc_interactive_revert_work);
+			k_work_cancel_delayable(&pc_nego_retry_work);
+			pc_state.is_active = false;
+			pc_state.conn = NULL;
+			pc_state.negotiation_pending = false;
+			/* Restore default adv. */
+			pc_notify_state_changed();
+		}
+		pc_central_update_conn = NULL;
+	} else if (pc_central_update_conn == conn) {
+		/* pc_state.conn was already cleared before this disconnect event fired
+		 * (e.g. by fp_fmdn_persistent_conn_param_nego_complete). Still clear
+		 * the stale CPR pointer so it is not carried into the next session.
+		 */
+		pc_central_update_conn = NULL;
 	}
 }
 

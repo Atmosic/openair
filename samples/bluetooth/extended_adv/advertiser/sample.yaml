@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 sample:
   name: Bluetooth Extended Advertising Advertiser
 common:
@@ -13,3 +17,14 @@ tests:
       type: one_line
       regex:
         - Starting Extended Advertising Demo
+  samples.bluetooth.extended_adv.advertiser.atm.two_dev:
+    sysbuild: true
+    timeout: 60
+    tags:
+      - two_dev
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Connected state!"
+

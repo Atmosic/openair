@@ -1,0 +1,73 @@
+# Copyright (c) 2023-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_BLE
+	bool "Atmosic BLE driver"
+	default y
+	depends on BT
+	select ATM_ATLC
+	select ATM_BTHCI_UTILS
+	select MBEDTLS
+	select MBEDTLS_PSA_CRYPTO_C
+
+config ATM_BLE_ALLOW_PUB_ADDR
+	bool "Allow the use of a public BD address"
+	default y
+	depends on ATM_BLE
+	select ATM_EUI
+	help
+	  This option will acquire the public address
+	  from the EUI driver. If disabled, the application must
+	  request the BT stack to use a static random.
+
+config ATM_ATLC
+	bool "Atmosic ATLC driver"
+	default y if BT
+	depends on DT_HAS_ATMOSIC_BLE_ENABLED
+	select ATM_RELOC_SRAM
+	select PM_CUSTOM_TICKS_HOOK if PM
+
+if ATM_ATLC
+
+config EXT_WAKEUP_ENABLE_INDEFINITE
+	bool "Symbol for backward compatibility"
+
+config ATM_BLE_DRIVER_SLEEP
+	bool "Atmosic BLE driver sleep"
+	default y
+
+config ATLC_DEEP_SLEEP
+	bool "ATLC deep sleep enable"
+	default y if ATM_BLE_DRIVER_SLEEP
+
+config ATM_BLE_STACK_SIZE
+	int "Size of the event loop thread stack"
+	default 2048 if PSA_CSPRNG_GENERATOR
+	default 1416
+
+config ATM_BLE_HIGH_PRIO
+	int
+	default 6
+
+config ATM_BLE_DUMP_HCI
+	bool "Dump HCI traffic in the BLE driver"
+	depends on ATM_BLE
+	select ATM_BTHCI_UTILS_DUMP_PKTS
+
+config ATM_BLE_DUMP_HCI_ALL
+	bool "Dump all HCI traffic in the BLE driver"
+	depends on ATM_BLE
+	select ATM_BTHCI_UTILS_DUMP_PKTS
+
+endif # ATM_ATLC
+
+if ATM_ATLC || DTOP_BYPASS || PM
+
+config ZERO_LATENCY_IRQS
+	default y
+
+config ZERO_LATENCY_LEVELS
+	default 2
+
+endif # ATM_ATLC || DTOP_BYPASS

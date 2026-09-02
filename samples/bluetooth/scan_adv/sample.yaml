@@ -9,6 +9,8 @@ common:
     - role_central
 tests:
   samples.bluetooth.scan_adv.atm:
+    tags:
+      - openair_release
     harness_config:
       type: one_line
       regex:

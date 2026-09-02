@@ -1,7 +1,7 @@
 /*
  * Copyright (C) Atmosic 2021-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atm_spi
@@ -33,7 +33,8 @@ LOG_MODULE_REGISTER(spi_atm, CONFIG_SPI_LOG_LEVEL);
 
 #define SPI_WORD_SIZE 8
 #define SPI_CLK at_clkrstgen_get_bp()
-#define SPI_CLK_DIV(freq) ((DIV_ROUND_UP(SPI_CLK, freq) >> 1) - 1)
+/* Round the divisor up so the resulting clock never exceeds the requested frequency */
+#define SPI_CLK_DIV(freq)      (DIV_ROUND_UP(SPI_CLK, 2 * (freq)) - 1)
 #define SPI_CLK_MIN (SPI_CLK >> (SPI_TRANSACTION_SETUP__CLKDIV__WIDTH + 1))
 #define SPI_CORE_HARD_LIMIT_HZ 8000000
 #define SPI_CLK_MAX MIN((SPI_CLK >> 1), SPI_CORE_HARD_LIMIT_HZ)
@@ -82,6 +83,9 @@ struct spi_atm_data {
 	} io[SPI_PAYLOAD_WIDTH];
 	uint32_t num_bytes;
 	bool read;
+#ifdef CONFIG_PM
+	bool pm_constraint_on;
+#endif
 	struct k_sem completion_sem;
 	spi_callback_t sync_cb;
 #ifdef CONFIG_SPI_ATM_WATCHDOG
@@ -217,13 +221,15 @@ static void spi_atm_start_transaction(struct device const *dev, uint16_t clkdiv,
 #ifdef CONFIG_PM
 /* The pm_constraint functions below are called from both thread and isr contexts.  Normally, that
  * would require a critical section around accesses to pm_constraint_on, and that variable would
- * need to be volatile.  However, because of the spi context lock and the specific sequencing, the
- * critical section protection is not required here */
-static bool pm_constraint_on;
+ * need to be volatile.  However, because the flag is per-instance and the spi context lock is held
+ * across it, the critical section protection is not required here */
 static void spi_atm_pm_constraint_set(const struct device *dev)
 {
-	if (!pm_constraint_on) {
-		pm_constraint_on = true;
+	struct spi_atm_data *data = DEV_DATA(dev);
+
+	if (!data->pm_constraint_on) {
+		data->pm_constraint_on = true;
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -231,8 +237,11 @@ static void spi_atm_pm_constraint_set(const struct device *dev)
 
 static void spi_atm_pm_constraint_release(const struct device *dev)
 {
-	if (pm_constraint_on) {
-		pm_constraint_on = false;
+	struct spi_atm_data *data = DEV_DATA(dev);
+
+	if (data->pm_constraint_on) {
+		data->pm_constraint_on = false;
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -664,6 +673,26 @@ static struct pm_notifier notifier = {
 	.state_exit = notify_pm_state_exit,
 };
 #endif
+
+/*
+ * spi_pseq_latch_close() and, when CONFIG_PM is enabled, registering
+ * `notifier` must each happen exactly once, regardless of how many SPI
+ * instances are enabled. spi_atm_init() runs once per enabled SPI instance
+ * (DT_INST_FOREACH_STATUS_OKAY), so doing either of these from within it
+ * would repeat them; for the pm_notifier registration in particular,
+ * registering the same node twice corrupts the global pm_notifiers list
+ * (the node ends up pointing at itself), hanging the system on the next PM
+ * state transition.
+ */
+static int spi_atm_pseq_init(void)
+{
+	spi_pseq_latch_close();
+#ifdef CONFIG_PM
+	pm_notifier_register(&notifier);
+#endif
+	return 0;
+}
+SYS_INIT(spi_atm_pseq_init, POST_KERNEL, UTIL_INC(CONFIG_SPI_INIT_PRIORITY));
 #endif // PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
 
 #ifdef CONFIG_SPI_ATM_WATCHDOG
@@ -713,14 +742,6 @@ static int spi_atm_init(struct device const *dev)
 		return err;
 	}
 	spi_context_unlock_unconditionally(&data->ctx);
-
-#ifdef PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
-	spi_pseq_latch_close();
-
-#ifdef CONFIG_PM
-	pm_notifier_register(&notifier);
-#endif
-#endif // PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
 
 #ifdef CONFIG_SPI_ATM_DMA
 	k_work_init(&data->tx_dma_work, spi_atm_tx_dma_worker);

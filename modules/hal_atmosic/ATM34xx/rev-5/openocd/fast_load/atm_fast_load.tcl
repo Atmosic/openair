@@ -220,12 +220,13 @@ proc fl_ram_erase { region_size region_start {er_sector_size 4096} } {
     # set write flash address
     mww [expr {$fl_ram_buf0_addr + 4}] $region_start
 
+    # Keep OpenOCD from accessing AHB while an RRAM DMA transfer is active.
+    poll off
     fl_ram_program_page $fl_ram_kick_program
 
     after [expr {$er_dft_wait_time * 10 }]
     set fl_owner_er_retry 100
     set target_ram_addr [expr {$fl_ram_buf0_addr + 8}]
-    poll off
     while { $fl_owner_er_retry > 0 } {
 	if {[catch {set fl_ram_ret_owner [mrb $fl_ram_buf0_addr]} err]} {
 	    puts "Get fl_ram_ret_owner failed, retry"
@@ -512,9 +513,6 @@ proc fl_ram_init {} {
 proc atm_fast_load { image {opcode 0x01} {region_start 0x0} } {
     adapter speed 4000
 
-    # wait fl_ram ready
-    sleep 50
-
     global _FL_RAM_BLOCK_INFO
     global FL_RAM_VER_OFS
     set fl_ram_block_info $_FL_RAM_BLOCK_INFO
@@ -547,10 +545,20 @@ proc atm_fast_load { image {opcode 0x01} {region_start 0x0} } {
 
     set FL_RAM_ARM_INSTR_MODE_MASK 0xFFFFFFFE
     set fl_ram_kick_program $_FL_RAM_KICK_PROGRAM
-    set fn_kick [mrw [expr {$fl_ram_block_info + $FL_RAM_KICK_PROG_OFS}]]
-    if {[expr {$fn_kick & $FL_RAM_ARM_INSTR_MODE_MASK}] != \
-	$fl_ram_kick_program} {
-	error [format "<fast_load> wrong kick program: 0x%x" $fn_kick]
+    set fl_ram_ready_retry 10
+    while {1} {
+	set fn_kick [mrw [expr {$fl_ram_block_info + $FL_RAM_KICK_PROG_OFS}]]
+	if {($fn_kick & $FL_RAM_ARM_INSTR_MODE_MASK) == \
+	    $fl_ram_kick_program} {
+	    break
+	}
+	if {!$fl_ram_ready_retry} {
+	    error [format "<fast_load> wrong kick program: 0x%x" $fn_kick]
+	}
+	resume
+	sleep 100
+	halt
+	incr fl_ram_ready_retry -1
     }
 
     fl_ram_init

@@ -1,13 +1,7 @@
-/**
- *******************************************************************************
+/*
+ * Copyright (c) 2020-2026 Atmosic
  *
- * @file atm_vendor_internal.h
- *
- * @brief Atmosic Vendor Command internal definitions
- *
- * Copyright (C) Atmosic 2020-2025
- *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #pragma once
@@ -70,6 +64,7 @@ typedef enum {
     MFG_OCF_NO_CLOCK,
     MFG_OCF_WHILE_ONE,
     MFG_OCF_SET_TX_PWR = 0x14,
+    MFG_OCF_BYPASS_RX_DC_CAL = 0x15,
 
     MFG_OCF_END
 } MFG_OCF;
@@ -163,11 +158,19 @@ typedef enum {
 #define PSM_CMD_OGF MFG_OGF_SB1
 #define PSM_CMD_LEN 0x01
 
+#ifndef CONFIG_SOC_FAMILY_ATM
 #define PSM_NONE SLEEP_ENABLE_NONE
 #define PSM_DEEP SLEEP_ENABLE_DEEP
 #define PSM_RETAIN SLEEP_ENABLE_RETAIN
 #define PSM_HIBERNATE SLEEP_ENABLE_HIBERNATE
 #define PSM_SOC_OFF SLEEP_ENABLE_SOC_OFF
+#else
+#define PSM_NONE      0
+#define PSM_DEEP      1
+#define PSM_RETAIN    2
+#define PSM_HIBERNATE 4
+#define PSM_SOC_OFF   5
+#endif
 
 // Coremark (0xF810)
 #define COREMARK_CMD_OCF MFG_OCF_COREMARK
@@ -200,6 +203,11 @@ typedef enum {
 #define SET_TX_PWR_CMD_OCF MFG_OCF_SET_TX_PWR
 #define SET_TX_PWR_CMD_OGF MFG_OGF_SB1
 #define SET_TX_PWR_CMD_LEN 0x01
+
+// Bypass RX DC offset cal on HCI reset (0xF815)
+#define BYPASS_RX_DC_CAL_CMD_OCF MFG_OCF_BYPASS_RX_DC_CAL
+#define BYPASS_RX_DC_CAL_CMD_OGF MFG_OGF_SB1
+#define BYPASS_RX_DC_CAL_CMD_LEN 0x00
 
 // Read memory (0xFC01)
 #define RD_MEM_CMD_OCF VND_OCF_RD_MEM
@@ -623,6 +631,12 @@ typedef struct {
 } set_tx_pwr_cmd_t;
 #else
 #define SETTXPWR_CMD 0
+#endif
+
+#ifdef CFG_VND_BYPASS_RX_DC_CAL
+#define BYPASS_RX_DC_CAL_CMD 1
+#else
+#define BYPASS_RX_DC_CAL_CMD 0
 #endif
 
 #ifdef __cplusplus

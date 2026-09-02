@@ -1,6 +1,6 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 # the following options are used to select the default value of ADV_FLAGS
 # default 0 if none of them are selected.

@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2023-2025 Atmosic
+ * Copyright (c) 2023-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atm_trng
@@ -18,6 +18,11 @@ LOG_MODULE_REGISTER(entropy_atm, CONFIG_ENTROPY_LOG_LEVEL);
 #include "at_wrpr.h"
 #include "at_apb_pseq_regs_core_macro.h"
 #include "rif_regs_core_macro.h"
+#if CONFIG_ATM_RADIO_HAL_MGR
+#include "radio_hal_frc.h"
+#include "radio_hal_mgr.h"
+#include "ble_driver.h"
+#endif
 
 #define TRNG_INTERNAL_DIRECT_INCLUDE_GUARD
 #include "trng.ih"
@@ -109,6 +114,50 @@ static void trng_force_go_pulse(void)
 	trng_internal_force_go_pulse();
 }
 
+#if CONFIG_ATM_RADIO_HAL_MGR
+static bool trng_mac_locked;
+
+static bool trng_start(void)
+{
+	trng_force_go_pulse();
+	return true;
+}
+
+static void trng_schedule_go_pulse(void)
+{
+	if (!trng_mac_locked) {
+		trng_mac_locked = true;
+		atm_mac_lock_sync();
+	}
+
+	uint32_t now_us = atm_mac_frc_get_current_time();
+	atm_mac_mgr_priority_t priority = 0;
+	PRIORITY_CRITICAL_SET(priority); // Do not interrupt once started
+	PRIORITY_PROTOCOL_MODIFY(priority, ATM_MAC_MGR_PROT_TRNG);
+	atm_mac_mgr_op_data_t run_trng = {
+		.start_time = now_us,
+		// Allow maximum delay before starting (35 mins)
+		.latest_start_time = now_us + 0x7FFFFFFF,
+		.expected_duration = 500, // Experimentally determined
+		.priority = priority,
+		.protocol = ATM_MAC_MGR_PROT_TRNG,
+	};
+	atm_mac_mgr_schedule_op(atm_mac_mgr_get_iface(), &run_trng);
+
+	// The manager will call trng_start when the TRNG can run
+}
+
+static void trng_complete_go_pulse(void)
+{
+	atm_mac_mgr_complete_op(atm_mac_mgr_get_iface(), ATM_MAC_MGR_PROT_TRNG);
+
+	if (trng_mac_locked) {
+		trng_mac_locked = false;
+		atm_mac_unlock();
+	}
+}
+#endif
+
 static int entropy_atm_get_entropy(const struct device *dev,
 				   uint8_t *buffer, uint16_t length)
 {
@@ -116,15 +165,19 @@ static int entropy_atm_get_entropy(const struct device *dev,
 
 	while (length) {
 		if (k_sem_take(&trng_ring_sem, K_NO_WAIT)) {
+#if CONFIG_ATM_RADIO_HAL_MGR
+			trng_schedule_go_pulse();
+#else
 			// Make sure HW sequence is atomic
 			unsigned int key = irq_lock();
 			trng_force_go_pulse();
 			irq_unlock(key);
+#endif
 
 			if (k_is_in_isr()) {
 				return -EAGAIN;
 			}
-			int err = k_sem_take(&trng_ring_sem, K_MSEC(30));
+			int err = k_sem_take(&trng_ring_sem, K_MSEC(100));
 			if (err) {
 #ifdef CONFIG_ENTROPY_ATM_STATS
 				entropy_atm_trng_timeout++;
@@ -155,10 +208,14 @@ static int entropy_atm_get_entropy_isr(const struct device *dev,
 
 	while (length) {
 		if (k_sem_take(&trng_ring_sem, K_NO_WAIT)) {
+#if CONFIG_ATM_RADIO_HAL_MGR
+			trng_schedule_go_pulse();
+#else
 			// Make sure HW sequence is atomic
 			unsigned int key = irq_lock();
 			trng_force_go_pulse();
 			irq_unlock(key);
+#endif
 			while (k_sem_take(&trng_ring_sem, K_NO_WAIT)) {
 				if (!(flags & ENTROPY_BUSYWAIT)) {
 					// Return whatever data is available
@@ -216,11 +273,20 @@ static void trng_handler(void)
 
 done:
 	if (RING_ENTRIES() < (CONFIG_ENTROPY_ATM_RING_ENTRIES / 2)) {
+#if CONFIG_ATM_RADIO_HAL_MGR
+		trng_radio_unlock();
+		trng_schedule_go_pulse();
+#else
 		trng_force_go_pulse();
+#endif
 	} else {
 		bool notfull = !RING_FULL();
 		TRNG_CONTROL__LAUNCH_ON_RADIO_UP__MODIFY(CMSDK_TRNG->CONTROL, notfull);
 		trng_radio_unlock();
+#if CONFIG_ATM_RADIO_HAL_MGR
+		// LAUNCH_ON_RADIO_UP reads are not scheduled with the manager
+		trng_complete_go_pulse();
+#endif
 	}
 }
 
@@ -232,7 +298,14 @@ static void trng_init(void)
 		    0);
 	irq_enable(DT_INST_IRQN(0));
 
+#if CONFIG_ATM_RADIO_HAL_MGR
+	atm_mac_mgr_register_deferred_api(atm_mac_mgr_get_iface(), ATM_MAC_MGR_PROT_TRNG,
+					  trng_start);
+
+	trng_schedule_go_pulse();
+#else
 	trng_force_go_pulse();
+#endif
 }
 
 #ifdef __MDM_DCCAL_CTRL_MACRO__

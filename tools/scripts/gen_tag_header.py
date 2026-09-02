@@ -8,6 +8,8 @@ Copyright (C) Atmosic 2026
 """
 
 import os
+import shutil
+import subprocess
 import datetime
 from dataclasses import dataclass, field
 
@@ -62,7 +64,7 @@ class HeaderSection:  # pylint: disable=too-many-instance-attributes
     skip_struct: bool = False
 
 
-class HeaderGenerator:
+class HeaderGenerator:  # pylint: disable=too-many-instance-attributes
     """Data-driven C header generator.
 
     Completely decoupled from any specific tag tool.  The caller builds
@@ -97,7 +99,17 @@ class HeaderGenerator:
     # BF '_size' (bytes) -> C integer type for the bitfield word
     BF_SIZE_TO_CTYPE = {1: "uint8_t", 2: "uint16_t", 4: "uint32_t"}
 
-    def __init__(self, *, brief, output_file, output_dir, source_file=None):
+    def __init__(
+        self,
+        *,
+        brief,
+        output_file,
+        output_dir,  # pylint: disable=too-many-arguments
+        source_file=None,
+        includes=None,
+        doc_group=None,
+        clang_format=None,
+    ):
         """
         Args:
             brief: brief string for the doxygen file comment.
@@ -105,11 +117,27 @@ class HeaderGenerator:
             output_dir: Directory to write the header file into.
             source_file: ``__file__`` of the calling script; shown in the
                          auto-generated warning comment.
+            includes: Optional list of include specs emitted after the file
+                      header, e.g. ``['<stdint.h>', 'compiler.h']``. Entries
+                      already wrapped in ``<>`` or ``""`` are emitted verbatim;
+                      bare names are wrapped in double quotes.
+            doc_group: Optional dict describing a Doxygen ``@defgroup`` block
+                       wrapped around the whole body, with keys ``name`` and
+                       optional ``title``/``ingroup``/``brief``.
+            clang_format: Optional; when truthy the written header is formatted
+                          in place with clang-format. ``True`` uses
+                          ``--style=file`` (clang-format discovers the nearest
+                          ``.clang-format``); a string is passed verbatim to
+                          ``--style=``. A missing binary is reported but does
+                          not fail generation. Off by default.
         """
         self.brief = brief
         self.output_file = output_file
         self.output_dir = output_dir
         self.source_file = source_file or "(unknown)"
+        self.includes = includes or []
+        self.doc_group = doc_group
+        self.clang_format = clang_format
         self._sections = []
 
     def add_section(self, section):
@@ -127,11 +155,40 @@ class HeaderGenerator:
         with open(header_file, "w", encoding="utf-8") as f:
             f.write(self._build_content())
         print(f"Successfully generated header: {header_file}")
+        if self.clang_format:
+            self._run_clang_format(header_file)
         return header_file
+
+    def _run_clang_format(self, header_file):
+        """Format ``header_file`` in place with clang-format, if configured.
+
+        ``clang_format`` may be ``True`` (use ``--style=file`` so clang-format
+        finds the nearest ``.clang-format``) or a style string passed verbatim
+        to ``--style=``. A missing binary or a clang-format error is reported
+        but does not fail generation.
+        """
+        style = self.clang_format if isinstance(self.clang_format, str) else "file"
+        binary = shutil.which("clang-format")
+        if binary is None:
+            print(
+                "WARNING: clang-format not found; "
+                f"generated header left unformatted: {header_file}"
+            )
+            return
+        try:
+            subprocess.run([binary, f"--style={style}", "-i", header_file], check=True)
+            print(f"Formatted header with clang-format: {header_file}")
+        except subprocess.CalledProcessError as exc:
+            print(
+                f"WARNING: clang-format failed ({exc}); "
+                f"header left as-is: {header_file}"
+            )
 
     def _build_content(self):
         """Build and return the full header file content as a string."""
         lines = self._build_file_header()
+        lines.extend(self._build_doc_group_open())
+        lines.extend(self._build_includes())
         lines.extend(self._build_cpp_guard_open())
         for section in self._sections:
             lines.extend(self._gen_section(section))
@@ -140,8 +197,44 @@ class HeaderGenerator:
             lines.pop()
         lines.append("")  # Add single empty line before closing guard
         lines.extend(self._build_cpp_guard_close())
+        doc_group_close = self._build_doc_group_close()
+        if doc_group_close:
+            lines.append("")  # Blank line before the closing @} marker
+            lines.extend(doc_group_close)
         lines.append("")  # Add final empty line at end of file
         return "\n".join(lines)
+
+    def _build_includes(self):
+        """Build #include lines from the configured includes list."""
+        if not self.includes:
+            return []
+        lines = []
+        for inc in self.includes:
+            if inc.startswith("<") or inc.startswith('"'):
+                lines.append(f"#include {inc}")
+            else:
+                lines.append(f'#include "{inc}"')
+        lines.append("")
+        return lines
+
+    def _build_doc_group_open(self):
+        """Build the opening Doxygen ``@defgroup`` block, if configured."""
+        if not self.doc_group:
+            return []
+        name = self.doc_group["name"]
+        lines = ["/**", f" * @defgroup {name} {self.doc_group.get('title', name)}"]
+        if self.doc_group.get("ingroup"):
+            lines.append(f" * @ingroup {self.doc_group['ingroup']}")
+        if self.doc_group.get("brief"):
+            lines.append(f" * @brief {self.doc_group['brief']}")
+        lines.extend([" * @{", " */", ""])
+        return lines
+
+    def _build_doc_group_close(self):
+        """Build the closing ``@}`` marker for the Doxygen group, if configured."""
+        if not self.doc_group:
+            return []
+        return [f"/// @}} {self.doc_group['name']}"]
 
     def _build_file_header(self):
         """Build the standard doxygen file comment block and #pragma once."""
@@ -154,6 +247,8 @@ class HeaderGenerator:
             f" * @brief {self.brief}",
             " *",
             f" * Copyright (C) Atmosic {datetime.date.today().year}",
+            " *",
+            " * SPDX-License-Identifier: LicenseRef-Atmosic",
             " *",
             " *******************************************************************************",
             " */",
@@ -212,6 +307,14 @@ class HeaderGenerator:
 
         # Convert to C comments, skip empty lines
         return [f"// {line}" for line in comment_lines if line.strip()]
+
+    @staticmethod
+    def _format_doxygen_lines(comment):
+        """Convert comment string/list to Doxygen ``///`` comment lines."""
+        return [
+            line.replace("//", "///", 1)
+            for line in HeaderGenerator._format_comment_lines(comment)
+        ]
 
     def _gen_section(self, section):
         """Generate all C lines for a single HeaderSection.
@@ -390,22 +493,29 @@ class HeaderGenerator:
         return f"\t{typedef_name} {name};"
 
     def _gen_scalar_field(self, name, fmt, size, metadata):
-        """Generate C field line for scalar types (B, H, I, s)."""
+        """Generate C field line for scalar types (B, H, I, s).
+
+        Honors an optional ``ctype`` override (e.g. ``char`` or a pointer type)
+        and an inline ``comment``, both carried in the metadata dict.
+        """
         if fmt not in self.FORMAT_TO_CTYPE:
             raise ValueError(f"Unsupported format '{fmt}' for field '{name}'.")
 
-        ctype = self.FORMAT_TO_CTYPE[fmt]
+        meta = metadata if isinstance(metadata, dict) else {}
+        ctype = meta.get("ctype", self.FORMAT_TO_CTYPE[fmt])
+        comment = meta.get("comment")
+        suffix = f" /* {comment} */" if comment else ""
 
         if fmt == "s":
             if size is None:
                 raise ValueError(f"Field '{name}' has format 's' but no array size.")
-            return f"\t{ctype} {name}[{size}];"
+            return f"\t{ctype} {name}[{size}];{suffix}"
 
-        if isinstance(metadata, dict) and "bitfield_width" in metadata:
-            width = metadata["bitfield_width"]
-            return f"\t{ctype} {name}: {width};"
+        if "bitfield_width" in meta:
+            width = meta["bitfield_width"]
+            return f"\t{ctype} {name}: {width};{suffix}"
 
-        return f"\t{ctype} {name};"
+        return f"\t{ctype} {name};{suffix}"
 
     def _schema_field_to_c(self, field_info):
         """Convert a schema field tuple to a C struct member string.
@@ -514,41 +624,126 @@ class HeaderGenerator:
 
         Args:
             gen: HeaderGenerator instance
-            enum_name: Enum typedef name (from schema key)
-            enum_config: Enum configuration dict with 'values'
+            enum_name: Enum name (typedef name, or tag name when ``typedef`` is
+                       False) from the schema key.
+            enum_config: Enum configuration dict with ``values``. Optional keys:
+                         - ``comment``: leading Doxygen comment for the enum
+                         - ``typedef``: if False, emit a tagged
+                           ``enum NAME { }`` instead of
+                           ``typedef enum { } NAME;`` (default True)
+                         - each value may carry ``comment`` and
+                           ``blank_line_before``
 
-        Note: No automatic blank lines. Control spacing via JSON config.
+        Note: No automatic blank lines between values. Control spacing via each
+        value's ``blank_line_before``.
         """
         values = enum_config.get("values", [])
-        blank_line_before = enum_config.get("blank_line_before", False)
-
         if not values:
             return
 
-        # Use enum_name (the key) as typedef name
-        typedef_name = enum_name
+        use_typedef = enum_config.get("typedef", True)
 
         # Build enum definition
         enum_lines = []
 
         # Add blank line before if requested (no trailing blank line)
-        if blank_line_before:
+        if enum_config.get("blank_line_before", False):
             enum_lines.append("")
 
-        enum_lines.append("typedef enum {")
+        if enum_config.get("comment"):
+            enum_lines.extend(
+                HeaderGenerator._format_doxygen_lines(enum_config["comment"])
+            )
+
+        if use_typedef:
+            enum_lines.append("typedef enum {")
+        else:
+            enum_lines.append(f"enum {enum_name} {{")
 
         for value_entry in values:
+            if value_entry.get("blank_line_before"):
+                enum_lines.append("")
+            if value_entry.get("comment"):
+                enum_lines.extend(
+                    "\t" + line
+                    for line in HeaderGenerator._format_doxygen_lines(
+                        value_entry["comment"]
+                    )
+                )
             val_name = value_entry.get("name")
             val_num = value_entry.get("value")
             if val_name is not None and val_num is not None:
                 enum_lines.append(f"\t{val_name} = {val_num},")
 
-        enum_lines.append(f"}} {typedef_name};")
+        if use_typedef:
+            enum_lines.append(f"}} {enum_name};")
+        else:
+            enum_lines.append("};")
 
         gen.add_section(
             HeaderSection(
                 defines=[],
                 pre_struct_lines=enum_lines,
+                schema=[],
+                struct_name="",
+                skip_struct=True,
+            )
+        )
+
+    @staticmethod
+    def process_raw(gen, raw_config):
+        """Emit verbatim C lines (e.g. a macro) as a standalone section.
+
+        Args:
+            gen: HeaderGenerator instance
+            raw_config: Dict with optional ``comment``/``blank_line_before`` and
+                        a ``lines`` list of verbatim C source lines.
+        """
+        lines = []
+        if raw_config.get("blank_line_before"):
+            lines.append("")
+        if raw_config.get("comment"):
+            lines.extend(HeaderGenerator._format_doxygen_lines(raw_config["comment"]))
+        lines.extend(raw_config.get("lines", []))
+        if not lines:
+            return
+        gen.add_section(
+            HeaderSection(
+                defines=[],
+                pre_struct_lines=lines,
+                schema=[],
+                struct_name="",
+                skip_struct=True,
+            )
+        )
+
+    @staticmethod
+    def process_union(gen, union_name, union_config, schema_loader):
+        """Process and generate a standalone typedef union definition.
+
+        Args:
+            gen: HeaderGenerator instance
+            union_name: Union typedef name (from schema key)
+            union_config: Union configuration dict with ``members``
+            schema_loader: SchemaLoader instance to convert members to schema
+        """
+        leading_lines = []
+        if union_config.get("blank_line_before"):
+            leading_lines.append("")
+        comment = union_config.get("comment", "")
+        if comment:
+            leading_lines.append(f"// {comment}")
+
+        union_dict = schema_loader.convert_union_to_dict(union_config)
+        union_dict.setdefault("_typedef_name", union_name)
+        union_lines = gen._gen_union_typedef(  # pylint: disable=protected-access
+            union_name, union_dict
+        )
+
+        gen.add_section(
+            HeaderSection(
+                defines=[],
+                pre_struct_lines=leading_lines + union_lines,
                 schema=[],
                 struct_name="",
                 skip_struct=True,

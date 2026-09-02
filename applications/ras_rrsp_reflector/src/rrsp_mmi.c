@@ -45,6 +45,9 @@ typedef struct rrsp_mmi_ctrl_s {
 	rrsp_mmi_evt_t evt;
 	struct bt_conn *curr_conn;
 	struct rrsp_mmi_event_work_info event_work;
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+	struct k_work_delayable subrate_work;
+#endif
 	uint16_t remaining_cs_cnt;
 	uint8_t cs_cfg;
 } rrsp_mmi_ctrl_t;
@@ -149,11 +152,44 @@ static void rrsp_mmi_le_phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_
 }
 #endif
 
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+#define RRSP_SUBRATE_REQ_DELAY_MS 500
+
+static void rrsp_mmi_subrate_changed_cb(struct bt_conn *conn,
+					const struct bt_conn_le_subrate_changed *params)
+{
+	if (params->status == BT_HCI_ERR_SUCCESS) {
+		LOG_INF("Subrate changed: factor %u cont_num %u latency %u timeout %u",
+			params->factor, params->continuation_number, params->peripheral_latency,
+			params->supervision_timeout);
+	} else {
+		LOG_ERR("Subrate change failed (HCI status 0x%02x)", params->status);
+	}
+}
+
+static void rrsp_mmi_security_changed_cb(struct bt_conn *conn, bt_security_t level,
+					 enum bt_security_err err)
+{
+	if (err) {
+		LOG_ERR("Security failed level:%u err:%d", level, err);
+		return;
+	}
+
+	LOG_INF("Security changed level:%u, scheduling subrate in %d ms", level,
+		RRSP_SUBRATE_REQ_DELAY_MS);
+	atm_work_schedule_for_app_work_q(&rrsp_mmi.subrate_work, K_MSEC(RRSP_SUBRATE_REQ_DELAY_MS));
+}
+#endif
+
 BT_CONN_CB_DEFINE(rrsp_mmi) = {
 	.connected = rrsp_mmi_connected_cb,
 	.disconnected = rrsp_mmi_disconnected_cb,
 #ifdef CONFIG_BT_USER_PHY_UPDATE
 	.le_phy_updated = rrsp_mmi_le_phy_updated,
+#endif
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+	.subrate_changed = rrsp_mmi_subrate_changed_cb,
+	.security_changed = rrsp_mmi_security_changed_cb,
 #endif
 	.le_cs_read_remote_capabilities_complete = rrsp_mmi_remote_capabilities_cb,
 	.le_cs_config_complete = rrsp_mmi_cs_config_created_cb,
@@ -236,6 +272,37 @@ static void rrsp_mmi_cs_set_default(void)
 	}
 }
 
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+#define RRSP_SUBRATE_FACTOR                 12
+#define RRSP_SUBRATE_MAX_LATENCY            4
+#define RRSP_SUBRATE_SUPERVISION_TIMEOUT_CS 600 /* units: 10ms */
+static void rrsp_mmi_subrate_request(void)
+{
+	if (!rrsp_mmi.curr_conn) {
+		LOG_WRN("No connection, skip subrate request");
+		return;
+	}
+
+	const struct bt_conn_le_subrate_param subrate_param = {
+		.subrate_min = RRSP_SUBRATE_FACTOR,
+		.subrate_max = RRSP_SUBRATE_FACTOR,
+		.max_latency = RRSP_SUBRATE_MAX_LATENCY,
+		.continuation_number = 0,
+		.supervision_timeout = RRSP_SUBRATE_SUPERVISION_TIMEOUT_CS,
+	};
+
+	int err = bt_conn_le_subrate_request(rrsp_mmi.curr_conn, &subrate_param);
+	if (err) {
+		LOG_ERR("Failed to request subrate params (err %d)", err);
+	}
+}
+
+static void rrsp_mmi_subrate_work_handler(struct k_work *work)
+{
+	rrsp_mmi_subrate_request();
+}
+#endif
+
 static void rrsp_mmi_evt_work_handler(struct k_work *work)
 {
 	struct rrsp_mmi_event_work_info *info =
@@ -278,6 +345,9 @@ static void rrsp_mmi_bt_ready(int err)
 	}
 
 	k_work_init(&rrsp_mmi.event_work.work, rrsp_mmi_evt_work_handler);
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+	k_work_init_delayable(&rrsp_mmi.subrate_work, rrsp_mmi_subrate_work_handler);
+#endif
 
 	rrsp_mmi_run_event(RRSP_MMI_EVT_BT_READY);
 }

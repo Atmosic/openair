@@ -1,3 +1,7 @@
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 sample:
   name: Bluetooth Central RAS RREQ Initiator
   description: Demonstrates the ranging requestor RAS
@@ -15,9 +19,28 @@ common:
     - channel_sounding
 tests:
   applications.ras_rreq_initiator.atm:
+    tags:
+      - openair_release
     extra_args:
       - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
+  applications.ras_rreq_initiator.atm.ariad:
+    tags:
+      - ariad
+    extra_args:
+      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
+      - EXTRA_CONF_FILE=cs_ariad.conf
+  applications.ras_rreq_initiator.atm.ariad.oled:
+    tags:
+      - ariad
+    extra_args:
+      - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
+      - EXTRA_DTC_OVERLAY_FILE=oled.overlay
+      - EXTRA_CONF_FILE=cs_ariad.conf
+    extra_configs:
+      - CONFIG_RREQ_USE_DISPLAY=y
   applications.ras_rreq_initiator.atm.ipt:
+    tags:
+      - openair_release
     extra_args:
       - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
     extra_configs:

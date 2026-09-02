@@ -180,6 +180,7 @@ void atm_mac_ble_tx_test_settings(bool continuous_tx,
 void atm_mac_ble_sched_tx_at_absolute_time(uint32_t time);
 void atm_mac_ble_sched_tx_at_offset_from_prior_end_time(uint16_t offset);
 void atm_mac_ble_sched_tx_at_offset_from_prior_absolute_time(uint32_t offset);
+void atm_mac_ble_sched_tx_now(void);
 __NONNULL(1)
 void atm_mac_ble_tx_scheduled_packet(uint8_t const *packet, uint16_t length);
 void atm_mac_ble_tx_prev_scheduled_packet(void);

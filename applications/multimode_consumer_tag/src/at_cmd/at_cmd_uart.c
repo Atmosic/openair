@@ -1,24 +1,11 @@
-/**
- *******************************************************************************
- *
- * @file at_cmd_uart.c
- *
- * @brief AT command UART module
- *
- * Copyright (C) Atmosic 2026
+/*
+ * Copyright (c) 2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
-#include <ctype.h>
 #include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/device.h>
-#include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
@@ -35,10 +22,6 @@
 #ifdef CONFIG_STF_TAG
 #include "TagBtnCallback.h"
 #endif
-#ifdef CONFIG_AT_CMD_SYSDFU
-#include "at_cmd_sysdfu_proc.h"
-#endif
-
 #ifdef CONFIG_AT_CMD_TAGGFPIND
 #include "atm_gfp.h"
 #endif
@@ -51,23 +34,22 @@
 #ifdef CONFIG_AT_CMD_TAGCSUNPAIR
 #include "atm_cs.h"
 #endif
+#ifdef CONFIG_AT_CMD_TAGADDR
+#include <zephyr/bluetooth/bluetooth.h>
+#ifdef CONFIG_FMNA_TAG
+#include "fmna_api.h"
+#endif
+#ifdef CONFIG_FHN_TAG
+#include "atm_gfp.h"
+#endif
+#ifdef CONFIG_STF_TAG
+#include "TagSdk.h"
+#endif
+#endif /* CONFIG_AT_CMD_TAGADDR */
 
-LOG_MODULE_REGISTER(at_cmd_uart, CONFIG_AT_CMD_UART_LOG_LEVEL);
-
-#define AT_CMD_HDR              "AT+"
-#define AT_CMD_HDR_LEN          (sizeof(AT_CMD_HDR) - 1)
-#define AT_CMD_UART_RX_BUF_SIZE 256
+LOG_MODULE_DECLARE(at_cmd_uart, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
 
 static const struct device *uart_dev = DEVICE_DT_GET(DT_NODELABEL(uart0));
-static char cmd_buf[AT_CMD_UART_RX_BUF_SIZE];
-static uint16_t cmd_buf_idx;
-static bool cmd_has_params;
-
-static char proc_buf[AT_CMD_UART_RX_BUF_SIZE];
-static uint16_t proc_buf_len;
-
-static at_cmd_ch_t uart_ch = AT_CMD_INVALID_CH;
-static struct k_work at_cmd_work;
 #ifdef CONFIG_AT_CMD_TAG_SET
 
 #ifdef CONFIG_AT_CMD_TAGRESET
@@ -271,115 +253,55 @@ static at_cmd_tag_err_t multimode_tagmotionrpt_cb(int16_t x_cs2, int16_t y_cs2, 
 }
 #endif /* CONFIG_AT_CMD_TAGMOTIONRPT */
 
-#endif /* CONFIG_AT_CMD_TAG_SET */
-
-static void reset_cmd_buf(void)
+#ifdef CONFIG_AT_CMD_TAGADDR
+static at_cmd_tag_err_t multimode_tagaddr_cb(uint8_t protocol, bt_addr_le_t *addr)
 {
-	cmd_buf_idx = 0;
-	cmd_has_params = false;
-	memset(cmd_buf, 0, sizeof(cmd_buf));
-}
+	int err = -ENODEV;
 
-static void at_cmd_work_handler(struct k_work *work)
-{
-	ARG_UNUSED(work);
-
-	if (proc_buf_len) {
-		LOG_INF("AT proc: %s", proc_buf);
-		at_cmd_proc(uart_ch, proc_buf, proc_buf_len);
-		proc_buf_len = 0;
-	}
-}
-
-static void uart_resp_cb(at_cmd_ch_t ch, void const *data, uint16_t len)
-{
-	ARG_UNUSED(ch);
-
-	if (!uart_dev || !device_is_ready(uart_dev)) {
-		return;
-	}
-
-	const uint8_t *buf = data;
-	for (uint16_t i = 0; i < len; i++) {
-		uart_poll_out(uart_dev, buf[i]);
-	}
-}
-
-static void uart_rx_byte(uint8_t byte)
-{
-#ifdef CONFIG_AT_CMD_SYSDFU
-	if (at_cmd_sysdfu_is_active()) {
-		at_cmd_sysdfu_feed_byte(byte);
-		return;
-	}
+	switch (protocol) {
+#ifdef CONFIG_FMNA_TAG
+	case AT_CMD_TAG_MODE_FMNA:
+		err = fmna_get_adv_addr(addr);
+		break;
 #endif
-	char ch = (char)byte;
+#ifdef CONFIG_FHN_TAG
+	case AT_CMD_TAG_MODE_FHN:
+		err = atm_gfp_get_adv_addr(addr);
+		break;
+#endif
+#ifdef CONFIG_STF_TAG
+	case AT_CMD_TAG_MODE_STF: {
+#ifdef CONFIG_ATM_STF_MULTI_MODE
+		uint8_t bdaddr[BT_ADDR_SIZE];
+		TagResult_t ret = TagGetAdvAddr(bdaddr);
 
-	if (cmd_buf_idx < AT_CMD_HDR_LEN) {
-		if (toupper((unsigned char)ch) != AT_CMD_HDR[cmd_buf_idx]) {
-			reset_cmd_buf();
-		} else {
-			cmd_buf[cmd_buf_idx] = AT_CMD_HDR[cmd_buf_idx];
-			cmd_buf_idx++;
+		if (ret == TAG_RESULT_SUCCESS) {
+			memcpy(addr->a.val, bdaddr, BT_ADDR_SIZE);
+			err = 0;
 		}
-		return;
+#endif /* CONFIG_ATM_STF_MULTI_MODE */
+		break;
+	}
+#endif /* CONFIG_STF_TAG */
+	default:
+		break;
 	}
 
-	if (ch == '\r' || ch == '\n') {
-		if (cmd_buf_idx > AT_CMD_HDR_LEN) {
-			cmd_buf[cmd_buf_idx] = '\0';
-			memcpy(proc_buf, cmd_buf, cmd_buf_idx + 1);
-			proc_buf_len = cmd_buf_idx;
-			k_work_submit(&at_cmd_work);
-		}
-		reset_cmd_buf();
-		return;
-	}
-
-	if (cmd_buf_idx >= (AT_CMD_UART_RX_BUF_SIZE - 1)) {
-		reset_cmd_buf();
-		return;
-	}
-
-	if (ch == '=') {
-		cmd_has_params = true;
-	}
-
-	if (!cmd_has_params) {
-		ch = (char)toupper((unsigned char)ch);
-	}
-
-	cmd_buf[cmd_buf_idx++] = ch;
+	return err ? AT_CMD_TAG_ERR_INTERNAL : AT_CMD_TAG_NO_ERR;
 }
+#endif /* CONFIG_AT_CMD_TAGADDR */
 
-static void uart_isr_cb(const struct device *dev, void *user_data)
-{
-	ARG_UNUSED(user_data);
-
-	if (!uart_irq_update(dev)) {
-		return;
-	}
-
-	while (uart_irq_rx_ready(dev)) {
-		uint8_t byte;
-
-		if (uart_fifo_read(dev, &byte, 1) == 1) {
-			uart_rx_byte(byte);
-		}
-	}
-}
-
-at_cmd_ch_t at_cmd_uart_ch_get(void)
-{
-	return uart_ch;
-}
+#endif /* CONFIG_AT_CMD_TAG_SET */
 
 int at_cmd_uart_multimode_tag_init(void)
 {
-	at_cmd_alloc_ctx_t at_ctx = {
-		.xfer = AT_CMD_DFT_XFER_UART,
-		.resp = uart_resp_cb,
-	};
+	int err = at_cmd_set_uart_ch_init(uart_dev);
+
+	if (err) {
+		LOG_ERR("Failed to init AT command UART channel");
+		return err;
+	}
+
 #ifdef CONFIG_AT_CMD_TAG_SET
 	at_cmd_set_callbacks_t callbacks = {
 #ifdef CONFIG_AT_CMD_TAGINFO
@@ -415,32 +337,13 @@ int at_cmd_uart_multimode_tag_init(void)
 #ifdef CONFIG_AT_CMD_TAGMOTIONRPT
 		.tag_cb.motionrpt_cb = multimode_tagmotionrpt_cb,
 #endif
+#ifdef CONFIG_AT_CMD_TAGADDR
+		.tag_cb.addr_cb = multimode_tagaddr_cb,
+#endif
 	};
-#endif
 
-	at_cmd_ctx_init();
-
-	if (!device_is_ready(uart_dev)) {
-		LOG_ERR("AT command UART device not ready");
-		return -ENODEV;
-	}
-
-	uart_ch = at_cmd_alloc(&at_ctx);
-	if (uart_ch == AT_CMD_INVALID_CH) {
-		LOG_ERR("Failed to allocate AT command channel");
-		return -ENOMEM;
-	}
-
-	at_cmd_set_channel(uart_ch);
-#ifdef CONFIG_AT_CMD_TAG_SET
 	at_cmd_set_callbacks_register(&callbacks);
-#endif
-	k_work_init(&at_cmd_work, at_cmd_work_handler);
-	reset_cmd_buf();
-	proc_buf_len = 0;
-
-	uart_irq_callback_set(uart_dev, uart_isr_cb);
-	uart_irq_rx_enable(uart_dev);
+#endif /* CONFIG_AT_CMD_TAG_SET */
 
 	LOG_INF("AT command UART ready on %s", uart_dev->name);
 	return 0;

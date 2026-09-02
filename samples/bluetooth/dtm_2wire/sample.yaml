@@ -8,6 +8,8 @@ common:
     - dtm
 tests:
   samples.bluetooth.dtm_2wire.atm: &dtm_2wire_console
+    tags:
+      - openair_release
     harness: console
     harness_config: &dtm_2wire_console_harness
       type: one_line
@@ -17,6 +19,8 @@ tests:
       - CONFIG_LOG=y
       - CONFIG_LOG_MODE_IMMEDIATE=y
   samples.bluetooth.dtm_2wire.atm.debug:
+    tags:
+      - openair_release
     harness: console
     harness_config: *dtm_2wire_console_harness
     extra_configs:
@@ -24,11 +28,30 @@ tests:
       - CONFIG_ASSERT=y
       - CONFIG_LOG_MODE_IMMEDIATE=y
       - CONFIG_DTM_2WIRE_LOG_LEVEL_DBG=y
+  samples.bluetooth.dtm_2wire.atm.rx_dc_cal:
+    <<: *dtm_2wire_console
+    extra_configs:
+      - CONFIG_LOG=y
+      - CONFIG_LOG_MODE_IMMEDIATE=y
+      - CONFIG_DTM_2WIRE_RESET_RX_DC_CAL=y
   samples.bluetooth.dtm_2wire.atm.pytest_single:
     harness: pytest
     timeout: 300
     harness_config:
       pytest_root: ["pytest/test_dtm_single.py"]
+      pytest_dut_scope: class
+      pytest_args:
+        - "-v"
+    extra_configs:
+      - CONFIG_LOG=y
+      - CONFIG_LOG_MODE_IMMEDIATE=y
+  samples.bluetooth.dtm_2wire.atm.pytest_dual:
+    harness: pytest
+    timeout: 600
+    tags:
+      - two_dev
+    harness_config:
+      pytest_root: ["pytest/test_dtm_dual.py"]
       pytest_dut_scope: class
       pytest_args:
         - "-v"

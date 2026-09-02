@@ -11,7 +11,7 @@
 
 void z_sys_poweroff(void)
 {
-	atm_pseq_soc_off(IDLE_FOREVER);
+	atm_pseq_soc_off(0, ATM_PD_URGENCY_GRACEFUL);
 
 	CODE_UNREACHABLE;
 }

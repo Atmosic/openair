@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atmx3_adc

@@ -1,0 +1,33 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/ {
+	chosen {
+		zephyr,display = &gme_oled;
+	};
+};
+
+&arduino_i2c {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	gme_oled: oled@3c {
+		compatible = "atmosic,gme-oled";
+		reg = <0x3c>;
+		width = <128>;
+		height = <64>;
+		display-offset = <0>;
+		multiplex-ratio = <63>;
+		segment-remap;
+		com-invdir;
+
+		/* Both modules' datasheets ask for these two. */
+		prechargep = <0xf1>;
+		vcom-desel-level = <0x40>;
+
+		max-write-len = <8>;
+		write-gap-us = <2000>;
+	};
+};

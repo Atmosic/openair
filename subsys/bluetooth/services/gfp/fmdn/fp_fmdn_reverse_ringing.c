@@ -28,15 +28,15 @@ LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 /// Reverse ringing timeout (FHN v2 spec: 60s)
 #define RR_TIMEOUT_SECONDS 60
 
+/// Persistent-path ring guard timeout — matches phone-side ringing duration.
+/// Configurable via CONFIG_FMDN_REVERSE_RINGING_RING_TIMEOUT_SEC (default 300s).
+#define RR_PERSISTENT_RING_TIMEOUT_SECONDS CONFIG_FMDN_REVERSE_RINGING_RING_TIMEOUT_SEC
+
 /// Global reverse ringing state
 static fp_fmdn_reverse_ringing_state_t rr_state;
 
-/// Reverse ringing action callback
-static fp_fmdn_reverse_ringing_action_cb rr_action_cb;
-
 /// Reverse ringing event callback
 static fp_fmdn_reverse_ringing_event_cb rr_event_cb;
-
 
 /// Reverse ringing state for indication
 static uint8_t rr_current_state;
@@ -62,9 +62,97 @@ static rr_ind_t rr_indicate_response;
 static struct bt_gatt_indicate_params rr_indicate_params;
 static atomic_t rr_indicate_inflight;
 
-/// Forward declarations
-static void fp_fmdn_reverse_ringing_indicate_send(struct k_work *work);
-K_WORK_DEFINE(fp_fmdn_rr_indicate_work, fp_fmdn_reverse_ringing_indicate_send);
+/// Timeout handler for reverse ringing
+static void fp_fmdn_reverse_ringing_timeout_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	/* Stop local state. Seeker reports timeout via WRITE (STATE 0x02).
+	 * Provider does not send indication on timeout.
+	 */
+	rr_state.ringing = false;
+
+	if (rr_state.active_conn && (rr_state.conn_type == RR_CONN_TYPE_ADVERTISEMENT)) {
+		/* ADV path: 60s expired — disconnect; Seeker never sent stop WRITE */
+		LOG_INF("RR: Connected ringing timeout (%ds), disconnecting", RR_TIMEOUT_SECONDS);
+		int err =
+			bt_conn_disconnect(rr_state.active_conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+		if (err) {
+			LOG_WRN("RR: Failed to disconnect: %d", err);
+		}
+		/* Connection will be cleared in disconnected callback */
+		if (rr_event_cb) {
+			rr_event_cb(RR_EVENT_TIMEOUT_LOCAL);
+		}
+	} else if (rr_state.active_conn && (rr_state.conn_type == RR_CONN_TYPE_PERSISTENT)) {
+		/* Persistent path: expired — reset ringing state, keep connection */
+		LOG_INF("RR: Persistent ringing timeout (%ds)", RR_PERSISTENT_RING_TIMEOUT_SECONDS);
+		if (rr_event_cb) {
+			rr_event_cb(RR_EVENT_PHONE_START_TIMEOUT);
+		}
+	} else if (!rr_state.active_conn) {
+		/* ADV window expired with no Seeker connection — stop advertisement */
+		LOG_INF("RR: ADV window timeout (%ds), no connection",
+			ADV_RINGING_DURATION_SECONDS);
+		fp_fmdn_reverse_ringing_adv_stop();
+		if (rr_event_cb) {
+			rr_event_cb(RR_EVENT_RR_ADV_TIMEOUT);
+		}
+	}
+
+	/* Do NOT send indication - Seeker will report timeout via WRITE */
+}
+
+K_WORK_DELAYABLE_DEFINE(fp_fmdn_rr_timer_id, fp_fmdn_reverse_ringing_timeout_handler);
+
+static void fp_fmdn_reverse_ringing_clear_session(void)
+{
+	k_work_cancel_delayable(&fp_fmdn_rr_timer_id);
+	fp_fmdn_reverse_ringing_adv_stop();
+	rr_state.active_conn = NULL;
+	rr_state.ringing = false;
+	rr_state.conn_type = RR_CONN_TYPE_NONE;
+	rr_state.encryption_enabled = false;
+}
+
+static void fp_fmdn_reverse_ringing_notify_connected_if_secure(struct bt_conn *conn)
+{
+	if ((rr_state.active_conn != conn) || (rr_state.conn_type != RR_CONN_TYPE_ADVERTISEMENT) ||
+	    (rr_state.encryption_enabled) || (bt_conn_get_security(conn) < BT_SECURITY_L4)) {
+		return;
+	}
+
+	LOG_INF("RR: Security Mode 1 Level 4 enabled on advertisement connection");
+	rr_state.encryption_enabled = true;
+	if (rr_event_cb) {
+		rr_event_cb(RR_EVENT_RR_ADV_CONNECTED);
+	}
+}
+
+static void fp_fmdn_reverse_ringing_associate_adv_connection(struct bt_conn *conn)
+{
+	if (rr_state.active_conn == conn) {
+		if (rr_state.conn_type == RR_CONN_TYPE_ADVERTISEMENT) {
+			fp_fmdn_reverse_ringing_notify_connected_if_secure(conn);
+		}
+		return;
+	}
+
+	if (rr_state.active_conn) {
+		LOG_WRN("RR: Ignoring advertisement connection while another RR connection is "
+			"active");
+		return;
+	}
+
+	LOG_INF("RR: Associating connection with advertisement-based ringing");
+	fp_fmdn_reverse_ringing_adv_stop();
+	rr_state.active_conn = conn;
+	rr_state.conn_type = RR_CONN_TYPE_ADVERTISEMENT;
+	rr_state.encryption_enabled = false;
+	k_work_reschedule_for_queue(&k_sys_work_q, &fp_fmdn_rr_timer_id,
+				    K_SECONDS(RR_TIMEOUT_SECONDS));
+	fp_fmdn_reverse_ringing_notify_connected_if_secure(conn);
+}
 
 static void fp_fmdn_rr_indicate_done(struct bt_conn *conn, struct bt_gatt_indicate_params *params,
 				     uint8_t err)
@@ -73,6 +161,15 @@ static void fp_fmdn_rr_indicate_done(struct bt_conn *conn, struct bt_gatt_indica
 	ARG_UNUSED(params);
 	if (err) {
 		LOG_WRN("RR: Indication confirmation error 0x%02x", err);
+		if (rr_current_state == RR_REQUEST_START) {
+			/* START not received by phone — ring never started; reset state.
+			 * STOP failure is self-healing via Seeker WRITE or disconnected().
+			 */
+			rr_state.ringing = false;
+			if (rr_event_cb) {
+				rr_event_cb(RR_EVENT_PHONE_FAILED);
+			}
+		}
 		return;
 	}
 
@@ -80,6 +177,9 @@ static void fp_fmdn_rr_indicate_done(struct bt_conn *conn, struct bt_gatt_indica
 
 	if ((rr_state.conn_type == RR_CONN_TYPE_PERSISTENT) && rr_event_cb) {
 		if (rr_current_state == RR_REQUEST_START) {
+			/* Start timeout guard — clean up if Seeker sends no stop WRITE */
+			k_work_reschedule_for_queue(&k_sys_work_q, &fp_fmdn_rr_timer_id,
+						    K_SECONDS(RR_PERSISTENT_RING_TIMEOUT_SECONDS));
 			rr_event_cb(RR_EVENT_START_INDICATION_CONFIRMED);
 		} else {
 			rr_event_cb(RR_EVENT_STOP_INDICATION_CONFIRMED);
@@ -92,94 +192,6 @@ static void fp_fmdn_rr_indicate_destroy(struct bt_gatt_indicate_params *params)
 	ARG_UNUSED(params);
 	atomic_clear(&rr_indicate_inflight);
 }
-
-int fp_fmdn_reverse_ringing_init(void)
-{
-	LOG_INF("Reverse Ringing module initialized");
-	memset(&rr_state, 0, sizeof(rr_state));
-
-	/* Restore Seeker-controlled enable flag across power cycles */
-	bool saved_enabled = false;
-	if (!fp_storage_rr_enabled_get(&saved_enabled)) {
-		rr_state.enabled = saved_enabled;
-		LOG_INF("RR: Loaded saved enabled flag from NVS: %u", saved_enabled);
-	} else {
-		LOG_DBG("RR: No saved enabled flag in NVS");
-	}
-
-	/* Initialize advertisement-based ringing module */
-	int err = fp_fmdn_reverse_ringing_adv_init();
-	if (err) {
-		LOG_ERR("RR: Failed to initialize advertisement-based ringing: %d", err);
-		return err;
-	}
-
-	return 0;
-}
-
-void fp_fmdn_reverse_ringing_deinit(void)
-{
-	LOG_INF("Reverse Ringing module deinitialized");
-
-	/* Deinitialize advertisement-based ringing module */
-	fp_fmdn_reverse_ringing_adv_deinit();
-
-	memset(&rr_state, 0, sizeof(rr_state));
-}
-
-/// Stop reverse ringing and send REQUEST to Seeker
-/// @param request_value The REQUEST value to send (RR_REQUEST_STOP = 0x00)
-static void fp_fmdn_reverse_ringing_send_stop_request(void)
-{
-	rr_current_state = RR_REQUEST_STOP;
-	rr_state.ringing = false;
-
-	/* Send INDICATION with REQUEST 0x00 (stop ringing) */
-	k_work_submit(&fp_fmdn_rr_indicate_work);
-}
-
-/// Timeout handler for reverse ringing
-static void fp_fmdn_reverse_ringing_timeout_handler(struct k_work *work)
-{
-	ARG_UNUSED(work);
-	LOG_INF("RR: Ringing timeout (%ds) - stopping local tracking",
-		ADV_RINGING_DURATION_SECONDS);
-
-	/* Stop local state. Seeker reports timeout via WRITE (STATE 0x02).
-	 * Provider does not send indication on timeout.
-	 */
-	rr_state.ringing = false;
-
-	if (rr_state.active_conn && (rr_state.conn_type == RR_CONN_TYPE_ADVERTISEMENT)) {
-		/* Seeker connected via ADV — disconnect after timeout */
-		LOG_INF("RR: Disconnecting advertisement-based connection after timeout");
-		int err =
-			bt_conn_disconnect(rr_state.active_conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
-		if (err) {
-			LOG_WRN("RR: Failed to disconnect: %d", err);
-		}
-		/* Connection will be cleared in disconnected callback */
-	} else if (!rr_state.active_conn) {
-		/* No Seeker connected during the ADV window — spec requires the ADV to run for
-		 * only 15-20 seconds. Stop it now.
-		 */
-		LOG_INF("RR: No connection within ADV window, stopping advertisement");
-		fp_fmdn_reverse_ringing_adv_stop();
-	}
-
-	/* Notify application to stop ringing */
-	if (rr_action_cb) {
-		rr_action_cb(false);
-	}
-
-	/* Notify application (for LED/feedback) */
-	if (rr_event_cb) {
-		rr_event_cb(RR_EVENT_TIMEOUT_LOCAL);
-	}
-
-	/* Do NOT send indication - Seeker will report timeout via WRITE */
-}
-K_WORK_DELAYABLE_DEFINE(fp_fmdn_rr_timer_id, fp_fmdn_reverse_ringing_timeout_handler);
 
 /// Send reverse ringing indication
 static void fp_fmdn_reverse_ringing_indicate_send(struct k_work *work)
@@ -242,6 +254,52 @@ static void fp_fmdn_reverse_ringing_indicate_send(struct k_work *work)
 	memset(&rr_indicate_ctx, 0, sizeof(rr_indicate_ctx));
 }
 
+K_WORK_DEFINE(fp_fmdn_rr_indicate_work, fp_fmdn_reverse_ringing_indicate_send);
+
+/// Stop reverse ringing and send REQUEST to Seeker
+static void fp_fmdn_reverse_ringing_send_stop_request(void)
+{
+	rr_current_state = RR_REQUEST_STOP;
+	rr_state.ringing = false;
+
+	/* Send INDICATION with REQUEST 0x00 (stop ringing) */
+	k_work_submit(&fp_fmdn_rr_indicate_work);
+}
+
+int fp_fmdn_reverse_ringing_init(void)
+{
+	LOG_INF("Reverse Ringing module initialized");
+	memset(&rr_state, 0, sizeof(rr_state));
+
+	/* Restore Seeker-controlled enable flag across power cycles */
+	bool saved_enabled = false;
+	if (!fp_storage_rr_enabled_get(&saved_enabled)) {
+		rr_state.enabled = saved_enabled;
+		LOG_INF("RR: Loaded saved enabled flag from NVS: %u", saved_enabled);
+	} else {
+		LOG_DBG("RR: No saved enabled flag in NVS");
+	}
+
+	/* Initialize advertisement-based ringing module */
+	int err = fp_fmdn_reverse_ringing_adv_init();
+	if (err) {
+		LOG_ERR("RR: Failed to initialize advertisement-based ringing: %d", err);
+		return err;
+	}
+
+	return 0;
+}
+
+void fp_fmdn_reverse_ringing_deinit(void)
+{
+	LOG_INF("Reverse Ringing module deinitialized");
+
+	/* Deinitialize advertisement-based ringing module */
+	fp_fmdn_reverse_ringing_adv_deinit();
+
+	memset(&rr_state, 0, sizeof(rr_state));
+}
+
 int fp_fmdn_reverse_ringing_configure(struct bt_conn *conn, uint8_t flags)
 {
 	LOG_DBG("RR: Configure request, flags=0x%02x", flags);
@@ -272,6 +330,12 @@ int fp_fmdn_reverse_ringing_state_update(struct bt_conn *conn, uint8_t state)
 	if (state > RR_STATE_STOPPED_PROVIDER) {
 		LOG_WRN("RR: Invalid state update 0x%02x", state);
 		return -EINVAL;
+	}
+
+	/* The RR ADV connected callback is not guaranteed to identify the connection on all
+	 * controller paths.  Use the first Started state write as the fallback identifier. */
+	if ((state == RR_STATE_STARTED) && (rr_state.ringing)) {
+		fp_fmdn_reverse_ringing_associate_adv_connection(conn);
 	}
 
 	fp_fmdn_reverse_ringing_event_t event;
@@ -308,12 +372,8 @@ int fp_fmdn_reverse_ringing_state_update(struct bt_conn *conn, uint8_t state)
 		return -EINVAL;
 	}
 	if (event != RR_EVENT_PHONE_STARTED) {
-		/* Stop timeout timer */
-		k_work_cancel_delayable(&fp_fmdn_rr_timer_id);
-		/* Notify application to stop ringing */
-		if (rr_action_cb) {
-			rr_action_cb(false);
-		}
+		/* Any non-Started state is a valid stop/failure and releases the RR session. */
+		fp_fmdn_reverse_ringing_clear_session();
 	}
 	if (rr_event_cb) {
 		rr_event_cb(event);
@@ -327,16 +387,27 @@ const fp_fmdn_reverse_ringing_state_t *fp_fmdn_reverse_ringing_get_state(void)
 	return &rr_state;
 }
 
+bool fp_fmdn_is_reverse_ringing_enabled(void)
+{
+	return rr_state.enabled;
+}
+
+bool fp_fmdn_is_reverse_ringing_started(void)
+{
+	return rr_state.ringing;
+}
+
 void fp_fmdn_reverse_ringing_disconnected(struct bt_conn *conn)
 {
 	LOG_DBG("RR: Connection disconnected");
 
 	if (rr_state.active_conn == conn) {
-		rr_state.active_conn = NULL;
-		rr_state.ringing = false;
-		rr_state.conn_type = RR_CONN_TYPE_NONE;
-		rr_state.encryption_enabled = false;
+		bool was_ringing = rr_state.ringing;
+		fp_fmdn_reverse_ringing_clear_session();
 		LOG_INF("RR: Active connection cleared");
+		if (was_ringing && rr_event_cb) {
+			rr_event_cb(RR_EVENT_PHONE_STOPPED_DISCONNECTED);
+		}
 	}
 }
 
@@ -350,15 +421,7 @@ void fp_fmdn_reverse_ringing_connected(struct bt_conn *conn)
 	if (adv_state && adv_state->active) {
 		LOG_INF("RR: Advertisement-based connection established");
 
-		fp_fmdn_reverse_ringing_adv_stop();
-
-		rr_state.active_conn = conn;
-		rr_state.conn_type = RR_CONN_TYPE_ADVERTISEMENT;
-		rr_state.encryption_enabled = false;
-
-		/* Reschedule timeout for full ringing duration (spec: up to 60s from connection) */
-		k_work_reschedule_for_queue(&k_sys_work_q, &fp_fmdn_rr_timer_id,
-					    K_SECONDS(RR_TIMEOUT_SECONDS));
+		fp_fmdn_reverse_ringing_associate_adv_connection(conn);
 
 		/* User feedback provided when encryption enabled */
 	}
@@ -367,26 +430,7 @@ void fp_fmdn_reverse_ringing_connected(struct bt_conn *conn)
 void fp_fmdn_reverse_ringing_encryption_enabled(struct bt_conn *conn)
 {
 	LOG_DBG("RR: Encryption enabled on connection");
-
-	/* Provider may give feedback as soon as encryption is enabled on adv-based connection */
-	if ((rr_state.active_conn == conn) && (rr_state.conn_type == RR_CONN_TYPE_ADVERTISEMENT) &&
-	    !rr_state.encryption_enabled) {
-
-		LOG_INF("RR: Encryption enabled on advertisement-based connection");
-		rr_state.encryption_enabled = true;
-
-		if (rr_event_cb) {
-			rr_event_cb(RR_EVENT_RR_ADV_CONNECTED);
-		}
-	}
-}
-
-void fp_fmdn_reverse_ringing_action_reg(fp_fmdn_reverse_ringing_action_cb const hdlr)
-{
-	if (!rr_action_cb) {
-		rr_action_cb = hdlr;
-		LOG_INF("RR: Action callback registered");
-	}
+	fp_fmdn_reverse_ringing_notify_connected_if_secure(conn);
 }
 
 void fp_fmdn_reverse_ringing_event_reg(fp_fmdn_reverse_ringing_event_cb const hdlr)
@@ -408,31 +452,20 @@ void fp_fmdn_reverse_ringing_button_press(fp_tap_type_t tap_type)
 	}
 
 	if (rr_state.ringing && !active) {
-		/* Single press while ringing - send STOP indication */
-		LOG_INF("RR: Stop ringing by user button press");
-		k_work_cancel_delayable(&fp_fmdn_rr_timer_id);
-
+		/* Single press while ringing — spec defines stop only after Seeker has connected */
 		if (rr_state.active_conn) {
-			LOG_INF("RR: Stop ringing by Provider’s request (button press)");
+			LOG_INF("RR: Stop ringing by Provider's request (button press)");
+			k_work_cancel_delayable(&fp_fmdn_rr_timer_id);
 			rr_indicate_ctx.conn = rr_state.active_conn;
 			rr_indicate_ctx.attr = NULL;
 			fp_fmdn_reverse_ringing_send_stop_request();
-		} else {
-			/* No active connection — still in advertising window, stop advertising */
-			fp_fmdn_reverse_ringing_adv_stop();
-			rr_state.ringing = false;
-
-			/* Notify application to stop ringing */
-			if (rr_action_cb) {
-				rr_action_cb(false);
-			}
 		}
+		/* No conn yet — let ADV timer expire (spec silent on ADV-window cancellation) */
 
 	} else if (active && !rr_state.ringing) {
 		/* Double press while not ringing - start reverse ringing */
-		if (rr_state.conn_type == RR_CONN_TYPE_ADVERTISEMENT) {
-			LOG_WRN("RR: Cannot send START indication on advertisement-based "
-				"connection");
+		if (rr_state.active_conn) {
+			LOG_WRN("RR: Double press ignored, RR connection is still active");
 			return;
 		}
 
@@ -459,11 +492,6 @@ void fp_fmdn_reverse_ringing_button_press(fp_tap_type_t tap_type)
 			/* Start ringing locally */
 			rr_state.ringing = true;
 
-			/* Notify application to start ringing */
-			if (rr_action_cb) {
-				rr_action_cb(true);
-			}
-
 		} else {
 			/* No persistent connection - use advertisement-based ringing */
 			LOG_INF("RR: No persistent connection, starting advertisement-based "
@@ -473,16 +501,23 @@ void fp_fmdn_reverse_ringing_button_press(fp_tap_type_t tap_type)
 				k_work_reschedule_for_queue(
 					&k_sys_work_q, &fp_fmdn_rr_timer_id,
 					K_SECONDS(ADV_RINGING_DURATION_SECONDS));
-				/* Notify application that session has started */
-				if (rr_action_cb) {
-					rr_action_cb(true);
+				if (rr_event_cb) {
+					rr_event_cb(RR_EVENT_RR_ADV_STARTED);
 				}
 			} else {
 				LOG_ERR("RR: Failed to start advertisement-based ringing");
+				if (rr_event_cb) {
+					rr_event_cb(RR_EVENT_RR_ADV_START_FAILED);
+				}
 			}
 		}
 	} else {
-		/* Double press while already ringing — no action defined */
-		LOG_WRN("RR: Double press ignored, already ringing");
+		if (active && rr_state.ringing) {
+			/* Double press while phone is ringing (connected) */
+			LOG_WRN("RR: Double press ignored, phone already ringing");
+		} else if (!active && !rr_state.ringing) {
+			/* Single press while not ringing — nothing to stop */
+			LOG_DBG("RR: Single press ignored, not ringing");
+		}
 	}
 }

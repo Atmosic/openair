@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2024-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/drivers/pinctrl.h>
@@ -42,9 +42,26 @@ static int pinctrl_configure_pin(uint8_t pin, uint8_t signal, uint8_t pupd, uint
 	PIN_PDSN_CFG(pin, pdsn);
 
 	/* Pinmux Assingment */
+#ifdef CONFIG_ATM_PINCTRL_CLEAR_PUPD_OVRD_ON_GPIO
+#define PIN_PUPD_OVRD_CLR(pin)                                                                     \
+	if ((WRPRPINS_PUPD_OVRD__WRITE & (1ULL << (pin))) != 0) {                                  \
+		PIN_PULL_CLR(pin);                                                                 \
+	}
+#else
+#define PIN_PUPD_OVRD_CLR(pin)
+#endif
+
 #define PIN_CASE(pin)                                                                              \
 	case pin: {                                                                                \
 		if (signal == PINMUX_GPIO) {                                                       \
+			/* Clear any WRPR PUPD_OVRD override before applying GPIO                  \
+			 * controller pull settings; WRPR overrides take priority over             \
+			 * the GPIO controller pull registers, so the GPIO-level                   \
+			 * bias-pull-up/down would be ineffective without clearing it first.       \
+			 * Guard with the write mask so PIN_PULL_CLR is only called on             \
+			 * pins that actually support the PUPD_OVRD register bit.                  \
+			 */                                                                        \
+			PIN_PUPD_OVRD_CLR(pin)                                                     \
 			if (pull_clear) {                                                          \
 				GPIO_SET_HIGHZ(PIN2GPIO(pin));                                     \
 			} else if (pull_up) {                                                      \

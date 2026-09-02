@@ -221,7 +221,10 @@ bool fp_conn_id_validate(uint8_t id)
 bool fp_conn_validate(struct bt_conn *conn)
 {
 	struct bt_conn_info info;
-	bt_conn_get_info(conn, &info);
+
+	if (bt_conn_get_info(conn, &info)) {
+		return false;
+	}
 	return fp_conn_id_validate(info.id);
 }
 
@@ -246,16 +249,34 @@ uint8_t fp_conn_get_bt_id(uint8_t idx)
 #else
 		return fp_conn_get_fp_bt_id(FP_FMDN_ADV_BT_ID);
 #endif
-#ifdef CONFIG_FAST_PAIR_FMDN_DULT
+#if defined(CONFIG_FAST_PAIR_FMDN_DULT) && defined(CONFIG_DULT_ADV_SUPPORT)
 	case FP_DULT_ADV_BT_ID:
 #ifdef CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR
 		return fp_conn_get_fp_bt_id(FP_DULT_ADV_BT_ID - 1);
 #else
 		return fp_conn_get_fp_bt_id(FP_DULT_ADV_BT_ID);
 #endif
-#endif
+#endif // CONFIG_FAST_PAIR_FMDN_DULT && CONFIG_DULT_ADV_SUPPORT
 	default:
 		__ASSERT(0, "Invalid BT ID index %u", idx);
 	}
 	return -1;
 }
+
+#if defined(CONFIG_ZTEST)
+void fp_conn_test_connected(struct bt_conn *conn, uint8_t err)
+{
+	fp_conn_connected(conn, err);
+}
+
+void fp_conn_test_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	fp_conn_disconnected(conn, reason);
+}
+
+void fp_conn_test_le_param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency,
+				   uint16_t timeout)
+{
+	fp_conn_le_param_updated(conn, interval, latency, timeout);
+}
+#endif /* CONFIG_ZTEST */

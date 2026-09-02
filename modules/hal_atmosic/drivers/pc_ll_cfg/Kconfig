@@ -21,7 +21,7 @@ config ATM_ENA_LL_FEAT_PEER_FILT
 
 config ATM_ENA_LL_FEAT_ENC_PRIV
 	bool "When available, enable encryption and privacy"
-	default y if (BT_PRIVACY || BT_SMP || BT_HCI_RAW || BT_EXT_ADV || BT_OBSERVER)
+	default y if (BT_PRIVACY || BT_SMP || BT_HCI_RAW || BT_EXT_ADV || BT_OBSERVER || BT_BROADCASTER)
 	depends on ATM_ENA_LL_FEAT_PEER_FILT
 	help
 	   Enable encryption and privacy support if used by
@@ -62,7 +62,7 @@ config ATM_ENA_LL_FEAT_CS_ENH1
 	bool "When available, enable LL channel sounding enhancement 1 feature"
 	depends on ATM_ENA_LL_FEAT_CS
 	select ATM_ENA_LL_FEAT_EXT
-	default y if ATMWSTK_FULL
+	default y if BT_HCI_RAW
 
 config ATM_ENA_LL_FEAT_CS_TEST
 	bool "When available, enable LL channel sounding test feature"
@@ -86,7 +86,17 @@ config ATM_ENA_LL_FEAT_CIS
 config ATM_ENA_LL_FEAT_PAWR
 	bool "When available, enable LL PAWR (Periodic Advertising with Responses) feature"
 	default n if ATMWSTK_PD50
-	default y
+	default y if (BT_PER_ADV_RSP || BT_PER_ADV_SYNC_RSP || BT_HCI_RAW)
+
+config ATM_ENA_LL_FEAT_PAST
+	bool "When available, enable LL PAST (Periodic Advertising Sync Transfer) feature"
+	default n if ATMWSTK_PD50
+	default y if (BT_PER_ADV_SYNC_TRANSFER_SENDER || BT_PER_ADV_SYNC_TRANSFER_RECEIVER || BT_HCI_RAW)
+
+config ATM_ENA_LL_FEAT_SLV_PER_ADV
+	bool "When available, enable LL Slave Periodic Advertising feature"
+	default n if ATMWSTK_PD50
+	default y if (BT_PER_ADV || BT_HCI_RAW)
 
 config ATM_ENA_LL_FEAT_EXT
 	bool "When available, enable LL EXTFEAT (Extended Features)"
@@ -110,13 +120,20 @@ config ATM_ENA_LL_FEAT_FSU
 
 config ATM_ENA_LL_FEAT_ECU
 	bool "When available, enable LL Connection Subrating feature"
-	default y if (ATMWSTK_FULL || BT_SUBRATING)
+	default y if (ATMWSTK_FULL || BT_SUBRATING || BT_HCI_RAW)
+	depends on BT_PERIPHERAL || BT_CENTRAL
 
 config ATM_BLE_CS_NUM_ANTENNAS
 	int "Number of BLE CS antennas supported"
 	range 1 4
 	default 2 if $(dt_nodelabel_enabled,atm_antenna)
 	default 1
+	depends on ATM_ENA_LL_FEAT_CS
+
+config ATM_BLE_CS_MAX_ANT_PATHS
+	int "Maximum BLE CS antenna paths supported"
+	range 1 4
+	default 4
 	depends on ATM_ENA_LL_FEAT_CS
 
 config ATM_LL_ECC_SUPPORT

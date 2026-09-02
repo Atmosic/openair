@@ -11,6 +11,10 @@ properties:
       type: int
       required: true
 
+    ch-vbat1v:
+      type: int
+      required: false
+
     ch-cell:
       type: int
       required: false

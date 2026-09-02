@@ -24,3 +24,13 @@ config RETAINED_MEM_TEST_LOG_LEVEL
 	  Levels: 0=OFF, 1=ERR, 2=WRN, 3=INF, 4=DBG
 	  Use 4 (DBG) for detailed debug output including data patterns,
 	  checksums, and hibernation status. Use 3 (INF) for normal output.
+
+config RETAINED_MEM_TEST_ATM_BACKEND_INIT
+	bool "Exercise Atmosic retained_mem_backend_init() for coverage"
+	default y
+	depends on COVERAGE
+	depends on DT_HAS_ATMOSIC_RETAINED_HIB_ENABLED
+	help
+	  When enabled, the test includes the Atmosic retained memory driver's
+	  private backend header to call cold-boot initialization for code
+	  coverage.

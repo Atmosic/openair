@@ -1,6 +1,7 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
  * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -789,3 +790,86 @@ int8_t atm_tput_get_tx_power(void)
 {
 	return tput_ctx.config.tx_power;
 }
+
+#ifdef CONFIG_ZTEST
+ssize_t atm_tput_test_write_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+			       const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
+{
+	return write_callback(conn, attr, buf, len, offset, flags);
+}
+
+void atm_tput_test_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
+{
+	ccc_cfg_changed(attr, value);
+}
+
+void atm_tput_test_indicate_cb(struct bt_conn *conn, struct bt_gatt_indicate_params *params,
+			       uint8_t err)
+{
+	indicate_cb(conn, params, err);
+}
+
+uint8_t atm_tput_test_notify_func(struct bt_conn *conn, struct bt_gatt_subscribe_params *params,
+				  const void *data, uint16_t length)
+{
+	return notify_func(conn, params, data, length);
+}
+
+void atm_tput_test_set_notify_crch(struct bt_gatt_attr *attr)
+{
+	tput_ctx.gatt.notify_crch = attr;
+	tput_ctx.gatt.notify_params.attr = attr;
+	tput_ctx.gatt.ind_params.attr = attr;
+}
+
+void atm_tput_test_notify_cb(struct bt_conn *conn)
+{
+	notify_cb(conn, NULL);
+}
+
+ssize_t atm_tput_test_read_throughput_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+					 void *buf, uint16_t len, uint16_t offset)
+{
+	return read_throughput_callback(conn, attr, buf, len, offset);
+}
+
+void atm_tput_test_c2s_write_cb(struct bt_conn *conn, uint8_t err,
+				struct bt_gatt_write_params *params)
+{
+	c2s_write_cb(conn, err, params);
+}
+
+uint8_t atm_tput_test_read_func(struct bt_conn *conn, uint8_t err,
+				struct bt_gatt_read_params *params, const void *data,
+				uint16_t length)
+{
+	return read_func(conn, err, params, data, length);
+}
+
+uint8_t atm_tput_test_discover_func(struct bt_conn *conn, const struct bt_gatt_attr *attr)
+{
+	return discover_func(conn, attr, &tput_ctx.gatt.discover_params);
+}
+
+void atm_tput_test_read_throughput_metrics(struct bt_conn *conn, uint16_t handle)
+{
+	read_throughput_metrics(conn, handle);
+}
+
+void atm_tput_test_set_gatt_handles(uint16_t write_hdl, uint16_t read_hdl)
+{
+	tput_ctx.gatt.write_characteristic_handle = write_hdl;
+	tput_ctx.gatt.read_characteristic_handle = read_hdl;
+}
+
+void atm_tput_test_set_subscribe_params(uint16_t ccc_hdl)
+{
+	tput_ctx.gatt.subscribe_params.notify = notify_func;
+	tput_ctx.gatt.subscribe_params.ccc_handle = ccc_hdl;
+}
+
+void atm_tput_test_set_callback_measure(atm_tput_measurement_cb cb)
+{
+	tput_ctx.callback_measure = cb;
+}
+#endif /* CONFIG_ZTEST */

@@ -21,16 +21,19 @@
 #include "atm_gfp.h"
 #ifdef CONFIG_ATM_DULT
 #include "dult.h"
+#ifdef CONFIG_DULT_MOTION_DETECT
+#include "dult_ut.h"
+#endif
 #endif
 #include "gfps.h"
+#include "fp_adv.h"
 #include "fp_common.h"
 #include "fp_conn.h"
 #include "fp_gatt.h"
 #ifdef CONFIG_FAST_PAIR_FMDN
 #include "fp_fmdn.h"
-#ifdef CONFIG_FMDN_PRECISION_FINDING
+#include "fp_fmdn_adv.h"
 #include "fp_fmdn_gatt.h"
-#endif
 #ifdef CONFIG_FMDN_REVERSE_RINGING
 #include "fp_fmdn_reverse_ringing.h"
 #endif
@@ -54,22 +57,11 @@ static atm_gfp_ranging_handler_t const *atm_gfp_ranging_hdlrs;
  *
  * Converts detailed module-level events to simplified application-level events.
  *
- * For persistent connections the indication ACK is the fast-feedback trigger —
- * the application must not wait for the Seeker's write-back (RR_EVENT_PHONE_STARTED).
- * Once ATM_GFP_RR_EVENT_STARTED has been delivered via indication ACK, the
- * subsequent Seeker write is suppressed so the application callback fires
- * exactly once per session.
- *
- * For adv-based connections no START indication is sent, so RR_EVENT_PHONE_STARTED
- * remains the sole trigger for ATM_GFP_RR_EVENT_STARTED.
+ * INDICATION_CONFIRMED → START/STOP_CONFIRMED (persistent path only, ATT-layer fast feedback).
+ * PHONE_STARTED/STOPPED_* → definitive events on both ADV and persistent paths.
  *
  * @param event Module-level event
  */
-
-/* true after indication ACK fires for persistent flow; reset on any stop event
- * or at the start of a new adv-based session.
- */
-static bool rr_started_sent;
 
 static void atm_gfp_reverse_ringing_event_adapter(fp_fmdn_reverse_ringing_event_t event)
 {
@@ -77,36 +69,50 @@ static void atm_gfp_reverse_ringing_event_adapter(fp_fmdn_reverse_ringing_event_
 		return;
 	}
 
-	/* Convert detailed module events to simple application events */
 	atm_gfp_reverse_ringing_event_t lib_event;
 	switch (event) {
+	case RR_EVENT_RR_ADV_STARTED:
+		lib_event = ATM_GFP_RR_EVENT_ADV_STARTED;
+		break;
+	case RR_EVENT_RR_ADV_START_FAILED:
+		lib_event = ATM_GFP_RR_EVENT_ADV_START_FAILED;
+		break;
 	case RR_EVENT_RR_ADV_CONNECTED:
-		/* Reset flag at the start of every new adv-based session */
-		rr_started_sent = false;
 		lib_event = ATM_GFP_RR_EVENT_CONNECTED;
 		break;
 	case RR_EVENT_START_INDICATION_CONFIRMED:
-		/* Persistent flow: indication ACK is the fast-feedback trigger */
-		rr_started_sent = true;
-		lib_event = ATM_GFP_RR_EVENT_STARTED;
+		/* Persistent path: ATT-layer ACK, fast feedback before Seeker WRITE */
+		lib_event = ATM_GFP_RR_EVENT_START_CONFIRMED;
 		break;
 	case RR_EVENT_PHONE_STARTED:
-		/* Adv flow: no indication ACK, Seeker write is the only trigger.
-		 * Persistent flow: indication ACK already fired STARTED — suppress.
-		 */
-		if (rr_started_sent) {
-			return;
-		}
+		/* Seeker WRITE 0x00: definitive confirmation on ADV and persistent paths */
 		lib_event = ATM_GFP_RR_EVENT_STARTED;
 		break;
 	case RR_EVENT_STOP_INDICATION_CONFIRMED:
-	case RR_EVENT_PHONE_FAILED:
-	case RR_EVENT_PHONE_STOPPED_TIMEOUT:
+		/* Persistent path: ATT-layer ACK, fast feedback before Seeker WRITE */
+		lib_event = ATM_GFP_RR_EVENT_STOP_CONFIRMED;
+		break;
 	case RR_EVENT_PHONE_STOPPED_USER:
 	case RR_EVENT_PHONE_STOPPED_PROVIDER:
-	case RR_EVENT_TIMEOUT_LOCAL:
-		rr_started_sent = false;
 		lib_event = ATM_GFP_RR_EVENT_STOPPED;
+		break;
+	case RR_EVENT_PHONE_START_TIMEOUT:
+		lib_event = ATM_GFP_RR_EVENT_PHONE_START_TIMEOUT;
+		break;
+	case RR_EVENT_PHONE_STOPPED_DISCONNECTED:
+		lib_event = ATM_GFP_RR_EVENT_PHONE_STOPPED_DISCONNECTED;
+		break;
+	case RR_EVENT_PHONE_STOPPED_TIMEOUT:
+		lib_event = ATM_GFP_RR_EVENT_PHONE_TIMEOUT;
+		break;
+	case RR_EVENT_PHONE_FAILED:
+		lib_event = ATM_GFP_RR_EVENT_PHONE_FAILED;
+		break;
+	case RR_EVENT_TIMEOUT_LOCAL:
+		lib_event = ATM_GFP_RR_EVENT_TIMEOUT_LOCAL;
+		break;
+	case RR_EVENT_RR_ADV_TIMEOUT:
+		lib_event = ATM_GFP_RR_EVENT_ADV_TIMEOUT;
 		break;
 
 	default:
@@ -152,12 +158,13 @@ static uint8_t atm_gfp_battery_status(void)
 	return 0;
 }
 
-static void atm_gfp_sound_action(bool action, uint8_t ring_op, uint8_t ring_vol_lvl,
-				 uint16_t ring_to_ds)
+static uint16_t atm_gfp_sound_action(bool action, uint8_t ring_op, uint8_t ring_vol_lvl,
+				     uint16_t ring_to_ds)
 {
 	if (atm_gfp_hdlrs && atm_gfp_hdlrs->sound_action_cb) {
 		return atm_gfp_hdlrs->sound_action_cb(action, ring_op, ring_vol_lvl, ring_to_ds);
 	}
+	return ring_to_ds;
 }
 
 #ifdef CONFIG_FAST_PAIR_FMDN
@@ -165,14 +172,20 @@ static void fp_tag_utp_mode_switch(fp_fmdn_utp_mode_t mode)
 {
 	LOG_DBG("UTP mode switch to %u", mode);
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
-	dult_enable((mode == FP_FMDN_UTP_MODE_ON));
+	bool dult_enabled = mode == FP_FMDN_UTP_MODE_ON;
+	dult_enable(dult_enabled);
+	if (!dult_enabled) {
+		dult_mode_update(DULT_NO_MODE_NEAR_OWNER);
+	}
 #endif
 }
 #endif // CONFIG_FAST_PAIR_FMDN
 
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
+#ifdef CONFIG_DULT_SEPARATION_DETECT
 static void fp_tag_utp_owner_disconn_timeout_handler(struct k_work *work)
 {
+	ARG_UNUSED(work);
 	LOG_INF("DULT Owner Disconnected");
 	// when UTP is on, skip update DULT mode
 	if (fp_storage_utp_mode_get() != FP_FMDN_UTP_MODE_ON) {
@@ -182,6 +195,7 @@ static void fp_tag_utp_owner_disconn_timeout_handler(struct k_work *work)
 
 K_WORK_DELAYABLE_DEFINE(fp_tag_utp_owner_disconn_timer_id,
 			fp_tag_utp_owner_disconn_timeout_handler);
+#endif
 
 typedef struct {
 	uint8_t id[DULT_DATA_LEN];
@@ -194,6 +208,7 @@ static void fp_tag_update_dult_id(uint8_t *id, uint8_t id_len)
 	dult_id.id_len = id_len;
 }
 
+#ifdef CONFIG_DULT_SEPARATION_DETECT
 static void fp_tag_utp_owner_conn(bool connected)
 {
 	if (!fp_mode_is_provisioned()) {
@@ -213,6 +228,7 @@ static void fp_tag_utp_owner_conn(bool connected)
 						   K_MINUTES(DULT_DISCONN_TIMEOUT_MIN));
 	}
 }
+#endif
 #endif // CONFIG_FAST_PAIR_FMDN_DULT
 
 #if defined(CONFIG_FAST_PAIR_FMDN) && defined(CONFIG_FAST_PAIR_FMDN_DULT)
@@ -232,10 +248,9 @@ static void fp_tag_dult_user_info(dult_user_info_t *user_info)
 static void atm_gfp_dult_sound_action(bool action)
 {
 	if (atm_gfp_hdlrs && atm_gfp_hdlrs->sound_action_cb) {
-		// DULT does not define ring_op and ring_vol
-		return atm_gfp_hdlrs->sound_action_cb(action, ATM_GFP_RING_OP_ALL,
-						      ATM_GFP_RING_VOL_HIGH,
-						      (DULT_PLAY_SOUND_DUR_SEC * 10));
+		// DULT does not define ring_op and ring_vol; override return value unused
+		atm_gfp_hdlrs->sound_action_cb(action, ATM_GFP_RING_OP_ALL, ATM_GFP_RING_VOL_HIGH,
+					       (DULT_PLAY_SOUND_DUR_SEC * 10));
 	}
 }
 
@@ -278,6 +293,20 @@ static int atm_gfp_fmdn_motion_set(bool enable)
 }
 #endif /* CONFIG_FMDN_PRECISION_FINDING */
 
+#if defined(CONFIG_DULT_MOTION_DETECT_TRIGGER) || defined(CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER)
+void atm_gfp_motion_trigger_event(void)
+{
+#ifdef CONFIG_DULT_MOTION_DETECT_TRIGGER
+	dult_ut_motion_event();
+#endif
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+	if (motion_fmdn_active) {
+		fp_fhpf_motion_trigger_event();
+	}
+#endif
+}
+#endif /* CONFIG_DULT_MOTION_DETECT_TRIGGER || CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER */
+
 static int fp_tag_dult_init(void)
 {
 	static dult_hdlrs_t hdlrs = {
@@ -289,12 +318,18 @@ static int fp_tag_dult_init(void)
 #ifdef CONFIG_DULT_MOTION_DETECT
 	if (atm_gfp_hdlrs) {
 		hdlrs.motion_hw_enable_cb = atm_gfp_hdlrs->dult_motion_hw_enable_cb;
+#ifndef CONFIG_DULT_MOTION_DETECT_TRIGGER
 		hdlrs.motion_raw_get_cb = atm_gfp_hdlrs->dult_motion_raw_get_cb;
+#endif
 	}
 #endif
 	static dult_user_info_t user_info;
 	fp_tag_dult_user_info(&user_info);
+#ifdef CONFIG_DULT_ADV_SUPPORT
 	dult_handlers_register(&hdlrs, &user_info, fp_conn_get_bt_id(FP_DULT_ADV_BT_ID));
+#else
+	dult_handlers_register(&hdlrs, &user_info, 0);
+#endif
 	return dult_init();
 }
 #endif // CONFIG_FAST_PAIR_FMDN && CONFIG_FAST_PAIR_FMDN_DULT
@@ -357,7 +392,7 @@ static void atm_gfp_service_init(void)
 		if (utp_mode) {
 			dult_enable(utp_mode);
 		} else {
-			dult_mode_update(DULT_NO_MODE_SEPERATED);
+			dult_mode_update(DULT_NO_MODE_NEAR_OWNER);
 		}
 	}
 #endif
@@ -368,6 +403,57 @@ static void atm_gfp_service_init(void)
 		}
 	}
 }
+
+uint8_t atm_gfp_bt_id_list_get_all(uint8_t *id_list)
+{
+#ifdef CONFIG_ATM_GFP_FORCE_UNPAIR_ALL_BT_ID
+	uint8_t idx = 0;
+	bt_addr_le_t all_addr[CONFIG_BT_ID_MAX];
+	size_t all_count = CONFIG_BT_ID_MAX;
+	bt_id_get(all_addr, &all_count);
+	for (uint8_t i = 0; i < all_count; i++) {
+		id_list[idx++] = i;
+	}
+	return idx;
+#else
+	uint8_t id_num = atm_gfp_bt_id_list_get(id_list);
+	__ASSERT(id_num <= FP_ADV_BT_ID_MAX, "id_num (%u) exceeds FP_ADV_BT_ID_MAX (%u)", id_num,
+		 FP_ADV_BT_ID_MAX);
+	/* Clamp to prevent buffer overflow */
+	if (id_num > FP_ADV_BT_ID_MAX) {
+		LOG_ERR("Too many BT IDs returned (%u), clamping to %u", id_num, FP_ADV_BT_ID_MAX);
+		id_num = FP_ADV_BT_ID_MAX;
+	}
+	return id_num;
+#endif
+}
+
+/* Deferred IRK reset — bt_id_reset_irk() calls le_rpa_invalidate() which
+ * fires the rpa_expired callback synchronously. That callback asserts
+ * cooperative thread context (see fp_adv_rpa_expired). The button/reset
+ * path runs in a preempt thread, so the IRK reset must be deferred to the
+ * app workqueue.
+ */
+static void atm_gfp_irk_reset_work_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+/* TODO: Wait for the Zephyr PR https://github.com/zephyrproject-rtos/zephyr/pull/114930
+ * to add support for bt_id_reset_irk() to land/merge. Once supported, re-enable this block to
+ * reset IRK for all active BT IDs.
+ */
+#if 0
+	LOG_INF("Reset IRK for BT_IDs");
+	uint8_t id_list[CONFIG_BT_ID_MAX];
+	uint8_t id_num = atm_gfp_bt_id_list_get_all(id_list);
+	for (uint8_t i = 0; i < id_num; i++) {
+		int err = bt_id_reset_irk(id_list[i]);
+		if (err) {
+			LOG_ERR("Failed to reset IRK for BT ID %u (err %d)", id_list[i], err);
+		}
+	}
+#endif
+}
+static K_WORK_DEFINE(irk_reset_work, atm_gfp_irk_reset_work_handler);
 
 static void atm_gfp_do_bt_unpair(uint8_t bt_id)
 {
@@ -381,32 +467,23 @@ static void atm_gfp_do_bt_unpair(uint8_t bt_id)
 
 static void atm_gfp_bt_unpair(void)
 {
-#ifdef CONFIG_ATM_GFP_FORCE_UNPAIR_ALL_BT_ID
-	// Clear bonds for all BT_IDs
-	LOG_INF("Force Clearing bonds for all BT_IDs");
-	bt_addr_le_t all_addr[CONFIG_BT_ID_MAX];
-	size_t all_count = CONFIG_BT_ID_MAX;
-	bt_id_get(all_addr, &all_count);
-	for (uint8_t i = 0; i < all_count; i++) {
-		atm_gfp_do_bt_unpair(i);
-	}
-#else
-	/* Shared advertising: unpair all BT IDs for comprehensive cleanup */
-	LOG_INF("Clearing bonds for Fast Pair BT_IDs");
-	uint8_t id_list[FP_ADV_BT_ID_MAX];
-	uint8_t id_num = atm_gfp_bt_id_list_get(id_list);
-	__ASSERT(id_num <= FP_ADV_BT_ID_MAX, "id_num (%u) exceeds FP_ADV_BT_ID_MAX (%u)", id_num,
-		 FP_ADV_BT_ID_MAX);
-	/* Clamp to prevent buffer overflow */
-	if (id_num > FP_ADV_BT_ID_MAX) {
-		LOG_ERR("Too many BT IDs returned (%u), clamping to %u", id_num, FP_ADV_BT_ID_MAX);
-		id_num = FP_ADV_BT_ID_MAX;
-	}
+	/* unpair all BT IDs for comprehensive cleanup */
+	LOG_INF("Clearing bonds for BT_IDs");
+	uint8_t id_list[CONFIG_BT_ID_MAX];
+	uint8_t id_num = atm_gfp_bt_id_list_get_all(id_list);
 	/* Unpair all Fast Pair BT IDs */
 	for (uint8_t i = 0; i < id_num; i++) {
 		atm_gfp_do_bt_unpair(id_list[i]);
 	}
-#endif // CONFIG_ATM_GFP_FORCE_UNPAIR_ALL_BT_ID
+
+	/* Defer IRK reset to cooperative workqueue — bt_id_reset_irk() calls
+	 * le_rpa_invalidate() which fires rpa_expired, asserting cooperative
+	 * thread context.  The handler iterates all Fast Pair BT IDs, so a
+	 * single submission after the unpair loop covers them all.
+	 */
+	if (!k_work_is_pending(&irk_reset_work)) {
+		atm_work_submit_to_app_work_q(&irk_reset_work);
+	}
 }
 
 void atm_gfp_init(atm_gfp_hdlrs_t const *hdlrs)
@@ -423,7 +500,9 @@ void atm_gfp_init(atm_gfp_hdlrs_t const *hdlrs)
 	gfps_hdlrs.battery_status_cb = atm_gfp_battery_status;
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	gfps_hdlrs.update_id_cb = fp_tag_update_dult_id;
+#ifdef CONFIG_DULT_SEPARATION_DETECT
 	gfps_hdlrs.utp_owner_conn_cb = fp_tag_utp_owner_conn;
+#endif
 #endif
 #endif
 	// Register handlers with GFPS
@@ -454,7 +533,9 @@ void atm_gfp_reset(void)
 	atm_gfp_provision_timer_en(false);
 	gfps_reset();
 #if defined(CONFIG_FAST_PAIR_FMDN) && defined(CONFIG_FAST_PAIR_FMDN_DULT)
+#ifdef CONFIG_DULT_SEPARATION_DETECT
 	k_work_cancel_delayable(&fp_tag_utp_owner_disconn_timer_id);
+#endif
 	dult_reset();
 #endif
 	/* Skip service re-init if handlers are not registered yet.
@@ -481,6 +562,16 @@ void atm_gfp_button_notify(void)
 void atm_gfp_button_double_notify(void)
 {
 	gfps_button_notify(FP_DOUBLE_TAP);
+}
+
+bool atm_gfp_is_reverse_ringing_enabled(void)
+{
+	return fp_fmdn_is_reverse_ringing_enabled();
+}
+
+bool atm_gfp_is_reverse_ringing_started(void)
+{
+	return fp_fmdn_is_reverse_ringing_started();
 }
 #endif
 
@@ -667,24 +758,35 @@ void atm_gfp_fmdn_clock_reset(void)
 {
 	fp_fmdn_clock_reset();
 }
+
+void atm_gfp_set_active_ring_duration(uint8_t duration_s)
+{
+	fp_fmdn_gatt_set_ring_duration_override((uint16_t)duration_s * 10);
+}
+
+void atm_gfp_set_active_ring_duration_ds(uint16_t duration_ds)
+{
+	fp_fmdn_gatt_set_ring_duration_override(duration_ds);
+}
 #endif
 
 int atm_gfp_get_adv_addr(bt_addr_le_t *addr)
 {
-	uint8_t fp_id = gfps_fp_is_provisioned() ? FP_FMDN_ADV_BT_ID : FP_ADV_BT_ID;
-	uint8_t bt_id = fp_conn_get_bt_id(fp_id);
-
-	bt_addr_le_t all_addr[CONFIG_BT_ID_MAX];
-	size_t all_count = CONFIG_BT_ID_MAX;
-	bt_id_get(all_addr, &all_count);
-
-	if (bt_id >= all_count) {
-		LOG_ERR("BT ID %u out of range (count: %u)", bt_id, (uint32_t)all_count);
-		return -ENODEV;
+#ifdef CONFIG_FAST_PAIR_FMDN
+	if (gfps_fp_is_provisioned()) {
+		int err = fp_fmdn_adv_get_adv_set_addr(addr);
+		if (err) {
+			LOG_ERR("Failed to get FMDN ADV addr (err %d)", err);
+			return err;
+		}
+		return 0;
 	}
-
-	LOG_INF("ADV addr from BT_ID [%u]", bt_id);
-	bt_addr_le_copy(addr, &all_addr[bt_id]);
+#endif
+	int err = fp_adv_get_adv_set_addr(addr);
+	if (err) {
+		LOG_ERR("Failed to get FP ADV addr (err %d)", err);
+		return err;
+	}
 	return 0;
 }
 
@@ -732,4 +834,11 @@ void atm_gfp_test_provision_timeout(void)
 {
 	atm_gfp_provision_timeout_handler(NULL);
 }
+
+#ifdef CONFIG_FMDN_REVERSE_RINGING
+void atm_gfp_test_reverse_ringing_event_adapter(fp_fmdn_reverse_ringing_event_t event)
+{
+	atm_gfp_reverse_ringing_event_adapter(event);
+}
+#endif /* CONFIG_FMDN_REVERSE_RINGING */
 #endif /* CONFIG_ZTEST */

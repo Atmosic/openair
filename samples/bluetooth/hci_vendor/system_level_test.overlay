@@ -1,0 +1,20 @@
+/* Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+&cpu0 {
+    cpu-power-states = <&idle &sleep &retain &hibernate &soc_off>;
+};
+
+&soc_off {
+	status = "okay";
+};
+
+&uart0 {
+	/delete-property/ rts-pin;
+	/delete-property/ cts-pin;
+	/delete-property/ hw-flow-control;
+	current-speed = <2000000>;
+	status = "okay";
+};

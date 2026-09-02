@@ -111,28 +111,31 @@ config FMDN_PERSISTENT_CONNECTION
     bool "Enable Persistent Connection support"
     depends on FAST_PAIR_FMDN_V2
     default y
+    select BT_USER_CONN_PARAM_REJECTED
     help
 	Enable Persistent Connection feature for FHN v2.
 	Persistent Connection allows longer connection intervals to save power,
 	with acceptable latency for Find/Ring/Reverse Ringing operations.
 	This feature is reported in the capabilities bitmap (bit 0).
 
-config FMDN_PC_NEGO_WATCHDOG_CE_COUNT
-    int "Connection parameter negotiation watchdog CE count"
+config FMDN_PC_NEGO_RETRY_COUNT
+    int "Connection parameter negotiation retry count"
     depends on FMDN_PERSISTENT_CONNECTION
-    default 16
-    range 10 50
+    default 3
+    range 0 10
     help
-	Number of connection events to wait before treating a connection
-	parameter negotiation as failed.
+	Number of times to retry connection parameter negotiation after a
+	mismatch or rejection before treating the negotiation as a final
+	failure and disconnecting (for non-interactive persistent types).
+	Set to 0 to disable retries.
 
-	Worst-case sequential CE breakdown:
-	  2 CE  - request handshake (request + response)
-	  7 CE  - ongoing channel map update, collision case
-	  7 CE  - connection update indication delay (instant offset)
-
-	  LLCP (LL_CONNECTION_PARAM_REQ): 2 + 7 + 7 = 16 CE (default 16)
-	  L2CAP (Connection Parameter Update): 3 + 7 + 7 = 17 CE (default 17)
+config FMDN_PC_NEGO_RETRY_INTERVAL_MS
+    int "Connection parameter negotiation retry interval (ms)"
+    depends on FMDN_PERSISTENT_CONNECTION
+    default 2000
+    range 500 10000
+    help
+	Delay in milliseconds between negotiation retry attempts.
 
 config FMDN_REVERSE_RINGING
     bool "Enable Reverse Ringing support"
@@ -151,6 +154,19 @@ config FMDN_REVERSE_RINGING_ADV_TIMEOUT_SEC
     help
 	Reverse Ringing Advertising timeout duration.
 	FHN v2 spec: 15-20 seconds.
+
+config FMDN_REVERSE_RINGING_RING_TIMEOUT_SEC
+    int "Reverse Ringing persistent-path ring timeout (seconds)"
+    default 300
+    range 60 900
+    depends on FMDN_REVERSE_RINGING
+    help
+	Guard timer started on the persistent-connection path after the
+	Provider's START indication is acknowledged by the Seeker.
+	If the Seeker does not send a stop WRITE within this period, the
+	Provider resets the local ringing state.
+	This value should match the phone-side ringing duration
+
 
 config FMDN_V2_MINIMAL_LOGGING
     bool "Minimal logging for FHN v2 (production builds)"

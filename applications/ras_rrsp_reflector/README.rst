@@ -28,6 +28,10 @@ Requirements
      - The default pin for Button2 is P6.
      - Install the **JP27** and **JP25** jumpers to enable Button2.
 
+     On the **ATMBTCSTAG-3405** board, see
+     :ref:`ras_rrsp_reflector_atmbtcstag_3405` for the board-specific Button1 power on/off
+     and factory reset behavior.
+
 3. Antenna_switch: connect IO to switch antenna as channel sounding enable
 
  - Need to connect external antenna switch board for EVK
@@ -68,6 +72,17 @@ Requirements
 
 Configuration Options
 *********************
+
+Bluetooth Privacy
+=================
+
+Bluetooth privacy is enabled by default. When testing the reflector with an Android phone
+running the Atmosic Dev Tool application, disable Bluetooth privacy in the build so that the
+phone can connect to the reflector:
+
+.. code-block:: bash
+
+   CONFIG_BT_PRIVACY=n
 
 CS Enhancement 1 (IPT) Support
 ===============================
@@ -112,6 +127,55 @@ This option enables:
       CONFIG_ATM_ENA_LL_FEAT_CS_ENH1=y
       CONFIG_RAS_FILTER_RD=y
 
+.. _ras_rrsp_reflector_testing:
+
+Testing
+*******
+
+To test the reflector, connect it to an initiator. The initiator can be another compatible
+EVK running the :ref:`ras_rreq_initiator <ras_rreq_initiator-application>` application or a
+mobile phone with Channel Sounding initiator functionality. Use a phone and application that
+support the required Channel Sounding functionality; phone capabilities and application
+availability may vary by model and software version.
+
+Connect the initiator EVK UART0 to the **Atmosic CS Plot Tool** at **2000000 baud** to view
+the distance result. A mobile phone can also be used as the initiator for the phone-specific
+flows described below.
+
+Default configuration (without Inline PCT)
+===========================================
+
+1. Build and flash the reflector using the default target below.
+2. Run the initiator on another compatible EVK and connect its UART0 to the **Atmosic CS Plot
+   Tool** at **2000000 baud**.
+3. Scan for **Atmosic_RRSP**, connect and pair with the reflector, and start a Channel Sounding
+   session in the initiator application.
+4. Verify the distance result in the **Atmosic CS Plot Tool**.
+
+Android phone test
+------------------
+
+For testing without Inline PCT, an Android phone with initiator functionality can be used with
+the **Atmosic Dev Tool** application. Build the reflector with Bluetooth privacy disabled so that
+the phone can connect:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/applications/ras_rrsp_reflector \
+       --sysbuild -T applications.ras_rrsp_reflector.atm -- -DCONFIG_BT_PRIVACY=n
+
+Scan for **Atmosic_RRSP**, connect and pair with the reflector, start a Channel Sounding session,
+and verify the distance result in the phone application.
+
+Inline PCT (IPT) configuration
+===============================
+
+For Inline PCT testing, build the reflector with the ``applications.ras_rrsp_reflector.atm.ipt``
+target and build the initiator with its corresponding ``applications.ras_rreq_initiator.atm.ipt``
+target. Run the initiator on another compatible EVK and connect its UART0 to the **Atmosic CS
+Plot Tool** at **2000000 baud**. Alternatively, a compatible iPhone with initiator functionality
+can be used with a **Core Bluetooth Channel Sounding** application.
+
 Building and Running
 ********************
 
@@ -122,6 +186,12 @@ Build command:
 .. code-block:: bash
 
    west build -p always -b <BOARD> openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm
+
+Build with Inline PCT (IPT) support:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD>@mcuboot openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.ipt
 
 Build with MCUboot command:
 Run the following command to build the MCUboot and application
@@ -141,4 +211,4 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink [--erase_all]

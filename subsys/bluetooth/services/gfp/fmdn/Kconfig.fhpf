@@ -28,6 +28,7 @@ config FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
     bool "Enable Ranging OOB DE type BLE CS Support"
     depends on BT_CHANNEL_SOUNDING
     depends on BT_BONDABLE
+    imply FMDN_CS_EXT_ADV_NO_2M
     help
         Enable Bluetooth Low Energy Channel Sounding (BLE CS) ranging support
         for precision finding. BLE CS provides ranging capabilities using
@@ -61,6 +62,37 @@ config FMDN_RANGING_OOB_DE_TYPE_BLE_CS_CAP_FORCE_EN
         Note: This may cause compatibility issues if the actual CS hardware
         or driver support is missing.
 
+config FMDN_CS_EXT_ADV_NO_2M
+    bool "Force EXT_ADV secondary channel to 1M PHY for CS ranging"
+    help
+        When enabled, forces the FMDN Extended Advertising secondary
+        channel to use 1M PHY instead of the default 2M PHY.
+
+        The default 2M secondary channel (AUX_ADV_IND) competes with
+        the ACL PHY update (1M->2M) initiated by the central after
+        connection. If the PHY update cannot complete, the controller
+        never manages the 2M transmit power (phyTxPower[2M] stays
+        UNMANAGED), causing CS Procedure Enable to fail with HCI error
+        0x20 (Unsupported LL Parameter Value).
+
+        Disable this option only if the central independently ensures
+        the 2M PHY is negotiated before initiating CS (for example, by
+        explicitly requesting a PHY update to 2M prior to CS setup).
+
 endif # FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
+
+config FMDN_OOB_MOTION_DETECT_TRIGGER
+    bool "Enable trigger-based motion detection for FHPF"
+	help
+	  Enable the interrupt-driven (trigger) motion event path for FHPF.
+
+	  When selected, the platform signals motion immediately on each hardware
+	  interrupt (typically via dult_ut_motion_event() or atm_gfp_dult_motion_event())
+	  instead of using a periodic polling loop.
+
+	  Enabling this excludes the polling infrastructure (the poll handler and
+	  periodic poll work) to optimize system responsiveness and reduce idle
+	  power consumption.
+
 
 endif # FMDN_PRECISION_FINDING

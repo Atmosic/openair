@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #ifdef CONFIG_POWER_OFF_SBRK
@@ -84,13 +84,14 @@ void pseq_enable_gpio_pulse_detection(bool enable)
 #endif /* CONFIG_DETECT_PULSE_IN_RETENTION */
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, retain))
-static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
+static void atm_power_mode_retain(uint32_t lpc, uint32_t *int_set)
 {
 	uint32_t duration;
-	if (idle != IDLE_FOREVER) {
-		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(retain), exit_latency_us, 0));
-		/* Convert ticks to lpcycles */
-		duration = atm_to_lpc(Z_HZ_ticks, idle);
+	if (lpc) {
+		uint32_t latency =
+			atm_us_to_lpc(DT_PROP_OR(DT_NODELABEL(retain), exit_latency_us, 0));
+		/* Never bottom out at 0: that means an indefinite stay */
+		duration = (lpc > latency) ? (lpc - latency) : 1;
 #ifdef PSEQ_TEST_TORTURE_RETAIN
 		if (duration > 0x100) {
 		    duration = 0x100;
@@ -124,14 +125,14 @@ static void atm_power_mode_retain(uint32_t idle, uint32_t *int_set)
 #endif // power_states/retain
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
-static void atm_power_mode_hibernate(uint32_t idle, uint32_t *int_set)
+static void atm_power_mode_hibernate(uint32_t lpc, uint32_t *int_set)
 {
 	uint32_t duration;
-	if (idle != IDLE_FOREVER) {
-		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(hibernate), exit_latency_us,
-							0));
-		/* Convert ticks to lpcycles */
-		duration = atm_to_lpc(Z_HZ_ticks, idle);
+	if (lpc) {
+		uint32_t latency =
+			atm_us_to_lpc(DT_PROP_OR(DT_NODELABEL(hibernate), exit_latency_us, 0));
+		/* Never bottom out at 0: that means an indefinite stay */
+		duration = (lpc > latency) ? (lpc - latency) : 1;
 	} else {
 		duration = 0;
 	}
@@ -166,14 +167,15 @@ static bool harv_enabled(void)
 #endif
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
-static void atm_power_mode_soc_off(uint32_t idle, uint32_t *int_set)
+static void atm_power_mode_soc_off(uint32_t lpc, uint32_t *int_set)
 {
 	uint64_t duration;
 
-	if (idle != IDLE_FOREVER) {
-		idle -= k_us_to_ticks_ceil32(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
-		/* Convert ticks to lpcycles */
-		duration = atm_to_lpc(Z_HZ_ticks, idle);
+	if (lpc) {
+		uint32_t latency =
+			atm_us_to_lpc(DT_PROP_OR(DT_NODELABEL(soc_off), exit_latency_us, 0));
+		/* Never bottom out at 0: that means an indefinite stay */
+		duration = (lpc > latency) ? (lpc - latency) : 1;
 #if CONFIG_ATM_SOCOFF_MAX_DURATION_SEC
 		/* Apply maximum duration cap if configured */
 		uint64_t max_duration = atm_to_lpc(Z_HZ_sec, CONFIG_ATM_SOCOFF_MAX_DURATION_SEC);
@@ -253,7 +255,7 @@ __ramfunc static void atm_power_rram_sd_wfi(void)
 	// NOTE: RRAM shutdown wiped out RRAM_R config
 }
 
-static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set), uint32_t idle)
+static void atm_power_pseq_setup(void (*mode)(uint32_t lpc, uint32_t *int_set), uint32_t lpc)
 {
 	uint32_t int_set[INT_REG_NUM];
 
@@ -267,7 +269,7 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 
 	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
 	{
-		mode(idle, int_set);
+		mode(lpc, int_set);
 	}
 	WRPR_CTRL_POP();
 
@@ -322,9 +324,12 @@ static void atm_power_pseq_setup(void (*mode)(uint32_t idle, uint32_t *int_set),
 	irq_unlock(0);
 }
 
-static void atm_power_pseq_control(void (*mode)(uint32_t idle, uint32_t *int_set))
+static void atm_power_pseq_control(void (*mode)(uint32_t lpc, uint32_t *int_set))
 {
-	atm_power_pseq_setup(mode, _kernel.idle);
+	uint32_t idle = _kernel.idle;
+	/* Convert Zephyr idle ticks to lpcycles; IDLE_FOREVER maps to 0 (indefinite) */
+	uint32_t lpc = (idle == IDLE_FOREVER) ? 0 : atm_to_lpc(Z_HZ_ticks, idle);
+	atm_power_pseq_setup(mode, lpc);
 }
 
 /**
@@ -428,15 +433,18 @@ void pm_state_exit_post_ops(enum pm_state state, uint8_t substate_id)
 }
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, soc_off))
-void atm_pseq_soc_off(uint32_t ticks)
+void atm_pseq_soc_off(uint32_t lpc, enum atm_pd_urgency urgency)
 {
 	__disable_irq();
-	atm_power_pseq_setup(atm_power_mode_soc_off, ticks);
+
+	atm_pd_prep_run(ATM_PD_METHOD_SOC_OFF, urgency);
+
+	atm_power_pseq_setup(atm_power_mode_soc_off, lpc);
 }
 #endif // power_states/soc_off
 
 #if DT_NODE_HAS_STATUS_OKAY(DT_PATH(power_states, hibernate))
-void atm_pseq_hibernate(uint32_t ticks)
+void atm_pseq_hibernate(uint32_t lpc, enum atm_pd_urgency urgency)
 {
 	__disable_irq();
 
@@ -446,7 +454,9 @@ void atm_pseq_hibernate(uint32_t ticks)
 	rwip_rf.sleep();
 #endif
 
-	atm_power_pseq_setup(atm_power_mode_hibernate, ticks);
+	atm_pd_prep_run(ATM_PD_METHOD_HIBERNATE, urgency);
+
+	atm_power_pseq_setup(atm_power_mode_hibernate, lpc);
 }
 #endif // power_states/hibernate
 #endif /* CONFIG_PM */
@@ -468,6 +478,62 @@ void secure_irq_unlock(unsigned int key)
 void atm_socoff_wakeup_gpio_set(bool enable)
 {
 	gpio_wakeup_enabled = enable;
+}
+
+void atm_power_pseq_release_latch(enum atm_pseq_hib_latch latch)
+{
+	uint32_t ctrl0_mask;
+
+	switch (latch) {
+#ifdef PSEQ_CTRL0__GPIO_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_GPIO:
+		ctrl0_mask = PSEQ_CTRL0__GPIO_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__PINPU_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_PINPU:
+		ctrl0_mask = PSEQ_CTRL0__PINPU_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__PINSEL_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_PINSEL:
+		ctrl0_mask = PSEQ_CTRL0__PINSEL_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__I2C_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_I2C:
+		ctrl0_mask = PSEQ_CTRL0__I2C_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_SPI:
+		ctrl0_mask = PSEQ_CTRL0__SPI_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__KSM_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_KSM:
+		ctrl0_mask = PSEQ_CTRL0__KSM_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__PWM_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_PWM:
+		ctrl0_mask = PSEQ_CTRL0__PWM_LATCH_OPEN__MASK;
+		break;
+#endif
+#ifdef PSEQ_CTRL0__UART_LATCH_OPEN__MASK
+	case ATM_PSEQ_HIB_LATCH_UART:
+		ctrl0_mask = PSEQ_CTRL0__UART_LATCH_OPEN__MASK;
+		break;
+#endif
+	default:
+		return;
+	}
+
+	WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+	{
+		CMSDK_PSEQ->CTRL0 &= ~ctrl0_mask;
+	}
+	WRPR_CTRL_POP();
 }
 
 static int atm_power_init(void)

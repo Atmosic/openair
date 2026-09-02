@@ -1,0 +1,163 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+module = HID_REMOTE
+module-str = hid_remote
+source "subsys/logging/Kconfig.template.log_config"
+
+config RC_VOICE
+	bool "RC voice pipeline (ATVV + optional DMIC)"
+	select ATM_ATVV
+	select AUDIO
+	select AUDIO_DMIC
+	select AUDIO_ADPCM_ENC
+	imply DMIC_ATM
+	help
+	  Enable the ATVV BLE voice profile with IMA ADPCM encoding.
+	  DMIC_ATM is implied (not selected) because it has a devicetree
+	  dependency (DT_HAS_ATMOSIC_ATM_PDM_ENABLED) that is satisfied by
+	  the pdm0 node enabled in app.overlay under CONFIG_RC_VOICE.
+
+if RC_VOICE
+
+choice RC_ATVV_ASST_MODEL
+	prompt "Assistant interaction model"
+	default RC_ATVV_ASST_MODEL_ON_REQUEST
+	help
+	  Selects which "Assistant" button interaction model this remote
+	  implements (Google Voice over BLE spec 1.0 §4.5). PTT/HTT require
+	  CONFIG_ATVV_SPEC_V1_0 — v0.4e only defines On-request.
+
+config RC_ATVV_ASST_MODEL_ON_REQUEST
+	bool "On-request (legacy) — host decides when to open the mic"
+	help
+	  Mandatory baseline model, supported by all remotes. Mic button
+	  press sends START_SEARCH; the host decides whether to open the
+	  microphone via MIC_OPEN.
+
+config RC_ATVV_ASST_MODEL_PTT
+	bool "Press-to-Talk"
+	depends on ATVV_SPEC_V1_0
+	help
+	  The remote opens the mic (AUDIO_START, reason=PTT) on Assistant
+	  button press without waiting for MIC_OPEN. This implementation
+	  closes it (AUDIO_STOP, reason=OTHER) on button release, since a
+	  single button offers no separate "stop" gesture and the spec does
+	  not define a dedicated reason code for a locally-initiated PTT
+	  stop. The host may still end the session early via MIC_CLOSE.
+
+config RC_ATVV_ASST_MODEL_HTT
+	bool "Hold-to-Talk"
+	depends on ATVV_SPEC_V1_0
+	help
+	  The remote opens the mic (AUDIO_START, reason=HTT) while the
+	  Assistant button is held and closes it (AUDIO_STOP,
+	  reason=HTT_RELEASE) on release, without waiting for MIC_OPEN, per
+	  spec v1.0 §4.5.3. The host may still end the session early via
+	  MIC_CLOSE.
+
+endchoice
+
+choice RC_ATVV_AUDIO_RATE
+	prompt "Preferred ATVV audio sample rate"
+	default RC_ATVV_AUDIO_RATE_16KHZ if ATVV_SPEC_V1_0
+	default RC_ATVV_AUDIO_RATE_8KHZ
+	depends on RC_VOICE
+	help
+	  Selects the sample rate and codec used when starting an ATVV audio
+	  stream. The v1.0 capability response advertises both ADPCM 8 kHz and
+	  16 kHz.
+
+config RC_ATVV_AUDIO_RATE_8KHZ
+	bool "8 kHz ADPCM"
+
+config RC_ATVV_AUDIO_RATE_16KHZ
+	bool "16 kHz ADPCM"
+	depends on ATVV_SPEC_V1_0
+
+endchoice
+
+config RC_PDM_DEBUG
+	bool "PDM-only debug mode"
+	depends on RC_VOICE
+	help
+	  Debug mode for testing the PDM → ADPCM pipeline. When enabled,
+	  pressing the key at row 0, col 1 in IDLE state starts audio
+	  streaming directly (bypassing ATVV). Pressing the same key again
+	  stops streaming and returns to IDLE.
+
+choice LOG_MODE
+	default LOG_MODE_IMMEDIATE if RC_PDM_DEBUG
+endchoice
+
+endif # RC_VOICE
+
+config RC_LED
+	bool "RC LED status indicator"
+	default y if $(dt_alias_enabled,led0)
+	depends on GPIO
+	help
+	  Enable LED blink patterns for pairing, reconnecting, and FMP alert
+	  indication. Requires a ``led0`` GPIO alias in the board devicetree.
+	  A build-time assertion will fire if this option is enabled but the
+	  alias is absent.
+
+config RC_IDLE_TIMEOUT_CS
+	int "Idle disconnect timeout (centiseconds)"
+	default 60000
+	help
+	  Disconnect after this many centiseconds of BLE inactivity while HID
+	  is ready. Default 60000 cs = 600 s (10 minutes).
+
+config RC_READY_TIMEOUT_CS
+	int "HID ready watchdog timeout (centiseconds)"
+	default 3000
+	help
+	  If HID does not become ready within this time after connection,
+	  the connection is dropped. Default 3000 cs = 30 s.
+
+config RC_HIB_DELAY_CS
+	int "Hibernate delay after MMI idle (centiseconds)"
+	default 1000
+	help
+	  Delay before entering hibernate once the MMI reaches idle state.
+	  Default 1000 cs = 10 s.
+
+config RC_AUDIO_STREAM_TIMEOUT_CS
+	int "Audio Transfer Timeout (centiseconds)"
+	default 3000
+	depends on RC_VOICE
+	help
+	  Maximum duration of a single ATVV audio stream, per spec v1.0 §4.6.1
+	  "Audio Transfer Timeout" (recommended 15-60 seconds). When this timeout
+	  expires, the remote sends AUDIO_STOP (reason=TIMEOUT) and stops
+	  streaming to prevent battery drain if the host fails to send MIC_CLOSE.
+	  The host can extend the session by sending MIC_EXTEND (v1.0) before
+	  expiry. Default 3000 cs = 30 s.
+
+config RC_ADV_INTERVAL_MIN
+	hex "Advertising interval minimum (units of 625 us)"
+	default 0x0040
+	help
+	  Minimum advertising interval. Default 0x0040 = 40 ms.
+
+config RC_ADV_INTERVAL_MAX
+	hex "Advertising interval maximum (units of 625 us)"
+	default 0x0040
+	help
+	  Maximum advertising interval. Default 0x0040 = 40 ms.
+
+config RC_ADV0_DURATION_MS
+	int "Reconnect advertising duration (ms)"
+	default 30000
+	help
+	  Duration of the reconnect advertising window.
+
+config RC_ADV1_DURATION_MS
+	int "Pairing advertising duration (ms)"
+	default 30000
+	help
+	  Duration of undirected pairing advertising window. Default 30000 ms.
+
+source "Kconfig.zephyr"

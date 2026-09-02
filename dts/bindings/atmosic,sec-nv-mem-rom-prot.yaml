@@ -1,0 +1,18 @@
+# Copyright 2025-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: Atmosic secure non volatile memory ROM protection support
+
+compatible: "atmosic,sec-nv-mem-rom-prot"
+
+include: base.yaml
+
+properties:
+  blk-size:
+    type: int
+    required: true
+    description: Size in bytes of the ROM protection block size
+  read-prot-size:
+    type: int
+    required: true
+    description: Length in bytes of configurable read protection from the beginning of the memory area

@@ -34,6 +34,12 @@ properties:
         - 0 # 128 (default)
         - 1 # 64
 
+    temp-channel-new:
+      type: boolean
+      required: false
+      description: |
+        Use newer ADC temperature channel and algorithm
+
 child-binding:
   properties:
     sample-avg:

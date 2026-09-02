@@ -55,7 +55,7 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink [--erase_flash]
 
 Configuration
 *************
@@ -124,7 +124,7 @@ Single-port mode (console and AT commands on the same port):
      -s samples.subsys.at_cmd_set.atm.pytest \
      --device-testing --device-serial <PORT> \
      --device-flash-timeout=240 \
-     --west-flash="--device=<DEVICE_ID>,--jlink,--erase_flash,--fast_load" \
+     --west-flash="--device=<DEVICE_ID>,--jlink,--erase_flash" \
      -c -v
 
 Two-port mode (separate port for AT commands):
@@ -135,7 +135,7 @@ Two-port mode (separate port for AT commands):
      -s samples.subsys.at_cmd_set.atm.pytest \
      --device-testing --device-serial <CONSOLE_PORT> \
      --device-flash-timeout=240 \
-     --west-flash="--device=<DEVICE_ID>,--jlink,--erase_flash,--fast_load" \
+     --west-flash="--device=<DEVICE_ID>,--jlink,--erase_flash" \
      --pytest-args="--at-cmd-serial=<AT_CMD_PORT>" \
      -c -v
 

@@ -30,7 +30,7 @@
 #ifdef CONFIG_ATM_CS
 #include "atm_cs.h"
 #endif
-#ifdef CONFIG_TAG_BTN_OTA_MODE
+#ifdef CONFIG_TAG_OTA_MODE
 #include "platform_ctrl_ota.h"
 #endif
 #ifdef CONFIG_AT_CMD_TAG_SET
@@ -43,20 +43,20 @@
 LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEVEL);
 
 /* Button timing constants */
-#define BUTTON_POWERON_TIMEOUT_MS       2000
-#define BUTTON_SHUTDOWN_TIMEOUT_MS      2000
-#define BUTTON_SHORT_PRESS_MS           1800
-#define BUTTON_CTS_TAP_TIMEOUT_MS       750
-#define BUTTON_FACTORY_RESET_MS         10000
-#define BUTTON_POLL_INTERVAL_MS         100
-#define BUTTON_SHUTDOWN_POLL_MS         500
-#define BATTERY_REPORT_TAP_COUNT        5
+#define BUTTON_POWERON_TIMEOUT_MS  2000
+#define BUTTON_SHUTDOWN_TIMEOUT_MS 2000
+#define BUTTON_SHORT_PRESS_MS      1800
+#define BUTTON_CTS_TAP_TIMEOUT_MS  750
+#define BUTTON_FACTORY_RESET_MS    10000
+#define BUTTON_POLL_INTERVAL_MS    100
+#define BUTTON_SHUTDOWN_POLL_MS    500
+#define BATTERY_REPORT_TAP_COUNT   5
 
-#ifdef CONFIG_TAG_BTN_OTA_MODE
-#define OTA_MODE_TAP_COUNT 10
+#if CONFIG_TAG_BTN_OTA_TAP_CNT > 0
+#define OTA_MODE_TAP_COUNT CONFIG_TAG_BTN_OTA_TAP_CNT
 #endif
-#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
-#define BUTTON_OTA_MODE_TIMEOUT_MS 7000
+#if CONFIG_TAG_BTN_OTA_LONG_PRESS_MS > 0
+#define BUTTON_OTA_MODE_TIMEOUT_MS CONFIG_TAG_BTN_OTA_LONG_PRESS_MS
 #endif
 #ifdef CONFIG_FHN_TAG
 #define FP_TAP_COUNT 1
@@ -84,7 +84,7 @@ extern void fmna_log_mfi_token(void);
 static void battery_report_handler(void);
 #endif
 
-#ifdef CONFIG_TAG_BTN_OTA_MODE
+#if CONFIG_TAG_BTN_OTA_TAP_CNT > 0
 static void ota_mode_enter_handler(void);
 #endif
 
@@ -112,7 +112,7 @@ static const struct button_action button_actions[] = {
 #ifdef CONFIG_TAG_BTN_BATT_REPORT
 	{battery_report_handler, BATTERY_REPORT_TAP_COUNT},
 #endif
-#ifdef CONFIG_TAG_BTN_OTA_MODE
+#if CONFIG_TAG_BTN_OTA_TAP_CNT > 0
 	{ota_mode_enter_handler, OTA_MODE_TAP_COUNT},
 #endif
 #ifdef CONFIG_ATM_CS
@@ -179,11 +179,10 @@ static void battery_report_handler(void)
 }
 #endif
 
-#ifdef CONFIG_TAG_BTN_OTA_MODE
+#if CONFIG_TAG_BTN_OTA_TAP_CNT > 0
 static void ota_mode_enter_handler(void)
 {
 	LOG_INF("Entering OTA mode (%d taps detected)", OTA_MODE_TAP_COUNT);
-	// Enter OTA mode (will reboot)
 	platform_ctrl_ota_enter();
 }
 #endif
@@ -231,13 +230,13 @@ static void shutdown_timeout_cb(struct k_work *work)
 #ifdef CONFIG_TAG_BTN_FACTORY_RESET
 	bool factory_reset = false;
 #endif
-#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+#if CONFIG_TAG_BTN_OTA_LONG_PRESS_MS > 0
 	bool ota_mode = false;
 #endif
 
 	// Wait for button release
 	while (gpio_pin_get_dt(&button)) {
-#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+#if CONFIG_TAG_BTN_OTA_LONG_PRESS_MS > 0
 		if (!ota_mode &&
 		    (k_uptime_get() - button_press_time > BUTTON_OTA_MODE_TIMEOUT_MS)) {
 			LOG_INF("OTA mode timeout");
@@ -264,9 +263,12 @@ static void shutdown_timeout_cb(struct k_work *work)
 static K_WORK_DELAYABLE_DEFINE(shutdown_timeout_work, shutdown_timeout_cb);
 #endif
 
-#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+#if CONFIG_TAG_BTN_OTA_LONG_PRESS_MS > 0
 static void ota_timeout_cb(struct k_work *work)
 {
+	if (platform_ctrl_ota_is_active()) {
+		return;
+	}
 	LOG_INF("Entering OTA mode (long press %dms)", BUTTON_OTA_MODE_TIMEOUT_MS);
 	platform_ctrl_ota_enter();
 }
@@ -296,7 +298,7 @@ static void button_cb(const struct device *dev, struct gpio_callback *cb, uint32
 		atm_work_reschedule_for_app_work_q(&shutdown_timeout_work,
 						   K_MSEC(BUTTON_SHUTDOWN_TIMEOUT_MS));
 #endif
-#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+#if CONFIG_TAG_BTN_OTA_LONG_PRESS_MS > 0
 		k_work_reschedule(&ota_timeout_work, K_MSEC(BUTTON_OTA_MODE_TIMEOUT_MS));
 #endif
 #if APP_STF_MULTI_MODE
@@ -325,7 +327,7 @@ static void button_cb(const struct device *dev, struct gpio_callback *cb, uint32
 		// Cancel shutdown timeout when button is released
 		k_work_cancel_delayable(&shutdown_timeout_work);
 #endif
-#ifdef CONFIG_TAG_BTN_OTA_LONG_PRESS
+#if CONFIG_TAG_BTN_OTA_LONG_PRESS_MS > 0
 		k_work_cancel_delayable(&ota_timeout_work);
 #endif
 #if APP_STF_MULTI_MODE
@@ -345,8 +347,8 @@ bool platform_ctrl_button_init(void)
 		LOG_ERR("Error %d: failed to configure %s pin %u", err, button.port->name,
 			button.pin);
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
-				     AT_CMD_TAG_ERR_BUTTON);
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(), AT_CMD_TAG_ERR_BUTTON);
 #endif
 		return false;
 	}
@@ -355,8 +357,8 @@ bool platform_ctrl_button_init(void)
 		LOG_ERR("Error %d: failed to configure interrupt on %s pin %u", err,
 			button.port->name, button.pin);
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
-				     AT_CMD_TAG_ERR_BUTTON);
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(), AT_CMD_TAG_ERR_BUTTON);
 #endif
 		return false;
 	}

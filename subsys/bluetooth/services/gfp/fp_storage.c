@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file fp_storage.c
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Storage Middleware
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -48,7 +52,7 @@ typedef struct {
 } fp_account_data_t;
 
 static size_t account_key_count;
-static int account_key_list_len;
+static size_t account_key_list_len;
 static uint8_t account_key_list[FP_ACCOUNT_KEY_CNT * FP_ACCOUNT_KEY_LEN];
 static fp_account_data_t account_key_data_list[FP_ACCOUNT_KEY_CNT];
 
@@ -82,8 +86,11 @@ static bool fp_storage_init_done;
 static void fp_storage_account_key_data_list_update(void)
 {
 	account_key_count = 0;
-	uint8_t offset = 0;
-	while (offset < account_key_list_len) {
+	/* offset must be wide enough to reach account_key_list_len: a uint8_t wraps at
+	 * FP_ACCOUNT_KEY_CNT == 16 (256 bytes) and the loop never terminates.
+	 */
+	size_t offset = 0;
+	while ((offset < account_key_list_len) && (account_key_count < FP_ACCOUNT_KEY_CNT)) {
 		memcpy(account_key_data_list[account_key_count].account_key,
 		       account_key_list + offset, FP_ACCOUNT_KEY_LEN);
 		account_key_data_list[account_key_count].in_used = true;
@@ -111,6 +118,12 @@ static int fp_storage_account_key_find_oldest(void)
 
 	for (uint8_t i = 0; i < ACCOUNT_KEY_CNT; i++) {
 		if (account_key_data_list[i].in_used) {
+#ifdef CONFIG_FAST_PAIR_FMDN
+			if (owner_key_valid && !memcmp(account_key_data_list[i].account_key,
+						       owner_key, FP_ACCOUNT_KEY_LEN)) {
+				continue;
+			}
+#endif
 			if (account_key_data_list[i].timestamp < oldest_timestamp) {
 				oldest_timestamp = account_key_data_list[i].timestamp;
 				oldest_idx = i;
@@ -127,12 +140,13 @@ static int settings_storage_handle_set(char const *name, size_t len, settings_re
 {
 	char const *next;
 	if (settings_name_steq(name, SS_KEY_ACNT_KEY_LIST, &next) && !next) {
-		if (len) {
-			account_key_list_len = len;
-			read_cb(cb_arg, &account_key_list, len);
-			return 0;
+		if (!len || (len > sizeof(account_key_list)) || (len % FP_ACCOUNT_KEY_LEN)) {
+			LOG_ERR("Rejected account key list record: len %zu", len);
+			return -EINVAL;
 		}
-		return -EINVAL;
+		account_key_list_len = len;
+		read_cb(cb_arg, &account_key_list, len);
+		return 0;
 	}
 #ifdef CONFIG_FAST_PAIR_FMDN
 	if (settings_name_steq(name, SS_KEY_OWNER_KEY, &next) && !next) {
@@ -499,10 +513,8 @@ int fp_storage_owner_key_get(uint8_t *key)
 
 void fp_storage_owner_key_clear(void)
 {
-	if (!owner_key_valid) {
-		return;
-	}
-	fp_storage_account_key_delete(owner_key);
+	/* Owner deletion is only valid as part of a complete reset. */
+	fp_storage_account_key_delete_all();
 }
 
 bool fp_storage_owner_key_valid(void)
@@ -630,7 +642,7 @@ static void fp_storage_account_key_list_reload(void)
 {
 	memset(account_key_list, 0, sizeof(account_key_list));
 	account_key_count = 0;
-	uint8_t offset = 0;
+	size_t offset = 0;
 	int err;
 	for (uint8_t i = 0; i < ACCOUNT_KEY_CNT; i++) {
 		if (account_key_data_list[i].in_used) {
@@ -661,7 +673,9 @@ int fp_storage_account_key_save(uint8_t const *account_key)
 	int save_idx = -1;
 
 	memcpy(cur_account_key, account_key, FP_ACCOUNT_KEY_LEN);
+#ifdef CONFIG_FAST_PAIR_FMDN
 	fp_storage_owner_key_save(account_key);
+#endif
 
 	// Check if key already exists
 	for (uint8_t i = 0; i < FP_ACCOUNT_KEY_CNT; i++) {
@@ -723,11 +737,33 @@ int fp_storage_account_key_save(uint8_t const *account_key)
 	}
 
 	fp_storage_account_key_list_reload();
-	return is_saved ? 0 : -ENOMEM;
+
+	if (save_idx >= 0) {
+		/* Compute packed-list position of the newly written slot.
+		 * The packed list skips unused slots, so count in-use slots
+		 * with storage index < save_idx. */
+		int packed_pos = 0;
+
+		for (int j = 0; j < save_idx; j++) {
+			if (account_key_data_list[j].in_used) {
+				packed_pos++;
+			}
+		}
+		return packed_pos;
+	}
+	/* Key already existed — no slot changed. */
+	return is_saved ? -EALREADY : -ENOMEM;
 }
 
 int fp_storage_account_key_delete(uint8_t const *account_key)
 {
+#ifdef CONFIG_FAST_PAIR_FMDN
+	if (owner_key_valid && !memcmp(account_key, owner_key, FP_ACCOUNT_KEY_LEN)) {
+		LOG_WRN("Refusing to delete owner account key");
+		return -EPERM;
+	}
+#endif
+
 	for (uint8_t i = 0; i < FP_ACCOUNT_KEY_CNT; i++) {
 		if (account_key_data_list[i].in_used) {
 			if (!memcmp(account_key_data_list[i].account_key, account_key,
@@ -763,7 +799,7 @@ size_t fp_storage_account_key_filter_size(size_t count)
 	return count ? (1.2 * count + 3) : 0;
 }
 
-uint8_t fp_storage_account_key_list_get(uint8_t *key_list)
+size_t fp_storage_account_key_list_get(uint8_t *key_list)
 {
 	if (!account_key_count) {
 		return 0;

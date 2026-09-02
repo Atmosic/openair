@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include "atm_vendor_dfu.h"
@@ -160,12 +160,55 @@ int atm_vendor_dfu_init(void)
 	return 0;
 }
 
+/*
+ * The image body is erased on demand as it is streamed in (see
+ * flatten_if_boundary). Two regions that MCUboot reads to decide the swap are
+ * never touched by those writes, so stale metadata left by a previous upgrade
+ * would make the bootloader reject the secondary image. Wipe them here before
+ * each upgrade:
+ *   - the reserved first sector (secondary header) in swap-using-offset mode, and
+ *   - the image trailer / swap-status region at the end of the slot.
+ * This mirrors what upstream mcumgr img_mgmt does, while keeping the (bounded)
+ * body erase spread across the transfer rather than a single up-front full-slot
+ * erase.
+ */
+static void erase_metadata(const struct flash_area *fa, uint32_t write_base, uint32_t erase_sz,
+			   const char *tag)
+{
+	if (!fa || !erase_sz) {
+		return;
+	}
+	if (write_base) {
+		int ret = flash_area_flatten(fa, 0, write_base);
+
+		if (ret) {
+			LOG_ERR("%s: erase reserved sector failed: %d", tag, ret);
+		}
+	}
+#if defined(CONFIG_MCUBOOT_IMG_MANAGER)
+	ssize_t trailer_off = boot_get_trailer_status_offset(fa->fa_size);
+
+	if (trailer_off > 0) {
+		uint32_t off = (uint32_t)trailer_off & ~(erase_sz - 1);
+		int ret = flash_area_flatten(fa, off, fa->fa_size - off);
+
+		if (ret) {
+			LOG_ERR("%s: erase trailer failed: %d", tag, ret);
+		} else {
+			LOG_INF("%s: erased trailer [%#x..%#zx)", tag, off, (size_t)fa->fa_size);
+		}
+	}
+#endif
+}
+
 void atm_vendor_dfu_reset(void)
 {
 	stream_offset = 0;
 	slot1_write_offset = slot1_write_base;
+	erase_metadata(ufa1, slot1_write_base, slot1_erase_sz, "slot1");
 #if HAS_SLOT3
 	slot3_write_offset = slot3_write_base;
+	erase_metadata(ufa3, slot3_write_base, slot3_erase_sz, "slot3");
 	state = STATE_HEADER;
 	hdr_bytes = 0;
 	img0_remain = 0;
@@ -217,7 +260,13 @@ static int write_dual(const uint8_t *data, size_t len)
 		}
 
 		case STATE_IMG0: {
+			uint32_t sector_left =
+				slot1_erase_sz - (slot1_write_offset % slot1_erase_sz);
 			size_t take = (remain < img0_remain) ? remain : img0_remain;
+
+			if (take > sector_left) {
+				take = sector_left;
+			}
 			int ret = flatten_if_boundary(ufa1, slot1_write_offset, slot1_erase_sz);
 
 			if (ret) {
@@ -240,19 +289,22 @@ static int write_dual(const uint8_t *data, size_t len)
 		}
 
 		case STATE_IMG1: {
+			uint32_t sector_left =
+				slot3_erase_sz - (slot3_write_offset % slot3_erase_sz);
+			size_t take = (remain < sector_left) ? remain : sector_left;
 			int ret = flatten_if_boundary(ufa3, slot3_write_offset, slot3_erase_sz);
 
 			if (ret) {
 				return ret;
 			}
-			ret = flash_area_write(ufa3, slot3_write_offset, data + pos, remain);
+			ret = flash_area_write(ufa3, slot3_write_offset, data + pos, take);
 			if (ret) {
 				LOG_ERR("slot3 write failed: %d", ret);
 				return ret;
 			}
-			slot3_write_offset += remain;
-			pos += remain;
-			stream_offset += remain;
+			slot3_write_offset += take;
+			pos += take;
+			stream_offset += take;
 			break;
 		}
 

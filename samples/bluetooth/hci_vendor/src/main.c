@@ -1,10 +1,10 @@
-/* main.c - Application main entry point */
-
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
+
+/* main.c - Application main entry point */
 
 #include <errno.h>
 #include <stddef.h>

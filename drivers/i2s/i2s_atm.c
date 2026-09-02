@@ -1,7 +1,7 @@
 /*
- * Copyright (C) Atmosic 2025-2026
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atm_i2s
@@ -123,6 +123,7 @@ struct i2s_atm_data {
 	void *tx_write_cb_arg;
 	bool in_write_cb;
 	uint16_t uf_err_count;
+	bool clk_enabled; /* true once configure() has opened the clock gate */
 #ifdef CONFIG_PM
 	bool pm_tx_constraint_on;
 #endif
@@ -277,6 +278,7 @@ static int i2s_atm_configure(struct device const *dev, enum i2s_dir dir,
 	}
 
 	i2s_data->i2s_cfg = cfg;
+	i2s_data->clk_enabled = true;
 
 	CMSDK_CLKRSTGEN_NONSECURE->CLK_AUD_CTRL =
 		CLKRSTGEN_CLK_AUD_CTRL__I2S_SEL__WRITE(cfg_atm->aud_ctrl_i2s) |
@@ -549,7 +551,9 @@ static void i2s_back_to_ready(struct device const *dev)
 	}
 #endif
 	i2s_data->i2s_cfg = NULL;
-	i2s_tx_stop_transfer(i2s_data->dev);
+	if (i2s_data->clk_enabled) {
+		i2s_tx_stop_transfer(i2s_data->dev);
+	}
 	stream->state = I2S_STATE_READY;
 }
 
@@ -776,3 +780,44 @@ static int i2s_atm_init(struct device const *dev)
 BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 1, "one instance supported");
 
 DT_INST_FOREACH_STATUS_OKAY(I2S_DEVICE_INIT)
+
+/* ── Test hooks ─────────────────────────────────────────────────────────── */
+#ifdef CONFIG_ZTEST
+/**
+ * @brief Invoke the I2S ISR handler directly for coverage testing.
+ *
+ * Calls I2S_Handler() outside of interrupt context.  This exercises
+ * the underflow and IRQ status branches in the ISR without requiring
+ * a real I2S underflow event.
+ */
+void i2s_atm_test_invoke_isr(void)
+{
+	I2S_Handler();
+}
+
+/* Reset driver to NOT_READY for use in test fixtures. */
+void i2s_atm_test_reset(const struct device *dev)
+{
+	struct i2s_atm_data *i2s_data = dev->data;
+	struct i2s_atm_stream *stream = &i2s_data->tx;
+
+	i2s_queue_drop(dev);
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+	void *mem_block;
+	int size;
+
+	while ((size = RING_BUF_GET(stream->rdy_q, mem_block))) {
+		ASSERT_ERR(size == sizeof(void *));
+		k_mem_slab_free(stream->mem_slab, mem_block);
+	}
+#endif
+	i2s_data->i2s_cfg = NULL;
+
+	if (i2s_data->clk_enabled) {
+		i2s_tx_stop_transfer(dev);
+		i2s_data->clk_enabled = false;
+	}
+
+	stream->state = I2S_STATE_NOT_READY;
+}
+#endif /* CONFIG_ZTEST */

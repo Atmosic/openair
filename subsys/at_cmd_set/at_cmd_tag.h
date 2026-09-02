@@ -6,6 +6,10 @@
 
 #pragma once
 
+#ifdef CONFIG_AT_CMD_TAGADDR
+#include <zephyr/bluetooth/bluetooth.h>
+#endif
+
 #ifdef CONFIG_AT_CMD_TAG_SET
 
 /**
@@ -24,28 +28,13 @@ typedef enum {
 } at_cmd_tag_err_t;
 
 /**
- * @brief TAG state event values for +TAGSTATE event responses.
- *
- * These states represent the lifecycle of a tag from initialization through
- * pairing completion, as well as OTA (firmware update) states.
- * States are used in AT+TAGSTATE event notifications.
- */
-typedef enum {
-	AT_CMD_TAG_EVT_STATE_BOOTED,    /**< System booted */
-	AT_CMD_TAG_EVT_STATE_INIT_DONE, /**< Tag initialized, ready for pairing */
-	AT_CMD_TAG_EVT_STATE_UNPAIRED,  /**< Tag unpaired */
-	AT_CMD_TAG_EVT_STATE_PAIRING,   /**< Tag in pairing mode */
-	AT_CMD_TAG_EVT_STATE_PAIRED,    /**< Tag successfully paired with host */
-} at_cmd_evt_tag_state_t;
-
-/**
  * @brief Submit TAG state event
  *
  * @param ch AT command channel
  * @param protocol TAG protocol
- * @param state TAG state (see #at_cmd_evt_tag_state_t)
+ * @param state TAG state
  */
-void at_cmd_evt_tag_state(uint8_t ch, uint8_t protocol, at_cmd_evt_tag_state_t state);
+void at_cmd_evt_tag_state(uint8_t ch, uint8_t protocol, uint8_t state);
 
 /**
  * @brief Submit TAG error event
@@ -99,7 +88,10 @@ typedef at_cmd_tag_err_t (*at_cmd_tag_motionrpt_cb_t)(int16_t x_cs2, int16_t y_c
  * @brief Submit GFP reverse ringing phone status event (+EVTTAGGFPREVERSERING)
  *
  * @param ch  AT command channel
- * @param evt Reverse ringing event (0=CONNECTED, 1=STARTED, 2=STOPPED)
+ * @param evt Reverse ringing event (0=CONNECTED, 1=STARTED, 2=STOPPED, 3=ADV_STARTED,
+ * 4=ADV_TIMEOUT, 5=PHONE_FAILED, 6=TIMEOUT_LOCAL, 7=PHONE_TIMEOUT,
+ * 8=START_CONFIRMED, 9=STOP_CONFIRMED, 10=PHONE_STOPPED_DISCONNECTED,
+ * 11=PHONE_START_TIMEOUT)
  */
 void at_cmd_evt_gfp_reverse_ring(uint8_t ch, uint8_t evt);
 #endif
@@ -245,6 +237,17 @@ typedef enum {
 typedef at_cmd_tag_err_t (*at_cmd_tag_gfp_ind_cb_t)(at_cmd_tag_gfp_ind_action_t action);
 #endif /* CONFIG_AT_CMD_TAGGFPIND */
 
+#ifdef CONFIG_AT_CMD_TAGADDR
+/**
+ * @brief Callback used to handle AT+TAGADDR requests.
+ *
+ * @param protocol Tag protocol (0x01=fmna, 0x02=fhn, 0x04=stf).
+ * @param[out] addr Advertising BT address for the given protocol.
+ * @return Tag AT command error code (at_cmd_tag_err_t).
+ */
+typedef at_cmd_tag_err_t (*at_cmd_tag_addr_cb_t)(uint8_t protocol, bt_addr_le_t *addr);
+#endif /* CONFIG_AT_CMD_TAGADDR */
+
 /**
  * @brief Callback table for tag-related AT commands.
  */
@@ -282,6 +285,9 @@ typedef struct {
 #ifdef CONFIG_AT_CMD_TAGMOTIONRPT
 	at_cmd_tag_motionrpt_cb_t motionrpt_cb;
 #endif /* CONFIG_AT_CMD_TAGMOTIONRPT */
+#ifdef CONFIG_AT_CMD_TAGADDR
+	at_cmd_tag_addr_cb_t addr_cb;
+#endif /* CONFIG_AT_CMD_TAGADDR */
 } at_cmd_set_tag_callbacks_t;
 
 #endif /* CONFIG_AT_CMD_TAG_SET */

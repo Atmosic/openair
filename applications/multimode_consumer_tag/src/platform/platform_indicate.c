@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file platform_indicate.c
- *
- * @brief Platform tag indication for Multimode Consumer Tag
- *
- * Copyright (C) Atmosic 2026
+/*
+ * Copyright (c) 2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <zephyr/kernel.h>
@@ -39,41 +31,56 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 #define TAG_LED_STATE(s)     platform_ctrl_led_state_update(s)
 #define TAG_LED_STATE_EVT(e) platform_ctrl_led_event_indicate(e)
 #else
-#define TAG_LED_STATE(s)     do {} while (0)
-#define TAG_LED_STATE_EVT(e) do {} while (0)
+#define TAG_LED_STATE(s)                                                                           \
+	do {                                                                                       \
+	} while (0)
+#define TAG_LED_STATE_EVT(e)                                                                       \
+	do {                                                                                       \
+	} while (0)
 #endif
 
 #ifdef CONFIG_AT_CMD_TAG_SET
-#define TAG_AT_STATE(type, state) \
-	at_cmd_evt_tag_state(at_cmd_uart_ch_get(), (type), (state))
+#define TAG_AT_STATE(type, state) at_cmd_evt_tag_state(at_cmd_set_uart_ch_get(), (type), (state))
 #else
-#define TAG_AT_STATE(type, state) do {} while (0)
+#define TAG_AT_STATE(type, state)                                                                  \
+	do {                                                                                       \
+	} while (0)
 #endif
 
 /* Buzzer hardware macros - active only when CONFIG_TAG_BUZZER=y */
 #ifdef CONFIG_TAG_BUZZER
 #define TAG_BUZZER_HW_ACTION(on) platform_ctrl_buzzer_action(on)
 #ifdef CONFIG_STF_TAG
-#define TAG_STF_SOUND(item)      TagSoundPlayItem(item)
+#define TAG_STF_SOUND(item) TagSoundPlayItem(item)
 #else
-#define TAG_STF_SOUND(item)      do {} while (0)
+#define TAG_STF_SOUND(item)                                                                        \
+	do {                                                                                       \
+	} while (0)
 #endif
 #else
-#define TAG_BUZZER_HW_ACTION(on) do {} while (0)
-#define TAG_STF_SOUND(item)      do {} while (0)
+#define TAG_BUZZER_HW_ACTION(on)                                                                   \
+	do {                                                                                       \
+	} while (0)
+#define TAG_STF_SOUND(item)                                                                        \
+	do {                                                                                       \
+	} while (0)
 #endif
 
 #ifdef CONFIG_AT_EVT_TAGBUZZER
-#define TAG_AT_BUZZER_EVT(evt, vol, dur) \
-	at_cmd_evt_buzzer_action(at_cmd_uart_ch_get(), (uint8_t)(evt), (vol), (dur))
+#define TAG_AT_BUZZER_EVT(evt, vol, dur)                                                           \
+	at_cmd_evt_buzzer_action(at_cmd_set_uart_ch_get(), (uint8_t)(evt), (vol), (dur))
 #else
-#define TAG_AT_BUZZER_EVT(evt, vol, dur) do {} while (0)
+#define TAG_AT_BUZZER_EVT(evt, vol, dur)                                                           \
+	do {                                                                                       \
+	} while (0)
 #endif
 
 #ifdef CONFIG_AT_EVT_TAGMOTIONCTL
-#define TAG_AT_MOTION_CTL(en) at_cmd_evt_motionctl(at_cmd_uart_ch_get(), (en) ? 1 : 0)
+#define TAG_AT_MOTION_CTL(en) at_cmd_evt_motionctl(at_cmd_set_uart_ch_get(), (en) ? 1 : 0)
 #else
-#define TAG_AT_MOTION_CTL(en) do {} while (0)
+#define TAG_AT_MOTION_CTL(en)                                                                      \
+	do {                                                                                       \
+	} while (0)
 #endif
 
 #define FACTORY_RESET_AUDIO_DURATION_MS 1000
@@ -99,7 +106,7 @@ void platform_indicate_state(tag_indication_state_t st, uint8_t type)
 	case TAG_IND_STATE_PAIRED:
 		TAG_LED_STATE(LED_STATE_PAIRED);
 		break;
-#ifdef CONFIG_TAG_BTN_OTA_MODE
+#ifdef CONFIG_TAG_OTA_MODE
 	case TAG_IND_STATE_OTA_IN_PROGRESS:
 		TAG_LED_STATE(LED_STATE_OTA_MODE);
 		break;

@@ -1,6 +1,6 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 zephyr_sources_ifdef(CONFIG_ATM_MCUBOOT_HOOKS mcuboot_hooks.c)
 zephyr_compile_definitions_ifdef(CONFIG_ATM_MCUBOOT_LOCK_PRIMARY_SLOT MCUBOOT_LOCK_PRIMARY_SLOT)

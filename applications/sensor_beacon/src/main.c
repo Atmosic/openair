@@ -1,6 +1,7 @@
 /*
- * SPDX-License-Identifier: LicenseRef-Atmosic
  * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -15,6 +16,7 @@
 #include <zephyr/bluetooth/addr.h>
 #include <zephyr/bluetooth/gatt.h>
 #endif
+#include "beacon_adv.h"
 #include "sensor_beacon.h"
 #include "at_gatt.h"
 #include "at_cmd_manager.h"
@@ -99,6 +101,13 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 	char addr[BT_ADDR_LE_STR_LEN];
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	LOG_INF("BLE disconnected: %s (reason 0x%02x %s)", addr, reason, bt_hci_err_to_str(reason));
+
+	/* Restart connectable advertising so the device is connectable again. */
+	int err = beacon_conn_adv_restart();
+
+	if (err) {
+		LOG_ERR("Failed to restart conn adv after disconnect (err %d)", err);
+	}
 }
 
 /**

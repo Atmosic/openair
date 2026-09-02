@@ -1,7 +1,7 @@
 /*
  * Copyright (C) Atmosic 2021-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atm_i2c
@@ -142,6 +142,7 @@ static void i2c_atm_pm_constraint_set(const struct device *dev)
 
 	if (!data->pm_constraint_on) {
 		data->pm_constraint_on = true;
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -153,6 +154,7 @@ static void i2c_atm_pm_constraint_release(const struct device *dev)
 
 	if (data->pm_constraint_on) {
 		data->pm_constraint_on = false;
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}

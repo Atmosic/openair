@@ -1,20 +1,12 @@
-/**
- *******************************************************************************
- *
- * @file at_cmd_uart.h
- *
- * @brief AT command UART module
- *
- * Copyright (C) Atmosic 2026
+/*
+ * Copyright (c) 2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #pragma once
 
-#include "at_cmd.h"
+#include "at_cmd_set.h"
 #include "at_cmd_tag.h"
 
 #ifdef __cplusplus
@@ -22,14 +14,10 @@ extern "C" {
 #endif
 
 /**
- * @brief Get AT command UART channel
+ * @brief Initialize AT command UART module for multimode consumer tag
  *
- * @return AT command channel allocated by at_cmd_alloc()
- */
-at_cmd_ch_t at_cmd_uart_ch_get(void);
-
-/**
- * @brief Initialize AT command UART module
+ * Registers application-specific tag callbacks and delegates transport
+ * initialization to at_cmd_set_uart_ch_init().
  *
  * @return 0 on success, negative error code on failure
  */

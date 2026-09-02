@@ -20,7 +20,7 @@ common:
     - introduction
 tests:
   samples.subsys.settings.atm: &base_config {}
-  samples.subsys.settings.atm.gcov:
+  samples.subsys.settings.atm.gcov: &gcov_config
     <<: *base_config
     tags:
       - gcov
@@ -28,4 +28,15 @@ tests:
       - gcov_capable
     timeout: 180
     extra_configs:
+      - CONFIG_ATM_SETTINGS_LOG_LEVEL_OFF=y
       - CONFIG_UU_TEST_OPENAIR="atm_settings_backend.c;atm_settings_init.c;atm_settings_nvs.c;atm_settings.c"
+  samples.subsys.settings.atm.no_backend.gcov:
+    <<: *gcov_config
+    harness_config:
+      type: one_line
+      regex:
+        - "PASS - test_atm_settings_init"
+    extra_configs:
+      - CONFIG_ATM_SETTINGS_LOG_LEVEL_OFF=y
+      - CONFIG_SETTINGS_NONE=y
+      - CONFIG_UU_TEST_OPENAIR="atm_settings_backend.c;atm_settings_init.c;atm_settings.c"

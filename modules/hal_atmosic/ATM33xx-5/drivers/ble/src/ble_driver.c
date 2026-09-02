@@ -70,7 +70,12 @@ LOG_MODULE_REGISTER(atm_ble_driver, LOG_LEVEL_INF);
 #include "rwble.h"
 #include "reg_ipcore.h"
 #include "hci.h"
-#ifdef CONFIG_ATM_EUI
+#if defined(CONFIG_ATM_EUI) && defined(CONFIG_ATM_BLE)
+// The BD address is only meaningful when a host is present. When the link
+// controller is built solely for other services (e.g. the TRNG), reading the
+// EUI here would latch (and persist) an EUI before the application has a
+// chance to provision one.
+#define ATM_BD_ADDR_FROM_EUI
 #include "eui.h"
 #endif
 
@@ -533,7 +538,7 @@ static uint8_t user_param_get(uint8_t param_id, uint8_t *lengthPtr,
 	return RWIP_PARAM_INVALID;
     }
 
-#ifdef CONFIG_ATM_EUI
+#ifdef ATM_BD_ADDR_FROM_EUI
     uint8_t eui48[BD_ADDR_LEN];
 #endif
     switch (param_id) {
@@ -542,14 +547,14 @@ static uint8_t user_param_get(uint8_t param_id, uint8_t *lengthPtr,
 		status = RWIP_PARAM_INVALID;
 		break;
 	    }
-#ifdef CONFIG_ATM_EUI
+#ifdef ATM_BD_ADDR_FROM_EUI
 	    if (read_eui48(eui48)) {
 		param_data = eui48;
 		copy_len = sizeof(eui48);
 	    } else {
 #endif
 		status = RWIP_PARAM_NOT_FOUND;
-#ifdef CONFIG_ATM_EUI
+#ifdef ATM_BD_ADDR_FROM_EUI
 	    }
 #endif
 	} break;
