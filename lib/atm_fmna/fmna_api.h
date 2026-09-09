@@ -128,6 +128,13 @@ struct fmna_init_params {
 
     /** state machine callback */
     struct fmna_state_machine_cb state_cb;
+
+    /** Connection parameters requested after pairing. All zero leaves the
+     *  parameters to the Apple device. Interval units are 1.25 ms, supervision
+     *  timeout units are 10 ms; slave latency is always 0. */
+    uint16_t conn_interval_min;
+    uint16_t conn_interval_max;
+    uint16_t conn_supervision_timeout;
 };
 
 /**

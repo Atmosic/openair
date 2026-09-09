@@ -92,6 +92,32 @@ config FMNA_VERSION_REVISION
 	range 0 65535
 	default 18
 
+config FMNA_CUSTOM_CONN_PARAMS
+	bool "Request custom FMNA connection parameters after pairing"
+	help
+	  When enabled, the accessory requests the connection parameters below
+	  after pairing. When disabled (default), the connection parameters are
+	  left to the Apple device. Slave latency is always 0.
+
+if FMNA_CUSTOM_CONN_PARAMS
+
+config FMNA_CONN_INTERVAL_MIN
+	int "Minimum connection interval (1.25 ms units)"
+	range 6 3200
+	default 756
+
+config FMNA_CONN_INTERVAL_MAX
+	int "Maximum connection interval (1.25 ms units)"
+	range 6 3200
+	default 792
+
+config FMNA_CONN_TIMEOUT
+	int "Supervision timeout (10 ms units)"
+	range 10 3200
+	default 600
+
+endif # FMNA_CUSTOM_CONN_PARAMS
+
 if FHN_TAG
 
 config FHN_FW_VERSION

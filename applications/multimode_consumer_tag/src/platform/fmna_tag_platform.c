@@ -171,9 +171,16 @@ static struct fmna_init_params const fmna_init_params = {
 		      .motion_deinit = motion_deinit,
 		      .motion_detected = motion_detected},
 	.battery_cb = {.battery_level_get = battery_level_get},
-	.state_cb = {
-		.state_notify = state_notify,
-	}};
+	.state_cb =
+		{
+			.state_notify = state_notify,
+		},
+#ifdef CONFIG_FMNA_CUSTOM_CONN_PARAMS
+	.conn_interval_min = CONFIG_FMNA_CONN_INTERVAL_MIN,
+	.conn_interval_max = CONFIG_FMNA_CONN_INTERVAL_MAX,
+	.conn_supervision_timeout = CONFIG_FMNA_CONN_TIMEOUT,
+#endif
+};
 
 static void fmna_tag_platform_init(tag_state_notify_cb fn_cb)
 {
