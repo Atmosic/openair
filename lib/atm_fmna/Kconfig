@@ -5,6 +5,8 @@
 config ATM_FMNA
 	bool "Atmosic Apple FindMy Network service"
 	select ATM_DULT
+	select ATM_VENDOR_API
+	select VND_API_SET_CON_TX_POWER
 
 config HEAP_MEM_POOL_ADD_SIZE_ATM_FMNA
 	int "Heap memory pool size for FMNA service"
