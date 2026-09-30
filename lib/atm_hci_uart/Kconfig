@@ -1,6 +1,6 @@
-# Copyright (c) Atmosic 2024-2025
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ATM_HCI_UART
 	bool "Atmosic HCI UART module"
@@ -33,5 +33,16 @@ config ATM_HCI_UART1_DEVICE
 	bool "Use uart1 as HCI uart"
 
 endchoice
+
+config ATM_HCI_RESET_RX_DC_CAL
+	bool "Trigger RX DC offset calibration on HCI reset complete"
+	depends on ATM_ATLC
+	select ATM_RADIO_HAL_MGR
+	select ATM_RADIO_CAL_DEMAND
+	select VND_BYPASS_RX_DC_CAL
+	help
+	  When enabled, a one-shot RX DC offset calibration is triggered when an
+	  HCI_reset command complete event is detected. A vendor command
+	  (OCF=0x15, OGF=0xF8) is provided to bypass this behaviour.
 
 endif # ATM_HCI_UART

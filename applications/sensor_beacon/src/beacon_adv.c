@@ -1,6 +1,7 @@
 /*
- * SPDX-License-Identifier: LicenseRef-Atmosic
  * Copyright (c) 2021-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -22,15 +23,26 @@ LOG_MODULE_REGISTER(beacon_adv, CONFIG_SENSOR_BEACON_LOG_LEVEL);
 #define ADV_SENSOR_HEADER_SIZE 3
 #define ADV_SENSOR_DATA_SIZE   sizeof(sensor_beacon_data_t)
 
+#define ADV_INTERVAL_MIN 400   /* 250 ms in 0.625 ms units */
+#define ADV_INTERVAL_MAX 16384 /* 10.24 s in 0.625 ms units */
+
+static bool adv_interval_valid(uint32_t interval)
+{
+	return interval >= ADV_INTERVAL_MIN && interval <= ADV_INTERVAL_MAX;
+}
+
 static struct bt_le_ext_adv *adv_set;
 static struct bt_le_adv_param adv_params;
+static bool adv_running;
+static uint32_t adv_interval; /* 0 = use compile-time default */
 
 #if defined(CONFIG_BT_EXT_ADV_MAX_ADV_SET) && (CONFIG_BT_EXT_ADV_MAX_ADV_SET > 1)
 static struct bt_le_ext_adv *conn_adv_set;
 static struct bt_le_adv_param conn_adv_params;
 #endif
 
-static uint8_t dev_name[] = CONFIG_BT_DEVICE_NAME;
+static uint8_t dev_name[CONFIG_BT_DEVICE_NAME_MAX + 1];
+static uint8_t dev_name_len;
 
 static uint8_t sensor_data[ADV_SENSOR_DATA_SIZE + ADV_SENSOR_HEADER_SIZE] = {
 	ATMOSIC_COMPANY_ID & 0xFF, (ATMOSIC_COMPANY_ID >> 8) & 0xFF, 0x00 /* Type field */
@@ -38,7 +50,7 @@ static uint8_t sensor_data[ADV_SENSOR_DATA_SIZE + ADV_SENSOR_HEADER_SIZE] = {
 
 #define ADV_DATA_FIXED                                                                             \
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),                      \
-		BT_DATA(BT_DATA_NAME_COMPLETE, dev_name, sizeof(dev_name) - 1),                    \
+		BT_DATA(BT_DATA_NAME_COMPLETE, dev_name, dev_name_len),                            \
 		BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),                                     \
 		BT_DATA_BYTES(BT_DATA_SVC_DATA16, 0xaa, 0xfe, /* Eddystone UUID */                 \
 			      0x10,                           /* Eddystone-URL frame type */       \
@@ -46,13 +58,6 @@ static uint8_t sensor_data[ADV_SENSOR_DATA_SIZE + ADV_SENSOR_HEADER_SIZE] = {
 			      0x01,                           /* URL Scheme Prefix https://www. */ \
 			      'a', 't', 'm', 'o', 's', 'i', 'c', 0x07), /* .com */                 \
 		BT_DATA(BT_DATA_MANUFACTURER_DATA, sensor_data, sizeof(sensor_data))
-
-#if defined(CONFIG_BT_EXT_ADV_MAX_ADV_SET) && (CONFIG_BT_EXT_ADV_MAX_ADV_SET > 1)
-static const struct bt_data conn_ad[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA(BT_DATA_NAME_COMPLETE, dev_name, sizeof(dev_name) - 1),
-};
-#endif
 
 int beacon_set_adv_data(void)
 {
@@ -82,6 +87,13 @@ int beacon_adv_init(void)
 		return -EALREADY;
 	}
 
+	if (!dev_name_len) {
+		/* Initialise runtime device name from compile-time default */
+		dev_name_len = sizeof(CONFIG_BT_DEVICE_NAME) - 1;
+		memcpy(dev_name, CONFIG_BT_DEVICE_NAME, dev_name_len);
+		dev_name[dev_name_len] = '\0';
+	}
+
 	LOG_INF("Bluetooth is ready, initializing advertising");
 
 	adv_params.id = BT_ID_DEFAULT;
@@ -89,15 +101,20 @@ int beacon_adv_init(void)
 	adv_params.secondary_max_skip = 0U;
 	adv_params.options = BT_LE_ADV_OPT_EXT_ADV;
 
+	if (adv_interval) {
+		adv_params.interval_min = adv_interval;
+		adv_params.interval_max = adv_interval;
+	} else {
 #ifdef CONFIG_SENSOR_BEACON_FAST_ADV
-	adv_params.interval_min = BT_GAP_ADV_FAST_INT_MIN_2; /* 100 ms */
-	adv_params.interval_max = BT_GAP_ADV_FAST_INT_MAX_2; /* 150 ms */
-	LOG_INF("Advertising mode: Fast (100-150 ms)");
+		adv_params.interval_min = BT_GAP_ADV_FAST_INT_MIN_2; /* 100 ms */
+		adv_params.interval_max = BT_GAP_ADV_FAST_INT_MAX_2; /* 150 ms */
+		LOG_INF("Advertising mode: Fast (100-150 ms)");
 #else
-	adv_params.interval_min = BT_GAP_ADV_SLOW_INT_MIN; /* 1 s */
-	adv_params.interval_max = BT_GAP_ADV_SLOW_INT_MAX; /* 1.2 s */
-	LOG_INF("Advertising mode: Normal (1-1.2 s)");
+		adv_params.interval_min = BT_GAP_ADV_SLOW_INT_MIN; /* 1 s */
+		adv_params.interval_max = BT_GAP_ADV_SLOW_INT_MAX; /* 1.2 s */
+		LOG_INF("Advertising mode: Normal (1-1.2 s)");
 #endif
+	}
 	adv_params.peer = NULL;
 
 	/* Create advertising set */
@@ -118,23 +135,22 @@ int beacon_adv_init(void)
 	conn_adv_params.sid = 1U; /* Different SID */
 	conn_adv_params.secondary_max_skip = 0U;
 	conn_adv_params.options = BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_CONN;
-	conn_adv_params.interval_min = BT_GAP_ADV_SLOW_INT_MIN; /* Slower for connections */
-	conn_adv_params.interval_max = BT_GAP_ADV_SLOW_INT_MAX;
+	conn_adv_params.interval_min = adv_interval ? adv_interval : BT_GAP_ADV_SLOW_INT_MIN;
+	conn_adv_params.interval_max = adv_interval ? adv_interval : BT_GAP_ADV_SLOW_INT_MAX;
 	conn_adv_params.peer = NULL;
 
 	err = bt_le_ext_adv_create(&conn_adv_params, NULL, &conn_adv_set);
 	if (err) {
-		LOG_WRN("Failed to create connection advertising set (err %" PRId32 ")", err);
-		conn_adv_set = NULL; /* Mark as unavailable */
+		LOG_WRN("Failed to create conn adv set (err %" PRId32 ")", err);
+		conn_adv_set = NULL;
 	} else {
-		LOG_INF("Connection advertising set created (not started)");
-
-		/* Set advertising data for connection set (minimal data) */
+		const struct bt_data conn_ad[] = {
+			BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+			BT_DATA(BT_DATA_NAME_COMPLETE, dev_name, dev_name_len),
+		};
 		err = bt_le_ext_adv_set_data(conn_adv_set, conn_ad, ARRAY_SIZE(conn_ad), NULL, 0);
 		if (err) {
-			LOG_WRN("Failed to set connection advertising data (err %" PRId32 ")", err);
-		} else {
-			LOG_INF("Connection advertising data set (ready to start)");
+			LOG_WRN("Failed to set conn adv data (err %" PRId32 ")", err);
 		}
 	}
 #endif /* CONFIG_BT_EXT_ADV_MAX_ADV_SET > 1 */
@@ -151,24 +167,49 @@ int beacon_adv_start(void)
 
 	int err = bt_le_ext_adv_start(adv_set, BT_LE_EXT_ADV_START_DEFAULT);
 	if (err) {
-		LOG_ERR("Failed to start beacon advertising (err %" PRId32 ")", err);
+		LOG_ERR("Failed to start beacon adv (err %" PRId32 ")", err);
 		return err;
 	}
 
-	LOG_INF("Beacon advertising started (scannable set)");
+	adv_running = true;
+	LOG_INF("Beacon adv started: interval=%u (%.1f ms)", adv_params.interval_min,
+		adv_params.interval_min * 0.625);
 
 #if defined(CONFIG_BT_EXT_ADV_MAX_ADV_SET) && (CONFIG_BT_EXT_ADV_MAX_ADV_SET > 1)
 	if (conn_adv_set) {
 		err = bt_le_ext_adv_start(conn_adv_set, BT_LE_EXT_ADV_START_DEFAULT);
 		if (err) {
-			LOG_WRN("Failed to start connection advertising (err %" PRId32 ")", err);
-		} else {
-			LOG_INF("Connection advertising started");
+			LOG_WRN("Failed to start conn adv (err %" PRId32 ")", err);
 		}
 	}
 #endif
 
 	return 0;
+}
+
+int beacon_conn_adv_restart(void)
+{
+#if defined(CONFIG_BT_EXT_ADV_MAX_ADV_SET) && (CONFIG_BT_EXT_ADV_MAX_ADV_SET > 1)
+	if (!conn_adv_set) {
+		LOG_DBG("No connectable adv set");
+		return 0;
+	}
+
+	/* conn_adv_set stops automatically when a connection is established.
+	 * Restart it after disconnection so the device is connectable again.
+	 */
+	int err = bt_le_ext_adv_start(conn_adv_set, BT_LE_EXT_ADV_START_DEFAULT);
+
+	if (err && err != -EALREADY) {
+		LOG_ERR("Failed to restart conn adv (err %" PRId32 ")", err);
+		return err;
+	}
+
+	LOG_INF("Connectable adv restarted");
+	return 0;
+#else
+	return 0;
+#endif
 }
 
 int beacon_adv_stop(void)
@@ -184,6 +225,7 @@ int beacon_adv_stop(void)
 		return err;
 	}
 
+	adv_running = false;
 	LOG_INF("Beacon advertising stopped");
 	return 0;
 }
@@ -223,47 +265,35 @@ int beacon_adv_update_interval(uint32_t interval)
 		return -EINVAL;
 	}
 
-	if (interval < 400 || interval > 16384) {
-		LOG_ERR("Invalid advertising interval: %" PRIu32, interval);
+	if (!adv_interval_valid(interval)) {
+		LOG_ERR("Invalid adv interval: %" PRIu32, interval);
 		return -EINVAL;
 	}
 
-	int err = bt_le_ext_adv_stop(adv_set);
+	/* Tear down all advertising sets */
+	if (adv_running) {
+		bt_le_ext_adv_stop(adv_set);
+		adv_running = false;
+	}
+	bt_le_ext_adv_delete(adv_set);
+	adv_set = NULL;
+
+	/* Reinit with the new interval — beacon_adv_init reads adv_interval */
+	adv_interval = interval;
+
+	int err = beacon_adv_init();
+
 	if (err) {
-		LOG_ERR("Failed to stop advertising for interval update (err %" PRId32 ")", err);
+		LOG_ERR("Failed to reinit adv (err %" PRId32 ")", err);
 		return err;
 	}
 
-	adv_params.interval_min = interval;
-	adv_params.interval_max = interval;
-
-	err = bt_le_ext_adv_delete(adv_set);
+	err = beacon_adv_start();
 	if (err) {
-		LOG_ERR("Failed to delete advertising set (err %" PRId32 ")", err);
 		return err;
 	}
 
-	err = bt_le_ext_adv_create(&adv_params, NULL, &adv_set);
-	if (err) {
-		LOG_ERR("Failed to recreate advertising set (err %" PRId32 ")", err);
-		return err;
-	}
-
-	err = beacon_set_adv_data();
-	if (err) {
-		LOG_ERR("Failed to set advertising data (err %" PRId32 ")", err);
-		return err;
-	}
-
-	err = bt_le_ext_adv_start(adv_set, BT_LE_EXT_ADV_START_DEFAULT);
-	if (err) {
-		LOG_ERR("Failed to restart advertising after interval update (err %" PRId32 ")",
-			err);
-		return err;
-	}
-
-	LOG_INF("Advertising interval updated to %" PRIu32 " (%.1f ms)", interval,
-		interval * 0.625);
+	LOG_INF("Adv interval updated: %" PRIu32 " (%.1f ms)", interval, interval * 0.625);
 	return 0;
 }
 
@@ -280,9 +310,10 @@ int beacon_adv_update_device_name(const char *name)
 		return -EINVAL;
 	}
 
-	/* Update the local device name buffer used in advertising data */
+	/* Update the local device name buffer and length used in advertising data */
 	memset(dev_name, 0, sizeof(dev_name));
 	memcpy(dev_name, name, name_len);
+	dev_name_len = (uint8_t)name_len;
 
 	LOG_INF("Device name updated in advertising data: %s", dev_name);
 
@@ -327,7 +358,7 @@ int beacon_adv_update_device_name(const char *name)
 	if (conn_adv_set) {
 		const struct bt_data conn_ad_local[] = {
 			BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-			BT_DATA(BT_DATA_NAME_COMPLETE, dev_name, sizeof(dev_name) - 1),
+			BT_DATA(BT_DATA_NAME_COMPLETE, dev_name, dev_name_len),
 		};
 		int err = bt_le_ext_adv_set_data(conn_adv_set, conn_ad_local,
 						 ARRAY_SIZE(conn_ad_local), NULL, 0);
@@ -365,6 +396,16 @@ int beacon_adv_update_device_name(const char *name)
 	return 0;
 }
 
+int beacon_adv_set_interval_value(uint32_t interval)
+{
+	if (!adv_interval_valid(interval)) {
+		LOG_ERR("Invalid adv interval: %" PRIu32, interval);
+		return -EINVAL;
+	}
+	adv_interval = interval;
+	return 0;
+}
+
 int beacon_adv_set_device_name_buffer(const char *name)
 {
 	if (!name) {
@@ -380,6 +421,7 @@ int beacon_adv_set_device_name_buffer(const char *name)
 
 	memset(dev_name, 0, sizeof(dev_name));
 	memcpy(dev_name, name, name_len);
+	dev_name_len = (uint8_t)name_len;
 
 	LOG_DBG("Device name buffer updated: %s", dev_name);
 	return 0;

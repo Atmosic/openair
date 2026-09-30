@@ -1,0 +1,18 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
+ * Copyright (c) 2026 Atmosic
+ */
+#include <atm5xxx_2_pinmux.h>
+
+&pinctrl {
+	// I2C 0
+	i2c0_sda_peri_board: i2c0_sda_peri_board {
+		pinmux = <17 PINMUX_I2C0_SDA>;
+	};
+
+	i2c0_scl_peri_board: i2c0_scl_peri_board {
+		pinmux = <16 PINMUX_I2C0_SCL>;
+	};
+};
+

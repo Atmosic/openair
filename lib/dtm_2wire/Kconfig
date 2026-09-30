@@ -1,6 +1,6 @@
 # Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 menuconfig DTM_2WIRE
 	bool "DTM 2-wire Direct Test Mode support"
@@ -33,20 +33,54 @@ config DTM_2WIRE_USER_DATA_LEN_PROPS
       This is useful where a link layer may not implement the
       HCI_LE_READ_MAX_DATA_LEN opcode.
 
-config DTM_2WIRE_RX_TESTING
-    bool "Support RX testing"
-    default y
+choice DTM_2WIRE_RX_TESTING
+    prompt "RX Testing support"
+    default DTM_2WIRE_RX_TESTING_ENABLED
     help
-      The library at a minimum supports transmit testing but can
-      optionally disable RX testing when integrated into transmit
-      only applications
+      Select how the library handles DTM Receiver Test commands.
+
+config DTM_2WIRE_RX_TESTING_ENABLED
+    bool "Enabled"
+    help
+      Full RX testing. The library forwards the Receiver Test command
+      to the controller via HCI and reports the actual packet count on
+      test end. Use in applications where the BLE controller RX path
+      is available.
+
+config DTM_2WIRE_RX_TESTING_DISABLED
+    bool "Disabled"
+    help
+      No RX testing. Receiver Test commands are rejected. Use in
+      transmit-only applications.
+
+config DTM_2WIRE_RX_TESTING_SIMULATED
+    bool "Simulated"
+    help
+      Simulated RX testing. The library accepts Receiver Test commands
+      and returns success, but never issues an HCI command to the
+      controller. When the test ends, the library always reports
+      0 packets received. Use when the controller does not support RX
+      but the test host expects RX commands to succeed.
+
+endchoice
 
 config DTM_2WIRE_EXT
-    bool "Support extended PHY and data length testing"
+    bool "Support extended PHY"
     default y
     help
       Support for extended testing can be disabled and fall back
-      to legacy 1M PHY with no data length extensions.
+      to legacy 1M PHY.
+
+config DTM_2WIRE_RESET_RX_DC_CAL
+    bool "Trigger RX DC offset calibration on DTM reset complete"
+    depends on ATM_ATLC
+    select ATM_RADIO_HAL_MGR
+    select ATM_RADIO_CAL_DEMAND
+    help
+      When enabled, a one-shot RX DC offset calibration is triggered when a DTM
+      reset command completes successfully (DTM_CTRL_RESET). A vendor-specific
+      DTM setup control command (DTM_CTRL_BYPASS_RX_DC_CAL, ctrl=0x3F) is
+      provided to bypass this behaviour.
 
 if DTM_2WIRE_USER_DATA_LEN_PROPS
 

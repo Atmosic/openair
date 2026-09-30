@@ -1,5 +1,10 @@
 sample:
   name: PWM FIFO mode sample
+common:
+  # CONFIG_PWM_ATM_FIFO depends on DT_HAS_ATMOSIC_ATM3X_PWM_ENABLED: FIFO mode
+  # exists on every Atmosic chipset except the ATMx2 series.
+  depends_on:
+    - atm3x_pwm
 tests:
   samples.drivers.pwm.pwm_atm_fifo.atm:
     sysbuild: true

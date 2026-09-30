@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2021-2026, Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/logging/log.h>
@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(pwm_atm, CONFIG_PWM_LOG_LEVEL);
 #endif
 #ifdef CONFIG_PM
 #include <zephyr/pm/policy.h>
+#include <zephyr/pm/pm.h>
 #include <zephyr/kernel.h>
 #endif
 #include <soc.h>
@@ -24,11 +25,14 @@ LOG_MODULE_REGISTER(pwm_atm, CONFIG_PWM_LOG_LEVEL);
 #include "at_wrpr.h"
 #include "at_pinmux.h"
 #include "at_apb_pwm_regs_core_macro.h"
+#include "at_apb_pseq_regs_core_macro.h"
 
+#ifndef PWM_PWM0_CTRL__TOT_DUR__READ
 // PWM block base is 4 bytes before pwm0's register address
 #define Z_CMSDK_PWM ((CMSDK_AT_APB_PWM_TypeDef *)(DT_REG_ADDR(DT_NODELABEL(pwm0)) - 4))
-#include "at_apb_pseq_regs_core_macro.h"
+#ifdef CONFIG_PWM_ATM_FIFO
 #include "dma.h"
+#endif
 
 #define DT_DRV_COMPAT  atmosic_atm3x_pwm
 #define SYS_CLK_IN_KHZ (PCLK_ALT_FREQ / 1000) // PWM block runs on 16MHz clock domain
@@ -55,6 +59,25 @@ LOG_MODULE_REGISTER(pwm_atm, CONFIG_PWM_LOG_LEVEL);
 		Z_CMSDK_PWM->PWM##I##_DUR = 0;                                                     \
 	} while (0)
 #define PWM(n) CONCAT(PWM, DT_INST_PROP(n, channel))
+#else
+#define DT_DRV_COMPAT  atmosic_atmx2_pwm
+// PWM block base is pwm0's register address
+#define Z_CMSDK_PWM    CMSDK_PWM
+#define PWM_CLK_CTRL   WRPR_CTRL__CLK_ENABLE
+#define PWM0_TOT_WIDTH PWM_PWM0_CTRL__TOT_DUR__WIDTH
+#define PWM_SET_DURATION(I, hi_dur, lo_dur)                                                        \
+	do {                                                                                       \
+		Z_CMSDK_PWM->PWM##I##_CTRL |=                                                      \
+			PWM_PWM##I##_CTRL__TOT_DUR__WRITE((hi_dur) + (lo_dur)) |                   \
+			PWM_PWM##I##_CTRL__LO_DUR__WRITE((lo_dur));                                \
+	} while (0)
+
+#define PWM_SET_PARAMS(I, polarity, mode)                                                          \
+	do {                                                                                       \
+		Z_CMSDK_PWM->PWM##I##_CTRL = PWM_PWM##I##_CTRL__INVERT__WRITE(polarity);           \
+	} while (0)
+#define PWM(n) CONCAT(CONCAT(PWM_, DT_INST_PROP(n, channel)), _)
+#endif
 
 #define SYS_CLK_IN_HZ (SYS_CLK_IN_KHZ * 1000)
 
@@ -111,6 +134,38 @@ static void pwm_pseq_latch_close(void)
 }
 #endif
 
+#if defined(CONFIG_PM) && defined(PSEQ_CTRL0__PWM_LATCH_OPEN__CLR)
+static void notify_pm_state_exit(enum pm_state state)
+{
+	if (state != PM_STATE_SUSPEND_TO_RAM) {
+		return;
+	}
+
+	/* PSEQ opens the PWM latch on retention entry and does not re-close it
+	 * on resume, freezing the pin output. Re-close it here so subsequent
+	 * PWM transfers reach the pin. */
+	pwm_pseq_latch_close();
+}
+
+static struct pm_notifier pwm_notifier = {
+	.state_exit = notify_pm_state_exit,
+};
+#endif /* defined(CONFIG_PM) && defined(PSEQ_CTRL0__PWM_LATCH_OPEN__CLR) */
+
+static atomic_t pwm_active_mask;
+
+static inline void pwm_clk_on(void)
+{
+	WRPR_CTRL_SET(Z_CMSDK_PWM, PWM_CLK_CTRL);
+}
+
+static inline void pwm_clk_gate_if_idle(void)
+{
+	if (atomic_get(&pwm_active_mask) == 0) {
+		WRPR_CTRL_SET(Z_CMSDK_PWM, WRPR_CTRL__CLK_DISABLE);
+	}
+}
+
 static void pwm_disable(uint8_t instance)
 {
 	switch (instance) {
@@ -142,6 +197,7 @@ static void pwm_disable(uint8_t instance)
 		ASSERT_INFO(0, instance, 0);
 		break;
 	}
+	atomic_and(&pwm_active_mask, ~BIT(instance));
 	return;
 }
 
@@ -168,40 +224,6 @@ static inline bool pwm_atm_fifo_validate(const struct device *dev, uint32_t chan
 	return (fifo_dev == dev && fifo_channel == channel && data->fifo_data[channel].initialized);
 }
 
-static void pwm_atm_fifo_isr(void)
-{
-	uint32_t intr_mask = Z_CMSDK_PWM->INTERRUPTS;
-
-	if (PWM_INTERRUPTS__FIFO_LWM_HIT_INTRPT__READ(intr_mask)) {
-		/* FIFO low water mark hit - call alert handler */
-		if (fifo_config && fifo_config->fifo_alert_callback) {
-			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, 0);
-		}
-		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT1__MASK;
-	}
-
-	if (PWM_INTERRUPTS__FIFO_CMD_DONE_INTRPT__READ(intr_mask)) {
-		/* All FIFO commands completed */
-		pwm_disable(fifo_channel);
-		if (fifo_config && fifo_config->fifo_done_callback) {
-			fifo_config->fifo_done_callback(fifo_dev, fifo_channel, 0);
-		}
-		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT3__MASK;
-	}
-
-	if (PWM_INTERRUPTS__FIFO_OVRFLOW_INTRPT__READ(intr_mask)) {
-		LOG_ERR("PWM FIFO overflow");
-		/* Call alert callback with overflow error */
-		if (fifo_config && fifo_config->fifo_alert_callback) {
-			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, -EOVERFLOW);
-		}
-		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT2__MASK;
-	}
-
-	Z_CMSDK_PWM->INTERRUPTS_CLEAR = 0x0;
-}
-#endif
-
 #ifdef CONFIG_PM
 /*
  * pm_constraint_mask tracks which PWM channels hold a PM constraint. All callers
@@ -223,9 +245,10 @@ static void pwm_atm_pm_constraint_set(const struct device *dev, uint8_t channel)
 	}
 }
 
-static void pwm_atm_pm_constraint_release(const struct device *dev, uint8_t channel)
+static void pwm_atm_pm_constraint_release(const struct device *dev, uint8_t channel,
+					  uint32_t period_cycles)
 {
-	struct pwm_atm_data *data = DEV_DATA(dev);
+	ARG_UNUSED(dev);
 	atomic_t old_mask = atomic_and(&pm_constraint_mask, ~BIT(channel));
 	atomic_t new_mask = old_mask & ~BIT(channel);
 
@@ -235,28 +258,77 @@ static void pwm_atm_pm_constraint_release(const struct device *dev, uint8_t chan
 	 * unbalancing the PM lock get/put.
 	 */
 	if (old_mask && !new_mask) {
-		/* Calculate frame duration based on stored period for the channel being disabled */
-		if (data->period_cycles[channel]) {
-			/*
-			 * Frame duration with 20% safety margin in microseconds
-			 */
-			uint32_t delay_us = data->period_cycles[channel] /
-					    ((SYS_CLK_IN_KHZ * 100) / (MSEC_PER_SEC * 120));
-
-			LOG_DBG("PWM channel %d: period=%" PRIu32 " cycles, delay=%" PRIu32 " µs",
-				channel, data->period_cycles[channel], delay_us);
-
-			/*
-			 * Hardware Timing Requirement:
-			 * PWM OK_TO_RUN bit clears immediately, but the hardware stops
-			 * "at the end of the next frame" per register documentation.
-			 */
+		/*
+		 * Only the last active channel needs to wait for the in-progress
+		 * frame to finish before the clock may be gated and the PM
+		 * constraint released.
+		 *
+		 * Hardware Timing Requirement:
+		 * PWM OK_TO_RUN bit clears immediately, but the hardware stops
+		 * "at the end of the next frame" per register documentation.
+		 *
+		 * To guarantee the frame finishes, calculate the delay in microseconds
+		 * with a 20% safety margin:
+		 *   delay_us = (period_cycles / cycles_per_us) * 1.2
+		 *
+		 * To avoid floating-point math, we divide period_cycles by (cycles_per_us / 1.2),
+		 * which is implemented as: (SYS_CLK_IN_KHZ * 100) / (MSEC_PER_SEC * 120).
+		 *
+		 * Note: period_cycles is 0 for FIFO/ISR paths, which skips the
+		 * delay (also guarded by k_is_in_isr()).
+		 */
+		if (period_cycles && !k_is_in_isr()) {
+			uint32_t delay_us =
+				period_cycles / ((SYS_CLK_IN_KHZ * 100) / (MSEC_PER_SEC * 120));
+			LOG_DBG("PWM wait %" PRIu32 " us for last frame", delay_us);
 			k_usleep(delay_us);
 		}
 
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
+}
+#endif
+
+static void pwm_atm_fifo_isr(void)
+{
+	uint32_t intr_mask = Z_CMSDK_PWM->INTERRUPTS;
+
+	if (PWM_INTERRUPTS__FIFO_LWM_HIT_INTRPT__READ(intr_mask)) {
+		/* FIFO low water mark hit - call alert handler */
+		if (fifo_config && fifo_config->fifo_alert_callback) {
+			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, 0);
+		}
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT1__MASK;
+	}
+
+	if (PWM_INTERRUPTS__FIFO_CMD_DONE_INTRPT__READ(intr_mask)) {
+		/* All FIFO commands completed */
+		pwm_disable(fifo_channel);
+
+		if (fifo_config && fifo_config->fifo_done_callback) {
+			fifo_config->fifo_done_callback(fifo_dev, fifo_channel, 0);
+		}
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT3__MASK;
+
+#ifdef CONFIG_PM
+		/* Release the PM constraint acquired in fifo_start/run_dma. FIFO mode
+		 * does not use data->period_cycles, and k_usleep must not run in ISR
+		 * context, so pass period_cycles = 0 to skip the delay. */
+		pwm_atm_pm_constraint_release(fifo_dev, fifo_channel, 0);
+#endif
+	}
+
+	if (PWM_INTERRUPTS__FIFO_OVRFLOW_INTRPT__READ(intr_mask)) {
+		LOG_ERR("PWM FIFO overflow");
+		/* Call alert callback with overflow error */
+		if (fifo_config && fifo_config->fifo_alert_callback) {
+			fifo_config->fifo_alert_callback(fifo_dev, fifo_channel, -EOVERFLOW);
+		}
+		Z_CMSDK_PWM->INTERRUPTS_CLEAR = PWM_INTERRUPTS_MASK__MASK_INTRPT2__MASK;
+	}
+
+	Z_CMSDK_PWM->INTERRUPTS_CLEAR = 0x0;
 }
 #endif
 
@@ -291,10 +363,6 @@ static void pinmux_config(uint8_t instance, uint8_t polarity, pwm_mode_t mode)
 		ASSERT_INFO(0, instance, 0);
 	} break;
 	}
-
-#ifdef PSEQ_CTRL0__PWM_LATCH_OPEN__CLR
-	pwm_pseq_latch_close();
-#endif
 }
 
 static void pwm_set_duration(uint8_t instance, uint16_t hi_dur, uint16_t lo_dur)
@@ -332,6 +400,9 @@ static void pwm_set_duration(uint8_t instance, uint16_t hi_dur, uint16_t lo_dur)
 
 static void pwm_enable(uint8_t instance)
 {
+	if (atomic_or(&pwm_active_mask, BIT(instance)) == 0) {
+		pwm_clk_on();
+	}
 	switch (instance) {
 	case 0:
 		PWM_PWM0_CTRL__OK_TO_RUN__SET(Z_CMSDK_PWM->PWM0_CTRL);
@@ -383,23 +454,26 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 		return -EINVAL;
 	}
 
+	if (pulse_cycles > period_cycles) {
+		LOG_ERR("Invalid combination of pulse and period cycles. Received: %d %d",
+			pulse_cycles, period_cycles);
+		return -EINVAL;
+	}
+
 	bool polarity = flags & PWM_POLARITY_INVERTED;
+
+	pwm_clk_on();
 
 	if (!pulse_cycles) {
 		pwm_set_duration(channel, 0, 0);
 		pwm_disable(channel);
 		pinmux_config(channel, polarity, PWM_CONTINUOUS_MODE);
 #ifdef CONFIG_PM
-		pwm_atm_pm_constraint_release(dev, channel);
+		pwm_atm_pm_constraint_release(dev, channel, data->period_cycles[channel]);
 #endif
+		pwm_clk_gate_if_idle();
 		data->period_cycles[channel] = 0;
 		return 0;
-	}
-
-	if (pulse_cycles > period_cycles) {
-		LOG_ERR("Invalid combination of pulse and period cycles. Received: %d %d",
-			pulse_cycles, period_cycles);
-		return -EINVAL;
 	}
 
 #ifdef PWM_PWM0_CTRL__TOT_DUR__READ
@@ -458,6 +532,8 @@ static int pwm_atm_set_cycles(struct device const *dev, uint32_t channel, uint32
 }
 
 #ifdef CONFIG_PWM_ATM_FIFO
+static uint32_t pwm_fifo_max_period_cycles;
+
 static void pwm_cal_hi_lo_duration(uint32_t freq_Hz, uint8_t duty_cycle, uint16_t *hi_dur,
 				   uint16_t *lo_dur)
 {
@@ -544,7 +620,7 @@ int pwm_atm_fifo_init(const struct device *dev, uint32_t channel,
 	}
 
 	/* Initialize PWM clock if not already done */
-	WRPR_CTRL_SET(Z_CMSDK_PWM, PWM_CLK_CTRL);
+	pwm_clk_on();
 
 	uint16_t hi_dur, lo_dur;
 	/* Configure carrier 1 if provided */
@@ -562,6 +638,14 @@ int pwm_atm_fifo_init(const struct device *dev, uint32_t channel,
 		Z_CMSDK_PWM->FIFO_CARRIER2_DUR = PWM_FIFO_CARRIER2_DUR__HI_DUR__WRITE(hi_dur) |
 						 PWM_FIFO_CARRIER2_DUR__LO_DUR__WRITE(lo_dur);
 	}
+
+	uint32_t period1 = (config->carrier1 && config->carrier1->freq_hz)
+				   ? (SYS_CLK_IN_HZ / config->carrier1->freq_hz)
+				   : 0;
+	uint32_t period2 = (config->carrier2 && config->carrier2->freq_hz)
+				   ? (SYS_CLK_IN_HZ / config->carrier2->freq_hz)
+				   : 0;
+	pwm_fifo_max_period_cycles = MAX(period1, period2);
 
 	/* Configure FIFO settings */
 	Z_CMSDK_PWM->FIFO_CFG = PWM_FIFO_CFG__LWM__WRITE(config->fifo_alert_threshold) |
@@ -650,8 +734,15 @@ int pwm_atm_fifo_deinit(const struct device *dev, uint32_t channel)
 	data->fifo_data[channel].instance = 0;
 
 #ifdef CONFIG_PM
-	pwm_atm_pm_constraint_release(dev, channel);
+	/* Let pwm_atm_pm_constraint_release decide whether to wait: it only
+	 * delays when this is the last active channel. Pass the FIFO frame
+	 * period so that decision stays centralized there. */
+	pwm_atm_pm_constraint_release(dev, channel, pwm_fifo_max_period_cycles);
 #endif
+
+	pwm_fifo_max_period_cycles = 0;
+
+	pwm_clk_gate_if_idle();
 
 	return 0;
 }
@@ -749,8 +840,9 @@ int pwm_atm_fifo_stop(const struct device *dev, uint32_t channel)
 	pwm_disable(channel);
 
 #ifdef CONFIG_PM
-	pwm_atm_pm_constraint_release(dev, channel);
+	pwm_atm_pm_constraint_release(dev, channel, pwm_fifo_max_period_cycles);
 #endif
+	pwm_clk_gate_if_idle();
 
 	return 0;
 }
@@ -798,7 +890,15 @@ int pwm_atm_fifo_get_free_slots(const struct device *dev, uint32_t channel)
 		return -ENODEV;
 	}
 
-	return PWM_FIFO_STAT1__NUM_OPEN_SLOTS__READ(Z_CMSDK_PWM->FIFO_STAT1);
+	int slots;
+
+	WRPR_CTRL_PUSH(Z_CMSDK_PWM, PWM_CLK_CTRL)
+	{
+		slots = PWM_FIFO_STAT1__NUM_OPEN_SLOTS__READ(Z_CMSDK_PWM->FIFO_STAT1);
+	}
+	WRPR_CTRL_POP();
+
+	return slots;
 }
 
 bool pwm_atm_fifo_is_empty(const struct device *dev, uint32_t channel)
@@ -809,7 +909,15 @@ bool pwm_atm_fifo_is_empty(const struct device *dev, uint32_t channel)
 		return false;
 	}
 
-	return PWM_FIFO_STAT__EMPTY__READ(Z_CMSDK_PWM->FIFO_STAT);
+	bool empty;
+
+	WRPR_CTRL_PUSH(Z_CMSDK_PWM, PWM_CLK_CTRL)
+	{
+		empty = PWM_FIFO_STAT__EMPTY__READ(Z_CMSDK_PWM->FIFO_STAT);
+	}
+	WRPR_CTRL_POP();
+
+	return empty;
 }
 
 bool pwm_atm_fifo_is_full(const struct device *dev, uint32_t channel)
@@ -820,7 +928,15 @@ bool pwm_atm_fifo_is_full(const struct device *dev, uint32_t channel)
 		return true;
 	}
 
-	return PWM_FIFO_STAT__FULL__READ(Z_CMSDK_PWM->FIFO_STAT);
+	bool full;
+
+	WRPR_CTRL_PUSH(Z_CMSDK_PWM, PWM_CLK_CTRL)
+	{
+		full = PWM_FIFO_STAT__FULL__READ(Z_CMSDK_PWM->FIFO_STAT);
+	}
+	WRPR_CTRL_POP();
+
+	return full;
 }
 #endif /* CONFIG_PWM_ATM_FIFO */
 
@@ -828,8 +944,15 @@ static int pwm_atm_init(struct device const *dev)
 {
 	struct pwm_atm_config const *config = DEV_CFG(dev);
 
-	WRPR_CTRL_SET(Z_CMSDK_PWM, PWM_CLK_CTRL);
 	config->config_pins();
+
+#if defined(CONFIG_PM) && defined(PSEQ_CTRL0__PWM_LATCH_OPEN__CLR)
+	static bool notifier_registered = false;
+	if (!notifier_registered) {
+		pm_notifier_register(&pwm_notifier);
+		notifier_registered = true;
+	}
+#endif
 
 	return 0;
 }

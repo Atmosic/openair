@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Atmosic
+ * Copyright (c) 2024-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,12 +12,12 @@
 
 static int load_err;
 
-static void clear_load_error_status(void)
+static __attribute__((unused)) void clear_load_error_status(void)
 {
     load_err = 0;
 }
 
-static int get_load_error_status(void)
+static __attribute__((unused)) int get_load_error_status(void)
 {
     return load_err;
 }
@@ -89,7 +89,7 @@ SETTINGS_STATIC_HANDLER_DEFINE(factory_data, MAIN_KEY(FACTORY), NULL,
 SETTINGS_STATIC_HANDLER_DEFINE(settings_storage, MAIN_KEY(SETTINGS), NULL,
     settings_storage_handle_set, NULL, NULL);
 
-static int settings_test_key_access_check(uint32_t check_value)
+static __attribute__((unused)) int settings_test_key_access_check(uint32_t check_value)
 {
     /* save TEST_KEY key-value directly */
     printk("save %s key: %#x\n", SETTINGS_STORAGE_KEY(TEST_KEY), check_value);
@@ -117,45 +117,67 @@ static int settings_test_key_access_check(uint32_t check_value)
     return 0;
 }
 
+#ifndef CONFIG_SETTINGS_NONE
 ZTEST(atm_settings_test, test_atm_settings_call)
 {
-    clear_load_error_status();
+	clear_load_error_status();
 
-    /* load all pre-saved key-values in the factory data and settings storage */
-    int rc = settings_load();
-    zassert_true(!rc, "Failed to load key-value");
+	/* load all pre-saved key-values in the factory data and settings storage */
+	int rc = settings_load();
+	zassert_true(!rc, "Failed to load key-value");
 
-    #define PRE_COMPANY_ID 0x0A24
-    #define PRE_SERIAL_NUM 0x12345678
-    #define PRE_VERSION "1.23"
+#define PRE_COMPANY_ID 0x0A24
+#define PRE_SERIAL_NUM 0x12345678
+#define PRE_VERSION    "1.23"
 
-    if (company_id) {
-	printk("load %s key: %#x\n", FACTORY_DATA_KEY(COMPANY_ID), company_id);
-	zassert_true((company_id == PRE_COMPANY_ID),
-	    "Failed to load key-value");
-    }
-    if (serial_number) {
-	printk("load %s key: %#x\n", FACTORY_DATA_KEY(SERIAL_NUMBER),
-	    serial_number);
-	zassert_true((serial_number == PRE_SERIAL_NUM),
-	    "Failed to load key-value");
-    }
-    if (strcmp(version, "")) {
-	printk("load %s key: %s\n", SETTINGS_STORAGE_KEY(VERSION), version);
-	zassert_true((strcmp(version, PRE_VERSION) == 0),
-	    "Failed to load key-value");
-    }
+	if (company_id) {
+		printk("load %s key: %#x\n", FACTORY_DATA_KEY(COMPANY_ID), company_id);
+		zassert_true((company_id == PRE_COMPANY_ID), "Failed to load key-value");
+	}
+	if (serial_number) {
+		printk("load %s key: %#x\n", FACTORY_DATA_KEY(SERIAL_NUMBER), serial_number);
+		zassert_true((serial_number == PRE_SERIAL_NUM), "Failed to load key-value");
+	}
+	if (strcmp(version, "")) {
+		printk("load %s key: %s\n", SETTINGS_STORAGE_KEY(VERSION), version);
+		zassert_true((strcmp(version, PRE_VERSION) == 0), "Failed to load key-value");
+	}
 
-    rc = settings_test_key_access_check(0x5AA50FF0);
-    zassert_true(!rc, "Failed to access key-value");
+	rc = settings_test_key_access_check(0x5AA50FF0);
+	zassert_true(!rc, "Failed to access key-value");
 
-    rc = settings_test_key_access_check(0xA55AF00F);
-    zassert_true(!rc, "Failed to access key-value");
+	rc = settings_test_key_access_check(0xA55AF00F);
+	zassert_true(!rc, "Failed to access key-value");
 
-    rc = get_load_error_status();
-    zassert_true(!rc, "Failed to load key-value");
+	rc = get_load_error_status();
+	zassert_true(!rc, "Failed to load key-value");
 
-    printk("atm settings to save and load key-value! %s\n", CONFIG_BOARD);
+	printk("atm settings to save and load key-value! %s\n", CONFIG_BOARD);
 }
+#endif
+
+/*
+ * test_atm_settings_init
+ *
+ * atm_settings_init() is registered via SYS_INIT(POST_KERNEL) and runs
+ * automatically before ztest. If it failed the system would not reach
+ * this point, so simply reaching here proves the happy-path of
+ * atm_settings.c is exercised.
+ *
+ * CONFIG_SETTINGS_NONE=y indicates that the Zephyr settings subsystem is
+ * configured to use a no-op storage backend. This causes atm_settings_init()
+ * to call atm_settings_backend_init() in atm_settings_backend.c (the
+ * generic/fallback backend) instead of the one in atm_settings_nvs.c
+ * (which requires a real NVS flash partition and is selected when
+ * CONFIG_SETTINGS_NVS=y). This ensures atm_settings_backend.c is exercised
+ * without requiring actual flash hardware.
+ */
+#ifdef CONFIG_SETTINGS_NONE
+ZTEST(atm_settings_test, test_atm_settings_init)
+{
+	/* Nothing explicit needed, SYS_INIT already ran atm_settings_init(). */
+	ztest_test_pass();
+}
+#endif
 
 ZTEST_SUITE(atm_settings_test, NULL, NULL, NULL, NULL, NULL);

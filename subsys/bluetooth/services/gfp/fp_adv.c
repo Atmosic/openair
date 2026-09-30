@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file fp_adv.c
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Advertisement Middleware
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -34,7 +38,7 @@
 LOG_MODULE_REGISTER(fp, CONFIG_ATM_FP_LOG_LEVEL);
 
 // Advertising interval in discoverable
-#define FP_ADV_DISCOVER_MS     100
+#define FP_ADV_DISCOVER_MS 100
 #define FP_ADV_DISCOVER_INT_MIN                                                                    \
 	BT_GAP_MS_TO_ADV_INTERVAL(FP_ADV_DISCOVER_MS - FP_ADV_INTERVAL_RANGE_MS)
 #define FP_ADV_DISCOVER_INT_MAX BT_GAP_MS_TO_ADV_INTERVAL(FP_ADV_DISCOVER_MS)
@@ -257,7 +261,8 @@ static void fp_adv_adv_sent(struct bt_le_ext_adv *instance, struct bt_le_ext_adv
 static void fp_adv_connected(struct bt_le_ext_adv *instance,
 			     struct bt_le_ext_adv_connected_info *info)
 {
-	fp_adv_release_adv();
+	ARG_UNUSED(instance);
+	ARG_UNUSED(info);
 }
 
 static int fp_adv_set_payload(bool rotate_payload)
@@ -296,8 +301,13 @@ static bool fp_adv_rpa_expired(struct bt_le_ext_adv *adv)
 	__ASSERT_NO_MSG(!k_is_in_isr());
 
 	LOG_DBG("RPA expired");
-	if (adv != fp_adv_set) {
+	if (!fp_adv_set || (adv != fp_adv_set)) {
 		LOG_WRN("RPA expired ignore due to adv != fp_adv_set");
+		return false;
+	}
+	fp_mode_t mode = fp_mode_get();
+	if ((mode == FP_MODE_NONE) || (mode == FP_MODE_PROVISIONING)) {
+		return false;
 	}
 	bool rpa_expired = true;
 	static int64_t uptime;
@@ -307,17 +317,15 @@ static bool fp_adv_rpa_expired(struct bt_le_ext_adv *adv)
 		LOG_DBG("the last timeout has occurred %" PRId64 " [s] ago",
 			(k_uptime_delta(&uptime) / MSEC_PER_SEC));
 	}
-	bool skip_timeout = false;
-#if defined(CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR) &&                                       \
+	bool fmdn_owns_rpa = false;
+#if defined(CONFIG_FAST_PAIR_FMDN) && defined(CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR) &&     \
 	!defined(CONFIG_FAST_PAIR_FMDN_MERGED_ADV)
-	/* Shared BT_ID, non-merged: FMDN's rpa_expired fires on the same expiry event
-	 * when provisioned. Skip here to avoid two bt_le_set_rpa_timeout() calls with
-	 * different random values — FMDN is the authoritative timeout owner post-provisioning.
-	 * When not provisioned, FMDN is inactive so FP must set the timeout itself.
+	/* Non-merged mode: FMDN owns the RPA policy once provisioned. FP must not
+	 * apply its own timeout, because FMDN controls the EID-synchronized rotation.
 	 */
-	skip_timeout = fp_mode_is_provisioned();
+	fmdn_owns_rpa = fp_mode_is_provisioned();
 #endif
-	if (!skip_timeout) {
+	if (!fmdn_owns_rpa) {
 		uint16_t next_timeout = fp_mode_rpa_timeout();
 		int err = bt_le_set_rpa_timeout(next_timeout);
 		if (err) {
@@ -326,9 +334,9 @@ static bool fp_adv_rpa_expired(struct bt_le_ext_adv *adv)
 			LOG_DBG("setting RPA timeout to %u [s]", next_timeout);
 		}
 	}
-	//  BLE address shall not be rotated before paired
-	if (fp_mode_get() < FP_MODE_PAIRED) {
-		LOG_DBG("fp_adv_rpa_expired expire_rpa false");
+
+	if (!fp_mode_rpa_rotation_allowed()) {
+		LOG_DBG("FP RPA rotation deferred by mode policy, mode=%u", fp_mode_get());
 		rpa_expired = false;
 	}
 
@@ -354,11 +362,11 @@ static void fp_adv_stop(void)
 	}
 	LOG_INF("FP Advertising Stop");
 	bt_le_ext_adv_stop(fp_adv_set);
-	fp_adv_release_adv();
 }
 
 static void fp_adv_start(fp_mode_t mode)
 {
+	int err;
 	adv_param.id = fp_conn_get_bt_id(FP_ADV_BT_ID);
 	adv_param.options = BT_LE_ADV_OPT_CONN;
 	LOG_INF("FP advertising on BT_ID %u", adv_param.id);
@@ -381,31 +389,19 @@ static void fp_adv_start(fp_mode_t mode)
 		}
 	}
 
-	/*
-	 * Address mode for Fast Pair advertising:
-	 *
-	 * WAR: The FHN spec (ID rotation) requires RPA for all Fast Pair non-discoverable
-	 * frames on non-dual-mode devices. However, the Google Fast Pair Validator requires
-	 * discoverable advertisement to use the identity (static random) address to correctly
-	 * identify the device during certification testing. To satisfy both requirements,
-	 * the identity address is used by default for Fast Pair advertising.
-	 *
-	 * Exception - PLR with shared BT_ID (CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR):
-	 * During power-loss recovery, Fast Pair advertising runs alongside FMDN advertising
-	 * on the same BT_ID. The FHN spec mandates that FHN frames use RPA, and since both
-	 * sets share the same BT_ID, Fast Pair must also use RPA so that both advertisements
-	 * rotate the BLE address at the same time per the FHN "ID rotation" requirement.
-	 * The identity flag is therefore omitted in this case.
-	 */
-	if (!IS_ENABLED(CONFIG_FAST_PAIR_FMDN_USE_BT_ID_OF_FAST_PAIR) ||
-	    !fp_mode_power_loss_recovery_required_adv(mode)) {
-		adv_param.options |= BT_LE_ADV_OPT_USE_IDENTITY;
-	}
-
-	int err = bt_le_ext_adv_create(&adv_param, &adv_cb, &fp_adv_set);
-	if (err) {
-		LOG_ERR("Failed to create advertising set (err %d)", err);
-		return;
+	bt_le_adv_param_set_tx_power(&adv_param, CONFIG_FAST_PAIR_ADV_TX_POWER_DBM);
+	if (fp_adv_set) {
+		err = bt_le_ext_adv_update_param(fp_adv_set, &adv_param);
+		if (err) {
+			LOG_ERR("Failed to update advertising parameters (err %d)", err);
+			return;
+		}
+	} else {
+		err = bt_le_ext_adv_create(&adv_param, &adv_cb, &fp_adv_set);
+		if (err) {
+			LOG_ERR("Failed to create advertising set (err %d)", err);
+			return;
+		}
 	}
 
 	err = fp_adv_set_payload(false);
@@ -434,11 +430,14 @@ static void fp_adv_invoke_recreate(struct k_work *work)
 	} else if (mode == FP_MODE_PAIRED) {
 		/* Paired (non-provisioned) mode: FP non-discoverable advertising */
 		fp_adv_start(FP_MODE_PAIRED);
+	} else if (mode == FP_MODE_NONE) {
+		fp_adv_release_adv();
 #ifdef CONFIG_FAST_PAIR_FMDN
 	} else if (mode == FP_MODE_PROVISIONING) {
 		/* Provisioning mode: No advertising (phone is already connected via GATT) */
 		/* The phone writes EID key over the existing connection */
 	} else if (mode == FP_MODE_PROVISIONED) {
+		fp_adv_release_adv();
 		/* Provisioned mode handling depends on merged advertising config */
 #ifdef CONFIG_FAST_PAIR_FMDN_MERGED_ADV
 		/* With merged advertising: FMDN handles all provisioned advertising (including PLR)
@@ -449,7 +448,7 @@ static void fp_adv_invoke_recreate(struct k_work *work)
 		 * provisioned */
 		if (fp_mode_power_loss_recovery_required_adv(mode)) {
 			/* During PLR, FP advertising runs */
-			fp_adv_start(FP_MODE_PAIRED);
+			fp_adv_start(mode);
 		}
 		/* Otherwise, FMDN handles advertising */
 #endif
@@ -462,3 +461,86 @@ void fp_adv_recreate(void)
 {
 	atm_work_submit_to_app_work_q(&fp_adv_action);
 }
+
+int fp_adv_get_adv_set_addr(bt_addr_le_t *addr)
+{
+	if (!fp_adv_set) {
+		LOG_ERR("FP adv set not created");
+		return -ENODEV;
+	}
+	struct bt_le_ext_adv_info info;
+	int err = bt_le_ext_adv_get_info(fp_adv_set, &info);
+	if (err) {
+		LOG_ERR("Failed to get FP adv set info (err %d)", err);
+		return err;
+	}
+	bt_addr_le_copy(addr, info.addr);
+	return 0;
+}
+
+// Restart advertising when the Fast Pair connection drops.
+// fp_adv owns this reaction so fp_gatt does not need to depend on fp_adv.
+static void fp_adv_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	if (!fp_conn_validate(conn)) {
+		return;
+	}
+	fp_adv_recreate();
+}
+
+BT_CONN_CB_DEFINE(fp_adv_conn_callbacks) = {
+	.disconnected = fp_adv_disconnected,
+};
+
+#if defined(CONFIG_ZTEST)
+void fp_adv_test_adv_sent(void)
+{
+	fp_adv_adv_sent(NULL, NULL);
+}
+
+void fp_adv_test_connected(void)
+{
+	fp_adv_connected(NULL, NULL);
+}
+
+void fp_adv_test_reset(void)
+{
+	fp_adv_set = NULL;
+	fp_adv_salt = 0;
+}
+
+void fp_adv_test_cancel_recreate(void)
+{
+	(void)k_work_cancel(&fp_adv_action);
+}
+
+void fp_adv_test_invoke_recreate(void)
+{
+	fp_adv_invoke_recreate(NULL);
+}
+
+bool fp_adv_test_rpa_expired(struct bt_le_ext_adv *adv)
+{
+	return fp_adv_rpa_expired(adv);
+}
+
+void fp_adv_test_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	fp_adv_disconnected(conn, reason);
+}
+
+uint16_t fp_adv_test_data_salt(void)
+{
+	return fp_adv_data_salt();
+}
+
+void fp_adv_test_data_salt_update(void)
+{
+	fp_adv_data_salt_update();
+}
+
+void fp_adv_test_get_non_disc_service_data(struct bt_data *ad)
+{
+	fp_adv_get_non_disc_service_data(ad);
+}
+#endif /* CONFIG_ZTEST */

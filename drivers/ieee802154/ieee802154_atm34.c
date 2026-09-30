@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2023-2025 Atmosic
+ * Copyright (c) 2023-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atm34_ieee802154
@@ -177,7 +177,9 @@ static int ieee802154_atm34_radio_filter(const struct device *dev,
 
 	// FIXME: check endianess of filter->*_addr
 	if (type == IEEE802154_FILTER_TYPE_IEEE_ADDR) {
-		atm_req_154_set_long_addr(atm_154_iface, *(uint64_t *)filter->ieee_addr);
+		// ieee_addr is a byte array with no alignment guarantee
+		atm_req_154_set_long_addr(atm_154_iface,
+					  UNALIGNED_GET((uint64_t *)filter->ieee_addr));
 		return 0;
 	}
 	if (type == IEEE802154_FILTER_TYPE_SHORT_ADDR) {
@@ -401,6 +403,12 @@ static int ieee802154_atm34_radio_start(const struct device *dev)
 		atm_mac_lock_sync();
 	} else if (radio_state == IEEE802154_ATM34_CCW_RUNNING) {
 		atm_req_154_activate_carrier_wave(atm_154_iface, false);
+#ifdef CONFIG_ATM_RADIO_HAL_MGR
+		// The carrier wave diagnostic mode bypasses the Radio Manager, so
+		// disable the HAL here to keep the Radio Manager's enabled-protocol
+		// tracking in sync (see atm_req_154_activate_carrier_wave).
+		atm_mac_154_disable();
+#endif
 	}
 
 	data.rx_start_time = 0;
@@ -463,6 +471,12 @@ static int ieee802154_atm34_radio_stop(const struct device *dev)
 
 	if (radio_state == IEEE802154_ATM34_CCW_RUNNING) {
 		atm_req_154_activate_carrier_wave(atm_154_iface, false);
+#ifdef CONFIG_ATM_RADIO_HAL_MGR
+		// The carrier wave diagnostic mode bypasses the Radio Manager, so
+		// disable the HAL here to keep the Radio Manager's enabled-protocol
+		// tracking in sync (see atm_req_154_activate_carrier_wave).
+		atm_mac_154_disable();
+#endif
 	}
 
 	ieee802154_atm34_rx_stop();
@@ -514,6 +528,14 @@ static int ieee802154_atm34_radio_continuous_carrier(const struct device *dev)
 		ieee802154_atm34_rx_stop();
 	}
 
+#ifdef CONFIG_ATM_RADIO_HAL_MGR
+	// The carrier wave diagnostic mode bypasses the Radio Manager, so enable
+	// the HAL here (when not already enabled) to keep the Radio Manager's
+	// enabled-protocol tracking in sync (see atm_req_154_activate_carrier_wave).
+	if (atm_mac_154_get_state() == ATM_MAC_154_STATE_DISABLE) {
+		atm_mac_154_enable();
+	}
+#endif
 	atm_req_154_activate_carrier_wave(atm_154_iface, true);
 	uint8_t channel = atm_req_154_get_channel(atm_154_iface);
 
@@ -894,25 +916,35 @@ static int short_pending_clear_all(void)
 
 static int ieee802154_atm34_set_ack_fpb(bool extended, uint8_t *addr)
 {
+	// addr is a byte array with no alignment guarantee
 	if (extended) {
-		LOG_INF("Set ACK_FPB %016" PRIx64, *(uint64_t *)addr);
-		return long_pending_set(*(uint64_t *)addr);
+		uint64_t long_addr = UNALIGNED_GET((uint64_t *)addr);
+
+		LOG_INF("Set ACK_FPB %016" PRIx64, long_addr);
+		return long_pending_set(long_addr);
 	}
 
-	LOG_INF("Set ACK_FPB %#04" PRIx16, *(uint16_t *)addr);
-	return short_pending_set(*(uint16_t *)addr);
+	uint16_t short_addr = UNALIGNED_GET((uint16_t *)addr);
+
+	LOG_INF("Set ACK_FPB %#04" PRIx16, short_addr);
+	return short_pending_set(short_addr);
 }
 
 static int ieee802154_atm34_clear_ack_fpb(bool extended, uint8_t *addr)
 {
 	if (addr) {
+		// addr is a byte array with no alignment guarantee
 		if (extended) {
-			LOG_INF("Clear ACK_FPB %016" PRIx64, *(uint64_t *)addr);
-			return long_pending_clear(*(uint64_t *)addr);
+			uint64_t long_addr = UNALIGNED_GET((uint64_t *)addr);
+
+			LOG_INF("Clear ACK_FPB %016" PRIx64, long_addr);
+			return long_pending_clear(long_addr);
 		}
 
-		LOG_INF("Clear ACK_FPB %#04" PRIx16, *(uint16_t *)addr);
-		return short_pending_clear(*(uint16_t *)addr);
+		uint16_t short_addr = UNALIGNED_GET((uint16_t *)addr);
+
+		LOG_INF("Clear ACK_FPB %#04" PRIx16, short_addr);
+		return short_pending_clear(short_addr);
 	}
 
 	LOG_INF("Clear ACK_FPB%s", extended ? " extended" : "");

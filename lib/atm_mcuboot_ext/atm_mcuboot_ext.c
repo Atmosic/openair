@@ -5,7 +5,9 @@
  *
  * @brief  Atmosic MCUBOOT extensions
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -19,12 +21,22 @@
 #include <inttypes.h>
 #include "mcuboot_config/mcuboot_config.h"
 #include "atm_mcuboot_ext.h"
+#ifdef MCUBOOT_LOCK_PRIMARY_SLOT
 #include "at_apb_wrpr_pins_regs_core_macro.h"
+#endif
 #include "bootutil/bootutil.h"
 #ifdef MCUBOOT_LOCK_PRIMARY_SLOT
+#ifdef CONFIG_ATM_NV_MEM_RRAM_PROT
+#include "rram_prot.h"
+#elif defined(CONFIG_ATM_NV_MEM_FLASH_PROT)
+#include "flash_prot.h"
+#else
 #include "rram_rom_prot.h"
-#endif
+#endif // CONFIG_ATM_NV_MEM_RRAM_PROT
+#endif // MCUBOOT_LOCK_PRIMARY_SLOT
+#if defined(MCUBOOT_LOCK_PRIMARY_SLOT) || defined(MCUBOOT_SKIP_PRIMARY_VALIDATE_HIBER)
 #include "sec_assert.h"
+#endif
 
 #if (defined(MCUBOOT_LOCK_PRIMARY_SLOT) && \
     !defined(WRPRPINS_SECURE_DEBUG_CTRL__CLEAR_UART1_RX_DISABLE__MASK))
@@ -150,7 +162,11 @@ void atm_mcuboot_ext_lock_img_slots(sec_slot_desc_t const *desc)
     // keep a portion of the slot unlocked for the trailer
     s_protect_sz -= desc->slot0_trailer_unlock_size;
     bool pri_s =
-	rram_prot_sticky_write_disable(desc->slot0_offset, s_protect_sz);
+#ifdef CONFIG_ATM_NV_MEM_FLASH_PROT
+	    flash_prot_sticky_write_disable(desc->slot0_offset, s_protect_sz);
+#else
+	    rram_prot_sticky_write_disable(desc->slot0_offset, s_protect_sz);
+#endif
     SEC_ASSERT(pri_s);
     DEBUG_TRACE("Slot0 WR-Lock: 0x%" PRIx32 ":0x%" PRIx32 ",0x%" PRIx32,
 	desc->slot0_offset, s_protect_sz, desc->slot0_size);

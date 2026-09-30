@@ -51,6 +51,11 @@ atm_aes_res_t atm_aes_init(atm_aes_params_t const *params)
     if (params->mode != ATM_AES_MODE_ECB && !params->iv) {
 	return ATM_AES_RES_INVALID_INPUT_ERR;
     }
+#ifndef AES_CTRL_SHADOWED__BYTE_REVERSE__SHIFT
+    if (params->byte_reverse || params->iv_byte_reverse) {
+	return ATM_AES_RES_INVALID_INPUT_ERR;
+    }
+#endif
 
     WRPR_CTRL_SET(CMSDK_AES, WRPR_CTRL__CLK_ENABLE);
     if (CMSDK_AES->ID != AES_ID__RESET_VALUE) {
@@ -77,7 +82,7 @@ atm_aes_res_t atm_aes_init(atm_aes_params_t const *params)
     if (!params->encrypt) {
 	ctrl |= 1 << AES_CTRL_SHADOWED__OPERATION__SHIFT;
     }
-#if CONFIG_ATM_AES_CAN_REVERSE_BYTES
+#ifdef AES_CTRL_SHADOWED__BYTE_REVERSE__SHIFT
     if (params->iv_byte_reverse) {
 	ctrl |= 1 << AES_CTRL_SHADOWED__IV_BYTE_REVERSE__SHIFT;
     }
@@ -176,7 +181,7 @@ atm_aes_res_t atm_aes_update(uint8_t *dest, uint8_t const *src,
 	// handle incomplete blocks for CTR and CFB modes
 	size_t remaining_bytes = num_bytes % ATM_AES_BLOCK_LEN_BYTES;
 	bool byte_reverse = false;
-#if CONFIG_ATM_AES_CAN_REVERSE_BYTES
+#ifdef AES_CTRL_SHADOWED__BYTE_REVERSE__SHIFT
 	byte_reverse =
 	    AES_CTRL_SHADOWED__BYTE_REVERSE__READ(CMSDK_AES->CTRL_SHADOWED);
 #endif

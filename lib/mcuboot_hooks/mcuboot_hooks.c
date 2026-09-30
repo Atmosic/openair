@@ -18,8 +18,12 @@
 #include "bootutil/mcuboot_status.h"
 #include "atm_mcuboot_ext.h"
 #ifdef CONFIG_ATM_MCUBOOT_LOCK_PRIMARY_SLOT
-#include "rram_rom_prot.h"
-#endif
+#ifdef CONFIG_ATM_NV_MEM_RRAM_PROT
+#include "rram_prot.h"
+#elif defined(CONFIG_ATM_NV_MEM_FLASH_PROT)
+#include "flash_prot.h"
+#endif // CONFIG_ATM_NV_MEM_RRAM_PROT
+#endif // MCUBOOT_LOCK_PRIMARY_SLOT
 #include "bootutil/bootutil_log.h"
 
 #ifdef CONFIG_ATM_MCUBOOT_SECURE_DEBUG
@@ -104,8 +108,8 @@ int boot_img_install_stat_hook(int image_index, int slot, int *img_install_stat)
 
 STATIC_ASSERT(IMG_TRAILER_RSVD_SZ > 0,
     "Slot locking requires a reserved trailer, please check SLOT0 trailer reservation");
-STATIC_ASSERT((IMG_TRAILER_RSVD_SZ % RRAM_ROM_PROT_BLOCK_SIZE) == 0,
-    "Trailer reservation must be aligned");
+STATIC_ASSERT((IMG_TRAILER_RSVD_SZ % RRAM_PROT_BLOCK_SIZE) == 0,
+	      "Trailer reservation must be aligned");
 #endif // MCUBOOT_OVERWRITE_ONLY
 
 static void lock_primary_slot(void)

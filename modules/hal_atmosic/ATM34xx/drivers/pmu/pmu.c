@@ -7,6 +7,8 @@
  *
  * Copyright (C) Atmosic 2021-2026
  *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
  ******************************************************************************
  */
 
@@ -225,7 +227,8 @@ void pmu_cfg_dbg_sig(void)
 #if (BATT_TYPE == BATT_TYPE_LI_ION)
 #ifdef BOOST_FROM_VHARV_INDUCTOR
     PINMUX_CFG_DBG_SIG(PIN_PMU_DIG_TEST_OUT, PMU_DIG_TEST_OUT);
-#else
+#elif defined(BOOST_FROM_VHARV_TWO_DIODE) || \
+    defined(BOOST_FROM_VSTORE_TWO_DIODE)
     PINMUX_CFG_DBG_SIG(PIN_BOOSTER_IO, CLK_CP);
 #endif
 #endif // BATT_TYPE == BATT_TYPE_LI_ION

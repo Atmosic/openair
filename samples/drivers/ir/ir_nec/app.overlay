@@ -1,0 +1,19 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/* Enable pwm3 — Atmosic EVK boards wire pin 29 to pwm3 for IR. */
+&pwm3 {
+	status = "okay";
+};
+
+/ {
+	ir_blaster: ir_blaster {
+		compatible = "atmosic,ir-nec";
+		pwms = <&pwm3 3 0 0>;
+	};
+};

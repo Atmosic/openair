@@ -164,9 +164,8 @@ struct bt_gatt_attr *at_cmd_gatt_dft_find_attr_by_handle(uint16_t handle);
  *
  * @p attidx is a 0-based array index into s_gatt_attrs[] (NOT a BT handle).
  * Use at_cmd_gatt_test_get_char_attidx() to obtain the correct index.
- * The BT stack is not running in unit tests so attr->handle is always 0;
- * this hook keeps the array-index convention internally to select the right
- * value buffer.
+ * The hook keeps the array-index convention internally to select the right
+ * attribute while passing a NULL connection to the real callback.
  * Returns -ENOENT when the service is not registered or attidx is out of range.
  */
 ssize_t at_cmd_gatt_test_gatt_read(uint8_t conidx, uint16_t attidx, void *buf, uint16_t buf_len,
@@ -195,6 +194,15 @@ ssize_t at_cmd_gatt_test_gatt_write(uint8_t conidx, uint16_t attidx, const void 
  * @return array index, or UINT16_MAX if char_num is invalid
  */
 uint16_t at_cmd_gatt_test_get_char_attidx(uint8_t char_num);
+
+/** Test hook: invoke the default GATT service register helper. */
+at_cmd_result_t at_cmd_gatt_test_service_register(void);
+
+/** Test hook: invoke the default GATT service unregister helper. */
+at_cmd_result_t at_cmd_gatt_test_service_unregister(void);
+
+/** Test hook: return an attribute handle by array index. */
+uint16_t at_cmd_gatt_test_get_attr_handle(uint16_t attidx);
 #endif /* CONFIG_ZTEST */
 
 #ifdef __cplusplus

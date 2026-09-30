@@ -55,7 +55,7 @@ Flash the application:
 
 .. code-block:: bash
 
-   west flash --no-rebuild --verify --dl --device <DEVICE_ID> --fast_load
+   west flash --no-rebuild --verify --dl --device <DEVICE_ID>
 
 Sample Output
 *************

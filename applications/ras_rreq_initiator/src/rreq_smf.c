@@ -30,6 +30,10 @@
 #include "ras.h"
 #include "app_work_q.h"
 
+#ifdef CONFIG_RREQ_USE_ARIAD
+#include "cs_distance.h"
+#endif
+
 LOG_MODULE_REGISTER(rreq_smf, CONFIG_RREQ_SMF_LOG_LEVEL);
 // create config
 #define CREATE_CONFIG_ID              0
@@ -208,7 +212,11 @@ NET_BUF_SIMPLE_DEFINE_STATIC(latest_peer_steps, PEER_PROC_SIZE);
 static void rreq_start_scan(void);
 
 #define LOG_DUMP_THREAD_PRIORITY K_LOWEST_APPLICATION_THREAD_PRIO
+#ifdef CONFIG_RREQ_USE_ARIAD
+static K_THREAD_STACK_DEFINE(log_dump_work_q_stack, 8192);
+#else
 static K_THREAD_STACK_DEFINE(log_dump_work_q_stack, 1024);
+#endif
 struct k_work_q log_dump_work_q;
 
 static int log_dump_init(void)
@@ -227,6 +235,7 @@ static int log_dump_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_RREQ_IQ_DUMP
 static void log_hexdump(const char *prefix, const uint8_t *data, size_t len)
 {
 #define MAX_CHAR_SIZE     90
@@ -244,6 +253,7 @@ static void log_hexdump(const char *prefix, const uint8_t *data, size_t len)
 		}
 	}
 }
+#endif
 
 static void reset_rd_info(uint8_t role)
 {
@@ -265,9 +275,11 @@ static void rreq_dump_log_init_work_handler(struct k_work *work)
 		return;
 	}
 	uint16_t data_len = info->len - info->logged_len;
+#ifdef CONFIG_RREQ_IQ_DUMP
 	LOG_INF("Ini rc:%d Log:%d->%d len:%d", info->ranging_counter, info->logged_len, info->len,
 		data_len);
 	log_hexdump("I", &info->step_data[info->logged_len], data_len);
+#endif
 	info->logged_len += data_len;
 }
 
@@ -289,7 +301,14 @@ static void rreq_dump_log_ref_work_handler(struct k_work *work)
 #endif
 	LOG_INF("Ref Procedure: len: %d rc: %d, I-b:%d Q-b:%d mask:0x%04x", info->len,
 		info->ranging_counter, i_bits, q_bits, mode2_mask);
+#ifdef CONFIG_RREQ_IQ_DUMP
 	log_hexdump("R", info->step_data, info->len);
+#endif
+#ifdef CONFIG_RREQ_USE_ARIAD
+	/* Feed the peer (reflector) step data to the Ariad estimator. */
+	cs_distance_dump_peer((uint32_t)info->ranging_counter, rreq_smf_ctl.n_ap, info->step_data,
+			      info->len);
+#endif
 	uint8_t *end = info->step_data + info->len;
 	if (end != latest_peer_steps.data) {
 		LOG_INF("More step data in buf:%d", latest_peer_steps.data - end);
@@ -347,6 +366,14 @@ static void rreq_dump_log_work_end_handler(struct k_work *work)
 	if (info->status == BT_CONN_LE_CS_PROCEDURE_COMPLETE) {
 		LOG_INF("*work_end rc:%u", info->ranging_counter);
 		LOG_INF("Procedure end:");
+#ifdef CONFIG_RREQ_USE_ARIAD
+		/*
+		 * Feed the local (initiator) step data to the Ariad estimator
+		 * before the buffer is reset.
+		 */
+		cs_distance_dump_init((uint32_t)info->ranging_counter, rreq_smf_ctl.n_ap,
+				      latest_local_steps.__buf, latest_local_steps.len);
+#endif
 		net_buf_simple_reset(&latest_local_steps);
 	} else if (info->status == BT_CONN_LE_CS_PROCEDURE_ABORTED) {
 		LOG_WRN("Procedure aborted");
@@ -496,6 +523,11 @@ static void rreq_cs_subevent_result(struct bt_conn *conn,
 	static uint8_t subevt_idx;
 	if (!subevt_idx) {
 		rreq_smf_ctl.n_ap = result->header.num_antenna_paths;
+		if (latest_local_steps.len) {
+			LOG_WRN("stale local steps %u B (rc:%d) dropped", latest_local_steps.len,
+				rreq_dump_log_init_work_info.ranging_counter);
+			net_buf_simple_reset(&latest_local_steps);
+		}
 #ifdef CONFIG_RREQ_DISABLE_RD_SUB
 		LOG_INF("Procedure start: nAP: %d (no rd sub)", rreq_smf_ctl.n_ap);
 #else
@@ -739,14 +771,13 @@ static void get_rd_cmpl_mode(struct bt_conn *conn, uint16_t ranging_counter, int
 		LOG_ERR("parse data err:%d", error);
 		return;
 	}
-#define RANGING_COUNTER_MASK_ONDEMAND 0xFFFFFFFF
-	uint32_t ranging_counter_mask = RANGING_COUNTER_MASK_ONDEMAND;
+
+	uint32_t ranging_counter_mask = BT_RAS_RD_HEADER_RANGING_COUNTER_MASK_ONDEMAND;
 #ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
 	if (realtime) {
-#define RANGING_COUNTER_MASK_REALTIME 0xFFF
 		rreq_smf_ctl.ranging_counter[RREQ_SMF_RC_PEER] = parsed_rc;
 		ranging_counter = parsed_rc;
-		ranging_counter_mask = RANGING_COUNTER_MASK_REALTIME;
+		ranging_counter_mask = BT_RAS_RD_HEADER_RANGING_COUNTER_MASK_REALTIME;
 	}
 #endif
 	bool mismatch = (rreq_smf_ctl.ranging_counter[RREQ_SMF_RC_PEER] !=

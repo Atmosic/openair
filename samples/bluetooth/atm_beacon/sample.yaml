@@ -13,7 +13,7 @@ tests:
   samples.bluetooth.atm_beacon.atm: &atm_base
     sysbuild: true
     harness: console
-    harness_config:  &harness_config_base
+    harness_config: &harness_config_base
       type: one_line
       regex:
         - Booting Zephyr OS
@@ -27,6 +27,10 @@ tests:
       - &sbcn_conf CONFIG_REFBCN_SIMPLE_BEACON=y
   samples.bluetooth.atm_beacon.atm.sbcn_nobut:
     <<: *sbcn_base
+    # no_button.overlay disables &button0, so the overlay only compiles on a
+    # board declaring that node.
+    depends_on:
+      - &button0 button0
     extra_args:
       - EXTRA_DTC_OVERLAY_FILE=no_button.overlay
   samples.bluetooth.atm_beacon.atm.sbcn_noled:
@@ -40,6 +44,8 @@ tests:
       - CONFIG_SOFT_OFF=n
   samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled: &sbcn_nobut_noled_base
     <<: *sbcn_base
+    depends_on:
+      - *button0
     extra_args:
       - &sbcn_nobut_noled_args EXTRA_DTC_OVERLAY_FILE=no_button.overlay;no_led.overlay
   samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled.short:
@@ -58,6 +64,7 @@ tests:
       - mcuboot
       - flash_xip
     depends_on:
+      - *button0
       - flash
       - rram
       - xip

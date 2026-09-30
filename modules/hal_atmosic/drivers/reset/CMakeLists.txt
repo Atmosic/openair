@@ -6,4 +6,5 @@
 if (CONFIG_ATM_RESET)
     zephyr_include_directories(.)
     zephyr_sources(reset.c)
+    zephyr_sources_ifdef(CONFIG_RESET_TEST_STUB reset_stub.c)
 endif ()

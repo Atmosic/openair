@@ -20,12 +20,18 @@ project(mbedtls_psa)
 add_subdirectory(${ZEPHYR_BASE}/${OA_APP_DIR} ${OA_APP_DIR})
 
 # Append openair-local ZTEST cases to the upstream mbedtls_psa test
-# suite that exercise the Atmosic SHA-2 PSA wrapper's clone path.
-target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/main_atm.c)
+# suite that exercise the Atmosic SHA-2 PSA wrapper's clone path. SOCs
+# without the SHA-2 accelerator have no wrapper to test, so they build
+# the upstream cases only.
+if(CONFIG_ATM_SHA2_HW)
+  target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/main_atm.c)
+endif()
 
 # Append openair-local ZTEST cases that exercise the Atmosic AES PSA
 # wrapper's decrypt, AES-256, CTR, and software-fallback paths.
-target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/main_atm_aes.c)
+if(CONFIG_ATM_AES_HW)
+  target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/main_atm_aes.c)
+endif()
 
 # Multithreaded stress tests target the HW-engine synchronization in the
 # multi-context wrapper, so they are only compiled in when both the

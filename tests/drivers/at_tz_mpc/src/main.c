@@ -9,7 +9,7 @@
 
 /*
  * All address constants are derived from chip-provided macros so the tests
- * work on ATM33/ATM34 and ATM53 without modification:
+ * work on ATM33/ATM34 and ATM5 without modification:
  *
  *   CMSDK_EXT_FLASH_NONSECURE_BASE  physical ext-flash base (from arch.h)
  *   AT_TZ_MPC_FLS_BLK_SIZE          flash MPC block size    (from at_tz_mpc.h)
@@ -85,7 +85,7 @@ ZTEST_SUITE(at_tz_mpc_bounds, NULL, NULL, NULL, NULL, NULL);
 /* Hardware-touching tests for at_tz_mpc_config_region().
  *
  * Safety constraint: marking the MPC-controlled ext-flash range NS may
- * fault the CPU if running code lives there (observed on ATM53 cairo
+ * fault the CPU if running code lives there (observed on ATM5 cairo
  * no_tz_no_spe builds).  These tests therefore only:
  *   - write the "rest of flash" LUT (index MAX_MPC_FLS_LUT_IDX), which
  *     covers ext flash beyond the MPC window and is known unused, OR

@@ -1,0 +1,79 @@
+/*
+ * Copyright (c) 2024-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+#include <arm/atmosic/ATM5xxx_partition_defs.h>
+
+/ {
+        chosen {
+		zephyr,atm-app-flash-xip = &flash0;
+        };
+};
+
+&rom0 {
+	partitions {
+		compatible = "atmosic,tz-fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_rom: partition@0 {
+			label = "boot_rom";
+			secure;
+			reg = <ATM_BOOT_ROM_OFFSET ATM_BOOT_ROM_SIZE>;
+		};
+		lc_partition: partition@ATM_LC_PARTITION_NODE_ID {
+			label = "lc_partition";
+			reg = <ATM_LC_PARTITION_OFFSET ATM_LC_PARTITION_SIZE>;
+		};
+#if ATM_ROM_APPLICATION_SIZE > 0
+		rom_application: partition@ATM_ROM_APPLICATION_NODE_ID {
+			label = "rom_application";
+			reg = <ATM_ROM_APPLICATION_OFFSET ATM_ROM_APPLICATION_SIZE>;
+		};
+#endif
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "atmosic,tz-fixed-partitions", "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+#if ATM_SPE_SIZE
+		spe_partition: partition@ATM_SPE_NODE_ID {
+			label = "spe_partition";
+			secure;
+			reg = <ATM_SPE_OFFSET ATM_SPE_SIZE>;
+		};
+#endif
+#if ATM_APP_SIZE
+		app_partition: partition@ATM_APP_NODE_ID {
+			label = "app_partition";
+			reg = <ATM_APP_OFFSET ATM_APP_SIZE>;
+		};
+#endif
+#if ATM_FACTORY_SIZE
+		factory_partition: partition@ATM_FACTORY_NODE_ID {
+			label = "factory";
+			reg = <ATM_FACTORY_OFFSET ATM_FACTORY_SIZE>;
+		};
+#endif
+#if ATM_SPE_SIZE
+		nspe_partition: partition@ATM_NSPE_NODE_ID {
+			label = "nspe_partition";
+			reg = <ATM_NSPE_OFFSET ATM_NSPE_SIZE>;
+		};
+#endif
+#if ATM_STORAGE_SIZE
+		storage_partition: partition@ATM_STORAGE_NODE_ID {
+			label = "storage";
+			reg = <ATM_STORAGE_OFFSET ATM_STORAGE_SIZE>;
+		};
+#endif
+	};
+};
+
+#include <arm/atmosic/ATM5xxx_partition_check.h>

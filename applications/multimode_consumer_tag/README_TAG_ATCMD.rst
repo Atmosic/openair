@@ -29,7 +29,7 @@ Configuration
 Commands
 ========
 
-**Device:** ``AT+TAGINFO`` ``AT+TAGMODE``
+**Device:** ``AT+TAGINFO`` ``AT+TAGMODE`` ``AT+TAGADDR``
 
 **Control:** ``AT+TAGSTART`` ``AT+TAGRESET`` ``AT+TAGBATTERY``
 
@@ -161,9 +161,18 @@ Event Reference:
 
    ``Format: +EVTTAGGFPREVERSERING:<evt>``
 
-   - ``0`` — CONNECTED
-   - ``1`` — STARTED
-   - ``2`` — STOPPED
+   - ``0`` — CONNECTED (phone ringing; Seeker connected via RR advertisement)
+   - ``1`` — STARTED (phone confirmed ringing started via GATT)
+   - ``2`` — STOPPED (phone stopped ringing; any reason)
+   - ``3`` — ADV_STARTED (tag advertising for adv-based reverse ringing; no connection yet)
+   - ``4`` — ADV_TIMEOUT (ADV window expired; phone never connected, never rang)
+   - ``5`` — PHONE_FAILED (phone reported it could not start ringing)
+   - ``6`` — TIMEOUT_LOCAL (provider-side ringing timeout after seeker connected)
+   - ``7`` — PHONE_TIMEOUT (phone's own ring session timed out)
+   - ``8`` — START_CONFIRMED (START indication ACKed; persistent path fast feedback)
+   - ``9`` — STOP_CONFIRMED (STOP indication ACKed; persistent path fast feedback)
+   - ``10`` — PHONE_STOPPED_DISCONNECTED (BLE connection dropped while phone was ringing)
+   - ``11`` — PHONE_START_TIMEOUT (persistent path 60s timeout after START indication)
 
 **4. Device Firmware Upgrade (DFU) via AT Command**
 
@@ -223,6 +232,7 @@ This application supports the following tag AT commands when configured appropri
 - **Universal Commands** (always available with ``CONFIG_AT_CMD_TAG_SET=y``):
   - ``AT+TAGINFO`` — Returns application version and enabled protocols
   - ``AT+TAGMODE`` — Manages protocol selection (FMNA, FHN, STF)
+  - ``AT+TAGADDR`` — Returns advertising BT address for a given protocol
   - ``AT+TAGSTART`` — Initiates tag BLE stack
   - ``AT+TAGRESET`` — Performs cold reboot or factory reset
   - ``AT+TAGBATTERY`` — Queries battery status
@@ -243,7 +253,7 @@ Events are asynchronous notifications sent by the tag when state changes occur:
 - ``+EVTTAGSTATE`` — Tag state machine transitions (boot, init, unpaired, pairing, paired)
 - ``+EVTTAGMOTIONCTL`` — Motion detection enabled/disabled
 - ``+EVTTAGBUZZER`` — Buzzer action required (when ``CONFIG_TAG_BUZZER=n``)
-- ``+EVTTAGGFPREVERSERING`` — GFP reverse ringing status changes (connected/started/stopped)
+- ``+EVTTAGGFPREVERSERING`` — GFP reverse ringing status changes (0=CONNECTED, 1=STARTED, 2=STOPPED, 3=ADV_STARTED, 4=ADV_TIMEOUT, 5=PHONE_FAILED, 6=TIMEOUT_LOCAL, 7=PHONE_TIMEOUT, 8=START_CONFIRMED, 9=STOP_CONFIRMED, 10=PHONE_STOPPED_DISCONNECTED, 11=PHONE_START_TIMEOUT)
 - ``+EVTTAGERROR`` — Tag-side error notifications
 
 **Firmware Updates**

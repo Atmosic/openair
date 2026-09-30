@@ -13,6 +13,7 @@
  */
 
 #include <zephyr/kernel.h>
+#include "radio_cal.h"
 #include "ble_driver.h"
 #include "radio_hal_frc.h"
 #include "radio_hal_mgr.h"
@@ -26,7 +27,9 @@
 static void calibration_work_trigger(struct k_work *work);
 static void calibration_work_run(struct k_work *work);
 
+#if CONFIG_ATM_RADIO_CAL_REPEAT_MS > 0
 static K_WORK_DELAYABLE_DEFINE(calibration_trigger, calibration_work_trigger);
+#endif
 static K_WORK_DEFINE(calibration_run, calibration_work_run);
 
 static void calibration_work_trigger(struct k_work *work)
@@ -43,7 +46,7 @@ static void calibration_work_trigger(struct k_work *work)
 	.start_time = now_us,
 	// Allow maximum delay before starting (35 mins)
 	.latest_start_time = now_us + 0x7FFFFFFF,
-	.expected_duration = 2000, // Experimentally determined
+	.expected_duration = 4000, // Experimentally determined
 	.priority = priority,
 	.protocol = ATM_MAC_MGR_PROT_CAL,
     };
@@ -70,21 +73,46 @@ static void calibration_work_run(struct k_work *work)
 
     atm_mac_unlock();
 
-    // Schedule next calibration
+#if CONFIG_ATM_RADIO_CAL_REPEAT_MS > 0
+    // Schedule next calibration. The system workqueue will call
+    // calibration_work_trigger after a delay
     k_work_schedule(&calibration_trigger,
 	K_MSEC(CONFIG_ATM_RADIO_CAL_REPEAT_MS));
-
-    // The system workqueue will call calibration_work_trigger after a delay
+#endif
 }
+
+#if CONFIG_ATM_RADIO_CAL_DECISION
+void atm_radio_cal_trigger(void)
+{
+    static uint8_t cal_count = 0;
+
+    cal_count++;
+    if (cal_count >= 2) {
+	cal_count = 0;
+
+	// The manager will call calibration_start when calibration can run
+	calibration_work_trigger(NULL);
+    }
+}
+#endif
+
+#if CONFIG_ATM_RADIO_CAL_DEMAND
+void atm_radio_cal_request(void)
+{
+    calibration_work_trigger(NULL);
+}
+#endif
 
 static int radio_cal_init(void)
 {
     atm_mac_mgr_register_deferred_api(atm_mac_mgr_get_iface(),
 	ATM_MAC_MGR_PROT_CAL, calibration_start);
 
+#if CONFIG_ATM_RADIO_CAL_REPEAT_MS > 0
     // Schedule first calibration
     k_work_schedule(&calibration_trigger,
 	K_MSEC(CONFIG_ATM_RADIO_CAL_REPEAT_MS));
+#endif
 
     return 0;
 }

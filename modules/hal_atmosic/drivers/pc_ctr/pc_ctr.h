@@ -56,6 +56,15 @@ uint8_t *pc_ctr_ll_heap_alloc(void);
  */
 void pc_ctr_bt_ver_config(uint8_t bt_ver);
 
+#ifndef CONFIG_SOC_ATM5XXX_2
+/**
+ * @brief Set DTM packet interval at runtime.
+ *
+ * @param[in] slots Packet interval in slots (0=no override, 1 slot=625us).
+ */
+void pc_ctr_set_dtm_pkt_interval(uint8_t slots);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

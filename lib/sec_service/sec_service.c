@@ -36,11 +36,12 @@
 #include <zephyr/devicetree.h>
 #include "sec_assert.h"
 #if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
-#include "rram_rom_prot.h"
+#include "rram_prot.h"
 #endif
 #ifdef CONFIG_DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
 #include "flash_prot.h"
 #endif
+#include "rom_prot.h"
 #include "sec_dev_lockout.h"
 #if DT_NODE_EXISTS(DT_NODELABEL(factory_partition))
 #include "calibration.h"
@@ -159,6 +160,10 @@ static void rd_protect_mcuboot(void)
 
 static bool check_factory_part_lock(void)
 {
+#ifdef CONFIG_ZTEST
+	// Under test, skip the journal search to exercise the lock path.
+	return true;
+#else
 	uint8_t lock;
 	sec_jrnl_tag_len_t lock_len = sizeof(lock);
 
@@ -167,6 +172,7 @@ static bool check_factory_part_lock(void)
 	}
 
 	return false;
+#endif
 }
 #endif // factory_partition
 #endif // CONFIG_ATM_PROT

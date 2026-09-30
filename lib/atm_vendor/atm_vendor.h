@@ -1,17 +1,12 @@
-/**
- *******************************************************************************
+/*
+ * Copyright (c) 2020-2026 Atmosic
  *
- * @file atm_vendor.h
- *
- * @brief Atmosic Vendor Command Core
- *
- * Copyright (C) Atmosic 2020-2025
- *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #pragma once
 
+#include <stdbool.h>
 #include "compiler.h" // __NORETURN inline functions
 
 /**
@@ -60,6 +55,18 @@ __NORETURN void atm_vendor_exit_hci_vendor_mode(void);
 bool atm_vendor_get_hci_vendor_en(void);
 
 #ifdef CONFIG_SOC_FAMILY_ATM
+#ifdef CFG_VND_BYPASS_RX_DC_CAL
+/**
+ * @brief Check if RX DC offset calibration on HCI reset is bypassed.
+ *
+ * Returns true if the BYPASS_RX_DC_CAL vendor command has been received,
+ * indicating that calibration should be skipped (e.g. during MPTool testing).
+ *
+ * @return true if bypass is active, false otherwise.
+ */
+bool atm_vendor_rx_dc_cal_is_bypassed(void);
+#endif
+
 /**
  * @brief Enable and initial HCI vendor
  */

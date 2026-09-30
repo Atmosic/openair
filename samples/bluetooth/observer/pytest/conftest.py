@@ -1,5 +1,5 @@
 # Copyright (C) 2025-2026 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 """Pytest configuration and fixtures for Bluetooth Observer tests."""
 
@@ -43,8 +43,11 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope="session")
-def base_timeout(request):
+def base_timeout(request, twister_harness_config):
     """Get the base timeout from Twister configuration."""
+    test_params = getattr(twister_harness_config, "test_params", None)
+    if test_params and test_params.base_timeout:
+        return float(test_params.base_timeout)
     return request.config.getoption("--base-timeout")
 
 

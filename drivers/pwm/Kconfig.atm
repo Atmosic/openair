@@ -1,12 +1,12 @@
 # PWM configuration options
 
-# Copyright (c) 2021-2025 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2021-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config PWM_ATM
 	bool "Atmosic PWM driver"
 	default y
-	depends on DT_HAS_ATMOSIC_ATM3X_PWM_ENABLED
+	depends on DT_HAS_ATMOSIC_ATM3X_PWM_ENABLED || DT_HAS_ATMOSIC_ATMX2_PWM_ENABLED
 	help
 	  This option enables the PWM driver for Atmosic family of
 	  processors.
@@ -14,7 +14,7 @@ config PWM_ATM
 config PWM_ATM_FIFO
 	bool "Atmosic PWM FIFO mode support"
 	default y
-	depends on PWM_ATM
+	depends on PWM_ATM && DT_HAS_ATMOSIC_ATM3X_PWM_ENABLED
 	select CONFIG_ATM_DMA
 	help
 	  This option enables FIFO mode support for Atmosic PWM driver.

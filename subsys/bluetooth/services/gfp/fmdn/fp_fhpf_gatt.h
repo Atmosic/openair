@@ -1,14 +1,12 @@
 /**
- *******************************************************************************
- *
  * @file fp_fhpf_gatt.h
  *
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN)
  *        Find Hub Precision Finding (FHPF) header
  *
- * Copyright (C) Atmosic 2025-2026
+ * Copyright (c) 2025-2026 Atmosic
  *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #ifndef FP_FHPF_GATT_H_
@@ -26,7 +24,7 @@ extern "C" {
 /**
  * @brief Callback for ranging capability events
  * @param tech_id Technology ID
- * @param capability Discriminated union containing capability structure
+ * @param capability Struct containing the capability pointer for tech_id
  * @return 0 on success, negative on error
  */
 typedef int (*fp_fmdn_ranging_capability_cb)(rt_id_t tech_id, ranging_capability_t *capability);
@@ -34,7 +32,7 @@ typedef int (*fp_fmdn_ranging_capability_cb)(rt_id_t tech_id, ranging_capability
 /**
  * @brief Callback for ranging configuration events
  * @param tech_id Technology ID
- * @param config Discriminated union containing configuration data
+ * @param config Struct containing the config pointer for tech_id
  * @param start_immediately Whether to start immediately
  * @return 0 on success, negative on error
  */
@@ -42,9 +40,10 @@ typedef int (*fp_fmdn_ranging_config_cb)(rt_id_t tech_id, ranging_config_t *conf
 					 bool start_immediately);
 
 /**
- * @brief Callback for ranging start events
+ * @brief Callback for deprecated ranging start events
  * @param tech_id Technology ID
  * @return 0 on success, negative on error
+ * @deprecated Use configuration with start_immediately instead.
  */
 typedef int (*fp_fmdn_ranging_start_cb)(rt_id_t tech_id);
 
@@ -54,6 +53,14 @@ typedef int (*fp_fmdn_ranging_start_cb)(rt_id_t tech_id);
  * @return 0 on success, negative on error
  */
 typedef int (*fp_fmdn_ranging_stop_cb)(rt_id_t tech_id);
+
+/**
+ * @brief Optional runtime ranging gate callback.
+ *
+ * A missing callback means that the compile-time candidate is enabled. This
+ * preserves the original non-ATCMD behavior.
+ */
+typedef bool (*fp_fmdn_ranging_is_enabled_cb)(rt_id_t tech_id);
 
 /**
  * @brief Raw motion snapshot getter supplied by the platform when motion is enabled.
@@ -77,8 +84,9 @@ typedef int (*fp_fmdn_ranging_motion_cb)(fp_fmdn_ranging_motion_get_status_t *ge
 typedef struct {
 	fp_fmdn_ranging_capability_cb capability_cb; ///< Capability events
 	fp_fmdn_ranging_config_cb config_cb;         ///< Configuration events
-	fp_fmdn_ranging_start_cb start_cb;           ///< Start events
+	fp_fmdn_ranging_start_cb start_cb;           ///< Deprecated start events
 	fp_fmdn_ranging_stop_cb stop_cb;             ///< Stop events
+	fp_fmdn_ranging_is_enabled_cb is_enabled_cb; ///< Optional runtime gate
 	fp_fmdn_ranging_motion_cb motion_cb;         ///< Motion detection events
 } fp_fmdn_ranging_handler_t;
 
@@ -201,6 +209,18 @@ void fp_fhpf_gatt_conn_event(struct bt_conn *conn, bool connected);
  */
 void fp_fhpf_gatt_security_changed(struct bt_conn *conn, bt_security_t level,
 				   enum bt_security_err err);
+
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+/**
+ * @brief Signal a hardware-detected motion event to the FHPF state machine.
+ *
+ * Called by the platform when the motion sensor interrupt fires. Routes to
+ * fp_fhpf_motion_trigger_event() which to get the raw motion status and cache
+ * the peak value. The 2-second periodic work will poll the cached value and
+ * trigger a notification if motion is detected.
+ */
+void fp_fhpf_motion_trigger_event(void);
+#endif /* CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER */
 
 #endif /* CONFIG_FMDN_PRECISION_FINDING */
 

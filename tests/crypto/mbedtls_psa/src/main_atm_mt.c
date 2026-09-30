@@ -9,9 +9,11 @@
  * openair/modules/hal_atmosic/drivers/atm_sha2/psa_sha256.c that protect
  * the shared HW engine, the pool table (hw_pool[]), and the
  * sha2_clk_en_ref refcount when multiple threads drive PSA hash
- * operations concurrently. Each test spawns CONFIG_ATM_SHA2_HW_MAX_CONTEXTS
- * worker threads, releases them through a single barrier semaphore, joins
- * them, and verifies digests against single-threaded ground truth.
+ * operations concurrently. Most tests spawn CONFIG_ATM_SHA2_HW_MAX_CONTEXTS
+ * worker threads; the clone-race test spawns half that, since each of its
+ * workers holds two contexts at once. Each test releases its workers through
+ * a single barrier semaphore, joins them, and verifies digests against
+ * single-threaded ground truth.
  *
  * Gated at the CMakeLists.txt level on CONFIG_ATM_SHA2_API_MULTI and
  * CONFIG_MULTITHREADING.
@@ -82,13 +84,14 @@ static void mt_fill_message(unsigned int worker_id, uint8_t *buf, size_t len)
 	}
 }
 
-/* Spawn MT_WORKERS threads each running @worker with a pointer into
+/* Spawn @n_workers threads each running @worker with a pointer into
  * @ctx_array (element size @ctx_size), release them simultaneously via
- * the barrier semaphore, and join them all. Caller is responsible for
- * ctx population and post-condition assertions. */
-static void mt_run(k_thread_entry_t worker, void *ctx_array, size_t ctx_size)
+ * the barrier semaphore, and join them all. @n_workers must not exceed
+ * MT_WORKERS (the size of the thread/stack arrays). Caller is responsible
+ * for ctx population and post-condition assertions. */
+static void mt_run(k_thread_entry_t worker, void *ctx_array, size_t ctx_size, int n_workers)
 {
-	k_sem_init(&mt_start_sem, 0, MT_WORKERS);
+	k_sem_init(&mt_start_sem, 0, n_workers);
 
 	/* Force the kernel to time-slice at the worker priority so the
 	 * sysclock tick can preempt a worker mid-PSA call, splitting the
@@ -97,7 +100,7 @@ static void mt_run(k_thread_entry_t worker, void *ctx_array, size_t ctx_size)
 	 * save/restore makes the workers look serialized. */
 	k_sched_time_slice_set(1, MT_PRIO);
 
-	for (int i = 0; i < MT_WORKERS; i++) {
+	for (int i = 0; i < n_workers; i++) {
 		void *slot = (uint8_t *)ctx_array + (i * ctx_size);
 		k_thread_create(&mt_threads[i], mt_stacks[i], MT_STACK_SIZE, worker, slot, NULL,
 				NULL, MT_PRIO, 0, K_NO_WAIT);
@@ -105,10 +108,10 @@ static void mt_run(k_thread_entry_t worker, void *ctx_array, size_t ctx_size)
 	/* Let every worker reach k_sem_take before we release the barrier
 	 * so all workers race from the same starting line. */
 	k_msleep(10);
-	for (int i = 0; i < MT_WORKERS; i++) {
+	for (int i = 0; i < n_workers; i++) {
 		k_sem_give(&mt_start_sem);
 	}
-	for (int i = 0; i < MT_WORKERS; i++) {
+	for (int i = 0; i < n_workers; i++) {
 		zassert_ok(k_thread_join(&mt_threads[i], MT_JOIN_TIMEOUT),
 			   "worker %d join timed out", i);
 	}
@@ -181,7 +184,7 @@ ZTEST(test_mbedtls_psa, test_atm_hash_mt_independent_multipart)
 				.status = PSA_ERROR_BAD_STATE,
 			};
 		}
-		mt_run(mt_multipart_worker, ctxs, sizeof(ctxs[0]));
+		mt_run(mt_multipart_worker, ctxs, sizeof(ctxs[0]), MT_WORKERS);
 		for (int i = 0; i < MT_WORKERS; i++) {
 			zassert_equal(ctxs[i].status, PSA_SUCCESS, "iter %d worker %d status=%d",
 				      iter, i, (int)ctxs[i].status);
@@ -229,7 +232,7 @@ ZTEST(test_mbedtls_psa, test_atm_hash_mt_setup_storm)
 				.status = PSA_ERROR_BAD_STATE,
 			};
 		}
-		mt_run(mt_setup_storm_worker, ctxs, sizeof(ctxs[0]));
+		mt_run(mt_setup_storm_worker, ctxs, sizeof(ctxs[0]), MT_WORKERS);
 		for (int i = 0; i < MT_WORKERS; i++) {
 			zassert_equal(ctxs[i].status, PSA_SUCCESS, "iter %d worker %d status=%d",
 				      iter, i, (int)ctxs[i].status);
@@ -240,6 +243,10 @@ ZTEST(test_mbedtls_psa, test_atm_hash_mt_setup_storm)
 
 	mt_post_sanity();
 }
+
+/* Each clone-race worker holds two HW contexts (source + clone target), so
+ * cap it at MT_WORKERS / 2 to avoid over-subscribing the pool. */
+#define MT_CLONE_WORKERS MAX(MT_WORKERS / 2, 1)
 
 /* Per-worker context for the clone race: each worker hashes its msg
  * twice with a divergent tail byte injected after the clone. The two
@@ -302,13 +309,13 @@ static void mt_clone_worker(void *p1, void *p2, void *p3)
 
 ZTEST(test_mbedtls_psa, test_atm_hash_mt_clone_race)
 {
-	static uint8_t messages[MT_WORKERS][MT_MSG_LEN];
+	static uint8_t messages[MT_CLONE_WORKERS][MT_MSG_LEN];
 	static uint8_t tmp[MT_MSG_LEN + 1];
-	uint8_t expected_src[MT_WORKERS][MT_DIGEST_LEN];
-	uint8_t expected_dst[MT_WORKERS][MT_DIGEST_LEN];
-	struct mt_clone_ctx ctxs[MT_WORKERS];
+	uint8_t expected_src[MT_CLONE_WORKERS][MT_DIGEST_LEN];
+	uint8_t expected_dst[MT_CLONE_WORKERS][MT_DIGEST_LEN];
+	struct mt_clone_ctx ctxs[MT_CLONE_WORKERS];
 
-	for (int i = 0; i < MT_WORKERS; i++) {
+	for (int i = 0; i < MT_CLONE_WORKERS; i++) {
 		mt_fill_message(i, messages[i], sizeof(messages[i]));
 		memcpy(tmp, messages[i], sizeof(messages[i]));
 		tmp[sizeof(messages[i])] = (uint8_t)(0xA0 + i);
@@ -318,7 +325,7 @@ ZTEST(test_mbedtls_psa, test_atm_hash_mt_clone_race)
 	}
 
 	for (int iter = 0; iter < MT_ITERATIONS; iter++) {
-		for (int i = 0; i < MT_WORKERS; i++) {
+		for (int i = 0; i < MT_CLONE_WORKERS; i++) {
 			ctxs[i] = (struct mt_clone_ctx){
 				.msg = messages[i],
 				.msg_len = sizeof(messages[i]),
@@ -327,8 +334,8 @@ ZTEST(test_mbedtls_psa, test_atm_hash_mt_clone_race)
 				.status = PSA_ERROR_BAD_STATE,
 			};
 		}
-		mt_run(mt_clone_worker, ctxs, sizeof(ctxs[0]));
-		for (int i = 0; i < MT_WORKERS; i++) {
+		mt_run(mt_clone_worker, ctxs, sizeof(ctxs[0]), MT_CLONE_WORKERS);
+		for (int i = 0; i < MT_CLONE_WORKERS; i++) {
 			zassert_equal(ctxs[i].status, PSA_SUCCESS, "iter %d worker %d status=%d",
 				      iter, i, (int)ctxs[i].status);
 			zassert_mem_equal(ctxs[i].out_src, expected_src[i], MT_DIGEST_LEN,
@@ -380,7 +387,7 @@ ZTEST(test_mbedtls_psa, test_atm_hash_mt_compute_oneshot)
 				.status = PSA_ERROR_BAD_STATE,
 			};
 		}
-		mt_run(mt_compute_worker, ctxs, sizeof(ctxs[0]));
+		mt_run(mt_compute_worker, ctxs, sizeof(ctxs[0]), MT_WORKERS);
 		for (int i = 0; i < MT_WORKERS; i++) {
 			zassert_equal(ctxs[i].status, PSA_SUCCESS, "iter %d worker %d status=%d",
 				      iter, i, (int)ctxs[i].status);
@@ -456,7 +463,7 @@ ZTEST(test_mbedtls_psa, test_atm_hash_mt_mixed_abort)
 				.status = PSA_ERROR_BAD_STATE,
 			};
 		}
-		mt_run(mt_abort_worker, ctxs, sizeof(ctxs[0]));
+		mt_run(mt_abort_worker, ctxs, sizeof(ctxs[0]), MT_WORKERS);
 		for (int i = 0; i < MT_WORKERS; i++) {
 			zassert_equal(ctxs[i].status, PSA_SUCCESS,
 				      "iter %d worker %d (do_abort=%d) status=%d", iter, i,

@@ -1,0 +1,36 @@
+/**
+ ******************************************************************************
+ *
+ * @file pmu.ih
+ *
+ * @brief Power Management Unit internal APIs
+ *
+ * Copyright (C) Atmosic 2024-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
+ ******************************************************************************
+ */
+
+#pragma once
+
+#ifndef PMU_INTERNAL_GUARD
+#error "pmu.ih should only be included in pmu source files"
+#endif
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    bool pmu_wdog_timeout;
+} pmu_core_param;
+
+bool pmu_core_init(pmu_core_param const *param);
+
+#ifdef __cplusplus
+}
+#endif

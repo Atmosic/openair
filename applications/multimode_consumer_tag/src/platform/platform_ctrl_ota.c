@@ -33,7 +33,7 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 #define OTA_SETTINGS_KEY "platform/ota_mode"
 
 /* OTA advertising device name */
-#define OTA_DEVICE_NAME     "Atmosic OTA"
+#define OTA_DEVICE_NAME     CONFIG_TAG_OTA_DEVICE_NAME
 #define OTA_DEVICE_NAME_LEN (sizeof(OTA_DEVICE_NAME) - 1)
 
 /* Image confirmation delay in seconds */
@@ -98,11 +98,21 @@ static int ota_settings_set(const char *name, size_t len, settings_read_cb read_
 /* Settings handler structure */
 SETTINGS_STATIC_HANDLER_DEFINE(platform_ota, "platform", NULL, ota_settings_set, NULL, NULL);
 
+static void ota_timeout_cb(struct k_work *work)
+{
+	LOG_INF("OTA mode timeout, rebooting to normal mode");
+	sys_reboot(SYS_REBOOT_COLD);
+}
+
+static K_WORK_DELAYABLE_DEFINE(ota_timeout_work, ota_timeout_cb);
+
 /* Start OTA advertising */
 static int ota_adv_start(void)
 {
-	/* Use legacy advertising with connectable and scannable */
-	int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ota_ad, ARRAY_SIZE(ota_ad), NULL, 0);
+	int err = bt_le_adv_start(BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONN | BT_LE_ADV_OPT_USE_IDENTITY,
+						  BT_GAP_ADV_FAST_INT_MIN_2,
+						  BT_GAP_ADV_FAST_INT_MAX_2, NULL),
+				  ota_ad, ARRAY_SIZE(ota_ad), NULL, 0);
 	if (err) {
 		LOG_ERR("OTA advertising failed to start (err %d)", err);
 		return err;
@@ -145,6 +155,21 @@ static struct mgmt_callback mgmt_dfu_pending_cb = {
 	.event_id = MGMT_EVT_OP_IMG_MGMT_DFU_PENDING,
 };
 
+static enum mgmt_cb_return mgmt_dfu_started_callback(uint32_t event,
+						     enum mgmt_cb_return prev_status, int32_t *rc,
+						     uint16_t *group, bool *abort_more, void *data,
+						     size_t data_size)
+{
+	LOG_INF("DFU upload started, cancelling OTA timeout");
+	k_work_cancel_delayable(&ota_timeout_work);
+	return MGMT_CB_OK;
+}
+
+static struct mgmt_callback mgmt_dfu_started_cb = {
+	.callback = mgmt_dfu_started_callback,
+	.event_id = MGMT_EVT_OP_IMG_MGMT_DFU_STARTED,
+};
+
 #ifndef CONFIG_MCUBOOT_BOOTLOADER_MODE_OVERWRITE_ONLY
 static void confirm_img_delay_work_cb(struct k_work *work)
 {
@@ -176,6 +201,7 @@ bool platform_ctrl_ota_init(void)
 	k_work_schedule(&confirm_img_delay_work, K_SECONDS(IMAGE_CONFIRM_DELAY_SEC));
 #endif
 	mgmt_callback_register(&mgmt_event_callback);
+	mgmt_callback_register(&mgmt_dfu_started_cb);
 	mgmt_callback_register(&mgmt_dfu_pending_cb);
 
 	/* Settings are already loaded by settings_load() in main() */
@@ -207,11 +233,26 @@ bool platform_ctrl_ota_init(void)
 		return false;
 	}
 
+#if CONFIG_TAG_OTA_TIMEOUT_MS > 0
+	k_work_schedule(&ota_timeout_work, K_MSEC(CONFIG_TAG_OTA_TIMEOUT_MS));
+#endif
+
 	return true;
+}
+
+bool platform_ctrl_ota_is_active(void)
+{
+	return ota_mode_active;
 }
 
 void platform_ctrl_ota_enter(void)
 {
+#if CONFIG_TAG_BTN_OTA_BOOT_WINDOW_MS > 0
+	if (k_uptime_get() > CONFIG_TAG_BTN_OTA_BOOT_WINDOW_MS) {
+		LOG_INF("OTA mode entry rejected: boot window expired");
+		return;
+	}
+#endif
 	LOG_INF("Entering OTA mode");
 
 	/* Set OTA mode flag for next boot */

@@ -1,25 +1,39 @@
 name: Build OpenAir Applications
 
-# This workflow builds OpenAir applications using the standard Zephyr development
-# environment setup (Option 1 from the OpenAir installation guide).
-# It installs the Zephyr SDK and uses west to build applications with sysbuild.
+# This workflow provides build coverage for OpenAir applications
+# It installs the Zephyr SDK and drives builds with twister.
 #
-# The workflow automatically discovers all applications and samples with a sample.yaml
-# or testcase.yaml file and builds all test configurations on all configured boards.
-# Builds are grouped by application directory for efficiency, and .atm files are
-# bundled into archives.
+# Builds are grouped one job per application directory.
 #
-# For pull requests: Archives are uploaded as workflow artifacts (30-day retention)
-# For pushes/releases: Archives are uploaded to GitHub releases
+# Two passes are made per application, split on the 'mcuboot' tag, because the
+# mcuboot scenarios require the '@mcuboot' board revision:
+#   - normal revisions:  -e mcuboot
+#   - @mcuboot revisions: -t mcuboot
+#
+# This workflow is build coverage only - it does not save artifacts other than
+# logs or create releases.
+# Release archives are produced by build-release-archives.yml.
 
 on:
   pull_request:
     branches:
       - 'rel_*'
+      - 'pre_rel_*'
   push:
     branches:
       - 'rel_*'
+      - 'pre_rel_*'
   workflow_dispatch:
+
+env:
+  # Test scenarios to skip, one fnmatch glob per line. Blank lines and lines
+  # starting with '#' are ignored. Matched against the test scenario name,
+  # e.g. 'samples.hello_world.atm' or 'tests.drivers.pwm.*'. These are
+  # translated into a twister quarantine list.
+  SCENARIO_BLACKLIST: |
+    # tests.example.scenario.to.skip
+    # tests.drivers.some_subsystem.*
+    tests.subsys.dfu.mcuboot_multi.atm.mcuboot.*
 
 jobs:
   discover-applications:
@@ -28,90 +42,167 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install PyYAML
         run: pip3 install --user PyYAML
 
-      - name: Discover applications and tests
+      - name: Discover applications
         id: set-matrix
         run: |
           python3 << 'EOF'
           import os
           import yaml
           import json
+          import fnmatch
 
-          # Discover boards from board.yml files under boards/atmosic
-          boards = []
-          boards_dir = 'boards/atmosic'
+          # Parse the scenario blacklist from the workflow environment
+          blacklist = []
+          for line in os.environ.get('SCENARIO_BLACKLIST', '').splitlines():
+              line = line.strip()
+              if line and not line.startswith('#'):
+                  blacklist.append(line)
 
-          for board_subdir in os.listdir(boards_dir):
-              # Exclude atmevk-02
-              if board_subdir == 'atmevk-02':
-                  continue
+          if blacklist:
+              print(f"Scenario blacklist ({len(blacklist)} patterns):")
+              for pattern in blacklist:
+                  print(f"  - {pattern}")
 
-              board_yml_path = os.path.join(boards_dir, board_subdir, 'board.yml')
-              if os.path.isfile(board_yml_path):
-                  with open(board_yml_path, 'r') as f:
-                      try:
-                          board_data = yaml.safe_load(f)
-                          if board_data and 'boards' in board_data:
-                              for board_entry in board_data['boards']:
-                                  board_name = board_entry.get('name')
-                                  if board_name:
-                                      boards.append(f"{board_name}")
-                      except Exception as e:
-                          print(f"Warning: Failed to parse {board_yml_path}: {e}")
+          def is_blacklisted(test_name):
+              return any(fnmatch.fnmatch(test_name, pattern) for pattern in blacklist)
 
-          boards.sort()
-          print(f"Discovered {len(boards)} boards:")
-          for board in boards:
-              print(f"  - {board}")
-
-          # Find all sample.yaml and testcase.yaml files and group by app_dir
-          app_tests = {}  # app_dir -> list of (test_name, board) tuples
+          # Find all application directories with a sample.yaml or testcase.yaml.
+          # Which scenario builds on which platform is left to twister; this only
+          # decides how the work is split across matrix jobs. An app is dropped
+          # when every one of its scenarios is blacklisted.
+          app_dirs = []
 
           for root, dirs, files in os.walk('.'):
               for yaml_file in ['sample.yaml', 'testcase.yaml']:
-                  if yaml_file in files:
-                      yaml_path = os.path.join(root, yaml_file)
-                      app_dir = root[2:]  # Remove leading './'
+                  if yaml_file not in files:
+                      continue
+                  yaml_path = os.path.join(root, yaml_file)
+                  app_dir = root[2:]  # Remove leading './'
 
-                      # Parse the YAML file
-                      with open(yaml_path, 'r') as f:
-                          try:
-                              data = yaml.safe_load(f)
-                              if data and 'tests' in data:
-                                  for test_name in data['tests'].keys():
-                                      # Create entries for all boards
-                                      for board in boards:
-                                          if app_dir not in app_tests:
-                                              app_tests[app_dir] = []
-                                          app_tests[app_dir].append({
-                                              'test_name': test_name,
-                                              'board': board
-                                          })
-                          except Exception as e:
-                              print(f"Warning: Failed to parse {yaml_path}: {e}")
+                  try:
+                      data = yaml.safe_load(open(yaml_path))
+                  except Exception as e:
+                      print(f"Warning: Failed to parse {yaml_path}: {e}")
+                      continue
+                  if not data or 'tests' not in data:
+                      continue
 
-          # Create matrix entries - one per app_dir with all its test/board combinations
-          applications = []
-          for app_dir, tests in app_tests.items():
-              applications.append({
-                  'app_dir': app_dir,
-                  'builds': tests
-              })
+                  scenarios = list(data['tests'].keys())
+                  kept = [s for s in scenarios if not is_blacklisted(s)]
+                  if not kept:
+                      print(f"Skipping {app_dir}: all {len(scenarios)} scenarios blacklisted")
+                      continue
+                  app_dirs.append(app_dir)
 
-          # Output the matrix
-          matrix = {'include': applications}
-          total_builds = sum(len(app['builds']) for app in applications)
-          print(f"Found {len(applications)} applications with {total_builds} total builds")
+          app_dirs = sorted(set(app_dirs))
+          print(f"Found {len(app_dirs)} application directories")
+
+          matrix = {'include': [{'app_dir': d} for d in app_dirs]}
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"matrix={json.dumps(matrix)}\n")
           EOF
 
+  prepare:
+    # Populates the Zephyr SDK and west module caches before the build matrix
+    # fans out. Without this, every matrix job starts on a cold cache, downloads
+    # the SDK independently, and all but one of the resulting cache writes is
+    # discarded - a cache entry is only published when the job that created it
+    # finishes, so concurrent jobs cannot share one.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          path: openair
+
+      - name: Set up Python environment
+        run: |
+          python3 -m pip install --user -U pip
+          python3 -m pip install --user west patool requests semver tqdm
+
+      - name: Check Zephyr SDK cache
+        id: cache-zephyr-sdk
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/zephyr-sdk-1.0.1
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
+          # Only test for the entry - the matrix jobs do the actual restore
+          lookup-only: true
+
+      - name: Check West modules cache
+        id: cache-west-modules
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ github.workspace }}/zephyr
+            ${{ github.workspace }}/bootloader
+            ${{ github.workspace }}/modules
+            ${{ github.workspace }}/.west
+          key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+          lookup-only: true
+
+      # 'west sdk' is an extension command carried by the zephyr project, so it
+      # needs the modules on disk even when their cache entry already exists.
+      # Only pay for that restore when the SDK has to be installed.
+      - name: Restore closest West modules cache
+        if: steps.cache-west-modules.outputs.cache-hit != 'true' || steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ github.workspace }}/zephyr
+            ${{ github.workspace }}/bootloader
+            ${{ github.workspace }}/modules
+            ${{ github.workspace }}/.west
+          key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-west-modules-
+
+      - name: Initialize West workspace
+        if: steps.cache-west-modules.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ github.workspace }}
+          # If .west directory exists from cache, remove it to reinitialize
+          if [ -d .west ]; then
+            rm -rf .west
+          fi
+          west init -l openair
+          west update
+
+      - name: Save West modules cache
+        if: steps.cache-west-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ github.workspace }}/zephyr
+            ${{ github.workspace }}/bootloader
+            ${{ github.workspace }}/modules
+            ${{ github.workspace }}/.west
+          key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+
+      - name: Install Zephyr SDK
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ github.workspace }}
+          # Fetches the minimal bundle and only the arm-zephyr-eabi toolchain,
+          # installing to ~/zephyr-sdk-1.0.1. -H skips the host tools, which the
+          # build does not use. The version is pinned here to match the cache
+          # key - omitting it would take the value from zephyr/SDK_VERSION.
+          west sdk install --version 1.0.1 -H -t arm-zephyr-eabi
+
+      - name: Save Zephyr SDK cache
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/zephyr-sdk-1.0.1
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
+
   build:
-    needs: discover-applications
+    needs: [discover-applications, prepare]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -119,7 +210,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: openair
 
@@ -138,26 +229,25 @@ jobs:
           python3 -m pip install --user -U pip
           python3 -m pip install --user west
 
-      - name: Cache Zephyr SDK
+      - name: Restore Zephyr SDK cache
         id: cache-zephyr-sdk
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/zephyr-sdk-1.0.1
-          key: ${{ runner.os }}-zephyr-sdk-1.0.1
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
 
-      - name: Install Zephyr SDK
+      # The SDK is installed and cached by the 'prepare' job, so a miss here
+      # means the entry was evicted or its save was dropped, not that the SDK
+      # needs installing. Fail with a legible message rather than letting every
+      # scenario fail later with a CMake toolchain error.
+      - name: Verify Zephyr SDK
         if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
         run: |
-          cd ~
-          # Using Zephyr SDK 1.0.1 which is compatible with Zephyr-based projects
-          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v1.0.1/zephyr-sdk-1.0.1_linux-x86_64_gnu.tar.xz
-          wget -O - https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v1.0.1/sha256.sum | shasum --check --ignore-missing
-          tar xvf zephyr-sdk-1.0.1_linux-x86_64_gnu.tar.xz
-          cd zephyr-sdk-1.0.1
-          ./setup.sh -t arm-zephyr-eabi
+          echo "::error::Zephyr SDK cache miss - re-run the 'prepare' job to repopulate it."
+          exit 1
 
       - name: Cache West modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ github.workspace }}/zephyr
@@ -184,160 +274,275 @@ jobs:
           pip3 install --user -r ${{ github.workspace }}/zephyr/scripts/requirements.txt
           pip3 install --user -r ${{ github.workspace }}/openair/scripts/requirements.txt
 
+      - name: Generate quarantine list
+        id: quarantine
+        run: |
+          python3 << 'EOF'
+          import fnmatch
+          import json
+          import os
+
+          # Twister has no scenario-exclude flag, so the blacklist is expressed
+          # as a quarantine list. Quarantine entries match with re.fullmatch, so
+          # the fnmatch globs are translated to equivalent regexes. JSON is valid
+          # YAML, so the file is emitted as JSON to avoid needing PyYAML here.
+          patterns = []
+          for line in os.environ.get('SCENARIO_BLACKLIST', '').splitlines():
+              line = line.strip()
+              if line and not line.startswith('#'):
+                  patterns.append(line)
+
+          path = os.path.join(os.environ['GITHUB_WORKSPACE'], 'quarantine.yaml')
+          if patterns:
+              entries = [{
+                  'scenarios': [fnmatch.translate(p).removeprefix('(?s:').removesuffix(')\\Z')
+                                for p in patterns],
+                  'comment': 'Blacklisted via SCENARIO_BLACKLIST in build-applications.yml',
+              }]
+              with open(path, 'w') as f:
+                  json.dump(entries, f, indent=2)
+              print(f"Quarantining {len(patterns)} scenario patterns:")
+              for p in patterns:
+                  print(f"  - {p}")
+          else:
+              path = ''
+              print("No scenario blacklist configured")
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"path={path}\n")
+          EOF
+
       - name: Build all configurations for ${{ matrix.app_dir }}
+        id: build
+        env:
+          QUARANTINE_LIST: ${{ steps.quarantine.outputs.path }}
         run: |
           python3 << 'EOF'
           import subprocess
+          import glob
           import json
           import os
-          import glob
+          import shutil
+          import sys
 
-          builds = ${{ toJson(matrix.builds) }}
+          # Twister writes to the inherited stdout while this script's own
+          # stdout is block buffered, which would otherwise flush every print
+          # here after all of twister's output.
+          sys.stdout.reconfigure(line_buffering=True)
+
           app_dir = '${{ matrix.app_dir }}'
           workspace = '${{ github.workspace }}'
 
-          # Create sanitized app_dir name for the tar file
-          app_dir_safe = app_dir.replace('/', '-')
-          tar_file = os.path.join(workspace, f'{app_dir_safe}.tar')
+          quarantine = os.environ.get('QUARANTINE_LIST', '')
+          quarantine_args = ['--quarantine-list', quarantine] if quarantine else []
 
-          success_count = 0
+          # The mcuboot scenarios need the '@mcuboot' board revision, so they are
+          # built in a separate pass against the '@mcuboot' board targets.
+          # Twister ORs multiple -t values, hence the split rather than one call.
+          # Board targets are selected by twister itself: '--platform-pattern' is
+          # matched against every target alias, so the '@<revision>' component
+          # picks the pass. The '@mcuboot_bl' bootloader-only targets carry
+          # 'twister: false' in their board twister.yaml and are dropped before
+          # the pattern is applied, so they can never be matched here.
+          passes = [
+              ('normal', ['--vendor', 'atmosic',
+                          '--platform-pattern', 'ATM.*@normal/'],
+               ['-e', 'mcuboot'], 'twister-normal'),
+              ('mcuboot', ['--vendor', 'atmosic',
+                           '--platform-pattern', 'ATM.*@mcuboot/'],
+               ['-t', 'mcuboot'], 'twister-mcuboot'),
+          ]
+
+          selected_count = 0
           fail_count = 0
+          pattern_errors = 0
+          run_errors = 0
 
-          for build in builds:
-              test_name = build['test_name']
-              board = build['board']
+          # Failing builds' logs are copied here as they are reported, so they
+          # are already in place if a later pass dies. The upload step only
+          # packages this directory.
+          staging = os.path.join(workspace, 'build-logs')
+          shutil.rmtree(staging, ignore_errors=True)
 
-              # Append @mcuboot to board name if test name contains 'mcuboot'
-              if 'mcuboot' in test_name:
-                  board_with_revision = f"{board}@mcuboot"
-              else:
-                  board_with_revision = board
+          def build_dir_for(suite, out_dir):
+              # Twister derives a build directory from the platform, the
+              # toolchain and then either the full test id or the source path,
+              # depending on the suite's 'detailed_test_id'. The report does not
+              # say which was used, so both layouts are probed, then the tree is
+              # searched for the scenario directory as a last resort.
+              base = os.path.join(workspace, out_dir,
+                                  (suite.get('platform') or '').replace('/', '_'),
+                                  (suite.get('toolchain') or '').replace('/', '_'))
+              name = suite.get('name') or ''
+              src = (suite.get('path') or '').rsplit('../', 1)[-1]
+              candidates = [os.path.join(base, name), os.path.join(base, src, name)]
+              candidates += sorted(glob.glob(os.path.join(base, '**',
+                                                          name.rsplit('/', 1)[-1]),
+                                             recursive=True))
+              for candidate in candidates:
+                  if os.path.isdir(candidate):
+                      return candidate
+              return None
+
+          def stage_logs(build_dir, suite):
+              # The platform already names the pass through its '@normal' /
+              # '@mcuboot' variant, so platform plus scenario identifies a build
+              # uniquely. The toolchain and source path components twister nests
+              # the build under are the same for everything in this job, so they
+              # are dropped rather than buried in the archive. A sysbuild failure
+              # leaves logs in the image subdirectories, so the whole build
+              # directory is walked and its internal layout kept.
+              dest = os.path.join(staging,
+                                  (suite.get('platform') or '').replace('/', '_'),
+                                  (suite.get('name') or '').rsplit('/', 1)[-1])
+              for root, _, files in os.walk(build_dir):
+                  for name in files:
+                      if not name.endswith('.log'):
+                          continue
+                      target = os.path.normpath(
+                          os.path.join(dest, os.path.relpath(root, build_dir), name))
+                      os.makedirs(os.path.dirname(target), exist_ok=True)
+                      shutil.copy2(os.path.join(root, name), target)
+
+          for label, plat_args, tag_args, out_dir in passes:
+              cmd = [
+                  'west', 'twister',
+                  '-T', f'openair/{app_dir}',
+                  *plat_args,
+                  *tag_args,
+                  *quarantine_args,
+                  '--build-only',
+                  '-O', out_dir,
+                  '-v', '--inline-logs',
+                  # Filtered instances are left out of twister.json by default.
+                  # They are needed here to tell 'the pattern matched no board
+                  # target' apart from 'this app has no scenario for this pass',
+                  # which is the normal case for every non-mcuboot application.
+                  '--report-filtered',
+              ]
 
               print(f"\n{'='*80}")
-              print(f"Building {test_name} on {board_with_revision}")
+              print(f"Running ({label}): {' '.join(cmd)}")
               print(f"{'='*80}\n")
 
-              try:
-                  result = subprocess.run(
-                      [
-                          'west', 'build', '-p', 'always',
-                          '-b', board_with_revision,
-                          f'openair/{app_dir}',
-                          '--sysbuild',
-                          '-T', test_name,
-                          '--',
-                          '-DSB_CONFIG_ATM_ARCH=y',
-                          '-DSB_CONFIG_ATM_ARCH_ERASE_ALL=y'
-                      ],
-                      cwd=workspace,
-                      check=True,
-                      capture_output=False
-                  )
+              # Twister exits non-zero when any instance fails; failures are
+              # evaluated from the report instead so partial failures are visible.
+              # '--inline-logs' makes twister dump build.log to stdout for every
+              # failing instance, so failures are diagnosable from the job log.
+              result = subprocess.run(cmd, cwd=workspace, check=False)
+              print(f"\ntwister ({label}) exited with {result.returncode}")
 
-                  # Find .atm files from this build
-                  build_dir = os.path.join(workspace, 'build')
-                  atm_files = glob.glob(os.path.join(build_dir, '**', '*.atm'), recursive=True)
+              report_path = os.path.join(workspace, out_dir, 'twister.json')
+              if not os.path.isfile(report_path):
+                  # An app whose scenarios all carry the other pass's tag still
+                  # gets a report, with every instance 'filtered'. No report at
+                  # all means twister bailed out before reporting - a broken
+                  # board twister.yaml, for instance - and leaves nothing for
+                  # the counters below to see, so it has to fail the job here.
+                  print(f"❌ twister produced no twister.json for the {label} "
+                        f"pass - it exited before reporting")
+                  run_errors += 1
+                  continue
 
-                  if atm_files:
-                      # Append .atm files to tar archive with renamed paths
-                      board_safe = board.replace('/', '-')
+              with open(report_path, 'r') as f:
+                  report = json.load(f)
 
-                      for atm_file in atm_files:
-                          basename = os.path.basename(atm_file)
-                          new_name = f"{test_name}-{board_safe}-{basename}"
+              suites = report.get('testsuites', [])
 
-                          # Use tar to append with transform to rename the file
-                          tar_cmd = [
-                              'tar', '-rf', tar_file,
-                              '--transform', f's|.*|{new_name}|',
-                              '-C', os.path.dirname(atm_file),
-                              basename
-                          ]
+              # Every board target the pattern matched produces an instance,
+              # filtered or not, so an empty platform set means the pattern
+              # matched no target at all - a workflow bug rather than a build
+              # outcome, and one twister itself reports as success.
+              platforms = {s.get('platform') for s in suites if s.get('platform')}
+              if not platforms:
+                  print(f"❌ --platform-pattern matched no board target for the "
+                        f"{label} pass")
+                  pattern_errors += 1
+                  continue
+              print(f"{len(platforms)} board targets matched for the {label} pass")
 
-                          print(f"  Adding {basename} -> {new_name}")
-                          subprocess.run(tar_cmd, check=True, capture_output=True)
+              # 'filtered' instances were pruned by twister from the scenario
+              # metadata - depends_on, platform_allow and friends - or by the
+              # quarantine list, and are not build failures.
+              for suite in suites:
+                  status = suite.get('status')
+                  if status == 'filtered':
+                      continue
+                  selected_count += 1
+                  if status in ('error', 'failed'):
+                      fail_count += 1
+                      print(f"❌ {suite.get('name')} on {suite.get('platform')}: "
+                            f"{suite.get('reason', 'unknown')}")
+                      build_dir = build_dir_for(suite, out_dir)
+                      if build_dir:
+                          stage_logs(build_dir, suite)
+                      else:
+                          print(f"⚠️  no build directory found under {out_dir} "
+                                f"for this failure - its logs cannot be archived")
 
-                      success_count += 1
-                      print(f"✅ Successfully built {test_name} on {board} ({len(atm_files)} .atm files)")
-                  else:
-                      print(f"⚠️  Build succeeded but no .atm files found for {test_name} on {board}")
-                      success_count += 1
-
-              except subprocess.CalledProcessError as e:
-                  fail_count += 1
-                  print(f"❌ Failed to build {test_name} on {board}")
-                  # Continue with next build instead of failing
+          success_count = selected_count - fail_count
 
           print(f"\n{'='*80}")
-          print(f"Build Summary: {success_count} succeeded, {fail_count} failed")
+          print(f"Build Summary: {success_count} succeeded, "
+                f"{fail_count} failed, {selected_count} selected")
           print(f"{'='*80}\n")
 
-          # Exit with error if all builds failed
-          if success_count == 0 and fail_count > 0:
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"selected_count={selected_count}\n")
+              f.write(f"success_count={success_count}\n")
+              f.write(f"fail_count={fail_count}\n")
+
+          # Failing here rather than on twister's exit code lets both passes
+          # build every configuration first, so one broken board target does
+          # not hide the state of the rest.
+          if pattern_errors or run_errors or fail_count:
               exit(1)
           EOF
 
-      - name: Compress tar archive
-        if: success()
-        id: create-archive
+      - name: Collect logs on failure
+        id: logs
+        # Runs when the step failed outright or when any individual build failed.
+        # Twister already inlines each failing build.log into the job log; this
+        # additionally packages the logs so they can be downloaded and grepped.
+        if: always() && steps.build.outcome != 'skipped' &&
+            (steps.build.outcome != 'success' || steps.build.outputs.fail_count != '0')
         run: |
-          # Create a sanitized app_dir name for the archive
-          APP_DIR_SAFE=$(echo "${{ matrix.app_dir }}" | tr '/' '-')
-          TAR_FILE="${{ github.workspace }}/${APP_DIR_SAFE}.tar"
-          ARCHIVE_NAME="${APP_DIR_SAFE}.tar.gz"
+          cd ${{ github.workspace }}
+          # The build step has already copied each failing build's logs into
+          # 'build-logs/<platform>/<scenario>'. A passing board target's logs
+          # are of no diagnostic use and there are dozens of them per
+          # application, so nothing else is collected from the build trees.
+          mkdir -p build-logs/reports
 
-          # Check if tar file exists and has content
-          if [ ! -f "$TAR_FILE" ]; then
-            echo "No tar file found - no .atm files were generated"
-            echo "has_archive=false" >> $GITHUB_OUTPUT
+          # The reports cover the whole run and are small, so they go in even
+          # when the build step died before producing any build directory.
+          for out in twister-normal twister-mcuboot; do
+            for report in twister.json twister.xml; do
+              if [ -f "$out/$report" ]; then
+                cp "$out/$report" "build-logs/reports/$out-$report"
+              fi
+            done
+          done
+
+          if [ -n "$(find build-logs -type f -print -quit)" ]; then
+            tar -czf build-logs.tar.gz build-logs
+          fi
+
+          if [ -s build-logs.tar.gz ]; then
+            echo "name=build-logs-$(echo '${{ matrix.app_dir }}' | tr '/' '-')" >> $GITHUB_OUTPUT
+            echo "has_logs=true" >> $GITHUB_OUTPUT
           else
-            echo "Compressing tar file..."
-            echo "Contents of tar file:"
-            tar -tvf "$TAR_FILE"
-
-            # Compress the tar file
-            gzip "$TAR_FILE"
-
-            echo "Created archive: ${ARCHIVE_NAME}"
-            echo "has_archive=true" >> $GITHUB_OUTPUT
-            echo "archive_name=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
-            echo "archive_path=${{ github.workspace }}/${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
+            echo "No log files were produced"
+            echo "has_logs=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Upload archive as artifact (PR builds)
-        if: success() && steps.create-archive.outputs.has_archive == 'true' && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+      - name: Upload logs on failure
+        if: always() && steps.logs.outputs.has_logs == 'true'
+        uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.create-archive.outputs.archive_name }}
-          path: ${{ steps.create-archive.outputs.archive_path }}
-          retention-days: 30
-
-      - name: Upload archive to release (non-PR builds)
-        if: success() && steps.create-archive.outputs.has_archive == 'true' && github.event_name != 'pull_request'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Get the release tag from the event or create one based on the run
-          TAG_NAME="build-${{ github.run_number }}"
-          RELEASE_NAME="Build ${{ github.run_number }}"
-
-          # Check if release exists, create if not
-          if ! gh release view "$TAG_NAME" --repo ${{ github.repository }} > /dev/null 2>&1; then
-            echo "Creating release $TAG_NAME"
-            gh release create "$TAG_NAME" \
-              --repo ${{ github.repository }} \
-              --title "$RELEASE_NAME" \
-              --notes "Automated build from workflow run ${{ github.run_number }}<br>Commit: ${{ github.sha }}" \
-              --target ${{ github.sha }}
-          fi
-
-          # Upload the archive to the release
-          ARCHIVE_PATH="${{ steps.create-archive.outputs.archive_path }}"
-          ARCHIVE_NAME="${{ steps.create-archive.outputs.archive_name }}"
-
-          echo "Uploading ${ARCHIVE_NAME}"
-          gh release upload "$TAG_NAME" "$ARCHIVE_PATH" --repo ${{ github.repository }} --clobber
+          name: ${{ steps.logs.outputs.name }}
+          path: ${{ github.workspace }}/build-logs.tar.gz
+          retention-days: 7
 
       - name: Build summary
         if: always()
@@ -346,34 +551,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Application:** \`${{ matrix.app_dir }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Count builds
-          BUILDS='${{ toJson(matrix.builds) }}'
-          BUILD_COUNT=$(echo "$BUILDS" | python3 -c "import sys, json; print(len(json.load(sys.stdin)))")
-          echo "**Total builds:** $BUILD_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Show archive info if it exists
-          if [ "${{ steps.create-archive.outputs.has_archive }}" == "true" ]; then
-            ARCHIVE_PATH="${{ steps.create-archive.outputs.archive_path }}"
-            ARCHIVE_SIZE=$(du -h "$ARCHIVE_PATH" | cut -f1)
-            echo "**Archive:** \`${{ steps.create-archive.outputs.archive_name }}\` ($ARCHIVE_SIZE)" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-
-            # Show different messages for PR vs non-PR builds
-            if [ "${{ github.event_name }}" == "pull_request" ]; then
-              echo "📦 **Archive uploaded as workflow artifact** (available for 30 days)" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "🚀 **Archive uploaded to GitHub release**" >> $GITHUB_STEP_SUMMARY
-            fi
-            echo "" >> $GITHUB_STEP_SUMMARY
-
-            # List contents of the archive
-            echo "### Archive contents:" >> $GITHUB_STEP_SUMMARY
-            tar -tzf "$ARCHIVE_PATH" | while read file; do
-              echo "- $file" >> $GITHUB_STEP_SUMMARY
-            done
-          else
-            echo "⚠️ No .atm files generated" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "**Selected builds:** ${{ steps.build.outputs.selected_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Succeeded:** ${{ steps.build.outputs.success_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Failed:** ${{ steps.build.outputs.fail_count }}" >> $GITHUB_STEP_SUMMARY
 

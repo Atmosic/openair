@@ -73,7 +73,9 @@ Key configuration options in ``prj.conf``:
 - ``CONFIG_SENSOR_BEACON_UPDATE_INTERVAL``: Update interval in centiseconds (default: 100 = 1s)
 - ``CONFIG_SENSOR_BEACON_FAST_ADV``: Enable fast advertising mode for quick device discovery (default: n)
 - ``CONFIG_BT_EXT_ADV_MAX_ADV_SET``: Number of extended advertising sets (default: 2 — one sensor beacon set, one connectable set)
-- ``CONFIG_ATM_AT_CMD``: Enable AT command framework (default: y)
+- ``CONFIG_ATM_AT_CMD``: Enable AT command core framework (default: y)
+- ``CONFIG_AT_CMD_SET``: Enable subsys AT command set (default: y)
+- ``CONFIG_AT_CMD_LOCK_SET``: Enable lock/unlock commands (default: y)
 - ``CONFIG_SETTINGS`` / ``CONFIG_NVS``: Persistent storage for device name and user ad data
 
 Beacon Advertising Intervals
@@ -107,11 +109,10 @@ Beacon Advertisement Structure
 The sensor beacon advertising set (Set 0, non-connectable) uses the following payload:
 
 1. **Flags**: ``BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR``
-2. **Complete Name**: Device name (runtime-configurable via ``AT+NAME``; persisted to NVS)
+2. **Complete Name**: Device name (runtime-configurable via ``AT+BLEGAPDEVNAME``; persisted to NVS)
 3. **Service UUID**: Eddystone UUID (0xFEAA)
 4. **Service Data**: Eddystone-URL pointing to atmosic.com
 5. **Manufacturer Data**: Atmosic Company ID (0x0A24) + sensor data
-6. **User Data** *(optional)*: Custom TLV element appended when set via ``AT+ADVDATA``
 
 The connectable advertising set (Set 1) carries only:
 
@@ -132,7 +133,8 @@ AT command support requires the following Kconfig options (all enabled by defaul
 ``prj.conf``):
 
 - ``CONFIG_ATM_AT_CMD=y`` — AT command core framework
-- ``CONFIG_ATM_AT_CMD_SET=y`` — Standard AT command set handlers
+- ``CONFIG_AT_CMD_SET=y`` — Subsys AT command set
+- ``CONFIG_AT_CMD_LOCK_SET=y`` — Lock/unlock command set
 - ``CONFIG_BT_MAX_CONN=2`` — Allows inbound BLE connections for configuration
 - ``CONFIG_SETTINGS=y`` / ``CONFIG_NVS=y`` — Persistent storage for settings
 
@@ -158,19 +160,13 @@ device and interact with the TXRX characteristic:
 - **Write** the AT command string to the TXRX characteristic to issue a command.
 - **Enable notifications** on the TXRX characteristic to receive command responses.
 
-Security — Unlock Mechanism
-============================
+Security — Lock/Unlock Mechanism
+=================================
 
-The device starts in a **locked** state every time a new BLE connection is established.
-All configuration commands require the device to be unlocked first using ``AT+UNLOCK``.
+The device starts in a **locked** state on every power-on and on every new BLE connection.
+All configuration commands are rejected while locked. Use ``AT+SYSUNLOCK`` to unlock.
 
-**Lock state lifecycle:**
-
-1. Device powers on or resets → starts **locked**
-2. New BLE connection established → automatically **re-locked**
-3. ``AT+UNLOCK`` with correct key → **unlocked**
-4. Configuration commands can now be issued
-5. BLE disconnect or device reset → returns to **locked**
+For the full command reference see :ref:`at_cmd_sys`.
 
 Supported AT Commands
 =====================
@@ -187,157 +183,129 @@ The ``AT+`` prefix is case-insensitive.
 Command Reference
 -----------------
 
-AT+UNLOCK
-^^^^^^^^^
+AT+SYSLOCK
+^^^^^^^^^^
 
-Unlocks the device for configuration. **Must be sent before any other configuration command.**
-
-.. code-block:: none
-
-    AT+UNLOCK=<key>
-
-+---------------+----------------------------------+
-| Parameter     | Description                      |
-+===============+==================================+
-| ``<key>``     | Unlock key string (max 31 chars) |
-+---------------+----------------------------------+
-
-**Example:**
+Locks the AT command channel or queries the current lock state. **Lock-exempt** —
+can be sent at any time regardless of lock state.
 
 .. code-block:: none
 
-    AT+UNLOCK=atm1atm123
+    AT+SYSLOCK=ON       # Lock the channel
+    AT+SYSLOCK?         # Query lock state
 
-**Responses:**
+**Responses:** ``OK`` — locked; ``+SYSLOCK:ON`` / ``+SYSLOCK:OFF`` — query result.
 
-- ``OK`` — Device unlocked successfully
-- ``ERROR`` — Invalid key or authentication failure
+See :ref:`at_cmd_sys` for full reference.
+
+AT+SYSUNLOCK
+^^^^^^^^^^^^
+
+Unlocks the AT command channel. **Must be sent before any configuration command.**
+**Lock-exempt.**
+
+.. code-block:: none
+
+    AT+SYSUNLOCK=<key>
+
+**Responses:** ``OK`` — unlocked; ``ERROR:144`` — wrong key.
 
 .. note::
-   The unlock key is ``atm1atm123``. The device is automatically re-locked on each new BLE
-   connection to prevent unauthenticated access.
+   Default key: ``atm1atm123`` (``CONFIG_AT_CMD_SYSUNLOCKKEY_VALUE``).
 
-AT+NAME
-^^^^^^^
+See :ref:`at_cmd_sys` for full reference.
 
-Sets the BLE device name. The new name is immediately reflected in the advertisement and
-persisted to NVS flash so it survives reboot.
+AT+BLEGAPDEVNAME
+^^^^^^^^^^^^^^^^
+
+Sets or queries the BLE GAP device name. The new name is immediately reflected in
+the advertisement and persisted to NVS flash so it survives reboot.
 
 .. code-block:: none
 
-    AT+NAME=<device name>
+    AT+BLEGAPDEVNAME=<name>     # Set device name
+    AT+BLEGAPDEVNAME?           # Query current device name
 
 +--------------------+--------------------------------------------------+
 | Parameter          | Description                                      |
 +====================+==================================================+
-| ``<device name>``  | New device name string (1 to 22 characters)      |
+| ``<name>``         | New device name string (1 to 22 characters)      |
 +--------------------+--------------------------------------------------+
 
-**Requires:** Device must be unlocked (``AT+UNLOCK`` first).
+**Requires:** Device must be unlocked (``AT+SYSUNLOCK`` first).
 
 **Example:**
 
 .. code-block:: none
 
-    AT+NAME=MySensorTag
+    AT+BLEGAPDEVNAME=MySensorTag
 
 **Responses:**
 
 - ``OK`` — Device name updated; advertising restarted with the new name
-- ``ERROR`` — Device locked, name empty/too long, or write failure
+- ``+BLEGAPDEVNAME:<name>`` — Current device name (query)
+- ``ERROR`` — Device locked, name too long, or write failure
 
 .. note::
-   The default device name is ``Atmosic Sensor Beacon``. The maximum length is set by
+   The default device name is ``Atmosic Sensor Beacon``. Maximum length is set by
    ``CONFIG_BT_DEVICE_NAME_MAX`` (default: 22 characters).
 
-AT+ADVINT
-^^^^^^^^^
+See :ref:`at_cmd_ble_peripheral` for full reference.
 
-Sets the BLE advertising interval. The new value takes effect immediately and is persisted
-to NVS flash.
+AT+BLEADVLEGACYPARM
+^^^^^^^^^^^^^^^^^^^
+
+Sets the legacy advertising parameters. Changes take effect immediately.
 
 .. code-block:: none
 
-    AT+ADVINT=<interval>
+    AT+BLEADVLEGACYPARM=<idx>,<intv_min>,<intv_max>,<duration>
 
-+------------------+--------------------------------------------------------------+
-| Parameter        | Description                                                  |
-+==================+==============================================================+
-| ``<interval>``   | Advertising interval in units of 0.625 ms.                   |
-|                  | Valid range: **400 – 16384** (250 ms to 10.24 s)             |
-+------------------+--------------------------------------------------------------+
++------------------+---------------------------------------------------------------+
+| Parameter        | Description                                                   |
++==================+===============================================================+
+| ``<idx>``        | Advertising set index (``0``)                                 |
++------------------+---------------------------------------------------------------+
+| ``<intv_min>``   | Minimum interval in units of 0.625 ms (range: 32 – 16384)    |
++------------------+---------------------------------------------------------------+
+| ``<intv_max>``   | Maximum interval in units of 0.625 ms (range: 32 – 16384)    |
++------------------+---------------------------------------------------------------+
+| ``<duration>``   | Duration in ms; ``0`` = advertise indefinitely                |
++------------------+---------------------------------------------------------------+
 
-**Requires:** Device must be unlocked (``AT+UNLOCK`` first).
+**Requires:** Device must be unlocked (``AT+SYSUNLOCK`` first).
 
 **Examples:**
 
 .. code-block:: none
 
-    AT+ADVINT=400     # 250 ms  (minimum)
-    AT+ADVINT=1600    # 1 second
-    AT+ADVINT=3200    # 2 seconds
-    AT+ADVINT=16384   # 10.24 seconds (maximum)
+    AT+BLEADVLEGACYPARM=0,1600,1600,0    # 1 second interval, indefinite
+    AT+BLEADVLEGACYPARM=0,400,400,0      # 250 ms interval, indefinite
+    AT+BLEADVLEGACYPARM=0,3200,3200,0    # 2 second interval, indefinite
 
-**Responses:**
+**Response:**
 
-- ``OK`` — Advertising interval updated
-- ``ERROR`` — Device locked, value out of range, or write failure
+- ``OK`` — Parameters updated; advertising restarted
+- ``ERROR`` — Device locked, index invalid, or value out of range
 
-AT+ADVDATA
-^^^^^^^^^^
-
-Sets custom user data to be appended to the beacon advertisement. Data must be in
-**TLV (Type-Length-Value)** format and is persisted to NVS flash. Sending this command
-with empty data clears previously set user data and reverts to sensor-only advertising.
-
-.. code-block:: none
-
-    AT+ADVDATA=<tlv data>
-
-+------------------+------------------------------------------------------------------------+
-| Parameter        | Description                                                            |
-+==================+========================================================================+
-| ``<tlv data>``   | Byte array in TLV format. Maximum **27 bytes** total. First byte is    |
-|                  | the length (N); second byte is the type; followed by N−1 payload bytes |
-|                  | (maximum 25 bytes of payload).                                         |
-+------------------+------------------------------------------------------------------------+
-
-**TLV format layout:**
-
-.. code-block:: none
-
-    +---------+--------+------------------------------+
-    | Length  |  Type  |         Payload              |
-    | (1 byte)|(1 byte)| (Length - 1 bytes, max 25)   |
-    +---------+--------+------------------------------+
-
-- ``Length`` = number of bytes following it (type byte + payload bytes).
-- ``Type`` = application-defined data type identifier.
-- ``Payload`` = up to 25 bytes of user-defined data.
-
-**Requires:** Device must be unlocked (``AT+UNLOCK`` first).
-
-**Responses:**
-
-- ``OK`` — User data updated; advertising restarted with new payload
-- ``ERROR`` — Device locked, invalid TLV format, data too large, or write failure
+See :ref:`at_cmd_ble_peripheral` for full reference.
 
 AT+SYSRESET
 ^^^^^^^^^^^
 
-Performs a cold system reset of the device.
+Resets the device. Warm reset (``0``) or cold reset (``1``).
 
 .. code-block:: none
 
-    AT+SYSRESET=<reason>
+    AT+SYSRESET=<type>
 
-+---------------+----------------------------+
-| Parameter     | Description                |
-+===============+============================+
-| ``<reason>``  | Reset reason code (``1``)  |
-+---------------+----------------------------+
++---------------+----------------------------------------------+
+| Parameter     | Description                                  |
++===============+==============================================+
+| ``<type>``    | ``0`` = warm reset, ``1`` = cold reset       |
++---------------+----------------------------------------------+
 
-**Requires:** Device must be unlocked (``AT+UNLOCK`` first).
+**Requires:** Device must be unlocked (``AT+SYSUNLOCK`` first).
 
 **Example:**
 
@@ -347,18 +315,20 @@ Performs a cold system reset of the device.
 
 **Response:** The device resets immediately; no response is returned to the client.
 
+See :ref:`at_cmd_sys` for full reference.
+
 Persistent Storage
 ==================
 
 The following settings survive reboot (saved to NVS flash):
 
-+---------------------+------------------+-----------------------------+
-| Setting             | AT Command       | NVS Key                     |
-+=====================+==================+=============================+
-| Device name         | ``AT+NAME``      | ``sensor_beacon/dev_name``  |
-+---------------------+------------------+-----------------------------+
-| Custom ad data      | ``AT+ADVDATA``   | ``sensor_beacon/user_data`` |
-+---------------------+------------------+-----------------------------+
++----------------------+------------------------+------------------------------+
+| Setting              | AT Command             | NVS Key                      |
++======================+========================+==============================+
+| Device name          | ``AT+BLEGAPDEVNAME``   | ``sensor_beacon/dev_name``   |
++----------------------+------------------------+------------------------------+
+| Advertising interval | ``AT+BLEADVLEGACYPARM``| ``sensor_beacon/adv_interval``|
++----------------------+------------------------+------------------------------+
 
 Typical Usage Sequence
 ======================
@@ -368,16 +338,19 @@ Typical Usage Sequence
     # 1. Connect to the device over BLE
     # 2. Enable GATT notifications on the TXRX characteristic
     # 3. Unlock the device
-    AT+UNLOCK=atm1atm123        → OK
+    AT+SYSUNLOCK=atm1atm123               → OK
 
-    # 4. Change the device name
-    AT+NAME=MySensorTag         → OK
+    # 4. Query lock state
+    AT+SYSLOCK?                           → +SYSLOCK:OFF
 
-    # 5. Set advertising interval to 2 seconds (3200 × 0.625 ms = 2000 ms)
-    AT+ADVINT=3200              → OK
+    # 5. Change the device name
+    AT+BLEGAPDEVNAME=MySensorTag          → OK
 
-    # 6. Reset to apply all changes
-    AT+SYSRESET=1               (device resets; reconnect to verify new settings)
+    # 6. Set advertising interval to 2 seconds
+    AT+BLEADVLEGACYPARM=0,3200,3200,0     → OK
+
+    # 7. Reset to verify persisted settings
+    AT+SYSRESET=1                         (device resets; reconnect to verify)
 
 Building and Running
 ********************
@@ -429,13 +402,13 @@ To flash the built images:
 
 .. code-block:: bash
 
-    west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load
+    west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink
 
 **Example:**
 
 .. code-block:: bash
 
-    west flash --no-rebuild -d build --verify --device 000900066361 --jlink --fast_load
+    west flash --no-rebuild -d build --verify --device 000900066361 --jlink
 
 Configuration Differences
 ==========================
@@ -478,23 +451,22 @@ To build and run the test suite:
 .. code-block:: bash
 
     west build -p always -b <BOARD> openair/applications/sensor_beacon/tests --sysbuild
-    west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load
+    west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink
 
 **Example:**
 
 .. code-block:: bash
 
     west build -p always -b ATMEVK-3430e-YQN-5 openair/applications/sensor_beacon/tests --sysbuild
-    west flash --no-rebuild -d build --verify --device 000900066361 --jlink --fast_load
+    west flash --no-rebuild -d build --verify --device 000900066361 --jlink
 
 The test suite includes:
 
 - Sensor interface validation
 - Battery monitoring tests
-- Beacon advertising tests (dual advertising sets; user data; device name updates)
-- AT command handler tests (unlock, name, interval, advdata, sysreset)
-- Data collection integration tests
-- Scaling factor verification
+- Beacon advertising tests (dual advertising sets, device name updates)
+- AT command interface tests (lock/unlock, device name, reset)
+- Data collection and sensor integration tests
 
 Power Management
 ****************
@@ -610,7 +582,7 @@ Compatibility
 - **Data Format**: Uses standardized sensor beacon data format
 - **Advertisement Structure**: Standard Bluetooth beacon format with manufacturer data
 - **Passive Observers**: Compatible with any BLE scanner or beacon monitoring application (Atmosic DevTools, etc.) — no connection required to receive sensor data
-- **BLE Centrals**: Can connect to the device, authenticate via ``AT+UNLOCK``, and issue configuration commands over the GATT TXRX characteristic
+- **BLE Centrals**: Can connect to the device, authenticate via ``AT+SYSUNLOCK``, and issue configuration commands over the GATT TXRX characteristic
 
 Dependencies
 ************

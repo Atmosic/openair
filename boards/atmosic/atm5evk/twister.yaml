@@ -1,0 +1,110 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+# Twister metadata for every ATM5 EVK board target defined in this directory.
+# The top-level keys are the defaults shared by all targets; each entry under
+# 'variants' overrides them for one board target. Note that a variant's
+# 'supported' list REPLACES the top-level one rather than extending it, so every
+# variant re-states the common set through the '&common' anchor below.
+
+type: mcu
+arch: arm
+vendor: atmosic
+toolchain:
+  - zephyr
+
+# Features supported by every ATM5 EVK board target. Twister splits each
+# 'supported' entry on ':', so this single entry expands to the whole set and
+# can be pulled into a variant with '*common'. The trailing '\' are double-quoted
+# YAML line continuations -- they add no characters and exist only to stay under
+# the 100-column yamllint limit.
+supported:
+  - &common "adc:antenna_switch:atlc:atm3x_pwm:atm_vendor_drv:bluetooth:button0:button1:\
+    channel_sounding:entropy:factory_partition:flash:gpio:i2c:i2c_clock_stretching:i2s:\
+    nv_mem_protect:pin_pulldown:pwm:qspi_war:radio_hal_burst:sec_jrnl_otp_flash:\
+    sha2_multi_context:spi:trustzone_m:uart:watchdog"
+
+variants:
+  ATMEVK-5205-NQK-2@normal/ATM5xxx-2:
+    supported:
+      - *common
+      - esl
+      - hid_remote
+      - ir
+      - lis2dh
+      - pdm
+      - wdt
+  ATMEVK-5205-NQK-2@mcuboot/ATM5xxx-2:
+    supported:
+      - *common
+      - esl
+      - hid_remote
+      - pdm
+
+  ATMEVK-5205-NBV-2@normal/ATM5xxx-2:
+    supported:
+      - *common
+      - gcov_capable
+      - ir
+      - lis2dh
+      - pdm
+      - wdt
+  ATMEVK-5205-NBV-2@mcuboot/ATM5xxx-2:
+    supported:
+      - *common
+      - pdm
+
+  ATMEVK-5305-NBV-2@normal/ATM5xxx-2:
+    supported:
+      - *common
+      - gcov_capable
+      - ir
+      - lis2dh
+      - pdm
+      - wdt
+  ATMEVK-5305-NBV-2@mcuboot/ATM5xxx-2:
+    supported:
+      - *common
+      - pdm
+
+  ATMEVK-5305-NQK-2@normal/ATM5xxx-2:
+    supported:
+      - *common
+      - esl
+      - fast_lp
+      - gcov_capable
+      - ir
+      - pdm
+      - smart_label
+      - wdt
+  ATMEVK-5305-NQK-2@mcuboot/ATM5xxx-2:
+    supported:
+      - *common
+      - esl
+      - pdm
+
+  ATMEVK-5305e-NQN-2@normal/ATM5xxx-2:
+    supported:
+      - *common
+      - gcov_capable
+      - ir
+      - lis2dh
+      - wdt
+  ATMEVK-5305e-NQN-2@mcuboot/ATM5xxx-2:
+    supported:
+      - *common
+      - harvesting
+
+  # The mcuboot_bl targets build the bootloader image only. They never had a
+  # twister file of their own, so keep them out of twister as before.
+  ATMEVK-5205-NQK-2@mcuboot_bl/ATM5xxx-2:
+    twister: false
+  ATMEVK-5205-NBV-2@mcuboot_bl/ATM5xxx-2:
+    twister: false
+  ATMEVK-5305-NBV-2@mcuboot_bl/ATM5xxx-2:
+    twister: false
+  ATMEVK-5305-NQK-2@mcuboot_bl/ATM5xxx-2:
+    twister: false
+  ATMEVK-5305e-NQN-2@mcuboot_bl/ATM5xxx-2:
+    twister: false

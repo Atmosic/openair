@@ -239,7 +239,8 @@ enum
 };
 
 #define LL_MAX_NUM_SUBEVENT           (uint8_t)0xF     /*!< Maximum number of subevent data in a command. */
-#define LL_MAX_PAWR_SUBEVT            (uint8_t)0x40    /*!< Maximum number of PAwR subevents. */
+#define LL_MAX_PAWR_SUBEVT            (uint8_t)0x80    /*!< Maximum number of PAwR subevents. */
+#define LL_NUM_PAWR_BM_WORD           (uint8_t)(LL_MAX_PAWR_SUBEVT / 32U)     /*!< Number of uint32_t words in PAwR subevent bitmask. */
 #define LL_MIN_PAWR_SUBEVT_INT        (uint8_t)0x06    /*!< Minimum PAwR subevent interval. */
 #define LL_MAX_PAWR_RESP_SLOT_DELAY   (uint8_t)0xFE    /*!< Maximum PAwR response slot delay. */
 #define LL_MIN_PAWR_RESP_SLOT_DELAY   (uint8_t)0x01    /*!< Maximum PAwR response slot delay. */
@@ -812,6 +813,14 @@ enum
 #define LL_CS_SEC_CONCAT_INIT_VECTOR_LEN  (LL_CS_SEC_INIT_VECTOR_LEN * 2)  /*!< CS security concatenated initialization vector length. */
 #define LL_CS_SEC_CONCAT_INST_NONCE_LEN   (LL_CS_SEC_INST_NONCE_LEN * 2)   /*!< CS security concatenated instantiation nonce length. */
 #define LL_CS_SEC_CONCAT_PER_VECTOR_LEN   (LL_CS_SEC_PER_VECTOR_LEN * 2)   /*!< CS security concatenated personalization vector length. */
+
+/*! \brief      CS_Security_Requirements bitmask bits (spec Section 7.8.157/158). */
+#define LL_CS_SEC_REQ_TONE      (UINT64_C(1) << 0)  /*!< CS tone (Mode 2 or Mode 3). */
+#define LL_CS_SEC_REQ_RTT_150   (UINT64_C(1) << 1)  /*!< 150 ns RTT accuracy. */
+#define LL_CS_SEC_REQ_RTT_10    (UINT64_C(1) << 2)  /*!< 10 ns RTT accuracy. */
+#define LL_CS_SEC_REQ_RTT_SOUND (UINT64_C(1) << 3)  /*!< RTT sounding or random sequence. */
+#define LL_CS_SEC_REQ_NADM      (UINT64_C(1) << 4)  /*!< Normalized Attack Detector Metric. */
+
 #define LL_CS_MAX_NUM_CHAN                (LL_CS_CHAN_MAP_SIZE * 8 - 1)  /*!< CS maximum number of channels */
 #define LL_CS_MAX_NUM_CHAN_QUARTER        20     /*!< Size of a channel quarters. */
 #define LL_CS_MINIMUM_CHANNELS_SET        15     /*!< Minimum channels required before CS start procedure. */
@@ -867,6 +876,17 @@ enum
   LL_CS_RTT_RANDOM_96BITS    = 0x05, /*!< RTT type 5. */
   LL_CS_RTT_RANDOM_128BITS   = 0x06  /*!< RTT type 6. */
 };
+
+/*! \brief      RTT_Capability bit positions (spec Section 2.4.2.44 / 7.8.105).
+ *  Each bit indicates whether the corresponding _N field refers to 150 ns (0) or 10 ns (1) accuracy.
+ *  A bit is only meaningful when its associated _N field is non-zero (i.e. that RTT type is supported).
+ *  Bits 0-2 apply to 1M PHY; bits 3-5 apply to 2M PHY (only when Subfeatures_Supported bit 5 is set). */
+#define LL_CS_RTT_CAP_AA_ONLY_BIT   (1u << 0)  /*!< RTT_AA_Only_N accuracy:           0=150ns, 1=10ns. */
+#define LL_CS_RTT_CAP_SOUNDING_BIT  (1u << 1)  /*!< RTT_Sounding_N accuracy:           0=150ns, 1=10ns. */
+#define LL_CS_RTT_CAP_RAND_BIT      (1u << 2)  /*!< RTT_Random_Sequence_N accuracy:    0=150ns, 1=10ns. */
+#define LL_CS_RTT_CAP_2M_AA_BIT     (1u << 3)  /*!< RTT_2M_AA_Only_N accuracy:         0=150ns, 1=10ns. */
+#define LL_CS_RTT_CAP_2M_SOUND_BIT  (1u << 4)  /*!< RTT_2M_Sounding_N accuracy:        0=150ns, 1=10ns. */
+#define LL_CS_RTT_CAP_2M_RAND_BIT   (1u << 5)  /*!< RTT_2M_Random_Sequence_N accuracy: 0=150ns, 1=10ns. */
 
 /*! \brief      Transaction ID. */
 enum

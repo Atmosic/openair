@@ -31,7 +31,9 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "compiler.h"
+#ifdef SECURE_MODE
 #include "sec_assert.h"
+#endif
 
 typedef uint64_t atm_otp_t;
 

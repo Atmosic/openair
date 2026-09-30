@@ -33,8 +33,4 @@ module = BATT_MODEL
 module-str = Atmosic Battery Model
 source "subsys/logging/Kconfig.template.log_config"
 
-config BATT_MODEL_ADC_32_BITS
-	bool
-	default y if ADC_ATMx3 || ADC_ATM34
-
 endif # BATT_MODEL

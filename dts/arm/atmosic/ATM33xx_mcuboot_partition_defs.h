@@ -36,6 +36,17 @@
 #define ATM_FLASH_BLOCK_SIZE 4096
 #define ROUND_DOWN_FLASH_BLK(s) (((s) / ATM_FLASH_BLOCK_SIZE) * ATM_FLASH_BLOCK_SIZE)
 
+#ifndef ATM_APP_FLASH_RESERVED_SIZE
+#define ATM_APP_FLASH_RESERVED_SIZE 0
+#endif
+#if ((ATM_APP_FLASH_RESERVED_SIZE % ATM_FLASH_BLOCK_SIZE) != 0)
+#error "Application flash reservation must be aligned"
+#endif
+#if (ATM_APP_FLASH_RESERVED_SIZE > FLASH_SIZE)
+#error "Application flash reservation exceeds FLASH_SIZE"
+#endif
+#define ATM_APP_FLASH_RESERVED_OFFSET (FLASH_SIZE - ATM_APP_FLASH_RESERVED_SIZE)
+
 // MCUBOOT starts at the beginning of RRAM
 #define ATM_MCUBOOT_OFFSET 0x0
 #ifndef ATM_MCUBOOT_SIZE
@@ -110,6 +121,10 @@
 #else
 // Legacy mode: slots must be of equal size (for swap-with-scratch)
 #define ATM_SLOT1_SIZE ATM_SLOT0_SIZE
+#endif
+
+#if ((ATM_SLOT1_OFFSET + ATM_SLOT1_SIZE) > ATM_APP_FLASH_RESERVED_OFFSET)
+#error "External image partition overlaps application-reserved flash"
 #endif
 
 #if (ATM_SPE_SIZE)

@@ -6,7 +6,8 @@
 
 /*
  * GADC Configuration for PIR Click
- * Uses existing ADC channel 7 configuration from board DTS
+ * Uses the existing 'mikrobus_adc' channel configuration supplied by the
+ * carrier board/shield (see mikrobus_adc label)
  */
 &adc {
 	status = "okay";

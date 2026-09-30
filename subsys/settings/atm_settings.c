@@ -5,7 +5,7 @@
  *
  * @brief Atmosic settings subsystem initialization and settings data handling
  *
- * Copyright (C) Atmosic 2024-2025
+ * Copyright (C) Atmosic 2024-2026
  *
  *******************************************************************************
  */
@@ -18,7 +18,7 @@
 #include <zephyr/storage/flash_map.h>
 #include "atm_settings.h"
 #if DT_NODE_EXISTS(DT_NODELABEL(rram_controller))
-#include "rram_rom_prot.h"
+#include "rram_prot.h"
 #elif CONFIG_DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
 #include "flash_prot.h"
 #endif

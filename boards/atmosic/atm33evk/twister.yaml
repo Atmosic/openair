@@ -1,0 +1,113 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+# Twister metadata for every ATM33 EVK board target defined in this directory.
+# The top-level keys are the defaults shared by all targets; each entry under
+# 'variants' overrides them for one board target. Note that a variant's
+# 'supported' list REPLACES the top-level one rather than extending it, so every
+# variant re-states the common set through the '&common' anchor below.
+
+type: mcu
+arch: arm
+vendor: atmosic
+toolchain:
+  - zephyr
+
+# Features supported by every ATM33 EVK board target. Twister splits each
+# 'supported' entry on ':', so this single entry expands to the whole set and
+# can be pulled into a variant with '*common'. The trailing '\' are double-quoted
+# YAML line continuations -- they add no characters and exist only to stay under
+# the 100-column yamllint limit.
+supported:
+  - &common "adc:atm3x_pwm:atm_vendor_drv:bluetooth:button0:button1:entropy:factory_partition:\
+             gpio:i2c:i2s:pin_pulldown:pwm:rram:spi:trustzone_m:uart:watchdog:nv_mem_protect"
+
+variants:
+  ATMEVK-3325-CM-6@normal/ATM33xx-5:
+    supported:
+      - *common
+      - atm_workarounds
+      - lis2dh
+  ATMEVK-3325-CM-6@mcuboot/ATM33xx-5:
+    supported:
+      - *common
+
+  ATMEVK-3325-LQK-6@normal/ATM33xx-5:
+    supported:
+      - *common
+      - atm_workarounds
+      - flash
+      - lis2dh
+  ATMEVK-3325-LQK-6@mcuboot/ATM33xx-5:
+    supported:
+      - *common
+      - flash
+
+  ATMEVK-3325-QK-6@normal/ATM33xx-5:
+    supported:
+      - *common
+      - atm_workarounds
+      - gcov_capable
+      - lis2dh
+  ATMEVK-3325-QK-6@mcuboot/ATM33xx-5:
+    supported:
+      - *common
+
+  ATMEVK-3330-QN-6@normal/ATM33xx-5:
+    supported:
+      - *common
+      - atm_workarounds
+      - lis2dh
+      - wurx
+  ATMEVK-3330-QN-6@mcuboot/ATM33xx-5:
+    supported:
+      - *common
+      - wurx
+
+  ATMEVK-3330e-QN-6@normal/ATM33xx-5:
+    supported:
+      - *common
+      - atm_workarounds
+      - energy_harvesting
+      - gcov_capable
+      - hid_kb
+      - lis2dh
+      - wurx
+  ATMEVK-3330e-QN-6@mcuboot/ATM33xx-5:
+    supported:
+      - *common
+      - energy_harvesting
+      - hid_kb
+      - wurx
+
+  ATMEVK-3330e-QN-7@normal/ATM33xx-5:
+    supported:
+      - *common
+      - atm_workarounds
+      - energy_harvesting
+      - gcov_capable
+      - hid_kb
+      - lis2dh
+      - wurx
+  ATMEVK-3330e-QN-7@mcuboot/ATM33xx-5:
+    supported:
+      - *common
+      - energy_harvesting
+      - hid_kb
+      - wurx
+
+  # The mcuboot_bl targets build the bootloader image only. They never had a
+  # twister file of their own, so keep them out of twister as before.
+  ATMEVK-3325-CM-6@mcuboot_bl/ATM33xx-5:
+    twister: false
+  ATMEVK-3325-LQK-6@mcuboot_bl/ATM33xx-5:
+    twister: false
+  ATMEVK-3325-QK-6@mcuboot_bl/ATM33xx-5:
+    twister: false
+  ATMEVK-3330-QN-6@mcuboot_bl/ATM33xx-5:
+    twister: false
+  ATMEVK-3330e-QN-6@mcuboot_bl/ATM33xx-5:
+    twister: false
+  ATMEVK-3330e-QN-7@mcuboot_bl/ATM33xx-5:
+    twister: false

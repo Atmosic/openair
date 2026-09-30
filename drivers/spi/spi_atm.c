@@ -1,7 +1,7 @@
 /*
  * Copyright (C) Atmosic 2021-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atm_spi
@@ -27,13 +27,18 @@ LOG_MODULE_REGISTER(spi_atm, CONFIG_SPI_LOG_LEVEL);
 #include "arch.h"
 #include "at_wrpr.h"
 #include "at_apb_spi_regs_core_macro.h"
+#ifdef CONFIG_SOC_SERIES_ATMX2
+#include "intisr.h"
+#define INTR_ROUTING_REQUIRED 1
+#endif
 #ifdef CONFIG_SPI_ATM_DMA
 #include "dma.h"
 #endif
 
 #define SPI_WORD_SIZE 8
 #define SPI_CLK at_clkrstgen_get_bp()
-#define SPI_CLK_DIV(freq) ((DIV_ROUND_UP(SPI_CLK, freq) >> 1) - 1)
+/* Round the divisor up so the resulting clock never exceeds the requested frequency */
+#define SPI_CLK_DIV(freq)      (DIV_ROUND_UP(SPI_CLK, 2 * (freq)) - 1)
 #define SPI_CLK_MIN (SPI_CLK >> (SPI_TRANSACTION_SETUP__CLKDIV__WIDTH + 1))
 #define SPI_CORE_HARD_LIMIT_HZ 8000000
 #define SPI_CLK_MAX MIN((SPI_CLK >> 1), SPI_CORE_HARD_LIMIT_HZ)
@@ -82,6 +87,12 @@ struct spi_atm_data {
 	} io[SPI_PAYLOAD_WIDTH];
 	uint32_t num_bytes;
 	bool read;
+#ifdef CONFIG_PM
+	bool pm_constraint_on;
+#endif
+#ifdef CONFIG_SPI_ATM_AUTO_CLK_GATE
+	bool clock_enabled;
+#endif
 	struct k_sem completion_sem;
 	spi_callback_t sync_cb;
 #ifdef CONFIG_SPI_ATM_WATCHDOG
@@ -104,6 +115,7 @@ struct spi_atm_config {
 	CMSDK_AT_APB_SPI_TypeDef *base;
 	const struct pinctrl_dev_config *pcfg;
 	set_callback_t enable_clocks;
+	set_callback_t disable_clocks;
 	void (*irq_connect)(void);
 #ifdef CONFIG_SPI_ATM_DMA
 	IRQn_Type irqn;
@@ -217,13 +229,15 @@ static void spi_atm_start_transaction(struct device const *dev, uint16_t clkdiv,
 #ifdef CONFIG_PM
 /* The pm_constraint functions below are called from both thread and isr contexts.  Normally, that
  * would require a critical section around accesses to pm_constraint_on, and that variable would
- * need to be volatile.  However, because of the spi context lock and the specific sequencing, the
- * critical section protection is not required here */
-static bool pm_constraint_on;
+ * need to be volatile.  However, because the flag is per-instance and the spi context lock is held
+ * across it, the critical section protection is not required here */
 static void spi_atm_pm_constraint_set(const struct device *dev)
 {
-	if (!pm_constraint_on) {
-		pm_constraint_on = true;
+	struct spi_atm_data *data = DEV_DATA(dev);
+
+	if (!data->pm_constraint_on) {
+		data->pm_constraint_on = true;
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -231,8 +245,11 @@ static void spi_atm_pm_constraint_set(const struct device *dev)
 
 static void spi_atm_pm_constraint_release(const struct device *dev)
 {
-	if (pm_constraint_on) {
-		pm_constraint_on = false;
+	struct spi_atm_data *data = DEV_DATA(dev);
+
+	if (data->pm_constraint_on) {
+		data->pm_constraint_on = false;
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -265,6 +282,14 @@ static void spi_atm_context_lock(const struct device *dev,
 	spi_atm_pm_constraint_set(dev);
 #endif
 
+#ifdef CONFIG_SPI_ATM_AUTO_CLK_GATE
+	if (!data->clock_enabled) {
+		data->clock_enabled = true;
+		struct spi_atm_config const *aconfig = DEV_CFG(dev);
+		aconfig->enable_clocks();
+	}
+#endif
+
 #ifdef CONFIG_SPI_ATM_WATCHDOG
 	data->is_async = asynchronous;
 	data->chunk_index = 0;
@@ -280,6 +305,14 @@ static void spi_atm_context_unlock(const struct device *dev, bool complete, int 
 	struct spi_atm_data *data = DEV_DATA(dev);
 #ifdef CONFIG_PM
 	spi_atm_pm_constraint_release(dev);
+#endif
+
+#ifdef CONFIG_SPI_ATM_AUTO_CLK_GATE
+	if (data->clock_enabled) {
+		data->clock_enabled = false;
+		struct spi_atm_config const *aconfig = DEV_CFG(dev);
+		aconfig->disable_clocks();
+	}
 #endif
 
 #ifdef CONFIG_SPI_ATM_WATCHDOG
@@ -561,18 +594,22 @@ static int spi_atm_transceive(struct device const *dev,
 	data->ctx.config = config;
 	spi_context_buffers_setup(&data->ctx, tx_bufs, rx_bufs, 1);
 
+#if !defined(SPI_TRANSACTION_SETUP__LOOPBACK__SET) || defined(SPI_CTRL__CPOL__MODIFY)
 	struct spi_atm_config const *aconfig = DEV_CFG(dev);
+#endif
 
 #ifndef SPI_TRANSACTION_SETUP__LOOPBACK__SET
 	bool loopback = (config->operation & SPI_MODE_LOOP);
 	SPI_CTRL__LOOPBACK__MODIFY(aconfig->base->CTRL, loopback);
 #endif
 
+#ifdef SPI_CTRL__CPOL__MODIFY
 	/* Configure CPOL and CPHA */
 	bool cpol = SPI_MODE_GET(config->operation) & SPI_MODE_CPOL;
 	bool cpha = SPI_MODE_GET(config->operation) & SPI_MODE_CPHA;
 	SPI_CTRL__CPOL__MODIFY(aconfig->base->CTRL, cpol);
 	SPI_CTRL__CPHA__MODIFY(aconfig->base->CTRL, cpha);
+#endif
 
 	return spi_atm_transfer(dev);
 }
@@ -597,6 +634,7 @@ static int spi_atm_transceive_sync(struct device const *dev,
 		struct spi_atm_config const *aconfig = DEV_CFG(dev);
 		aconfig->base->TRANSACTION_SETUP = 0;
 		LOG_ERR("SPI communication timed out: %#x", aconfig->base->TRANSACTION_STATUS);
+		spi_atm_context_unlock(dev, false, 0);
 		return -EIO;
 	}
 
@@ -664,6 +702,26 @@ static struct pm_notifier notifier = {
 	.state_exit = notify_pm_state_exit,
 };
 #endif
+
+/*
+ * spi_pseq_latch_close() and, when CONFIG_PM is enabled, registering
+ * `notifier` must each happen exactly once, regardless of how many SPI
+ * instances are enabled. spi_atm_init() runs once per enabled SPI instance
+ * (DT_INST_FOREACH_STATUS_OKAY), so doing either of these from within it
+ * would repeat them; for the pm_notifier registration in particular,
+ * registering the same node twice corrupts the global pm_notifiers list
+ * (the node ends up pointing at itself), hanging the system on the next PM
+ * state transition.
+ */
+static int spi_atm_pseq_init(void)
+{
+	spi_pseq_latch_close();
+#ifdef CONFIG_PM
+	pm_notifier_register(&notifier);
+#endif
+	return 0;
+}
+SYS_INIT(spi_atm_pseq_init, POST_KERNEL, UTIL_INC(CONFIG_SPI_INIT_PRIORITY));
 #endif // PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
 
 #ifdef CONFIG_SPI_ATM_WATCHDOG
@@ -671,8 +729,20 @@ static void txn_watchdog_timeout(struct k_timer *timer)
 {
 	struct device const *dev = k_timer_user_data_get(timer);
 	struct spi_atm_config const *aconfig = DEV_CFG(dev);
+	__UNUSED struct spi_atm_data *data = DEV_DATA(dev);
 
 	LOG_ERR("SPI asynchronous transaction timed out");
+
+	/* The ISR may have already completed the transaction and gated the
+	 * clock via spi_atm_context_unlock(). Re-enable the clock before
+	 * touching SPI registers so the cleanup writes below take effect.
+	 */
+#ifdef CONFIG_SPI_ATM_AUTO_CLK_GATE
+	if (!data->clock_enabled) {
+		data->clock_enabled = true;
+		aconfig->enable_clocks();
+	}
+#endif
 
 	// Disable further interrupts from the SPI peripheral
 	aconfig->base->INTERRUPT_MASK = 0;
@@ -688,7 +758,6 @@ static void txn_watchdog_timeout(struct k_timer *timer)
 #endif
 
 	dma_tx_async_stop();
-	struct spi_atm_data *data = DEV_DATA(dev);
 	k_work_cancel(&data->tx_dma_work);
 #endif // CONFIG_SPI_ATM_DMA
 
@@ -702,7 +771,10 @@ static int spi_atm_init(struct device const *dev)
 	struct spi_atm_config const *aconfig = DEV_CFG(dev);
 	struct spi_atm_data *data = DEV_DATA(dev);
 
+	WRPR_CTRL_SET(aconfig->base, WRPR_CTRL__SRESET);
+#ifndef CONFIG_SPI_ATM_AUTO_CLK_GATE
 	aconfig->enable_clocks();
+#endif
 	err = pinctrl_apply_state(aconfig->pcfg, PINCTRL_STATE_DEFAULT);
 	if (err) {
 		return err;
@@ -713,14 +785,6 @@ static int spi_atm_init(struct device const *dev)
 		return err;
 	}
 	spi_context_unlock_unconditionally(&data->ctx);
-
-#ifdef PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
-	spi_pseq_latch_close();
-
-#ifdef CONFIG_PM
-	pm_notifier_register(&notifier);
-#endif
-#endif // PSEQ_CTRL0__SPI_LATCH_OPEN__MASK
 
 #ifdef CONFIG_SPI_ATM_DMA
 	k_work_init(&data->tx_dma_work, spi_atm_tx_dma_worker);
@@ -743,6 +807,10 @@ static int spi_atm_init(struct device const *dev)
 	{                                                                                          \
 		WRPR_CTRL_SET(SPI_BASE(n), WRPR_CTRL__CLK_ENABLE);                                 \
 	}                                                                                          \
+	static void spi_atm_disable_clocks_##n(void)                                               \
+	{                                                                                          \
+		WRPR_CTRL_SET(SPI_BASE(n), WRPR_CTRL__CLK_DISABLE);                                \
+	}                                                                                          \
 	ISR_DIRECT_DECLARE(spi_atm_isr##n)                                                         \
 	{                                                                                          \
 		struct device const *dev = DEVICE_DT_INST_GET(n);                                  \
@@ -763,6 +831,7 @@ static int spi_atm_init(struct device const *dev)
 		.base = SPI_BASE(n),                                                               \
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),                                         \
 		.enable_clocks = spi_atm_enable_clocks_##n,                                        \
+		.disable_clocks = spi_atm_disable_clocks_##n,                                      \
 		.dummy_cycles = DT_INST_PROP(n, dummy_cycles),                                     \
 		.irq_connect = spi_atm_config_irq_##n,                                             \
 		IF_ENABLED(CONFIG_SPI_ATM_DMA, (                                                   \

@@ -56,16 +56,6 @@ config ATM_AES_NONE
 
 endchoice
 
-if ATM_AES_ATM_CORE
-
-# FIXME: move to device tree
-config ATM_AES_CAN_REVERSE_BYTES
-	bool "Atmosic AES can reverse byte order"
-	default n if SOC_SERIES_ATM33
-	default y
-
-endif # ATM_AES_ATM_CORE
-
 if ATM_AES_HW
 
 config ATM_AES_HW_FALLBACK_ON_EXHAUSTION

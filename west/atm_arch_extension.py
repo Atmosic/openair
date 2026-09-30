@@ -53,10 +53,11 @@ west atm_arch [-h] [-i {input file name} | --append] [-s] [-d]
            [--sec_boot_key {sec_boot_key file}]
            [--erase_all]
            [--erase_flash_all]
-           [--erase_flash {address,size}]
+           [--erase_flash {address,size} ...]
            [--erase_rram_all]
-           [--erase_rram {address,size}]
+           [--erase_rram {address,size} ...]
            [--load_bin {bin_file,address}]
+           [--no-fast-load]
 """
 
 
@@ -559,15 +560,11 @@ class AtmIsp:
             else:
                 if self.has_partinfo_attrs("ATM_SPLIT_IMG"):
                     extra_info = "APP"
-                    if self.has_partinfo_attrs("NS_APP_START", "NS_APP_SIZE"):
-                        region_start = self.partinfo.NS_APP_START
-                        region_size = self.partinfo.NS_APP_SIZE
-                    elif self.has_partinfo_attrs("APP_START", "APP_SIZE"):
-                        region_start = self.partinfo.APP_START
-                        region_size = self.partinfo.APP_SIZE
-                    else:
-                        print("Cannot find SPLIT <NS_>APP_START and <NS_>APP_SIZE info")
+                    if not self.has_partinfo_attrs("SLOT2_IMG_START", "SLOT2_IMG_SIZE"):
+                        print("Cannot find SLOT2_IMG_START and SLOT2_IMG_SIZE info")
                         sys.exit(1)
+                    region_start = self.partinfo.SLOT2_IMG_START
+                    region_size = self.partinfo.SLOT2_IMG_SIZE
                 elif self.has_partinfo_attrs("ATM_NO_SPE"):
                     # MCUboot + no_spe (without split_img): use APP_START/SIZE
                     extra_info = "SIGNED_APP"
@@ -792,8 +789,18 @@ class AtmArchCommand(WestCommand):
         group.add_argument(
             "-f",
             "--fast_load",
+            default=True,
             action="store_true",
-            help="fast_load enabled, default false",
+            help="fast_load enabled by default (kept for backward "
+            "compatibility); use --no-fast-load to disable",
+        )
+        group.add_argument(
+            "--no-fast-load",
+            "--no_fast_load",
+            dest="no_fast_load",
+            default=False,
+            action="store_true",
+            help="disable fast_load (fast_load is enabled by default)",
         )
         group.add_argument(
             "-storage_data_file",
@@ -908,7 +915,9 @@ class AtmArchCommand(WestCommand):
             "--erase_flash",
             required=False,
             default=None,
-            help="customized flash erase, ex: " "--erase_flash=address,size",
+            action="append",
+            help="customized flash erase, ex: --erase_flash=address,size "
+            "(can be specified multiple times for multiple regions)",
         )
         group.add_argument(
             "-erase_rram_all",
@@ -921,7 +930,9 @@ class AtmArchCommand(WestCommand):
             "--erase_rram",
             required=False,
             default=None,
-            help="customized rram erase, ex: " "--erase_rram=address,size",
+            action="append",
+            help="customized rram erase, ex: --erase_rram=address,size "
+            "(can be specified multiple times for multiple regions)",
         )
         group.add_argument(
             "-erase_storage",
@@ -1040,6 +1051,9 @@ class AtmArchCommand(WestCommand):
     # pylint: disable=unused-argument
     def do_run(self, args, unknown_args):
         """Function do run west atm_arch"""
+        # --no-fast-load has precedence; normalize once so do_erase and the
+        # burn path below all see the effective value.
+        args.fast_load = args.fast_load and not args.no_fast_load
         atm_isp_path = os.path.join(
             str(Path(__file__).resolve().parents[1]), "tools", "scripts", "atm_isp"
         )
@@ -1140,34 +1154,44 @@ class AtmArchCommand(WestCommand):
                     # when erase_flash_all, the other flash erase could be
                     # ignored
                     if args.erase_flash_all:
-                        region_start = None
-                        region_size = None
+                        atmisp.append_erase_flash(
+                            None, None, input_file, args.output_atm_file
+                        )
                     else:
-                        erase_args = args.erase_flash.split(",")
-                        if len(erase_args) != 2:
-                            print(f"{args.erase_flash} should be address,size")
-                            sys.exit(1)
-                        region_start = ast.literal_eval(erase_args[0])
-                        region_size = ast.literal_eval(erase_args[1])
-                    atmisp.append_erase_flash(
-                        region_start, region_size, input_file, args.output_atm_file
-                    )
+                        for erase_flash in args.erase_flash:
+                            erase_args = erase_flash.split(",")
+                            if len(erase_args) != 2:
+                                print(f"{erase_flash} should be address,size")
+                                sys.exit(1)
+                            region_start = ast.literal_eval(erase_args[0])
+                            region_size = ast.literal_eval(erase_args[1])
+                            atmisp.append_erase_flash(
+                                region_start,
+                                region_size,
+                                input_file,
+                                args.output_atm_file,
+                            )
                 if args.erase_rram_all or args.erase_rram:
                     # when erase_rram_all, the other rram erase could be
                     # ignored
                     if args.erase_rram_all:
-                        region_start = None
-                        region_size = None
+                        atmisp.append_erase_rram(
+                            None, None, input_file, args.output_atm_file
+                        )
                     else:
-                        erase_args = args.erase_rram.split(",")
-                        if len(erase_args) != 2:
-                            print(f"{args.erase_rram} should be address,size")
-                            sys.exit(1)
-                        region_start = ast.literal_eval(erase_args[0])
-                        region_size = ast.literal_eval(erase_args[1])
-                    atmisp.append_erase_rram(
-                        region_start, region_size, input_file, args.output_atm_file
-                    )
+                        for erase_rram in args.erase_rram:
+                            erase_args = erase_rram.split(",")
+                            if len(erase_args) != 2:
+                                print(f"{erase_rram} should be address,size")
+                                sys.exit(1)
+                            region_start = ast.literal_eval(erase_args[0])
+                            region_size = ast.literal_eval(erase_args[1])
+                            atmisp.append_erase_rram(
+                                region_start,
+                                region_size,
+                                input_file,
+                                args.output_atm_file,
+                            )
                 if args.erase_storage and not args.erase_all:
                     atmisp.append_erase_storage(input_file, args.output_atm_file)
 

@@ -234,6 +234,13 @@ static void rrsp_button_work_handler(struct k_work *work)
 			return;
 		}
 #endif
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+		if (rrsp_mmi_get_state() >= RRSP_MMI_STATE_CONNECTED) {
+			LOG_INF("Force disable/revert CS");
+			rrsp_mmi_force_cs_off();
+			return;
+		}
+#endif
 		rrsp_button_factory_reset_handler();
 	}
 #endif // CONFIG_BTN_ON_OFF
@@ -280,12 +287,6 @@ static bool rrsp_buttons_configure_irq(const struct gpio_dt_spec btn)
 		LOG_ERR("Failed to configure %s pin %u err:%d", btn.port->name, btn.pin, err);
 		return false;
 	}
-	err = gpio_pin_interrupt_configure_dt(&btn, GPIO_INT_EDGE_BOTH);
-	if (err) {
-		LOG_ERR("Failed to configure interrupt on %s pin %u err:%d", btn.port->name,
-			btn.pin, err);
-		return false;
-	}
 #ifdef CONFIG_BTN_ON_OFF
 	k_work_init_delayable(&rrsp_button_longpress_work, rrsp_button_longpress_handler);
 	atm_socoff_wakeup_gpio_set(true);
@@ -316,6 +317,14 @@ static bool rrsp_buttons_configure_irq(const struct gpio_dt_spec btn)
 	rrsp_button_lock_sleep(true);
 	k_work_reschedule(&rrsp_button_longpress_work, K_MSEC(BTN_LONG_PRESS_MS));
 #endif // CONFIG_BTN_ON_OFF
+
+	err = gpio_pin_interrupt_configure_dt(&btn, GPIO_INT_EDGE_BOTH);
+	if (err) {
+		LOG_ERR("Failed to configure interrupt on %s pin %u err:%d", btn.port->name,
+			btn.pin, err);
+		return false;
+	}
+
 	return true;
 }
 

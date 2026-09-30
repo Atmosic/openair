@@ -44,3 +44,10 @@ void at_cmd_evt_disconn(uint8_t ch, uint8_t idx, uint8_t reason)
 
 	at_cmd_evt_submit(disconn_evt_handler, ch, &evt, sizeof(evt));
 }
+
+#ifdef CONFIG_ZTEST
+void at_cmd_evt_disconn_test_handler(uint8_t ch, const void *evt_data, uint16_t evt_data_len)
+{
+	disconn_evt_handler(ch, evt_data, evt_data_len);
+}
+#endif /* CONFIG_ZTEST */

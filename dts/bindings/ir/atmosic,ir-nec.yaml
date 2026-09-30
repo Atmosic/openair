@@ -1,0 +1,19 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: Atmosic NEC IR blaster (ATM PWM FIFO-driven)
+
+compatible: "atmosic,ir-nec"
+
+include: base.yaml
+
+properties:
+  pwms:
+    type: phandle-array
+    required: true
+    description: |
+      PWM specifier for the channel used to generate the 38 kHz IR carrier.
+      Example: pwms = <&pwm5 5 0 0>;
+      The referenced PWM node must have its 'pin' property set to the GPIO
+      pin wired to the IR LED driver.

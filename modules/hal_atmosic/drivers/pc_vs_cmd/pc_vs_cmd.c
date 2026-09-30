@@ -37,6 +37,10 @@
 #define LHCI_OPCODE_VS_READ_REG HCI_OPCODE(HCI_OGF_VENDOR_SPEC, 0x30)
 #define LHCI_OPCODE_VS_WRITE_REG HCI_OPCODE(HCI_OGF_VENDOR_SPEC, 0x31)
 #define LHCI_OPCODE_VS_GET_TEST_TX_PKT_NUM HCI_OPCODE(HCI_OGF_VENDOR_SPEC, 0x73)
+#define LHCI_OPCODE_VS_SET_DTM_PKT_INTERVAL \
+    HCI_OPCODE(HCI_OGF_VENDOR_SPEC, 0x74)
+#define LHCI_OPCODE_VS_SET_CS_TEST_UNSYNC_MODE \
+    HCI_OPCODE(HCI_OGF_VENDOR_SPEC, 0x75)
 
 #define SPI_PMURADIO_BLOCK_MASK 0x0F
 #define SPI_PMURADIO_BLOCK_OFFSET 16
@@ -337,6 +341,24 @@ static bool pc_vs_decode_cmd(LhciHdr_t *pHdr, uint8_t *pBuf)
 	    UINT32_TO_BSTREAM(evt_param, test_tx_pkt_num);
 	    pc_vs_send_cmd_cmpl_evt(cmpl_evt);
 	} break;
+#ifndef CONFIG_SOC_ATM5XXX_2
+	case LHCI_OPCODE_VS_SET_DTM_PKT_INTERVAL: {
+	    uint8_t *cmpl_evt = pc_vs_gen_cmd_cmpl_evt(sizeof(uint8_t), pHdr->opCode);
+	    uint8_t interval_slots;
+	    BSTREAM_TO_UINT8(interval_slots, pBuf);
+	    pc_ctr_set_dtm_pkt_interval(interval_slots);
+	    *cmpl_evt = HCI_SUCCESS;
+	    pc_vs_send_cmd_cmpl_evt(cmpl_evt);
+	} break;
+	case LHCI_OPCODE_VS_SET_CS_TEST_UNSYNC_MODE: {
+	    uint8_t *cmpl_evt = pc_vs_gen_cmd_cmpl_evt(sizeof(uint8_t), pHdr->opCode);
+	    uint8_t enable;
+	    BSTREAM_TO_UINT8(enable, pBuf);
+	    LlSetOpFlags(LL_OP_MODE_FLAG_ENA_CS_TEST_UNSYNC_MODE, enable);
+	    *cmpl_evt = HCI_SUCCESS;
+	    pc_vs_send_cmd_cmpl_evt(cmpl_evt);
+	} break;
+#endif
 	default:
 	    return false;
     }

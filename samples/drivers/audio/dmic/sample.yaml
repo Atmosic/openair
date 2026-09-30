@@ -1,0 +1,64 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+sample:
+  name: DMIC
+common:
+  tags:
+    - drivers
+  sysbuild: true
+  depends_on:
+    - pdm
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - 'PDM_CAPTURE_END captured=\d+ dropped=\d+'
+tests:
+  samples.drivers.audio.dmic.atm: {}
+  samples.drivers.audio.dmic.atm.apx: &apx_base
+    harness: pytest
+    timeout: 600
+    harness_config:
+      pytest_root: ["pytest"]
+      fixture: apx525
+  samples.drivers.audio.dmic.atm.apx.rate_8khz:
+    <<: *apx_base
+    extra_configs:
+      - CONFIG_SAMPLE_RATE_8KHZ=y
+    harness_config:
+      pytest_root: ["pytest"]
+      fixture: apx525
+      pytest_args:
+        - "--apx-sweep-freqs-hz=250,500,750"
+  samples.drivers.audio.dmic.atm.apx.bitclk_500khz:
+    <<: *apx_base
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE="bitclk_500khz.overlay"
+    harness_config:
+      pytest_root: ["pytest"]
+      fixture: apx525
+      pytest_args:
+        - "--apx-bit-clk-freq-hz=500000"
+        - "--apx-sweep-freqs-hz=500"
+  samples.drivers.audio.dmic.atm.apx.bitclk_2mhz:
+    <<: *apx_base
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE="bitclk_2mhz.overlay"
+    harness_config:
+      pytest_root: ["pytest"]
+      fixture: apx525
+      pytest_args:
+        - "--apx-bit-clk-freq-hz=2000000"
+        - "--apx-sweep-freqs-hz=500,1000,1500"
+  samples.drivers.audio.dmic.atm.apx.bitclk_4mhz:
+    <<: *apx_base
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE="bitclk_4mhz.overlay"
+    harness_config:
+      pytest_root: ["pytest"]
+      fixture: apx525
+      pytest_args:
+        - "--apx-bit-clk-freq-hz=4000000"
+        - "--apx-sweep-freqs-hz=500,1000,1500"

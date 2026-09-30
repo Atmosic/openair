@@ -308,14 +308,13 @@ typedef struct {
  * ======================================================================== */
 
 /**
- * @brief Discriminated union for ranging capability data
+ * @brief Ranging capability data (per-tech pointers)
  *
- * Used by callback APIs to pass technology-specific capability structures.
- * Type is determined by the tech_id parameter passed to the callback.
+ * tech_id selects which member to use:
  * - RT_TECH_ID_UWB: use uwb
  * - RT_TECH_ID_CS: use cs
  */
-typedef union {
+typedef struct {
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
 	ranging_cap_de_uwb_t *uwb;
 #endif
@@ -325,14 +324,13 @@ typedef union {
 } ranging_capability_t;
 
 /**
- * @brief Discriminated union for ranging configuration data
+ * @brief Ranging configuration data (per-tech pointers)
  *
- * Used by callback APIs to pass technology-specific configuration structures.
- * Type is determined by the tech_id parameter passed to the callback.
+ * tech_id selects which member to use:
  * - RT_TECH_ID_UWB: use uwb
  * - RT_TECH_ID_CS: use cs
  */
-typedef union {
+typedef struct {
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
 	ranging_conf_de_uwb_t *uwb;
 #endif

@@ -35,3 +35,9 @@
 		label = "LIS2DH12";
 	};
 };
+
+/ {
+	chosen {
+		atm,motion-sensor = &lis2dh12;
+	};
+};

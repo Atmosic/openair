@@ -56,4 +56,12 @@ void brwnout_pmu_handler(void);
 }
 #endif
 
+/**
+ * @brief SW-defined bit in PSEQ PERSISTENT7 used as a falling-brownout flag.
+ *
+ * Set by brwnout.c before hibernation; checked and cleared by
+ * sec_hw_cfg_core.c on the subsequent wakeup.
+ */
+#define PSEQ_PERSISTENT7_BROWNOUT_FALLING (1U << 0)
+
 /// @} BRWNOUT

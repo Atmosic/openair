@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file dis.c
  *
  * @brief Atmosic Google Fast Pair Device Information Service (DIS)
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -20,6 +24,7 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
+#include "fp_auth.h"
 #include "fp_conn.h"
 #include "fp_mode.h"
 
@@ -31,10 +36,53 @@ LOG_MODULE_REGISTER(gfp_dis, CONFIG_ATM_GFP_DIS_LOG_LEVEL);
  */
 static char gfp_dis_fw_version[CONFIG_GFP_DIS_FW_VERSION_STR_MAX];
 
+struct bond_check_ctx {
+	const bt_addr_le_t *peer_addr;
+	bool found;
+};
+
+static void bond_check_cb(const struct bt_bond_info *info, void *user_data)
+{
+	struct bond_check_ctx *ctx = user_data;
+	bt_addr_le_t peer_id = *ctx->peer_addr;
+
+	/* Normalize: strip the resolved-RPA bit (bit 1) so that
+	 * BT_ADDR_LE_PUBLIC_ID / BT_ADDR_LE_RANDOM_ID map back to
+	 * the plain identity address type stored in the bond list.
+	 */
+	peer_id.type &= BT_ADDR_LE_RANDOM;
+	if (bt_addr_le_eq(&info->addr, &peer_id)) {
+		ctx->found = true;
+	}
+}
+
+static bool is_peer_bonded(struct bt_conn *conn)
+{
+	struct bt_conn_info info;
+
+	if (bt_conn_get_info(conn, &info)) {
+		return false;
+	}
+
+	struct bond_check_ctx ctx = {
+		.peer_addr = bt_conn_get_dst(conn),
+	};
+
+	bt_foreach_bond(info.id, bond_check_cb, &ctx);
+	return ctx.found;
+}
+
 /**
- * @brief Check if connection is authenticated or bonded
+ * @brief Check if connection is allowed to read Firmware Revision
+ *
+ * Per spec, access is granted when any of the following is true:
+ *   1. The Provider is discoverable — any device may read.
+ *   2. The connection is with a bonded Seeker (even before re-encryption).
+ *   3. A preceding operation on this connection proved the Seeker's knowledge
+ *      of the account key (KBP crypto verified).
+ *
  * @param conn Bluetooth connection
- * @return true if connection is authenticated/bonded, false otherwise
+ * @return true if access is permitted, false otherwise
  */
 static bool is_connection_authenticated(struct bt_conn *conn)
 {
@@ -42,17 +90,28 @@ static bool is_connection_authenticated(struct bt_conn *conn)
 		// Not a fp connection
 		return false;
 	}
+	/* Condition 1: any device allowed while Provider is discoverable */
 	if (fp_mode_get() == FP_MODE_PAIRING) {
-		LOG_DBG("Firmware revision read attempt allowed when the Provider is discoverable");
+		LOG_DBG("Firmware revision read allowed: Provider is discoverable");
 		return true;
 	}
-	/* Check security level - L3 and above indicate authentication/bonding */
-	bt_security_t sec_level = bt_conn_get_security(conn);
-	if (sec_level < BT_SECURITY_L3) {
-		LOG_WRN("Firmware revision read attempt from non-authentication connection");
-		return false;
+	/* Condition 2: bonded Seeker — allowed even as the first operation on
+	 * the connection, before re-encryption completes.
+	 */
+	if (is_peer_bonded(conn)) {
+		LOG_DBG("Firmware revision read allowed: bonded peer");
+		return true;
 	}
-	return true;
+	/* Condition 3: non-bonded Seeker that proved account key knowledge via
+	 * a preceding operation on this connection (e.g. beacon parameters read,
+	 * provisioning state read).
+	 */
+	if (fp_auth_is_account_key_proven(conn)) {
+		LOG_DBG("Firmware revision read allowed: account key proven");
+		return true;
+	}
+	LOG_WRN("Firmware revision read attempt from non-bonded connection");
+	return false;
 }
 
 #define GFP_DIS_ATT_ERR_UNAUTHENTICATED 0x80
@@ -61,10 +120,11 @@ static bool is_connection_authenticated(struct bt_conn *conn)
  * @brief Read firmware revision characteristic
  *
  * FHN v2: firmware revision is returned only when either of the following is true:
- *   - The Seeker is bonded (security level >= L3), OR
- *   - Any FHN operation authenticated with the account key was successfully completed
- *     over the same connection before this read (expressed here as pairing mode / L3+).
+ *   - The Seeker is bonded (allowed even before re-encryption on reconnect), OR
+ *   - A preceding operation on this connection proved the Seeker's knowledge of
+ *     the account key (e.g. beacon parameters read, provisioning state read).
  * Otherwise the Provider returns ATT application error 0x80 (unauthenticated).
+ * Per spec, an empty string must never be returned.
  */
 static ssize_t read_fw_revision(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf,
 				uint16_t len, uint16_t offset)
@@ -72,6 +132,11 @@ static ssize_t read_fw_revision(struct bt_conn *conn, const struct bt_gatt_attr 
 	if (!is_connection_authenticated(conn)) {
 		LOG_WRN("Firmware revision read rejected - unauthenticated connection");
 		return BT_GATT_ERR(GFP_DIS_ATT_ERR_UNAUTHENTICATED);
+	}
+
+	if (!gfp_dis_fw_version[0]) {
+		LOG_ERR("Firmware revision read rejected - version string not initialized");
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 	}
 
 	LOG_DBG("Firmware revision read: %s", gfp_dis_fw_version);

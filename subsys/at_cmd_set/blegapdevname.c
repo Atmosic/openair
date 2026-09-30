@@ -11,6 +11,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 #include "at_cmd.h"
+#include "at_cmd_set.h"
 #include "at_cmd_set_common.h"
 
 #define DEV_NAME_MAX  CONFIG_BT_DEVICE_NAME_MAX
@@ -66,6 +67,14 @@ static void fn_cmd_handler(at_cmd_param_t *param)
 		AT_CMD_ERRNO_TO_PARAM(ret, param);
 		return;
 	}
+
+#ifdef CONFIG_AT_CMD_BLEGAPDEVNAME_CB
+	at_cmd_ctx_t *ctx = at_cmd_ctx_get();
+
+	if (ctx->callbacks.devname_set_cb) {
+		ctx->callbacks.devname_set_cb(name);
+	}
+#endif
 }
 
 AT_COMMAND(CMD_NAME, CMD_PARM_FMT, CMD_PARM_NUM, fn_cmd_handler, CMD_PARM_DESC, RSP_PARM_FMT,

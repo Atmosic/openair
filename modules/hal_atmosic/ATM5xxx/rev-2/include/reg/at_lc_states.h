@@ -1,0 +1,84 @@
+#pragma once
+
+#define FLW_ST_DP_SLP 0
+#define FLW_ST_IDL 1
+#define FLW_ST_DSCR_WAIT 2
+#define FLW_ST_TIME_WAIT 3
+#define FLW_ST_TX_CCA_TX_TIME_WAIT 4
+#define FLW_ST_HST_RX_WAIT 5
+#define FLW_ST_RX_PWRUP 6
+#define FLW_ST_RX 7
+#define FLW_ST_TX_PWRUP 8
+#define FLW_ST_TX 9
+#define FLW_ST_TX_PWRDN 10
+#define FLW_ST_TX_RX_ACK_WAIT 11
+#define FLW_ST_RX_TX_RT_WAIT 12
+#define FLW_ST_RX_TX_ACK_WAIT 13
+#define FLW_ST_NONTX_NONRX_CCMSTAR 14
+
+#define PKT_ST_IDL 0
+#define PKT_ST_TX_PP_ADDR_HDR 1
+#define PKT_ST_TX_PRMBL 2
+#define PKT_ST_TX_SYNC 3
+#define PKT_ST_TX_CI_TERM1 4
+#define PKT_ST_TX_ADDR 5
+#define PKT_ST_TX_HDR 6
+#define PKT_ST_TX_PYLD 7
+#define PKT_ST_TX_CRC 8
+#define PKT_ST_TX_TERM2 9
+#define PKT_ST_TX_CCA_RX 10
+#define PKT_ST_RX_AA_WAIT 11
+#define PKT_ST_RX_ADDR 12
+#define PKT_ST_RX_HDR 13
+#define PKT_ST_RX_PSH_LEN_ADDR_HDR 14
+#define PKT_ST_RX_PYLD 15
+#define PKT_ST_RX_CRC 16
+#define PKT_ST_RX_STAT 17
+#define PKT_ST_CTE_GRD 18
+#define PKT_ST_CTE_RFR 19
+#define PKT_ST_CTE_ASW 20
+#define PKT_ST_CTE_SMPL 21
+#define PKT_ST_CTE_TX_RFR_ASW_SMPL 22
+#define PKT_ST_CS_GRD 23
+#define PKT_ST_CS_TN 24
+#define PKT_ST_CS_RX_STAT 25
+#define PKT_ST_CS_RSSI_RX_STAT 26
+
+#define CRYPT_ST_IDL 0
+#define CRYPT_ST_WAIT_REG_RW_16MHz 1
+#define CRYPT_ST_WAIT_REG_RW 2
+#define CRYPT_ST_WAIT_REG_RDY 3
+#define CRYPT_ST_CTRL 4
+#define CRYPT_ST_IN 5
+#define CRYPT_ST_WAIT_CRYPT_RDY 6
+#define CRYPT_ST_OUT 7
+
+#define CRYPTC_ST_IDL 0
+#define CRYPTC_ST_TX_PSH_ADDR_HDR 1
+#define CRYPTC_ST_RX_PSH_LEN_ADDR_HDR 2
+#define CRYPTC_ST_AES_CTRL 3
+#define CRYPTC_ST_AES 4
+#define CRYPTC_ST_AES_WAIT 5
+#define CRYPTC_ST_CHECK_FIFO_EMPTY 6
+#define CRYPTC_ST_RX_PSH_STAT 7
+
+#define DMA_ST_IDL 0
+#define DMA_ST_TX_TCM_RD 1
+#define DMA_ST_TX_TCM_RD_ACK 2
+#define DMA_ST_TX_TCM_RD_DSCR 3
+#define DMA_ST_TX_TCM_RD_DSCR_ACK 4
+#define DMA_ST_TX_TCM_RD_LEN_DPTR 5
+#define DMA_ST_TX_TCM_RD_LEN_DPTR_ACK 6
+#define DMA_ST_TX_TCM_WR_DSCR 7
+#define DMA_ST_TX_TCM_WR_DSCR_ACK 8
+#define DMA_ST_RX_TCM_RD_DSCR 9
+#define DMA_ST_RX_TCM_RD_DSCR_ACK 10
+#define DMA_ST_RX_TCM_WR_DSCR 11
+#define DMA_ST_RX_TCM_WR_DSCR_ACK 12
+#define DMA_ST_RX_TCM_WR 13
+#define DMA_ST_RX_TCM_WR_ACK 14
+#define DMA_ST_TX_CRYPT_PAD 15
+
+#define LP_ST_IDL 0
+#define LP_ST_PWR_DWN 1
+#define LP_ST_WU 3

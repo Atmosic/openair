@@ -207,6 +207,13 @@ are defined in ``at_cmd_set.h`` and may be returned by the system commands above
    * - Code
      - Constant
      - Description
+   * - ``0x81``
+     - ``AT_CMD_ERR_LOCKED``
+     - AT command channel is locked. Returned by any configuration command while
+       locked. Use ``AT+SYSUNLOCK`` to unlock.
+   * - ``0x90``
+     - ``AT_ERR_ACCESS_INVALID_KEY``
+     - Wrong unlock key supplied to ``AT+SYSUNLOCK``.
    * - ``0x50``
      - ``AT_ERR_GPIO_NOT_READY``
      - GPIO device (``gpio0``) is not ready. Used by ``SYSFUNCPIN`` and ``SYSPM``.
@@ -262,6 +269,74 @@ AT+SYSRESET — System Reset
 .. code-block:: text
 
    AT+SYSRESET=0
+   OK
+
+AT+SYSLOCK — Channel Lock
+*************************
+
+:Kconfig:   ``CONFIG_AT_CMD_LOCK_SET``
+:Execute:   ``AT+SYSLOCK=ON`` — lock the AT command channel
+:Query:     ``AT+SYSLOCK?``
+:Response:  ``+SYSLOCK:ON`` / ``+SYSLOCK:OFF``
+
+Locks the AT command channel or queries the current lock state. This command
+is **lock-exempt** and can be executed at any time regardless of lock state.
+
+While locked, all configuration commands return ``ERROR:129``
+(``AT_CMD_ERR_LOCKED = 0x81``). The channel starts locked on every power-on
+and every new BLE connection.
+
+**Lock state lifecycle:**
+
+1. Device powers on or resets → starts **locked**
+2. New BLE connection established → automatically **re-locked**
+3. ``AT+SYSUNLOCK=<key>`` with correct key → **unlocked**
+4. Configuration commands can now be issued
+5. BLE disconnect or device reset → automatically **re-locked**
+
+.. code-block:: text
+
+   AT+SYSLOCK=ON
+   OK
+   AT+SYSLOCK?
+   +SYSLOCK:ON
+   OK
+
+AT+SYSUNLOCK — Channel Unlock
+******************************
+
+:Kconfig:   ``CONFIG_AT_CMD_LOCK_SET``
+:Execute:   ``AT+SYSUNLOCK=<key>``
+:Query:     not supported
+
+Unlocks the AT command channel by verifying the provided key. **Must be sent
+before any configuration command.** This command is **lock-exempt**.
+
+.. list-table::
+   :widths: 15 10 75
+   :header-rows: 1
+
+   * - Parameter
+     - Type
+     - Description
+   * - ``key``
+     - string
+     - Unlock key (max 32 chars). Configured at compile time via
+       ``CONFIG_AT_CMD_SYSUNLOCKKEY_VALUE``.
+
+**Responses:**
+
+- ``OK`` — Channel unlocked
+- ``ERROR:144`` — Wrong key (``AT_ERR_ACCESS_INVALID_KEY = 0x90``)
+
+.. note::
+   The channel is automatically re-locked on each new BLE connection and on
+   device reset. ``AT+SYSLOCK`` and ``AT+SYSUNLOCK`` are always permitted
+   regardless of the current lock state.
+
+.. code-block:: text
+
+   AT+SYSUNLOCK=atm1atm123
    OK
 
 AT+SYSSTORAGE — NVS Key-Value Storage

@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2023-2025 Atmosic
+ * Copyright (c) 2023-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/drivers/hwinfo.h>
@@ -57,8 +57,13 @@ int z_impl_hwinfo_get_reset_cause(uint32_t *cause)
 		*cause |= RESET_POR;
 	} else if (is_boot_type(TYPE_SOC_RESET)) {
 		if (is_boot_reason(BOOT_STATUS_SOC_RESET_PSEQ_WDOG) ||
-		    is_boot_reason(BOOT_STATUS_SOC_RESET_PMU_WDOG)) {
+		    is_boot_reason(BOOT_STATUS_SOC_RESET_PMU_WDOG) ||
+		    is_boot_reason(BOOT_STATUS_SOC_RESET_WDOG)) {
 			*cause |= RESET_WATCHDOG;
+		}
+
+		if (is_boot_reason(BOOT_STATUS_SOC_RESET_SW)) {
+			*cause |= RESET_SW;
 		}
 	} else if (is_boot_type(TYPE_RESET)) {
 		if (is_boot_reason(BOOT_STATUS_RESET_SYS)) {
@@ -71,7 +76,7 @@ int z_impl_hwinfo_get_reset_cause(uint32_t *cause)
 		}
 
 		if (is_boot_reason(BOOT_STATUS_RESET_LOCKUP)) {
-			*cause |= RESET_LOCKUP;
+			*cause |= RESET_CPU_LOCKUP;
 		}
 
 		if (is_boot_reason(BOOT_STATUS_RESET_SW)) {
@@ -100,6 +105,10 @@ int z_impl_hwinfo_get_reset_cause(uint32_t *cause)
 
 		if (is_boot_reason(BOOT_STATUS_HIB_WKUP_BROWNOUT)) {
 			*cause |= RESET_BROWNOUT;
+		}
+
+		if (is_boot_reason(BOOT_STATUS_HIB_WKUP_PMU_WDOG_WARN)) {
+			*cause |= RESET_WATCHDOG;
 		}
 	} else {
 		// Unsupported boot type

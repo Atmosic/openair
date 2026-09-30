@@ -43,9 +43,6 @@ static void at_cmd_adv_build_ext_data(at_cmd_ctx_t *ctx, uint8_t idx, struct bt_
 static void at_cmd_adv_build_ext_param(at_cmd_ctx_t *ctx, uint8_t idx,
 				       struct bt_le_adv_param *adv_param)
 {
-	adv_param->id = ctx->adv_bt_id[idx];
-	adv_param->options = BT_LE_ADV_OPT_CONN | BT_LE_ADV_OPT_EXT_ADV;
-
 	uint8_t primary_phy = ctx->adv_primary_phy[idx];
 
 	/* Default to 1M PHY if not set */
@@ -53,14 +50,25 @@ static void at_cmd_adv_build_ext_param(at_cmd_ctx_t *ctx, uint8_t idx,
 		primary_phy = BT_GAP_LE_PHY_1M;
 	}
 
+	uint32_t options = BT_LE_ADV_OPT_CONN | BT_LE_ADV_OPT_EXT_ADV;
+
 	/* Set PHY options based on primary_phy */
 	if (primary_phy == BT_GAP_LE_PHY_CODED) {
-		adv_param->options |= BT_LE_ADV_OPT_CODED;
+		options |= BT_LE_ADV_OPT_CODED;
 	}
 
-	adv_param->interval_min = ctx->adv_intv_min[idx];
-	adv_param->interval_max = ctx->adv_intv_max[idx];
-	adv_param->peer = NULL;
+	/* Assign the whole struct so the fields left out here, notably sid and
+	 * secondary_max_skip, are zeroed instead of holding stack garbage. They
+	 * are sent verbatim in LE Set Extended Advertising Parameters and are
+	 * rejected when out of range.
+	 */
+	*adv_param = (struct bt_le_adv_param){
+		.id = ctx->adv_bt_id[idx],
+		.options = options,
+		.interval_min = ctx->adv_intv_min[idx],
+		.interval_max = ctx->adv_intv_max[idx],
+		.peer = NULL,
+	};
 }
 
 static void at_cmd_ext_adv_connected(struct bt_le_ext_adv *adv,

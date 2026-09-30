@@ -1,0 +1,49 @@
+/*
+ * Copyright (c) 2024-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+&pinctrl {
+	i2c0_sda_default: i2c0_sda_default {
+		pinmux = <17 PINMUX_I2C0_SDA>;
+	};
+
+	i2c0_scl_default: i2c0_scl_default {
+		pinmux = <16 PINMUX_I2C0_SCL>;
+	};
+
+	/* SPI0 */
+	spi0_clk_default: spi0_clk_default {
+		pinmux = <9 PINMUX_SPI0_CLK>;
+	};
+
+	spi0_mosi_default: spi0_mosi_default {
+		pinmux = <10 PINMUX_SPI0_MOSI>;
+	};
+
+	spi0_miso_default: spi0_miso_default {
+		pinmux = <11 PINMUX_SPI0_MISO>;
+	};
+
+	spi0_cs_default: spi0_cs_default {
+		pinmux = <8 PINMUX_SPI0_CS>;
+	};
+
+	/* SPI1 */
+	spi1_clk_default: spi1_clk_default {
+		pinmux = <13 PINMUX_SPI1_CLK>;
+	};
+
+	spi1_mosi_default: spi1_mosi_default {
+		pinmux = <14 PINMUX_SPI1_MOSI>;
+	};
+
+	spi1_miso_default: spi1_miso_default {
+		pinmux = <15 PINMUX_SPI1_MISO>;
+	};
+
+	spi1_cs_default: spi1_cs_default {
+		pinmux = <12 PINMUX_SPI1_CS>;
+	};
+};

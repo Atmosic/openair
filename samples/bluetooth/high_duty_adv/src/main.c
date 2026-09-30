@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -43,8 +43,14 @@ static void bt_ready(int err)
 	bt_addr_le_to_str(&target_addr, target_addr_s, sizeof(target_addr_s));
 	LOG_INF("Target BD address: %s", target_addr_s);
 
-	/* Start high duty cycle directed advertising */
-	err = bt_le_adv_start(BT_LE_ADV_CONN_DIR(&target_addr), NULL, 0, NULL, 0);
+	/*
+	 * Start high duty cycle directed advertising. The primary advertising
+	 * interval is ignored for this advertising type, but it must still be
+	 * within the range accepted by the controller.
+	 */
+	err = bt_le_adv_start(BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONN, BT_GAP_ADV_FAST_INT_MIN_1,
+					      BT_GAP_ADV_FAST_INT_MAX_1, &target_addr),
+			      NULL, 0, NULL, 0);
 	if (err) {
 		LOG_ERR("Directed advertising failed to start (err %d)", err);
 		return;

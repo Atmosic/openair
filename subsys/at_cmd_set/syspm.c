@@ -101,7 +101,7 @@ static void fn_cmd_handler(at_cmd_param_t *param)
 	log_flush();
 
 	/* Enter hibernation — does not return; device resets on wakeup */
-	atm_pseq_hibernate(IDLE_FOREVER);
+	atm_pseq_hibernate(0, ATM_PD_URGENCY_GRACEFUL);
 }
 
 AT_COMMAND(CMD_NAME, CMD_PARM_FMT, CMD_PARM_NUM, fn_cmd_handler, CMD_PARM_DESC, RSP_PARM_FMT,

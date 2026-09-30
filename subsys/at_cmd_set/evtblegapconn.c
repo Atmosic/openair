@@ -50,3 +50,10 @@ void at_cmd_evt_conn(uint8_t ch, uint8_t idx, const struct bt_conn_info *info)
 
 	at_cmd_evt_submit(conn_evt_handler, ch, &evt, sizeof(evt));
 }
+
+#ifdef CONFIG_ZTEST
+void at_cmd_evt_conn_test_handler(uint8_t ch, const void *evt_data, uint16_t evt_data_len)
+{
+	conn_evt_handler(ch, evt_data, evt_data_len);
+}
+#endif /* CONFIG_ZTEST */

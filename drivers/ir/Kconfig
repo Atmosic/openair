@@ -1,0 +1,27 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config IR_NEC
+	bool "Atmosic NEC IR blaster"
+	select PWM
+	select PWM_ATM_FIFO
+	depends on DT_HAS_ATMOSIC_IR_NEC_ENABLED
+	help
+	  Enable NEC protocol IR transmitter using ATM PWM FIFO DMA.
+
+if IR_NEC
+
+config IR_NEC_DUTY_CYCLE
+	int "NEC IR carrier duty cycle (%)"
+	default 25
+	range 1 99
+	help
+	  Duty cycle percentage for the 38 kHz IR carrier. The NEC standard
+	  specifies 25%.
+
+module = IR_NEC
+module-str = ir_nec
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # IR_NEC

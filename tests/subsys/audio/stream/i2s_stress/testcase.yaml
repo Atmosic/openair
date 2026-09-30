@@ -2,13 +2,17 @@
 #
 ## SPDX-License-Identifier: LicenseRef-Atmosic
 #
+common:
+  # boards/common.overlay dereferences &i2s, so the overlay only compiles on a
+  # SoC declaring that node.
+  depends_on:
+    - i2s
 tests:
   tests.subsys.audio.stream.i2s_stress.atm: &base_config
     sysbuild: true
     timeout: 100
     tags:
       - audio
-
   tests.subsys.audio.stream.i2s_stress.atm.gcov:
     <<: *base_config
     tags:
@@ -17,4 +21,4 @@ tests:
       - gcov_capable
     timeout: 180
     extra_configs:
-      - CONFIG_UU_TEST_OPENAIR="i2s_atm.c"
+      - CONFIG_UU_TEST_OPENAIR="audio_stream.c"

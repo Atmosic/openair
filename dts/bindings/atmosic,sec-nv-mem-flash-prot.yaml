@@ -1,0 +1,22 @@
+# Copyright 2025-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: Atmosic secure non volatile memory FLASH protection support
+
+compatible: "atmosic,sec-nv-mem-flash-prot"
+
+include: base.yaml
+
+properties:
+  blk-size:
+    type: int
+    required: true
+    description: Size in bytes of each protected block
+  read-prot-size:
+    type: int
+    required: true
+    description: Length in bytes of configurable read protection from the beginning of the memory area
+  write-prot-size:
+    type: int
+    required: true
+    description: Length in bytes of configurable write protection from the beginning of the memory area

@@ -79,3 +79,13 @@ static void fn_cmd_handler(at_cmd_param_t *param)
 
 AT_COMMAND(CMD_NAME, CMD_PARM_FMT, CMD_PARM_NUM, fn_cmd_handler, CMD_PARM_DESC, RSP_PARM_FMT,
 	   RSP_PARM_NUM);
+
+#ifdef CONFIG_ZTEST
+/**
+ * @brief Test hook for invoking the scan response data handler directly.
+ */
+void at_cmd_blescanrspdata_test_handler(at_cmd_param_t *param)
+{
+	fn_cmd_handler(param);
+}
+#endif /* CONFIG_ZTEST */

@@ -17,7 +17,7 @@ LOG_MODULE_REGISTER(rrsp, CONFIG_RRSP_LOG_LEVEL);
 #define WDT_MIN_WINDOW_MS 0
 #define WDT_MAX_WINDOW_MS 5000
 
-struct device const *wdog_dev = DEVICE_DT_GET(DT_NODELABEL(wdog0));
+struct device const *wdog_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 static int wdt_channel_id;
 
 #ifdef CONFIG_PM

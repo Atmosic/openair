@@ -1,12 +1,12 @@
-# Copyright (c) 2025 Atmosic Technologies
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025-2026 Atmosic Technologies
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 zephyr_library_amend()
 
-# Main driver file (common logic)
-zephyr_library_sources_ifdef(CONFIG_RETAINED_MEM_ATM_HIB retained_mem_hib.c)
+zephyr_library_sources_ifdef(CONFIG_RETAINED_MEM_ATM_HIB
+  retained_mem_hib.c
+  retained_mem_hib_shub.c
+  retained_mem_hib_expansion.c
+)
 
-# Backend selection based on hardware capabilities
-# The backend is selected at compile time based on Kconfig options
-zephyr_library_sources_ifdef(CONFIG_RETAINED_MEM_BACKEND_SHUB retained_mem_hib_shub.c)
-zephyr_library_sources_ifdef(CONFIG_RETAINED_MEM_BACKEND_EXPANSION retained_mem_hib_expansion.c)
+zephyr_include_directories_ifdef(CONFIG_RETAINED_MEM_TEST_ATM_BACKEND_INIT .)

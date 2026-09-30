@@ -1,16 +1,15 @@
 # Copyright (c) 2017 Open Source Foundries Limited
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if(CONFIG_ATM_SEC_DEBUG_AUTH)
     zephyr_include_directories(.)
     zephyr_sources(atm_debug_auth.c)
-
+    if(CONFIG_ATM_SEC_DEBUG_AUTH_STATIC_CHALLENGE)
+	zephyr_compile_definitions(DEBUG_AUTH_STATIC_CHALLENGE)
+    endif()
     if(NOT CONFIG_ATM_SEC_DEBUG_AUTH_SIGNATURE_KEY_FILE STREQUAL "")
-        get_filename_component(BOOT_DIR ${APPLICATION_SOURCE_DIR} DIRECTORY)
-        # Path to top-level repository root directory.
-        get_filename_component(MCUBOOT_DIR ${BOOT_DIR} DIRECTORY)
 	if(IS_ABSOLUTE ${CONFIG_ATM_SEC_DEBUG_AUTH_SIGNATURE_KEY_FILE})
 	    set(DEBUG_KEY_FILE ${CONFIG_ATM_SEC_DEBUG_AUTH_SIGNATURE_KEY_FILE})
 	elseif((DEFINED ZEPHYR_BASE) AND
@@ -31,7 +30,7 @@ if(CONFIG_ATM_SEC_DEBUG_AUTH)
             OUTPUT ${GENERATED_DEBUG_PUBKEY}
             COMMAND
             ${PYTHON_EXECUTABLE}
-            ${MCUBOOT_DIR}/scripts/imgtool.py
+            ${ZEPHYR_MCUBOOT_MODULE_DIR}/scripts/imgtool.py
             getpub
             -k
             ${DEBUG_KEY_FILE}

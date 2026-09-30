@@ -1,14 +1,12 @@
 /**
- *******************************************************************************
- *
  * @file fp_fhpf_gatt.c
  *
  * @brief Atmosic Google Fast Pair Find My Device Network (FMDN)
  *        Find Hub Precision Finding (FHPF) implementation
  *
- * Copyright (C) Atmosic 2025-2026
+ * Copyright (c) 2025-2026 Atmosic
  *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <errno.h>
@@ -102,7 +100,7 @@ typedef struct {
 	rt_id_t tech_id;
 	int (*decode_config)(const uint8_t *data, size_t data_len, ranging_config_t *conf_buf);
 	int (*apply_config)(ranging_config_t *conf_buf, bool start_immediately);
-	int (*start_op)(rt_id_t tech_id);
+	int (*start_op)(rt_id_t tech_id); /* Deprecated legacy Start Ranging DE path. */
 	int (*stop_op)(rt_id_t tech_id);
 	int (*get_capability)(rt_id_t tech_id, ranging_capability_t *cap_buf);
 	size_t config_size;
@@ -165,6 +163,11 @@ static int fp_fmdn_ranging_oob_de_decode_conf_uwb(const uint8_t *data, size_t da
 		LOG_ERR("Invalid session key length: %d", uwb->session_key_len);
 		return -EINVAL;
 	}
+	if (data_len < min_data_len + uwb->session_key_len) {
+		LOG_ERR("Incomplete UWB session key: len=%u, block=%u", uwb->session_key_len,
+			data_len);
+		return -EINVAL;
+	}
 	if (uwb->session_key_len == sizeof(s_sts_data_t)) {
 		memcpy(&uwb->session_key.s_sts_data, ptr, sizeof(s_sts_data_t));
 	} else {
@@ -205,6 +208,7 @@ static int tech_uwb_apply_config(ranging_config_t *conf_buf, bool start_immediat
 	return -ENOTSUP;
 }
 
+/* Deprecated: retained for legacy Start Ranging DE compatibility. */
 static int tech_uwb_start(rt_id_t tech_id)
 {
 	if (ranging_handlers && ranging_handlers->start_cb) {
@@ -283,6 +287,7 @@ static int tech_cs_apply_config(ranging_config_t *conf_buf, bool start_immediate
 	return -ENOTSUP;
 }
 
+/* Deprecated: retained for legacy Start Ranging DE compatibility. */
 static int tech_cs_start(rt_id_t tech_id)
 {
 	if (ranging_handlers && ranging_handlers->start_cb) {
@@ -354,6 +359,12 @@ static const tech_handler_t *tech_handler_find(rt_id_t tech_id)
 	return NULL;
 }
 
+static bool ranging_is_enabled(rt_id_t tech_id)
+{
+	return !ranging_handlers || !ranging_handlers->is_enabled_cb ||
+	       ranging_handlers->is_enabled_cb(tech_id);
+}
+
 /**
  * @brief Register the BCNA motion notification sender function
  *
@@ -365,6 +376,26 @@ void fp_fhpf_gatt_motion_notify_fn_reg(fp_fhpf_motion_notify_fn_t fn)
 	LOG_DBG("FHPF: motion notify fn %s", fn ? "registered" : "unregistered");
 }
 
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+uint8_t motion_raw_peak;
+
+static uint8_t fp_fhpf_motion_get_raw(void)
+{
+	uint8_t raw = motion_raw_peak;
+	motion_raw_peak = 0;
+	return raw;
+}
+
+void fp_fhpf_motion_trigger_event(void)
+{
+	uint8_t motion_raw = motion_get_status_fn();
+	LOG_INF("FHPF: motion_trigger_event %d, motion_raw_peak %d", motion_raw, motion_raw_peak);
+	if (motion_raw > motion_raw_peak) {
+		motion_raw_peak = motion_raw;
+	}
+}
+#endif // CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+
 /**
  * @brief 2-second periodic work handler — polls the application getter and
  *        sends a BCNA motion notification when motion was detected.
@@ -375,6 +406,7 @@ void fp_fhpf_gatt_motion_notify_fn_reg(fp_fhpf_motion_notify_fn_t fn)
 /* Convert raw tilt degrees to the FMDN 4-level motion status enum. */
 static ranging_de_motion_status_t motion_deg_to_status(uint8_t deg)
 {
+	LOG_DBG("FHPF: motion_deg_to_status %d", deg);
 	if (deg >= 10) {
 		return RANGING_MOTION_LARGE_MOVEMENT;
 	}
@@ -393,7 +425,13 @@ static void fp_fhpf_motion_poll_handler(struct k_work *work)
 	if (!motion_get_status_fn || !motion_conn || !motion_notify_fn) {
 		return;
 	}
+
+#ifdef CONFIG_FMDN_OOB_MOTION_DETECT_TRIGGER
+	ranging_de_motion_status_t st = motion_deg_to_status(fp_fhpf_motion_get_raw());
+#else
 	ranging_de_motion_status_t st = motion_deg_to_status(motion_get_status_fn());
+#endif
+
 	if (st != RANGING_MOTION_NOT_DETECTED) {
 		/* Motion detected: send notification and arm follow-up counter */
 		LOG_INF("FHPF: motion status %d seq=%u, sending notification", st, motion_seq_num);
@@ -412,7 +450,7 @@ static void fp_fhpf_motion_poll_handler(struct k_work *work)
 	} else {
 		LOG_DBG("FHPF: no motion, notification suppressed");
 	}
-	k_work_reschedule(&motion_poll_work, K_MSEC(MOTION_NOTIFY_INTERVAL_MS));
+	atm_work_reschedule_for_app_work_q(&motion_poll_work, K_MSEC(MOTION_NOTIFY_INTERVAL_MS));
 }
 
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
@@ -520,40 +558,31 @@ size_t fp_fhpf_gatt_bcna_ranging_cap_handle(const struct bt_conn *conn, uint8_t 
 		LOG_ERR("BCNA RC: Failed to decode ranging header");
 		return err;
 	}
+	if (add_data_len < sizeof(ranging_cap_req_de_t)) {
+		LOG_ERR("BCNA RC: Missing technology bitfield");
+		return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+	}
 	uint16_t tech_bf;
 	memcpy(&tech_bf, ptr + sizeof(ranging_oob_de_header_t), sizeof(tech_bf));
 	LOG_DBG("Ranging Capability Request tech_bf: 0x%04x", tech_bf);
 	uint16_t resp_tech_bf = 0;
-#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
-	if (tech_bf & RT_TECH_BF_UWB) {
-		resp_tech_bf |= RT_TECH_BF_UWB;
-	}
-#endif
-#ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
-	if ((tech_bf & RT_TECH_BF_CS) ||
-	    IS_ENABLED(CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_CAP_FORCE_EN)) {
-		resp_tech_bf |= RT_TECH_BF_CS;
-	}
-#endif
-	LOG_INF("Ranging Capability Response tech_bf: 0x%04x", resp_tech_bf);
-	// Generate response
-	uint8_t *dst_ptr = addition_data;
-	oob_header.version = RANGING_OOB_DE_SUPPORT_VERSION(oob_header.version);
-	oob_header.msg_id = RANGING_MSG_ID_CAP_RESP;
-	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &oob_header, sizeof(ranging_oob_de_header_t), *resp_len);
-	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &resp_tech_bf, sizeof(resp_tech_bf), *resp_len);
 
-	/* Process capabilities for each supported technology */
+	/* Process capabilities before serializing the response bitfield. */
 	for (size_t i = 0; i < tech_handlers_count; i++) {
 		const tech_handler_t *handler = &tech_handlers[i];
-		uint16_t tech_bf = RT_ID_TO_BITFIELD(handler->tech_id);
+		uint16_t tech_bf_bit = RT_ID_TO_BITFIELD(handler->tech_id);
 
-		if (!(resp_tech_bf & tech_bf)) {
+		if (!((tech_bf & tech_bf_bit) ||
+		      (handler->tech_id == RT_TECH_ID_CS &&
+		       IS_ENABLED(CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_CAP_FORCE_EN)))) {
+			continue;
+		}
+		if (!ranging_is_enabled(handler->tech_id)) {
+			LOG_INF("Ranging capability disabled for tech_id 0x%02x", handler->tech_id);
 			continue;
 		}
 
 		LOG_INF("Get %s capabilities", handler->tech_id == RT_TECH_ID_UWB ? "UWB" : "CS");
-
 		int ret = handler->get_capability(handler->tech_id, &cap_buffer);
 		if (ret) {
 			LOG_ERR("Failed to get %s capabilities: %d",
@@ -562,24 +591,36 @@ size_t fp_fhpf_gatt_bcna_ranging_cap_handle(const struct bt_conn *conn, uint8_t 
 		}
 
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_BLE_CS_EN
-		/* CS-specific: Add address information */
 		if (handler->tech_id == RT_TECH_ID_CS) {
 			struct bt_conn_info info;
-			int ret = bt_conn_get_info(conn, &info);
-			if (ret) {
+			ret = bt_conn_get_info(conn, &info);
+			if (ret || !info.le.src) {
 				LOG_WRN("Failed to get connection info: %d", ret);
-			} else {
-				/* Convert identity address to big-endian format */
-				sys_memcpy_swap(cap_buffer.cs->addr, info.le.src->a.val,
-						BT_ADDR_SIZE);
+				continue;
 			}
+			/* Convert identity address to big-endian format. */
+			sys_memcpy_swap(cap_buffer.cs->addr, info.le.src->a.val, BT_ADDR_SIZE);
 			LOG_INF("CS capabilities: id=0x%02x, size=0x%02x, sec_type=%d",
 				cap_buffer.cs->id, cap_buffer.cs->size, cap_buffer.cs->sec_type);
 			LOG_HEXDUMP_INF(cap_buffer.cs->addr, BT_ADDR_SIZE, "CS capabilities: addr");
 		}
 #endif
+		resp_tech_bf |= tech_bf_bit;
+	}
 
-		/* Copy capability data to response */
+	LOG_INF("Ranging Capability Response tech_bf: 0x%04x", resp_tech_bf);
+	uint8_t *dst_ptr = addition_data;
+	oob_header.version = RANGING_OOB_DE_SUPPORT_VERSION(oob_header.version);
+	oob_header.msg_id = RANGING_MSG_ID_CAP_RESP;
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &oob_header, sizeof(ranging_oob_de_header_t), *resp_len);
+	FP_UTIL_MEMCPY_SHIFT(dst_ptr, &resp_tech_bf, sizeof(resp_tech_bf), *resp_len);
+
+	/* Append capability payloads in technology registry order. */
+	for (size_t i = 0; i < tech_handlers_count; i++) {
+		const tech_handler_t *handler = &tech_handlers[i];
+		if (!(resp_tech_bf & RT_ID_TO_BITFIELD(handler->tech_id))) {
+			continue;
+		}
 #ifdef CONFIG_FMDN_RANGING_OOB_DE_TYPE_UWB_EN
 		if (handler->tech_id == RT_TECH_ID_UWB) {
 			FP_UTIL_MEMCPY_SHIFT(dst_ptr, cap_buffer.uwb, handler->cap_size, *resp_len);
@@ -632,19 +673,27 @@ static size_t fp_fmdn_handle_ranging_operation(struct bt_conn *conn, uint8_t *ad
 		LOG_ERR("BCNA RC %s: Failed to decode ranging header", operation_name);
 		return err;
 	}
+	size_t fixed_len = sizeof(ranging_oob_de_header_t) + sizeof(uint16_t);
+	if (req_msg_id == RANGING_MSG_ID_CONF) {
+		fixed_len += sizeof(uint16_t);
+	}
+	if (add_data_len < fixed_len) {
+		LOG_ERR("BCNA RC %s: Missing fixed request fields", operation_name);
+		return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+	}
 	ptr += sizeof(ranging_oob_de_header_t);
 	add_data_len -= sizeof(ranging_oob_de_header_t);
 
 	/* Extract technology bitfield */
 	uint16_t tech_bf;
 	uint16_t start_bf = 0; // Only used for configuration
-	memcpy(&tech_bf, ptr, sizeof(tech_bf));
+	tech_bf = atm_get_le16(ptr);
 	ptr += sizeof(tech_bf);
 	add_data_len -= sizeof(tech_bf);
 
 	/* For configuration requests, also extract start bitfield */
 	if (req_msg_id == RANGING_MSG_ID_CONF) {
-		memcpy(&start_bf, ptr, sizeof(start_bf));
+		start_bf = atm_get_le16(ptr);
 		ptr += sizeof(start_bf);
 		add_data_len -= sizeof(start_bf);
 		LOG_DBG("BCNA RC %s: tech_bf: 0x%04x, start_bf: 0x%04x", operation_name, tech_bf,
@@ -664,10 +713,14 @@ static size_t fp_fmdn_handle_ranging_operation(struct bt_conn *conn, uint8_t *ad
 		uint16_t min_remaining = (nego_version >= RANGING_PROTOCOL_VERSION_3) ? 1 : 0;
 		/* Configuration: Process technology-specific data */
 		while (add_data_len > min_remaining) {
+			if (add_data_len < 2) {
+				LOG_ERR("BCNA RC Config: Incomplete technology block header");
+				return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+			}
 			uint8_t tech_id = ptr[0];
 			uint8_t tech_size = ptr[1];
 
-			if (add_data_len < tech_size) {
+			if (tech_size < 2 || add_data_len < tech_size) {
 				LOG_ERR("BCNA RC Config: Invalid Ranging configuration data");
 				return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
 			}
@@ -677,6 +730,12 @@ static size_t fp_fmdn_handle_ranging_operation(struct bt_conn *conn, uint8_t *ad
 				LOG_WRN("BCNA RC Config: Unsupported ranging technology ID: "
 					"0x%02x, skipping",
 					tech_id);
+				ptr += tech_size;
+				add_data_len -= tech_size;
+				continue;
+			}
+			if (!ranging_is_enabled(tech_id)) {
+				LOG_INF("BCNA RC Config: technology 0x%02x is disabled", tech_id);
 				ptr += tech_size;
 				add_data_len -= tech_size;
 				continue;
@@ -752,14 +811,16 @@ static size_t fp_fmdn_handle_ranging_operation(struct bt_conn *conn, uint8_t *ad
 					motion_seq_num = 0;
 					motion_not_detected_remaining = 0;
 					motion_get_status_fn = get_fn;
-					k_work_reschedule(&motion_poll_work,
-							  K_MSEC(MOTION_NOTIFY_INTERVAL_MS));
+					atm_work_reschedule_for_app_work_q(
+						&motion_poll_work,
+						K_MSEC(MOTION_NOTIFY_INTERVAL_MS));
 				} else {
 					k_work_cancel_delayable(&motion_poll_work);
 					motion_conn = NULL;
 					motion_nego_version = 0;
 					motion_not_detected_remaining = 0;
 					motion_get_status_fn = NULL;
+					fp_fmdn_motion_auth_state_clear(bt_conn_index(conn));
 				}
 			}
 		}
@@ -777,6 +838,11 @@ static size_t fp_fmdn_handle_ranging_operation(struct bt_conn *conn, uint8_t *ad
 			uint16_t tech_bf_bit = RT_ID_TO_BITFIELD(handler->tech_id);
 
 			if (!(tech_bf & tech_bf_bit)) {
+				continue;
+			}
+			if (!ranging_is_enabled(handler->tech_id)) {
+				LOG_INF("BCNA RC %s: technology 0x%02x is disabled", operation_name,
+					handler->tech_id);
 				continue;
 			}
 
@@ -932,6 +998,10 @@ void fp_fhpf_gatt_conn_event(struct bt_conn *conn, bool connected)
 		LOG_DBG("FHPF: Connection disconnected");
 		if (motion_conn == conn) {
 			k_work_cancel_delayable(&motion_poll_work);
+			/* Release motion hw to balance the enable issued at ranging config. */
+			if (ranging_handlers && ranging_handlers->motion_cb) {
+				ranging_handlers->motion_cb(NULL);
+			}
 			motion_conn = NULL;
 			motion_nego_version = 0;
 			motion_seq_num = 0;
@@ -939,6 +1009,7 @@ void fp_fhpf_gatt_conn_event(struct bt_conn *conn, bool connected)
 			motion_get_status_fn = NULL;
 			LOG_DBG("FHPF: motion state cleared on disconnect");
 		}
+		fp_fmdn_motion_auth_state_clear(bt_conn_index(conn));
 		return;
 	}
 

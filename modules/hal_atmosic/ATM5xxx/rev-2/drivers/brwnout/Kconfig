@@ -1,0 +1,22 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_BROWNOUT
+	bool "Enable brownout support"
+	default y if PM
+
+if ATM_BROWNOUT
+
+config BROWNOUT_IMMEDIATELY
+        bool "Trigger brownout power-off immediately in ISR"
+        default y
+        help
+            When enabled, the brownout power-off sequence (brwnout_plf_off())
+            is executed immediately in the PMU interrupt handler instead of
+            being deferred to a workqueue.
+
+            This also suppresses the PMU status register read and print that
+            is otherwise emitted during the power-off sequence.
+
+endif

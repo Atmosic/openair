@@ -1,0 +1,30 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
+ * Copyright (c) 2026 Atmosic
+ */
+#include "pinctrl_i2c.dtsi"
+
+&i2c0 {
+	status = "okay";
+
+	bme280: bme280@76 {
+		compatible = "bosch,bme280";
+		reg = <0x76>;
+		status = "okay";
+	};
+};
+
+&i2s {
+	sd-in-pin = <11>;
+
+	sck-out-pin = <12>;
+	ws-out-pin = <13>;
+	sd-out-pin = <14>;
+};
+
+/ {
+	aliases {
+		i2s-tx = &i2s;
+	};
+};

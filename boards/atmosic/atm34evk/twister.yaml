@@ -1,0 +1,162 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+# Twister metadata for every ATM34 EVK board target defined in this directory.
+# The top-level keys are the defaults shared by all targets; each entry under
+# 'variants' overrides them for one board target. Note that a variant's
+# 'supported' list REPLACES the top-level one rather than extending it, so every
+# variant re-states the common set through the '&common' anchor below.
+
+type: mcu
+arch: arm
+vendor: atmosic
+toolchain:
+  - zephyr
+
+# Features supported by every ATM34 EVK board target. Twister splits each
+# 'supported' entry on ':', so this single entry expands to the whole set and
+# can be pulled into a variant with '*common'. The trailing '\' are double-quoted
+# YAML line continuations -- they add no characters and exist only to stay under
+# the 100-column yamllint limit.
+supported:
+  - &common "adc:antenna_switch:atlc:atm3x_pwm:atm_vendor_drv:bluetooth:brownout_hib:button0:\
+    ccbm:channel_sounding:entropy:factory_partition:gpio:i2c:i2c_clock_stretching:i2s:\
+    ir:mikrobus:pdm:pin_pulldown:pwm:rram:sha2_multi_context:spi:trustzone_m:uart:watchdog:wdt:\
+    nv_mem_protect"
+
+variants:
+  # The ATMBTCSTAG-3405 is the one ATM34 board with a single user button, so it
+  # is the only one here that does not declare button1.
+  ATMBTCSTAG-3405@normal/ATM34xx-5:
+    supported:
+      - *common
+      - bme280
+      - flash
+      - lis2dh
+      - xip
+  ATMBTCSTAG-3405@mcuboot/ATM34xx-5:
+    supported:
+      - *common
+      - bme280
+      - flash
+      - lis2dh
+      - xip
+
+  ATMEVK-3405-PBV-5@normal/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - lis2dh
+  ATMEVK-3405-PBV-5@mcuboot/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+
+  ATMEVK-3405-PQK-5@normal/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - fast_lp
+      - lis2dh
+  ATMEVK-3405-PQK-5@mcuboot/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+
+  ATMEVK-3405-WQK-5@normal/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - flash
+      - gcov_capable
+      - hid_remote
+      - xip
+  ATMEVK-3405-WQK-5@mcuboot/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - flash
+      - hid_remote
+      - xip
+
+  ATMEVK-3405-YBV-5@normal/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - esl
+      - fast_lp
+      - flash
+      - gcov_capable
+      - lis2dh
+      - smart_label
+      - xip
+  ATMEVK-3405-YBV-5@mcuboot/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - esl
+      - flash
+      - smart_label
+      - xip
+
+  ATMEVK-3430e-YQN-5@normal/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - energy_harvesting
+      - epd_display
+      - esl
+      - fast_lp
+      - flash
+      - gcov_capable
+      - hid_kb
+      - ieee802154
+      - lis2dh
+      - smart_label
+      - wurx
+      - xip
+  ATMEVK-3430e-YQN-5@mcuboot/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - energy_harvesting
+      - epd_display
+      - esl
+      - flash
+      - hid_kb
+      - ieee802154
+      - smart_label
+      - wurx
+      - xip
+
+  ATMMOD-3405@normal/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - flash
+      - lis2dh
+      - xip
+  ATMMOD-3405@mcuboot/ATM34xx-5:
+    supported:
+      - *common
+      - button1
+      - flash
+      - xip
+
+  # The mcuboot_bl targets build the bootloader image only. They never had a
+  # twister file of their own, so keep them out of twister as before.
+  ATMBTCSTAG-3405@mcuboot_bl/ATM34xx-5:
+    twister: false
+  ATMEVK-3405-PBV-5@mcuboot_bl/ATM34xx-5:
+    twister: false
+  ATMEVK-3405-PQK-5@mcuboot_bl/ATM34xx-5:
+    twister: false
+  ATMEVK-3405-WQK-5@mcuboot_bl/ATM34xx-5:
+    twister: false
+  ATMEVK-3405-YBV-5@mcuboot_bl/ATM34xx-5:
+    twister: false
+  ATMEVK-3430e-YQN-5@mcuboot_bl/ATM34xx-5:
+    twister: false
+  ATMMOD-3405@mcuboot_bl/ATM34xx-5:
+    twister: false

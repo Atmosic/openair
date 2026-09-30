@@ -1,7 +1,8 @@
 puts "SWD board type - $SWDBOARD_TYPE"
 
 adapter driver ftdi
-if {$SWDBOARD_TYPE eq "SWDBOARD_APT" || $SWDBOARD_TYPE eq "SWDBOARD_DL"} {
+if {$SWDBOARD_TYPE eq "SWDBOARD_APT" || $SWDBOARD_TYPE eq "SWDBOARD_DL" ||
+    $SWDBOARD_TYPE eq "SWDBOARD_EVK"} {
     ftdi vid_pid 0x0403 0x6011
     set _FTDI_RESET 0x80
     set _FTDI_BBOOT 0x40
@@ -14,17 +15,30 @@ if {$SWDBOARD_TYPE eq "SWDBOARD_APT" || $SWDBOARD_TYPE eq "SWDBOARD_DL"} {
     set _FTDI_SWD_ENABLE 0x1000
 }
 
+if {$SWDBOARD_TYPE eq "SWDBOARD_EVK"} {
+    set _FTDI_SWD_DISABLE 0x20
+    set _FTDI_UART_DISABLE 0x10
+} else {
+    set _FTDI_SWD_DISABLE 0x0
+    set _FTDI_UART_DISABLE 0x0
+}
+
 if {[info exists ::env(FTDI_SWD_ENABLE)]} {
     set _FTDI_SWD_ENABLE $::env(FTDI_SWD_ENABLE)
     puts "set _FTDI_SWD_ENABLE to $_FTDI_SWD_ENABLE"
 }
 
 if {[info exists ::env(SYDNEY_SERIAL)]} {
-    if {$SWDBOARD_TYPE eq "SWDBOARD_APT" || $SWDBOARD_TYPE eq "SWDBOARD_DL"} {
+    if {$SWDBOARD_TYPE eq "SWDBOARD_APT" || $SWDBOARD_TYPE eq "SWDBOARD_DL" ||
+	$SWDBOARD_TYPE eq "SWDBOARD_EVK"} {
 	set _FTDI_SERIAL $::env(SYDNEY_SERIAL)
     } else {
 	set _FTDI_SERIAL [format "%s%s" $::env(SYDNEY_SERIAL) "USB1"]
     }
+    puts "FTDI serial $_FTDI_SERIAL"
+    adapter serial $_FTDI_SERIAL
+} elseif {[info exists ::env(ATMEVK_SERIAL)]} {
+    set _FTDI_SERIAL $::env(ATMEVK_SERIAL)
     puts "FTDI serial $_FTDI_SERIAL"
     adapter serial $_FTDI_SERIAL
 }
@@ -40,14 +54,29 @@ if {[info exists ::env(FTDI_HARD_RESET)]} {
     }
 }
 
-if {[info exists ::env(FTDI_BENIGN_BOOT)]} {
+if {[info exists ::env(FTDI_BENIGN_BOOT)] || $SWDBOARD_TYPE eq "SWDBOARD_EVK"} {
     set _FTDI_OE [expr {$_FTDI_OE | $_FTDI_BBOOT}]
-    if {$::env(FTDI_BENIGN_BOOT) ne "0"} {
+    if {[info exists ::env(FTDI_BENIGN_BOOT)] && $::env(FTDI_BENIGN_BOOT) ne "0"} {
 	set _FTDI_OD [expr {$_FTDI_OD | $_FTDI_BBOOT}]
     }
 }
 
-set _FTDI_OE [expr {$_FTDI_OE | $_FTDI_SWD_ENABLE}]
+if {[info exists ::env(FTDI_SWD_DISABLE)]} {
+    if {$::env(FTDI_SWD_DISABLE) ne "0"} {
+	set _FTDI_OD [expr {$_FTDI_OD | $_FTDI_SWD_DISABLE}]
+    }
+    puts [format "set _FTDI_SWD_DISABLE (0x%x) in_FTDI_OD (0x%x)" $_FTDI_SWD_DISABLE $_FTDI_OD]
+}
+
+if {[info exists ::env(FTDI_UART_DISABLE)]} {
+    if {$::env(FTDI_UART_DISABLE) ne "0"} {
+	set _FTDI_OD [expr {$_FTDI_OD | $_FTDI_UART_DISABLE}]
+    }
+    puts [format "set _FTDI_UART_DISABLE (0x%x) in_FTDI_OD (0x%x)" $_FTDI_UART_DISABLE $_FTDI_OD]
+}
+
+set _FTDI_OE [expr {$_FTDI_OE | $_FTDI_SWD_ENABLE | $_FTDI_SWD_DISABLE | $_FTDI_UART_DISABLE}]
+#set _FTDI_OD done above for _FTDI_[SWD|UART]_DISABLE
 set _FTDI_OD [expr {$_FTDI_OD | $_FTDI_SWD_ENABLE}]
 puts [format "FTDI_OE: 0x%x, FTDI_OD: 0x%x" $_FTDI_OE $_FTDI_OD]
 
@@ -55,11 +84,12 @@ ftdi layout_init $_FTDI_OD $_FTDI_OE
 ftdi layout_signal SRST -data $_FTDI_RESET -oe $_FTDI_RESET
 ftdi layout_signal BBOOT -data $_FTDI_BBOOT -oe $_FTDI_BBOOT
 ftdi layout_signal SWDENABLE -data $_FTDI_SWD_ENABLE -oe $_FTDI_SWD_ENABLE
+ftdi layout_signal SWDDISABLE -data $_FTDI_SWD_DISABLE -oe $_FTDI_SWD_DISABLE
+ftdi layout_signal UARTDISABLE -data $_FTDI_UART_DISABLE -oe $_FTDI_UART_DISABLE
 
 transport select swd
 ftdi layout_signal SWD_EN -data 0
 ftdi layout_signal SWDIO_OE -data 0
-
 
 proc assert_pwd {} {
     ftdi set_signal SRST 1
@@ -76,13 +106,33 @@ proc deassert_pwd {} {
     ftdi set_signal SRST z
 }
 
+proc assert_swd_disable {} {
+    ftdi set_signal SWDDISABLE 1
+}
+
+proc deassert_swd_disable {} {
+    ftdi set_signal SWDDISABLE 0
+}
+
+proc assert_uart_disable {} {
+    ftdi set_signal UARTDISABLE 1
+}
+
+proc deassert_uart_disable {} {
+    ftdi set_signal UARTDISABLE 0
+}
+
 proc assert_bboot {} {
     ftdi set_signal BBOOT 1
 }
 
 proc deassert_bboot {} {
+    global SWDBOARD_TYPE
+
     ftdi set_signal BBOOT 0
-    ftdi set_signal BBOOT z
+    if {$SWDBOARD_TYPE ne "SWDBOARD_EVK"} {
+	ftdi set_signal BBOOT z
+    }
 }
 
 if {$SWDBOARD_TYPE eq "SWDBOARD_APT" || $SWDBOARD_TYPE eq "SWDBOARD_DL"} {

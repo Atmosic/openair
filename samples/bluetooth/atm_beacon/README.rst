@@ -63,8 +63,9 @@ The application supports eleven base beacon profiles with optional runtime mode 
 
 12. **Simple Beacon Mode** (``REFBCN_SIMPLE_BEACON``): When enabled, allows
    button-controlled runtime selection. If BUTTON_1 is not pressed (or not present),
-   uses continuous advertising at 100ms intervals without hibernation. If button
-   is pressed, falls back to the configured base profile.
+   uses continuous advertising at 100ms intervals without hibernation. If the button
+   is pressed, falls back to the configured base profile. The selection is preserved
+   across normal hibernation and brownout recovery.
 
 Button Functionality
 ====================
@@ -111,7 +112,7 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink [--erase_flash]
 
 Look at sample.yaml for additional build targets
 

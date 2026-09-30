@@ -8,7 +8,9 @@
  *
  *  Copyright (c) 2019-2024 Packetcraft, Inc.  All rights reserved.
  *  Packetcraft, Inc. confidential and proprietary.
- *  
+ *
+ *  Copyright (C) Atmosic 2026
+ *
  *  IMPORTANT.  Your use of this file is governed by a Software License Agreement
  *  ("Agreement") that must be accepted in order to download or otherwise receive a
  *  copy of this file.  You may not use or copy this file for any purpose other than
@@ -147,6 +149,15 @@ void WsfCiInit(void (*cb)(void));
  */
 /*************************************************************************************************/
 void WsfSetCiIrq(void);
+
+/*************************************************************************************************/
+/*!
+ *  \brief   Get critical interrupt section IRQ.
+ *
+ *  \return    True if IRQ is pending
+ */
+/*************************************************************************************************/
+bool WsfGetCiIrq(void);
 
 #endif
 

@@ -27,6 +27,8 @@ tests:
       - CONFIG_LOG_MODE_IMMEDIATE=y
       - CONFIG_ATM_SPE_FAULT_STORAGE=y
   tests.drivers.atm_spe_sec_fault_storage.atm.mcuboot:
+    tags:
+      - mcuboot
     harness: console
     harness_config:
       type: multi_line
@@ -85,6 +87,8 @@ tests:
       - CONFIG_TEST_LOG_PANIC=y
       - CONFIG_ATM_SPE_FAULT_STORAGE=y
   tests.drivers.atm_spe_sec_fault_storage.atm.mcuboot.log_panic:
+    tags:
+      - mcuboot
     harness: console
     harness_config:
       type: one_line

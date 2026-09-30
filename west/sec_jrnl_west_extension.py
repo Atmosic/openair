@@ -105,6 +105,12 @@ class SecJrnlCommand(WestCommand):
             required=False,
             help="Specifies the config file for openocd",
         )
+        s_parser.add_argument(
+            "--storage",
+            choices=["nvds", "otp"],
+            default="nvds",
+            help="Storage space to access: nvds (default) or otp",
+        )
         s_parser.set_defaults(subcmd=subcmd_str)
         return s_parser
 
@@ -123,7 +129,13 @@ class SecJrnlCommand(WestCommand):
             default=False,
             required=False,
             action="store_true",
-            help="Dump secure jrnl as raw bin",
+            help="Dump secure jrnl as raw binary data",
+        )
+        dump_parser.add_argument(
+            "--binfile",
+            default=False,
+            required=False,
+            help="Dump secure jrnl to binary file",
         )
         dump_parser.add_argument(
             "--hex",
@@ -262,14 +274,35 @@ class SecJrnlCommand(WestCommand):
 
         create_parser.set_defaults(subcmd="create")
 
+        burn_parser = self.create_default_subparser(
+            subparsers, "burn", "Burn a full secure journal to the chip"
+        )
+        burn_parser.add_argument(
+            "--sec-jrnl",
+            type=unescaped_str,
+            required=True,
+            dest="sec_jrnl",
+            help="Binary secure jrnl file from 'create' command",
+        )
+        burn_parser.add_argument(
+            "--dry-run",
+            default=False,
+            required=False,
+            action="store_true",
+            help="Append tag but dont push to device",
+        )
+
         return parser
 
-    def pull_sec_jrnl(self, force=False):
+    def pull_sec_jrnl(self, force=False, storage="nvds"):
         """Pulls secure journal from device
 
         Args:
             force (bool, optional): force pull sec_jrnl nvds even if local copy exists. Defaults to False.
         """
+        atm_dump_cmd = (
+            "atm_dump_sec_jrnl_otp" if storage == "otp" else "atm_dump_sec_jrnl_nvds"
+        )
         self.openocd.reset_target()
         if (self.sec_jrnl is None) or (force):
             with tempfile.NamedTemporaryFile("w+b", delete=False) as tf:
@@ -278,7 +311,7 @@ class SecJrnlCommand(WestCommand):
                 ).as_posix()  # openocd expects posix-style paths regardless of platform
                 try:
                     cmd_ret, _, stderr = self.openocd.execute_cmd(
-                        [f"atm_dump_sec_jrnl_nvds {temp_path}"]
+                        [f"{atm_dump_cmd} {temp_path}"]
                     )
                     tf.close()
                     if cmd_ret != 0:
@@ -289,8 +322,11 @@ class SecJrnlCommand(WestCommand):
                 finally:
                     os.remove(tf.name)
 
-    def push_sec_jrnl(self, binary):
+    def push_sec_jrnl(self, binary, storage="nvds"):
         """Push secure journal from device"""
+        atm_load_cmd = (
+            "atm_load_sec_jrnl_otp" if storage == "otp" else "atm_load_sec_jrnl_nvds"
+        )
         with tempfile.NamedTemporaryFile("w+b", delete=False) as tf:
             tf.write(binary)
             tf.flush()
@@ -301,7 +337,7 @@ class SecJrnlCommand(WestCommand):
             tf.close()
             try:
                 cmd_ret, _, stderr = self.openocd.execute_cmd(
-                    [f"atm_load_sec_jrnl_nvds {temp_path}"]
+                    [f"{atm_load_cmd} {temp_path}"]
                 )
                 if cmd_ret != 0:
                     print(f"{stderr}")
@@ -332,9 +368,7 @@ class SecJrnlCommand(WestCommand):
         # Combine data sources
         resolved_data = []
         for data in data_list:
-            if isinstance(data, bytes):
-                resolved_data.append(data)
-            elif os.path.isfile(data):
+            if os.path.isfile(data.decode(errors="ignore")):
                 with open(data, "rb") as fd:
                     resolved_data.append(bytes(fd.read()))
             else:
@@ -372,7 +406,7 @@ class SecJrnlCommand(WestCommand):
             args: args passed at the command line
 
         """
-        self.pull_sec_jrnl()
+        self.pull_sec_jrnl(storage=args.storage)
         sec_jrnl = SecJrnl(self.sec_jrnl)
         tag_entries = self._resolve_tag_entries(args)
         assert len(tag_entries) == 1
@@ -405,7 +439,7 @@ class SecJrnlCommand(WestCommand):
         if args.dry_run:
             print(sec_jrnl)
         else:
-            self.push_sec_jrnl(sec_jrnl.bin)
+            self.push_sec_jrnl(sec_jrnl.bin, storage=args.storage)
 
     def create(self, args):
         """Create a brand new secure journal bin file.
@@ -431,9 +465,13 @@ class SecJrnlCommand(WestCommand):
         Args:
             args: args passed at the command line
         """
-        self.pull_sec_jrnl()
+        self.pull_sec_jrnl(storage=args.storage)
         if args.binary:
             print(self.sec_jrnl)
+        elif args.binfile:
+            with open(args.binfile, "wb") as f:
+                f.write(self.sec_jrnl)
+            print(f"Data written to {args.binfile}")
         elif args.hex:
             print(binascii.b2a_hex(SecJrnl(self.sec_jrnl).bin).decode("utf-8"))
         else:
@@ -445,7 +483,7 @@ class SecJrnlCommand(WestCommand):
         Args:
             args: args passed at the command line
         """
-        self.pull_sec_jrnl()
+        self.pull_sec_jrnl(storage=args.storage)
         tlv = SecJrnl(self.sec_jrnl).get(args.tag)
         if tlv is None:
             raise RuntimeError("TLV does not exist on device")
@@ -461,6 +499,31 @@ class SecJrnlCommand(WestCommand):
         cmd_ret, _, stderr = self.openocd.execute_cmd(["atm_erase_sec_jrnl_nvds"])
         if cmd_ret != 0:
             print(f"{stderr}")
+
+    def burn(self, args):
+        """Burns the secure journal into the device
+
+        Args:
+            args: args passed at the command line
+        """
+        with open(args.sec_jrnl, "rb") as fd:
+            jrnl = bytes(fd.read())
+
+        if args.dry_run:
+            print(jrnl)
+            return
+
+        if args.storage == "otp":
+            print(
+                "Writing OTP is a permanent operation. Are you sure you want this? (yes/no)"
+            )
+            answer = input()
+            if answer.lower() == "no":
+                return
+            if answer.lower() != "yes":
+                print("Please enter yes or no.")
+                return
+        self.push_sec_jrnl(jrnl, storage=args.storage)
 
     def _get_ratchet(self):
         self.openocd.reset_target()
@@ -486,7 +549,7 @@ class SecJrnlCommand(WestCommand):
         Args:
             args: args passed at the command line
         """
-        self.pull_sec_jrnl()
+        self.pull_sec_jrnl(storage=args.storage)
         sec_jrnl = SecJrnl(self.sec_jrnl)
         # check current ratchet value
         ratchet_val = self._get_ratchet()

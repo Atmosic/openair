@@ -602,7 +602,7 @@ at_cmd_result_t at_cmd_gatt_dft_char2_val_get(uint8_t *data, uint16_t *len)
  * invoke them directly with controlled inputs.  Bypasses bt_conn_index()
  * (which requires a real BT connection) by accepting conidx directly.
  * attr_idx is a 0-based index into s_gatt_attrs[] (NOT a BT handle);
- * attr->handle is always 0 when the BT stack is not running in unit tests.
+ * The callback is invoked with a NULL connection so no real peer is needed.
  */
 
 /**
@@ -611,25 +611,14 @@ at_cmd_result_t at_cmd_gatt_dft_char2_val_get(uint8_t *data, uint16_t *len)
 ssize_t at_cmd_gatt_test_gatt_read(uint8_t conidx, uint16_t attidx, void *buf, uint16_t buf_len,
 				   uint16_t offset)
 {
+	ARG_UNUSED(conidx);
+
 	if (!s_registered || attidx >= s_gatt_service.attr_count) {
 		return -ENOENT;
 	}
 
-	/* attr->handle is 0 in unit tests (BT stack not running) */
-	at_cmd_evt_gatt_from_ble(conidx, s_gatt_attrs[attidx].handle, AT_GATT_ACT_READ, NULL, 0);
-
-	uint8_t *val = (attidx == s_char1v_idx) ? s_char1_val_buf : s_char2_val_buf;
-	uint16_t vlen = (attidx == s_char1v_idx) ? s_char1_val_len : s_char2_val_len;
-
-	if (offset > vlen) {
-		return -EINVAL;
-	}
-	uint16_t copy_len = MIN(buf_len, vlen - offset);
-
-	if (buf && copy_len) {
-		memcpy(buf, val + offset, copy_len);
-	}
-	return (ssize_t)copy_len;
+	/* A NULL connection is valid for local GATT attribute reads. */
+	return gatt_read_cb(NULL, &s_gatt_attrs[attidx], buf, buf_len, offset);
 }
 
 /**
@@ -638,13 +627,41 @@ ssize_t at_cmd_gatt_test_gatt_read(uint8_t conidx, uint16_t attidx, void *buf, u
 ssize_t at_cmd_gatt_test_gatt_write(uint8_t conidx, uint16_t attidx, const void *buf, uint16_t len,
 				    uint8_t flags)
 {
+	ARG_UNUSED(conidx);
+
 	if (!s_registered || attidx >= s_gatt_service.attr_count) {
 		return -ENOENT;
 	}
 
-	/* attr->handle is 0 in unit tests (BT stack not running) */
-	at_cmd_evt_gatt_from_ble(conidx, s_gatt_attrs[attidx].handle, AT_GATT_ACT_WRITE, buf, len);
-	return (ssize_t)len;
+	return gatt_write_cb(NULL, &s_gatt_attrs[attidx], buf, len, 0, flags);
+}
+
+/**
+ * @brief Test hook: invoke the default GATT service register helper.
+ */
+at_cmd_result_t at_cmd_gatt_test_service_register(void)
+{
+	return at_cmd_gatt_dft_service_register();
+}
+
+/**
+ * @brief Test hook: invoke the default GATT service unregister helper.
+ */
+at_cmd_result_t at_cmd_gatt_test_service_unregister(void)
+{
+	return at_cmd_gatt_dft_service_unregister();
+}
+
+/**
+ * @brief Test hook: return an attribute handle by array index.
+ */
+uint16_t at_cmd_gatt_test_get_attr_handle(uint16_t attidx)
+{
+	if (attidx >= s_gatt_service.attr_count) {
+		return AT_GATT_INVALID_ATT_IDX;
+	}
+
+	return s_gatt_attrs[attidx].handle;
 }
 
 /**

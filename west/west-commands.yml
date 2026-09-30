@@ -33,3 +33,8 @@ west-commands:
       - name: slkey
         class: AtmSlKeyCommand
         help: Atmosic side load key tools for read and write to device.
+  - file: west/atm_reset_extension.py
+    commands:
+      - name: atm_reset
+        class: AtmResetCommand
+        help: Reset a connected Atmosic EVK over OpenOCD.

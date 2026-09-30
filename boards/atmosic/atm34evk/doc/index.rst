@@ -156,11 +156,11 @@ Build the application with the default secure board::
 
 2. Flashing the Application:
 
-Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.
+Atmosic provides a mechanism to speed up programming called FAST LOAD, which is enabled by default. Apply the option ``--no-fast-load`` to disable it and use the normal load flow.
 
 Flash the application::
 
-  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<APP>
+  west flash --device <DEVICE_ID> --jlink --verify -d build/<BOARD>/<APP>
 
 .. note::
   For advanced security requirements using separate SPE and NSPE images, see :ref:`spe_nspe_architecture`.
@@ -191,15 +191,19 @@ When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command 
 
 Flash MCUboot
 
-Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
+Atmosic provides a mechanism to speed up programming called FAST LOAD, which is enabled by default. Apply the option ``--no-fast-load`` to disable it and use the normal load flow.::
 
-   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/mcuboot --noreset
+   west flash --verify --device <DEVICE_ID> --jlink -d build/<BOARD>/mcuboot --noreset
 
-Note that adding ``--erase_flash`` is an option to erase the entire flash, ``--erase_rram`` is an option to erase the entire RRAM, and ``--erase_all`` is an option to erase the entire RRAM and flash.
+Note that adding ``--erase_flash`` erases the entire flash, ``--erase_rram`` erases the entire RRAM, and ``--erase_all`` erases the entire RRAM and flash.
+
+To erase multiple specific regions, repeat the option with its ``address,size`` value. For example::
+
+   west flash --erase_flash=0x200000,0x1000 --erase_flash=0x201000,0x1000 --erase_rram=0x70000,0x100 --erase_rram=0x70100,0x100
 
 Flash the signed application image::
 
-   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<APP>
+   west flash --verify --device <DEVICE_ID> --jlink -d build/<BOARD>/<APP>
 
 ===========================
 BLE Link Controller Options

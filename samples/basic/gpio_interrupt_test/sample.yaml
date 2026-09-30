@@ -1,6 +1,10 @@
 common:
   tags:
     - atm_test_with_spe
+  # The test drives button_1 to avoid the external pull-down on button_0, so it
+  # needs a board carrying a second user button.
+  depends_on:
+    - button1
 sample:
   name: GPIO Interrupt Basic Test
 tests:

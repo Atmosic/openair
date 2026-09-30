@@ -61,7 +61,7 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink [--erase_flash]
 
 Features
 ********
@@ -183,7 +183,7 @@ Several settings are configurable via Kconfig (`prj.conf`) to suit different tes
   - `CONFIG_ATM_BT_PHY_CODED_S8`
 
 - **TX Power Settings**
-  - `CONFIG_ATM_ADV_TX_POWER_DBM` – Initial advertising TX power in dBm (default mode only, ATM34 only. ATM33 uses `CONFIG_MAX_TX_PWR` for advertising.)
+  - `CONFIG_ATM_ADV_TX_POWER_DBM` – Initial advertising TX power in dBm (default mode only, ATM34 and ATM5/e only. ATM33 uses `CONFIG_MAX_TX_PWR` for advertising.)
   - `CONFIG_ATM_CONN_TX_POWER_DBM` – Initial connection TX power in dBm (default mode only)
   - `CONFIG_ATM_DYN_TX_POWER_DBM` – Dynamic TX power in dBm used during connection for runtime power adjustment (default mode only)
 
@@ -194,7 +194,7 @@ Several settings are configurable via Kconfig (`prj.conf`) to suit different tes
        controlled by ``CONFIG_MAX_TX_PWR`` and cannot be adjusted independently at runtime.
        Connection TX power can be adjusted using ``atm_vendor_set_con_tx_power()``.
 
-     - **ATM34**: Supports independent control of advertising and connection TX power.
+     - **ATM34** and **ATM5/e**: Supports independent control of advertising and connection TX power.
        Both ``atm_vendor_set_adv_tx_power()`` and ``atm_vendor_set_con_tx_power()`` work as expected.
 
 Console Output

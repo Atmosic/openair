@@ -1,0 +1,26 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/* Enable the unified watchdog wrapper (and the raw ARM CMSDK watchdog it
+ * wraps) and point the watchdog0 alias at it. Include this snippet wherever
+ * an image should default to the unified watchdog for PMU watchdog
+ * protection across low-power states, instead of enabling wdog0 and
+ * wdog_unified separately and risking the two getting out of sync.
+ */
+
+&wdog0 {
+	status = "okay";
+};
+
+&wdog_unified {
+	status = "okay";
+};
+
+/ {
+	aliases {
+		watchdog0 = &wdog_unified;
+	};
+};

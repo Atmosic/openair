@@ -1,0 +1,52 @@
+# Copyright (c) 2024 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: Pervasive EPD display controller
+
+include: [spi-device.yaml, display-controller.yaml]
+
+properties:
+  spi-read-max-freq:
+    type: int
+    description: Maximal read frequency.
+
+     The maximal spi clock used in read operation. If not defined, use
+     spi-max-frequency instead.
+
+child-binding:
+  properties:
+    reset-gpios:
+      type: phandle-array
+      required: true
+      description: RESET pin.
+
+        The RESET pin of Pervasive display is active low.
+        If connected directly the MCU pin should be configured
+        as active low.
+
+    dc-gpios:
+      type: phandle-array
+      required: true
+      description: DC pin.
+
+        The DC pin of Pervasive display is active low (transmission
+        command byte).
+        If connected directly the MCU pin should be configured
+        as active low.
+
+    busy-gpios:
+      type: phandle-array
+      required: true
+      description: BUSY pin.
+
+        The BUSY pin of Pervasive display is active high.
+        If connected directly the MCU pin should be configured
+        as active high.
+
+    pc-gpios:
+      type: phandle-array
+      description: Power control pin.
+
+        The power control pin is active high. It is connected directly to the
+        MCU pin to control the power switch of the Pervasive device.
+        If not defined, no power switch is present.

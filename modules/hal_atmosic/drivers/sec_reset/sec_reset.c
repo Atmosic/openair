@@ -20,7 +20,8 @@
 #error "sec_reset is a secure-only driver"
 #endif
 
-#if (defined(MCUBOOT) || defined(CONFIG_MCUBOOT))
+#if (defined(MCUBOOT) || defined(CONFIG_MCUBOOT) || \
+    defined(CONFIG_ATM_SEC_RESET_FULL_API_TEST))
 #include "at_wrpr.h"
 #include "at_apb_pseq_regs_core_macro.h"
 #include "pseq_status.h"
@@ -38,7 +39,8 @@ static uint32_t get_and_clear_reset_syndrome(bool clear)
     return reset_syndrome_check;
 }
 
-#if (defined(MCUBOOT) || defined(CONFIG_MCUBOOT))
+#if (defined(MCUBOOT) || defined(CONFIG_MCUBOOT) || \
+    defined(CONFIG_ATM_SEC_RESET_FULL_API_TEST))
 
 #if defined(PSEQ_STATUS__WURX0_TRIGGERED__MASK) && \
     defined(PSEQ_STATUS__WURX1_TRIGGERED__MASK) && \
@@ -101,11 +103,12 @@ secure_reset_type secure_reset_get_type(void)
     // treat everything else from a security prespective as power-on
     return SECURE_RESET_TYPE_POR;
 }
+#endif // MCUBOOT || CONFIG_MCUBOOT || CONFIG_ATM_SEC_RESET_FULL_API_TEST
 
-#else
+#if !defined(MCUBOOT) && !defined(CONFIG_MCUBOOT)
 __SPE_NSC
 uint32_t secure_rclr_reset_syndrome(void)
 {
     return get_and_clear_reset_syndrome(true);
 }
-#endif // MCUBOOT
+#endif

@@ -5,7 +5,7 @@
  *
  * @brief Secure Counter Driver
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  ******************************************************************************
  */
@@ -17,7 +17,11 @@
 #include "sec_counter.h"
 #include <stdint.h>
 #include "stdio.h"
+#ifdef CONFIG_ATM_NV_MEM_RRAM_PROT
+#include "rram_prot.h"
+#else
 #include "rram_rom_prot.h"
+#endif
 #ifdef SECURE_PROC_ENV
 #include "sec_service.h"
 #endif

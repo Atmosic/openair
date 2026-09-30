@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 sample:
   description: Atmosic HCI vendor sample
   name: Atmosic HCI vendor sample
@@ -10,16 +14,28 @@ common:
     type: one_line
     regex:
       - "atm_hci_init done"
+  # The commands enabled by default call into atm_vendor_drv entry points that
+  # only the HALs declaring this feature implement.
+  depends_on:
+    - atm_vendor_drv
   sysbuild: true
   extra_configs:
     - CONFIG_BT_SETTINGS=y
 tests:
   samples.bluetooth.hci_vendor.atm.pd50:
+    tags:
+      - openair_release
     extra_configs:
       - CONFIG_ATMWSTK_PD50=y
   samples.bluetooth.hci_vendor.atm: &base_config
+    tags:
+      - openair_release
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.hci_vendor.atm.rx_dc_cal:
+    <<: *base_config
+    extra_configs:
+      - CONFIG_ATM_HCI_RESET_RX_DC_CAL=y
   samples.bluetooth.hci_vendor.atm.gcov:
     <<: *base_config
     tags:
@@ -49,6 +65,9 @@ tests:
     tags:
       - mcuboot
       - sec_debug
+    # CONFIG_ATM_MCUBOOT_SECURE_DEBUG depends on the sec-debug node, which only
+    # exists on SoCs that implement the secure debug registers.
+    filter: dt_compat_enabled("atmosic,sec-debug")
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -61,6 +80,9 @@ tests:
     tags:
       - mcuboot
       - sec_debug
+    # CONFIG_ATM_MCUBOOT_SECURE_DEBUG depends on the sec-debug node, which only
+    # exists on SoCs that implement the secure debug registers.
+    filter: dt_compat_enabled("atmosic,sec-debug")
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
@@ -80,3 +102,25 @@ tests:
       - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.hci_vendor.atm.system_level_test:
+    tags:
+      - bluetooth
+      - psm
+      - gpio
+    harness: pytest
+    timeout: 480
+    harness_config:
+      # Files run in listed order; the PSM file is last so test_psm_hibernate
+      # (its final method) is the last test case called. With pytest_dut_scope
+      # class each file's class gets a fresh flash + boot, so the terminal
+      # hibernate case runs on its own cold boot.
+      pytest_root:
+        - "pytest/test_hci_vendor_gpio.py"
+        - "pytest/test_hci_vendor_psm.py"
+      pytest_dut_scope: class
+      pytest_args:
+        - "-v"
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+      - EXTRA_DTC_OVERLAY_FILE=system_level_test.overlay
+      - OVERLAY_CONFIG=system_level_test.conf

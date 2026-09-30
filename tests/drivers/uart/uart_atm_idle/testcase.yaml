@@ -2,6 +2,12 @@
 #
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
+common:
+  # CONFIG_UART_ATM_HOST_DETECT parks the RX pin in GPIO mode with a pull-down.
+  # The ATMx2 pin control block only has the PIN_PU_A..E pull-up registers, so
+  # its HAL defines no PIN_PULLDOWN() for the driver to call.
+  depends_on:
+    - pin_pulldown
 tests:
   tests.drivers.uart.uart_atm_idle.atm: &base_config
     sysbuild: true

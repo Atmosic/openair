@@ -1,0 +1,36 @@
+/**
+ *******************************************************************************
+ *
+ * @file sec_hw_cfg.ih
+ *
+ * @brief Early and secure hardware configuration internal APIs
+ *
+ * Copyright (C) Atmosic 2025-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
+ *******************************************************************************
+ */
+
+#pragma once
+
+#include <stdint.h>
+
+#include "at_wrpr.h"
+
+#ifndef SEC_HW_CFG_INTERNAL_GUARD
+#error "sec_hw_cfg.ih should only be included in sec_hw_cfg files"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void sec_hw_cfg_core_clkrstgen_init(void);
+void sec_hw_cfg_core_pmu_cfg(uint32_t freq, uint8_t max_tx_power);
+void sec_hw_cfg_core_set_qspi_for_bp(void);
+void sec_hw_cfg_core_init(void);
+
+#ifdef __cplusplus
+}
+#endif

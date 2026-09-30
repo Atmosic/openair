@@ -1,9 +1,86 @@
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if AUDIO
+
 if AUDIO_CODEC
-
 rsource "Kconfig.sma1303"
-
 endif # AUDIO_CODEC
+
+if AUDIO_DMIC
+
+config DMIC_ATM
+	bool "Atmosic PDM/DMIC driver"
+	depends on DT_HAS_ATMOSIC_ATM_PDM_ENABLED
+	select PINCTRL
+	help
+	  Enable the Atmosic PDM microphone driver.
+	  Supports 8 kHz and 16 kHz mono PCM output with 16-bit, 20-bit, or 24-bit
+	  sample width.
+
+if DMIC_ATM
+
+config ATM_DMIC_RX_QUEUE_SIZE
+	int "RX message queue depth (number of blocks)"
+	default 4
+	help
+	  Number of ping-pong audio blocks that can be buffered before
+	  dmic_read() must drain them.  Each block is one ping-pong buffer
+	  (PP_BUFFER_WORDS hardware words). Increase this value if the application
+	  cannot call dmic_read() frequently enough.
+
+config ATM_DMIC_HPF_ORDER_SEL
+	int "PDM high-pass filter order select"
+	default 2
+	range 0 3
+	help
+	  IIR high-pass filter order, which attenuates residual DC content
+	  in the decimated PCM signal: 0=1st order, 1=2nd order, 2=3rd
+	  order, 3=4th order. See the HPF_ORD field in
+	  at_apb_pdm_regs_core_macro.h.
+
+config ATM_DMIC_HPF_BW_SEL
+	int "PDM high-pass filter bandwidth select"
+	default 0
+	range 0 7
+	help
+	  IIR high-pass filter bandwidth code (0-7). The actual cutoff
+	  frequency this selects (10 Hz - 6240 Hz) depends on
+	  CONFIG_ATM_DMIC_HPF_ORDER_SEL - see the HPF_BW field's per-order
+	  code-to-Hz table in at_apb_pdm_regs_core_macro.h.
+
+	  The default (order=3rd, bw=0) selects a 51 Hz cutoff.
+
+config ATM_DMIC_GAIN_DB
+	int "PDM digital gain (milli-dB, -30000 to 30000)"
+	default -2000
+	range -30000 30000
+	help
+	  Digital gain in milli-dB (e.g. -2000 = -2.0 dB). The default is
+	  -2000 (-2.0 dB), compensating the +2.0 dB PDM decimation filter offset.
+	  Must be in 0.5 dB steps (multiples of 500 mB).
+
+config ATM_DMIC_MIC_POWERUP_DELAY_MS
+	int "PDM microphone power-up delay (milliseconds)"
+	default 50
+	range 0 1000
+	help
+	  Delay after enabling the external PDM microphone power GPIO and before
+	  starting the PDM clock. The SPK0641HT4H-1 specifies up to 50 ms for
+	  power-up. Set to 0 when the microphone is powered continuously.
+
+config ATM_DMIC_CAPTURE_ON_RISING
+	bool "Sample PDM DATA on rising edge of PDM CLK"
+	help
+	  When disabled (default), the PDM data is sampled on the falling
+	  edge of PDM CLK (i.e. the microphone transitions data on the
+	  rising edge). Enable this if the microphone outputs data on the
+	  falling edge (sampled on rising edge). Refer to the microphone
+	  datasheet's CLK/DATA timing diagram.
+
+endif # DMIC_ATM
+
+endif # AUDIO_DMIC
+
 endif # AUDIO

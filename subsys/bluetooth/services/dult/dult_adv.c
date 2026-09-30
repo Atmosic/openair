@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
@@ -5,8 +11,6 @@
  *
  * @brief Atmosic Detecting Unwanted Location Trackers (DULT) Advertisment
  * Middleware
- *
- * Copyright (C) Atmosic 2025
  *
  *******************************************************************************
  */
@@ -25,7 +29,7 @@
 LOG_MODULE_DECLARE(dult, CONFIG_ATM_DULT_LOG_LEVEL);
 
 // Advertising interval in discoverable
-#define DULT_ADV_MS     2000
+#define DULT_ADV_MS      2000
 #define DULT_ADV_INT_MIN ((uint32_t)(DULT_ADV_MS - 20) * 1000 / 625)
 #define DULT_ADV_INT_MAX ((uint32_t)DULT_ADV_MS * 1000 / 625)
 
@@ -79,6 +83,7 @@ static void dult_adv_connected(struct bt_le_ext_adv *instance,
 	dult_adv_release_adv();
 }
 
+#if defined(CONFIG_BT_PRIVACY)
 static bool dult_adv_rpa_expired(struct bt_le_ext_adv *adv)
 {
 	/* It is assumed that the callback executes in the cooperative
@@ -104,7 +109,7 @@ static bool dult_adv_rpa_expired(struct bt_le_ext_adv *adv)
 		/* 24 hours = 86400 seconds = 86400000 milliseconds */
 		if (current_time - last_dult_rotation < (24 * 60 * 60 * 1000)) {
 			LOG_DBG("DULT: Seperated Mode, skip rotate the current RPA "
-			"(24h not elapsed)");
+				"(24h not elapsed)");
 			rpa_expired = false;
 		} else {
 			LOG_DBG("DULT: Seperated Mode, allowing RPA rotation after 24h");
@@ -114,11 +119,14 @@ static bool dult_adv_rpa_expired(struct bt_le_ext_adv *adv)
 	LOG_DBG("DULT: RPA rotate %u", rpa_expired);
 	return rpa_expired;
 }
+#endif /* defined(CONFIG_BT_PRIVACY) */
 
 static const struct bt_le_ext_adv_cb dult_adv_cb = {
 	.sent = dult_adv_adv_sent,
 	.connected = dult_adv_connected,
+#if defined(CONFIG_BT_PRIVACY)
 	.rpa_expired = dult_adv_rpa_expired,
+#endif /* defined(CONFIG_BT_PRIVACY) */
 };
 
 static void dult_adv_stop(void)
@@ -183,3 +191,30 @@ void dult_adv_bt_id_set(uint8_t bt_id)
 {
 	dult_adv_bt_id = bt_id;
 }
+
+#ifdef CONFIG_ZTEST
+/* Test hooks: expose internal advertising callbacks for unit test coverage */
+
+void dult_test_adv_sent(void)
+{
+	/* dult_adv_set is NULL → dult_adv_release_adv() is a no-op */
+	dult_adv_adv_sent(NULL, NULL);
+}
+
+void dult_test_adv_connected(void)
+{
+	/* dult_adv_set is NULL → dult_adv_release_adv() is a no-op */
+	dult_adv_connected(NULL, NULL);
+}
+
+void dult_test_adv_data_update(void)
+{
+	dult_adv_data_update();
+}
+
+void dult_test_adv_enable_near_owner(void)
+{
+	/* Cover the dult_mode != mode log branch */
+	dult_adv_enable(DULT_NO_MODE_NEAR_OWNER);
+}
+#endif /* CONFIG_ZTEST */

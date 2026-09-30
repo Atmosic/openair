@@ -5,6 +5,37 @@ BLE Peripheral Commands
 
 See :ref:`at_cmd_format` for command syntax.
 
+AT+BLEGAPDEVNAME — GAP Device Name
+***********************************
+
+:Kconfig:   ``CONFIG_AT_CMD_BLEGAPDEVNAME``
+:Execute:   ``AT+BLEGAPDEVNAME=<name>``
+:Query:     ``AT+BLEGAPDEVNAME?``
+:Response:  ``+BLEGAPDEVNAME:<name>``
+:Callback:  ``devname_set_cb`` (``CONFIG_AT_CMD_BLEGAPDEVNAME_CB``)
+
+Sets or queries the BLE GAP device name via ``bt_set_name()`` / ``bt_get_name()``.
+
+.. list-table::
+   :widths: 15 10 75
+   :header-rows: 1
+
+   * - Parameter
+     - Type
+     - Description
+   * - ``name``
+     - string
+     - New device name. Max length: ``CONFIG_BT_DEVICE_NAME_MAX`` characters.
+       Returns ``ERR`` if the length is exceeded.
+
+.. code-block:: text
+
+   AT+BLEGAPDEVNAME=MySensor
+   OK
+   AT+BLEGAPDEVNAME?
+   +BLEGAPDEVNAME:MySensor
+   OK
+
 AT+BLEADVENABLE — Start / Stop Advertising
 ******************************************
 

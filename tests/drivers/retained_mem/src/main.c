@@ -32,6 +32,11 @@
 #include "timer.h"
 #endif
 
+#ifdef CONFIG_RETAINED_MEM_TEST_ATM_BACKEND_INIT
+/* cold boot coverage of backend initialization */
+#include "retained_mem_hib_backend.h"
+#endif
+
 #ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
 // align data structures to 4-bytes
 #define TEST_DATA_ALIGNED __aligned(4)
@@ -413,7 +418,11 @@ static bool load_combined_hibernation_data(hib_test_cycle_t *current_test, uint3
 	memset(&combined_storage, 0, sizeof(combined_storage));
 
 	/* Single restore operation - restore maximum possible size */
-	hib_restore_data((uint8_t *)&combined_storage, get_retained_mem_size());
+	size_t restore_size = get_retained_mem_size();
+	if (restore_size > sizeof(combined_storage)) {
+		restore_size = sizeof(combined_storage);
+	}
+	hib_restore_data((uint8_t *)&combined_storage, restore_size);
 
 	LOG_DBG("Loaded combined data - cycle_magic=0x%08x, test_magic=0x%08x",
 		combined_storage.cycle_state.magic, combined_storage.test_state.magic);
@@ -688,10 +697,8 @@ static void *retained_mem_setup(void)
 }
 
 /* Basic retained memory tests */
-ZTEST(retained_mem, test_size_validation)
+static void do_test_size_validation(void)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_SIZE_VALIDATION);
-
 	size_t hib_capacity = get_retained_mem_size();
 
 	LOG_INF("=== Retained Memory Size Analysis ===");
@@ -724,10 +731,14 @@ ZTEST(retained_mem, test_size_validation)
 	BASIC_TEST_DONE(BASIC_BIT_SIZE_VALIDATION);
 }
 
-ZTEST(retained_mem, test_basic_save_restore)
+ZTEST(retained_mem, test_size_validation)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_BASIC_SAVE_RESTORE);
+	BASIC_TEST_GUARD(BASIC_BIT_SIZE_VALIDATION);
+	do_test_size_validation();
+}
 
+static void do_test_basic_save_restore(void)
+{
 	LOG_INF("Testing basic save/restore without hibernation...");
 
 	/* Query actual retained memory capacity */
@@ -761,10 +772,14 @@ ZTEST(retained_mem, test_basic_save_restore)
 	BASIC_TEST_DONE(BASIC_BIT_BASIC_SAVE_RESTORE);
 }
 
-ZTEST(retained_mem, test_magic_values_preservation)
+ZTEST(retained_mem, test_basic_save_restore)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_MAGIC_VALUES);
+	BASIC_TEST_GUARD(BASIC_BIT_BASIC_SAVE_RESTORE);
+	do_test_basic_save_restore();
+}
 
+static void do_test_magic_values_preservation(void)
+{
 	LOG_INF("Testing magic value preservation in retained memory...");
 
 	/* Test if magic values are preserved correctly */
@@ -789,10 +804,14 @@ ZTEST(retained_mem, test_magic_values_preservation)
 	BASIC_TEST_DONE(BASIC_BIT_MAGIC_VALUES);
 }
 
-ZTEST(retained_mem, test_zero_data)
+ZTEST(retained_mem, test_magic_values_preservation)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_ZERO_DATA);
+	BASIC_TEST_GUARD(BASIC_BIT_MAGIC_VALUES);
+	do_test_magic_values_preservation();
+}
 
+static void do_test_zero_data(void)
+{
 	LOG_INF("Testing zero data preservation...");
 
 	uint8_t zero_data[16] = {0};
@@ -814,11 +833,15 @@ ZTEST(retained_mem, test_zero_data)
 	BASIC_TEST_DONE(BASIC_BIT_ZERO_DATA);
 }
 
-#ifndef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
-ZTEST(retained_mem, test_single_byte)
+ZTEST(retained_mem, test_zero_data)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_SINGLE_BYTE);
+	BASIC_TEST_GUARD(BASIC_BIT_ZERO_DATA);
+	do_test_zero_data();
+}
 
+#ifndef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+static void do_test_single_byte(void)
+{
 	LOG_INF("Testing single byte save/restore...");
 
 	uint8_t test_byte = 0x42;
@@ -830,12 +853,16 @@ ZTEST(retained_mem, test_single_byte)
 	zassert_equal(restored_byte, test_byte, "Single byte should be preserved");
 	BASIC_TEST_DONE(BASIC_BIT_SINGLE_BYTE);
 }
+
+ZTEST(retained_mem, test_single_byte)
+{
+	BASIC_TEST_GUARD(BASIC_BIT_SINGLE_BYTE);
+	do_test_single_byte();
+}
 #endif
 
-ZTEST(retained_mem, test_max_size_data)
+static void do_test_max_size_data(void)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_MAX_SIZE_DATA);
-
 	size_t max_data_size = get_max_test_data_size();
 	LOG_INF("Testing maximum test data size (%zu bytes)...", max_data_size);
 
@@ -858,10 +885,14 @@ ZTEST(retained_mem, test_max_size_data)
 	BASIC_TEST_DONE(BASIC_BIT_MAX_SIZE_DATA);
 }
 
-ZTEST(retained_mem, test_retained_mem_capacity)
+ZTEST(retained_mem, test_max_size_data)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_RETAINED_CAPACITY);
+	BASIC_TEST_GUARD(BASIC_BIT_MAX_SIZE_DATA);
+	do_test_max_size_data();
+}
 
+static void do_test_retained_mem_capacity(void)
+{
 	size_t hib_capacity = get_retained_mem_size();
 	LOG_INF("Testing retained memory full capacity (%zu bytes)...", hib_capacity);
 
@@ -885,10 +916,14 @@ ZTEST(retained_mem, test_retained_mem_capacity)
 	BASIC_TEST_DONE(BASIC_BIT_RETAINED_CAPACITY);
 }
 
-ZTEST(retained_mem, test_multiple_cycles)
+ZTEST(retained_mem, test_retained_mem_capacity)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_MULTIPLE_CYCLES);
+	BASIC_TEST_GUARD(BASIC_BIT_RETAINED_CAPACITY);
+	do_test_retained_mem_capacity();
+}
 
+static void do_test_multiple_cycles(void)
+{
 	LOG_INF("Testing multiple save/restore cycles...");
 
 	/* Query actual retained memory capacity */
@@ -925,11 +960,15 @@ ZTEST(retained_mem, test_multiple_cycles)
 	BASIC_TEST_DONE(BASIC_BIT_MULTIPLE_CYCLES);
 }
 
-#ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
-ZTEST(retained_mem, test_fixed_offset_0_negative_tests)
+ZTEST(retained_mem, test_multiple_cycles)
 {
-	BASIC_TEST_GUARD(BASIC_BIT_FXOFF0_NEG_TESTS);
+	BASIC_TEST_GUARD(BASIC_BIT_MULTIPLE_CYCLES);
+	do_test_multiple_cycles();
+}
 
+#ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+static void do_test_fixed_offset_0_negative_tests(void)
+{
 	const struct device *dev = RETAINED_MEM_DEVICE;
 	uint32_t t_buf[2];
 	/* derive aligned pointer */
@@ -1003,7 +1042,46 @@ ZTEST(retained_mem, test_fixed_offset_0_negative_tests)
 
 	BASIC_TEST_DONE(BASIC_BIT_FXOFF0_NEG_TESTS);
 }
+
+ZTEST(retained_mem, test_fixed_offset_0_negative_tests)
+{
+	BASIC_TEST_GUARD(BASIC_BIT_FXOFF0_NEG_TESTS);
+	do_test_fixed_offset_0_negative_tests();
+}
 #endif
+
+#ifdef CONFIG_COVERAGE_GCOV
+/* Re-run the basic (non-hibernating) driver tests one more time on the
+ * final successful boot of the hibernation cycle.
+ */
+static void rerun_basic_tests_for_coverage(void)
+{
+	LOG_INF("=== Re-running basic tests to recover GCOV coverage ===");
+
+	do_test_size_validation();
+	do_test_basic_save_restore();
+	do_test_magic_values_preservation();
+	do_test_zero_data();
+#ifndef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+	do_test_single_byte();
+#endif
+	do_test_max_size_data();
+	do_test_retained_mem_capacity();
+	do_test_multiple_cycles();
+#ifdef CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0
+	do_test_fixed_offset_0_negative_tests();
+#endif
+
+#ifdef CONFIG_RETAINED_MEM_TEST_ATM_BACKEND_INIT
+	/* for coverage, call backend init again */
+	LOG_INF("Calling retained_mem_backend_init() for coverage...");
+	int ret = retained_mem_backend_init(RETAINED_MEM_DEVICE);
+	zassert_equal(ret, 0, "retained_mem_backend_init() failed: %d", ret);
+#endif
+
+	LOG_INF("=== GCOV coverage re-run complete ===");
+}
+#endif /* CONFIG_COVERAGE_GCOV */
 
 /* Hibernation test - handles both cold boot and hibernation wakeup */
 /* Named with 'test_zz_' prefix so it sorts after every other test_* (including
@@ -1078,6 +1156,16 @@ ZTEST(retained_mem, test_zz_hibernation_cycle)
 				LOG_INF("\n=== FINAL TEST SUMMARY ===");
 				LOG_INF("Hibernation Tests: 5/5 PASSED");
 				LOG_INF("🎉 ALL TESTS COMPLETED SUCCESSFULLY! 🎉");
+
+#ifdef CONFIG_COVERAGE_GCOV
+				/* This is the final boot of the run: no further
+				 * hibernation cycles follow, so it is the only
+				 * opportunity to recover GCOV coverage for the basic
+				 * driver test paths before gcov_coverage_dump() runs
+				 * at normal ztest exit.
+				 */
+				rerun_basic_tests_for_coverage();
+#endif /* CONFIG_COVERAGE_GCOV */
 			} else {
 				LOG_INF("❌ Some hibernation tests failed");
 				LOG_INF("\n=== FINAL TEST SUMMARY ===");

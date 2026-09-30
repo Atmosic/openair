@@ -179,6 +179,23 @@ void fp_fmdn_key_clear_eid(void);
 void fp_fmdn_key_update_eid(void);
 
 /**
+ * @brief Check if the EID needs to rotate.
+ *
+ * Returns true if the FMDN clock has advanced past the last EID rotation
+ * window boundary, meaning a new EID must be computed.
+ *
+ * @return true if EID rotation is due, false otherwise.
+ */
+bool fp_fmdn_key_eid_needs_rotate(void);
+
+/**
+ * @brief Return seconds remaining until the next EID rotation window.
+ *
+ * @return Seconds until the next 2^K clock boundary (1 – 1024).
+ */
+uint32_t fp_fmdn_key_secs_until_eid_rotate(void);
+
+/**
  * @brief The callback function of battery status
  * @param[in] mode fast pairing itp mode
  */

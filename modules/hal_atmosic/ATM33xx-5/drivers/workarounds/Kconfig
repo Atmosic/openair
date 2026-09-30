@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -8,3 +8,12 @@ config ATM_WORKAROUNDS
 	default y if BT
 	default y if ENTROPY_ATM_TRNG
 	default y if PM
+
+config ATM_PMU_WORKAROUNDS
+	bool "Atmosic PMU workarounds via SPI interface"
+	depends on ATM_WORKAROUNDS
+	default y
+	help
+	  Enable support for ATM_TAG_PMU_W journal entries that apply PMU
+	  workarounds through the SPI interface (spi_pmuradio_*).  Disable
+	  on platforms where the PMU is not accessible via SPI.

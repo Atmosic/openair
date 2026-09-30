@@ -369,6 +369,15 @@ adc: adc@15a000 {
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
 		zephyr,resolution = <15>;
 	};
+
+	/* temp channel (ch-temp = <4>) */
+	channel@4 {
+		reg = <4>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <15>;
+	};
 };
 
 trng: trng@15b000 {
@@ -389,6 +398,16 @@ i2s: i2s@165000 {
 	reg = <0x00165000 0x1000>;
 	interrupts = <60 2>;
 	clocks = <&sysclk>;
+	status = "disabled";
+};
+
+pdm0: pdm@160000 {
+	compatible = "atmosic,atm-pdm";
+	reg = <0x00160000 0x1000>,
+	      <0x00300000 0x100>;
+	interrupts = <56 8>;
+	clocks = <&clk_16M>;
+	clock-frequency = <1000000>;
 	status = "disabled";
 };
 

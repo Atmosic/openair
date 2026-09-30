@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Atmosic Technologies, Inc.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 zephyr_library_amend()
 

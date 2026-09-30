@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
+# Copyright (c) 2026 Atmosic
+
+config SHIELD_atm5_PERIPHERAL_BOARD_I2C_I2S
+	def_bool $(shields_list_contains,atm5_peripheral_board_i2c_i2s)
+
+config SHIELD_atm5_PERIPHERAL_BOARD_MIKRO_BUS
+	def_bool $(shields_list_contains,atm5_peripheral_board_mikro_bus)
+
+config SHIELD_atm5_PERIPHERAL_BOARD_SPI
+	def_bool $(shields_list_contains,atm5_peripheral_board_spi)

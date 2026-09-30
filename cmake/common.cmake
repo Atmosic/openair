@@ -14,9 +14,6 @@ if(CONFIG_COVERAGE AND CONFIG_AUTO_TEST)
   # app target
   set_property(TARGET app APPEND PROPERTY COMPILE_OPTIONS -fno-profile-arcs -fno-test-coverage -finline -Os)
 
-  # Capture the openair module root (one level above this cmake/ directory).
-  get_filename_component(_OPENAIR_MODULE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
-
   # library source files
   function(set_coverage_properties_for_files file_list patterns_list)
     foreach(pattern IN LISTS ${patterns_list})
@@ -28,15 +25,43 @@ if(CONFIG_COVERAGE AND CONFIG_AUTO_TEST)
             # catch unrelated files (e.g. "atm_aes.c" matching a test's
             # "main_atm_aes.c"), whose directory has no build scope here.
             if("${file_name}" STREQUAL "${pattern}")
-                get_filename_component(file_dir ${file} DIRECTORY)
-                file(RELATIVE_PATH rel_path "${_OPENAIR_MODULE_ROOT}" "${file_dir}")
-                set(zephyr_equiv "${ZEPHYR_BASE}/${rel_path}")
-                get_filename_component(zephyr_equiv "${zephyr_equiv}" ABSOLUTE)
+                # Search ZEPHYR_LIBS for the library that owns this file.
+                # CMake looks up source-file properties from the directory scope
+                # where add_library() was called (SOURCE_DIR).
+                # - zephyr_library_amend(): file belongs to a Zephyr library;
+                #   SOURCE_DIR is under ZEPHYR_BASE (e.g. drivers/entropy/).
+                # - zephyr_library(): file belongs to a newly created library;
+                #   SOURCE_DIR is the directory of the CMakeLists.txt that called
+                #   zephyr_library() (e.g. subsys/bluetooth/services/dult/).
+                get_property(_all_zephyr_libs GLOBAL PROPERTY ZEPHYR_LIBS)
+                set(_lib_scope "")
+                foreach(_lib IN LISTS _all_zephyr_libs)
+                    get_target_property(_lib_source_dir ${_lib} SOURCE_DIR)
+                    get_target_property(_lib_sources ${_lib} SOURCES)
+                    if(NOT _lib_sources)
+                        continue()
+                    endif()
+                    foreach(_src IN LISTS _lib_sources)
+                        # SOURCES may contain relative paths; resolve to absolute.
+                        if(NOT IS_ABSOLUTE "${_src}")
+                            get_filename_component(_abs_src
+                                "${_lib_source_dir}/${_src}" ABSOLUTE)
+                        else()
+                            set(_abs_src "${_src}")
+                        endif()
+                        if("${_abs_src}" STREQUAL "${file}")
+                            set(_lib_scope "${_lib_source_dir}")
+                            break()
+                        endif()
+                    endforeach()
+                    if(_lib_scope)
+                        break()
+                    endif()
+                endforeach()
 
                 set(_scopes "${ZEPHYR_BASE}")
-                if(IS_DIRECTORY "${zephyr_equiv}" AND
-                   NOT "${zephyr_equiv}" STREQUAL "${ZEPHYR_BASE}")
-                    list(APPEND _scopes "${zephyr_equiv}")
+                if(_lib_scope AND NOT "${_lib_scope}" STREQUAL "${ZEPHYR_BASE}")
+                    list(APPEND _scopes "${_lib_scope}")
                 endif()
 
                 foreach(scope IN LISTS _scopes)

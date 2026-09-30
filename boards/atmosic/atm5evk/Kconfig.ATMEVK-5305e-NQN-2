@@ -1,0 +1,6 @@
+# Copyright (c) 2024-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config BOARD_ATMEVK_5305E_NQN_2
+	select SOC_ATM5XXX_2

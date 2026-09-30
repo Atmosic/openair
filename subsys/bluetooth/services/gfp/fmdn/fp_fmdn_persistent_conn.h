@@ -124,6 +124,16 @@ typedef struct {
 __NONNULL(2)
 int fp_fmdn_persistent_conn_get_adv_param(uint8_t conn_type, fp_fmdn_pc_adv_param_t *adv_param);
 
+/// PC state change notification (configure, interactive-revert, or disconnect).
+///
+/// @param is_active  true if a PC is now active.
+/// @param conn_type  New connection type (3 LSBs meaningful).
+typedef void (*fp_fmdn_pc_state_cb_t)(bool is_active, uint8_t conn_type);
+
+/// Register a listener for PC state changes.
+/// @param cb Callback, or NULL to unregister.
+void fp_fmdn_persistent_conn_register_state_cb(fp_fmdn_pc_state_cb_t cb);
+
 #ifdef __cplusplus
 }
 #endif

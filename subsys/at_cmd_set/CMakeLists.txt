@@ -1,4 +1,4 @@
-# Copyright (c) Atmosic 2026
+# Copyright (c) 2026 Atmosic
 #
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
@@ -72,6 +72,7 @@ if(CONFIG_AT_CMD_SET)
         at_cmd_sysdfu_proc.c
     )
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSFUNCPIN sysfuncpin.c evtsysfuncpin.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSLOCK syslock.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSMKBANKGOOD sysmarkbankgood.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSPM syspm.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSRESET sysreset.c)
@@ -79,16 +80,21 @@ if(CONFIG_AT_CMD_SET)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSUARTBR sysuartbr.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSUARTFC sysuartfc.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSUARTRAW sysuartraw.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_CMD_SYSUNLOCK sysunlock.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGADDR tagaddr.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGBATTERY tagbattery.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGCSUNPAIR tagcsunpair.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGFMNAMFI tagfmnamfi.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGFMNASN tagfmnasn.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGGFPIND taggfpind.c)
-    zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGGFPREVERSERING tagreversering.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGINFO taginfo.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGMODE tagmode.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGMOTIONRPT tagmotionrpt.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGRANGING tagranging.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGRANGINGCAPCS tagrangingcapcs.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGRANGINGCAPUWB tagrangingcapuwb.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGRESET tagreset.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGGFPREVERSERING tagreversering.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGRINGSTOPNTF tagringstopntf.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGSTART tagstart.c)
     zephyr_library_sources_ifdef(CONFIG_AT_CMD_TAGSTFIND tagstfind.c)
@@ -111,6 +117,10 @@ if(CONFIG_AT_CMD_SET)
     zephyr_library_sources_ifdef(CONFIG_AT_EVT_TAGGFPDULTREADID evttaggfpdultreadid.c)
     zephyr_library_sources_ifdef(CONFIG_AT_EVT_TAGGFPREVERSERING evttaggfpreversering.c)
     zephyr_library_sources_ifdef(CONFIG_AT_EVT_TAGMOTIONCTL evttagmotionctl.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_EVT_TAGRANGING evttagranging.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_EVT_TAGRANGINGCAP evttagrangingcap.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_EVT_TAGRANGINGCFGCS evttagrangingcfgcs.c)
+    zephyr_library_sources_ifdef(CONFIG_AT_EVT_TAGRANGINGCFGUWB evttagrangingcfguwb.c)
     zephyr_library_sources_ifdef(CONFIG_AT_EVT_TAGSTATE evttagstate.c)
     zephyr_library_sources_ifdef(CONFIG_ATM_AT_CMDTEST
         testcmd.c

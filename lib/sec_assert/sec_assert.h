@@ -5,7 +5,7 @@
  *
  * @brief Secure Assert library
  *
- * Copyright (C) Atmosic 2022-2025
+ * Copyright (C) Atmosic 2022-2026
  *
  ******************************************************************************
  */
@@ -37,7 +37,8 @@
     } while (0)
 #endif
 
-#if defined(CONFIG_SOC_FAMILY_ATM) && defined(SECURE_PROC_ENV)
+#if defined(CONFIG_SOC_FAMILY_ATM) &&                                                              \
+	(defined(SECURE_PROC_ENV) || defined(CONFIG_ATM_SEC_ASSERT_TEST))
 #include <zephyr/devicetree.h>
 #include "at_tz_ppc.h"
 
@@ -75,7 +76,8 @@ static inline void sec_switch_console_ns(void)
     sec_switch_uart_domain(false);
 }
 
-#endif // defined(CONFIG_SOC_FAMILY_ATM) && defined(SECURE_PROC_ENV)
+#endif // defined(CONFIG_SOC_FAMILY_ATM) &&
+       // (defined(SECURE_PROC_ENV) || defined(CONFIG_ATM_SEC_ASSERT_TEST))
 
 /**
  * @brief Print the sercure assertion error reason and halt execution to wait
@@ -86,7 +88,9 @@ static inline void sec_switch_console_ns(void)
  *
  * @note If we are in release mode no details will be emitted
  */
+#ifndef CONFIG_ATM_SEC_ASSERT_COVERAGE_RETURN
 __NO_RETURN
+#endif
 void sec_assert(const char *file, int line);
 
 /// @} SEC_ASSERT

@@ -14,6 +14,8 @@ common:
     - role_central
 tests:
   applications.atm_tput.tput_central.atm:
+    tags:
+      - openair_release
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
   applications.atm_tput.tput_central.atm.mcuboot.flash_xip:

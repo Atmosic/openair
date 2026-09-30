@@ -3,6 +3,10 @@ sample:
 common:
   tags:
     - sensor
+  # The overlays always instantiate the bme280 node, so only a board actually
+  # carrying the sensor can answer the I2C or SPI probe.
+  depends_on:
+    - bme280
   sysbuild: true
   harness: console
   harness_config:

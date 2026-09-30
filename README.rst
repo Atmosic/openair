@@ -12,8 +12,7 @@ Supported Platforms
 
     * `ATM33/e <boards/atmosic/atm33evk/doc/index.rst>`_
     * `ATM34/e <boards/atmosic/atm34evk/doc/index.rst>`_
-
-Starting 25.07.0 release, support for ATMx2xx(ATM2/3) platforms are deprecated.
+    * `ATM5/e <boards/atmosic/atm5evk/doc/index.rst>`_
 
 OpenAir Branches
 ****************
@@ -37,8 +36,8 @@ Creating a Workspace
 
 To create an Atmosic SDK workspace, first follow the instructions_ from the official Zephyr documentation on setting up the tooling for your host operating system.  Then use ``west init`` and ``west update`` as follows::
 
-  west init -m https://github.com/Atmosic/openair.git --mr rel_26.06.0 zephyrproject_rel_26.06.0
-  cd zephyrproject_rel_26.06.0
+  west init -m https://github.com/Atmosic/openair.git zephyrproject
+  cd zephyrproject
   west update
 
 .. _instructions: https://docs.zephyrproject.org/latest/develop/getting_started/index.html
@@ -47,5 +46,6 @@ For details about how to build and program an application, see the following sec
 
  * `ATM33/e programming and debugging </boards/atmosic/atm33evk/doc/index.rst#programming-and-debugging>`_
  * `ATM34/e programming and debugging </boards/atmosic/atm34evk/doc/index.rst#programming-and-debugging>`_
+ * `ATM5/e programming and debugging </boards/atmosic/atm5evk/doc/index.rst#programming-and-debugging>`_
 
 For more information, see `Atmosic OpenAir Documentation <https://atmosic.com/public/OpenAir_SDK_doc/index.html>`_.

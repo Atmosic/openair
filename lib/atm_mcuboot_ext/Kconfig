@@ -1,16 +1,28 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ATM_MCUBOOT_EXT
-	bool
-	depends on MCUBOOT
+	bool "Atmosic MCUboot extensions"
+	depends on MCUBOOT || ZTEST
+
+if ATM_MCUBOOT_EXT
+
+config ATM_MCUBOOT_EXT_LOCK_PRIMARY_SLOT
+	bool "Lock the primary slot"
+	select ATM_NV_MEM_FLASH_PROT if DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
+	select ATM_NV_MEM_RRAM_PROT if DT_HAS_ATMOSIC_SEC_NV_MEM_RRAM_PROT_ENABLED
+	select ATM_RRAM_ROM_PROT if !DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED && !DT_HAS_ATMOSIC_SEC_NV_MEM_RRAM_PROT_ENABLED
+
+config ATM_MCUBOOT_EXT_SKIP_PRIMARY_VALIDATE_HIBER
+	bool "Skip primary slot validation on resume from hibernate"
 
 config ATM_MCUBOOT_UART_DEBUG_AUTH
 	bool "Enable Secure UART debug authentication"
-	depends on MCUBOOT && ATM_MCUBOOT_EXT
 
 config ATM_MCUBOOT_UART_DEBUG_AUTH_TIMEOUT_MS
         int "Debug Auth serial wait duration"
         depends on ATM_MCUBOOT_UART_DEBUG_AUTH
         default 500
+
+endif

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 Atmosic
+# Copyright (c) 2022-2026 Atmosic
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -77,6 +77,9 @@ if(CONFIG_ATM_RWLC)
       zephyr_link_libraries(
         ${LINKERFLAGPREFIX},-R${CMAKE_CURRENT_SOURCE_DIR}/atmwstk_CPD200.elf
       )
+      # Expose the CPD200 stack's SHA digest header for verify_atmwstk().
+      zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+      zephyr_compile_definitions(ATMWSTK_SHA_H=atmwstk_CPD200_sha.h)
     else()
       message(FATAL_ERROR "Fixed BLE stack only supports CPD200 for atm33. Please set CONFIG_ATMWSTK_CPD200=y.")
     endif()

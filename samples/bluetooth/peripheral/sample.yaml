@@ -13,6 +13,8 @@ tests:
       type: one_line
       regex:
         - "Indicate VND attr"
+    tags:
+      - openair_release
   samples.bluetooth.peripheral.atm.mcuboot:
     sysbuild: true
     harness: console
@@ -22,6 +24,7 @@ tests:
         - "Indicate VND attr"
     tags:
       - mcuboot
+      - openair_release_mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y

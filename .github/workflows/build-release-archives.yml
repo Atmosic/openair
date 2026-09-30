@@ -1,0 +1,470 @@
+name: Build OpenAir Release Archives
+
+# This workflow builds only the sysbuild scenarios tagged 'openair_release' and
+# collects the resulting .atm archives. Scenario selection is driven by twister
+# so that the tag filter is applied consistently across all sample.yaml and
+# testcase.yaml files.
+#
+# Two twister passes are made per board:
+#   - normal revision:  -t openair_release
+#   - mcuboot revision: -t openair_release_mcuboot
+#
+# Pull requests to rel_*/pre_rel_* and pushes to pre_rel_*: archives are
+# uploaded as workflow artifacts. Pushes to rel_*: archives are also attached
+# to a GitHub release.
+
+on:
+  pull_request:
+    branches:
+      - 'rel_*'
+      - 'pre_rel_*'
+  push:
+    branches:
+      - 'rel_*'
+      - 'pre_rel_*'
+  workflow_dispatch:
+
+env:
+  # Tag filter arguments for the normal-revision twister pass.
+  TWISTER_TAGS_NORMAL: -t openair_release
+  # Tag filter arguments for the mcuboot-revision twister pass.
+  TWISTER_TAGS_MCUBOOT: -t openair_release_mcuboot
+
+jobs:
+  discover-boards:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install PyYAML
+        run: pip3 install --user PyYAML
+
+      - name: Discover boards
+        id: set-matrix
+        run: |
+          python3 << 'EOF'
+          import os
+          import yaml
+          import json
+
+          # Discover boards from board.yml files under boards/atmosic
+          boards = []
+          boards_dir = 'boards/atmosic'
+
+          for board_subdir in os.listdir(boards_dir):
+              board_yml_path = os.path.join(boards_dir, board_subdir, 'board.yml')
+              if os.path.isfile(board_yml_path):
+                  with open(board_yml_path, 'r') as f:
+                      try:
+                          board_data = yaml.safe_load(f)
+                          if board_data and 'boards' in board_data:
+                              for board_entry in board_data['boards']:
+                                  board_name = board_entry.get('name')
+                                  if board_name:
+                                      boards.append(f"{board_name}")
+                      except Exception as e:
+                          print(f"Warning: Failed to parse {board_yml_path}: {e}")
+
+          boards.sort()
+          print(f"Discovered {len(boards)} boards:")
+          for board in boards:
+              print(f"  - {board}")
+
+          matrix = {'include': [{'board': b} for b in boards]}
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+          EOF
+
+  prepare:
+    # Populates the Zephyr SDK and west module caches before the build matrix
+    # fans out. Without this, every matrix job starts on a cold cache, downloads
+    # the SDK independently, and all but one of the resulting cache writes is
+    # discarded - a cache entry is only published when the job that created it
+    # finishes, so concurrent jobs cannot share one.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          path: openair
+
+      - name: Set up Python environment
+        run: |
+          python3 -m pip install --user -U pip
+          # patool, requests, semver and tqdm are imported directly by the
+          # 'west sdk' extension command
+          python3 -m pip install --user west patool requests semver tqdm
+
+      - name: Check Zephyr SDK cache
+        id: cache-zephyr-sdk
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/zephyr-sdk-1.0.1
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
+          # Only test for the entry - the matrix jobs do the actual restore
+          lookup-only: true
+
+      - name: Check West modules cache
+        id: cache-west-modules
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ github.workspace }}/zephyr
+            ${{ github.workspace }}/bootloader
+            ${{ github.workspace }}/modules
+            ${{ github.workspace }}/.west
+          key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+          lookup-only: true
+
+      # 'west sdk' is an extension command carried by the zephyr project, so it
+      # needs the modules on disk even when their cache entry already exists.
+      # Only pay for that restore when the SDK has to be installed.
+      - name: Restore closest West modules cache
+        if: steps.cache-west-modules.outputs.cache-hit != 'true' || steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ github.workspace }}/zephyr
+            ${{ github.workspace }}/bootloader
+            ${{ github.workspace }}/modules
+            ${{ github.workspace }}/.west
+          key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-west-modules-
+
+      - name: Initialize West workspace
+        if: steps.cache-west-modules.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ github.workspace }}
+          # If .west directory exists from cache, remove it to reinitialize
+          if [ -d .west ]; then
+            rm -rf .west
+          fi
+          west init -l openair
+          west update
+
+      - name: Save West modules cache
+        if: steps.cache-west-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ github.workspace }}/zephyr
+            ${{ github.workspace }}/bootloader
+            ${{ github.workspace }}/modules
+            ${{ github.workspace }}/.west
+          key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+
+      - name: Install Zephyr SDK
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ github.workspace }}
+          west sdk install --version 1.0.1 -H -t arm-zephyr-eabi
+
+      - name: Save Zephyr SDK cache
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/zephyr-sdk-1.0.1
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
+
+  build:
+    needs: [discover-boards, prepare]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-boards.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          path: openair
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build gperf \
+            ccache dfu-util device-tree-compiler wget \
+            python3-dev python3-pip python3-setuptools python3-tk python3-wheel \
+            xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev \
+            libmagic1
+
+      - name: Set up Python environment
+        run: |
+          python3 -m pip install --user -U pip
+          python3 -m pip install --user west
+
+      - name: Restore Zephyr SDK cache
+        id: cache-zephyr-sdk
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/zephyr-sdk-1.0.1
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
+
+      # The SDK is installed and cached by the 'prepare' job, so a miss here
+      # means the entry was evicted or its save was dropped, not that the SDK
+      # needs installing. Fail with a legible message rather than letting every
+      # scenario fail later with a CMake toolchain error.
+      - name: Verify Zephyr SDK
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        run: |
+          echo "::error::Zephyr SDK cache miss - re-run the 'prepare' job to repopulate it."
+          exit 1
+
+      - name: Cache West modules
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ github.workspace }}/zephyr
+            ${{ github.workspace }}/bootloader
+            ${{ github.workspace }}/modules
+            ${{ github.workspace }}/.west
+          key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-west-modules-
+
+      - name: Initialize West workspace
+        run: |
+          cd ${{ github.workspace }}
+          # If .west directory exists from cache, remove it to reinitialize
+          if [ -d .west ]; then
+            rm -rf .west
+          fi
+          west init -l openair
+          west update
+          west zephyr-export
+
+      - name: Install Python dependencies
+        run: |
+          pip3 install --user -r ${{ github.workspace }}/zephyr/scripts/requirements.txt
+          pip3 install --user -r ${{ github.workspace }}/openair/scripts/requirements.txt
+
+      - name: Build release scenarios for ${{ matrix.board }}
+        id: build
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          import subprocess
+
+          board = '${{ matrix.board }}'
+          workspace = '${{ github.workspace }}'
+
+          passes = [
+              (board, os.environ['TWISTER_TAGS_NORMAL'].split(), 'twister-normal'),
+              (f'{board}@mcuboot', os.environ['TWISTER_TAGS_MCUBOOT'].split(), 'twister-mcuboot'),
+          ]
+
+          selected_count = 0
+          fail_count = 0
+
+          for platform, tag_args, out_dir in passes:
+              cmd = [
+                  'west', 'twister',
+                  '-T', 'openair',
+                  '-p', platform,
+                  *tag_args,
+                  '--build-only',
+                  '-O', out_dir,
+                  '-x=SB_CONFIG_ATM_ARCH=y',
+                  '-x=SB_CONFIG_ATM_ARCH_ERASE_ALL=y',
+                  '-v', '--inline-logs',
+              ]
+
+              print(f"\n{'='*80}")
+              print(f"Running: {' '.join(cmd)}")
+              print(f"{'='*80}\n")
+
+              # Twister exits non-zero when any instance fails; failures are
+              # evaluated from the report instead so partial failures are visible.
+              subprocess.run(cmd, cwd=workspace, check=False)
+
+              report_path = os.path.join(workspace, out_dir, 'twister.json')
+              if not os.path.isfile(report_path):
+                  print(f"⚠️  No twister.json produced for {platform}")
+                  continue
+
+              with open(report_path, 'r') as f:
+                  report = json.load(f)
+
+              for suite in report.get('testsuites', []):
+                  status = suite.get('status')
+                  if status == 'filtered':
+                      continue
+                  selected_count += 1
+                  if status in ('error', 'failed'):
+                      fail_count += 1
+                      print(f"❌ {suite.get('name')} on {suite.get('platform')}: "
+                            f"{suite.get('reason', 'unknown')}")
+
+          success_count = selected_count - fail_count
+
+          print(f"\n{'='*80}")
+          print(f"Release Build Summary: {success_count} succeeded, "
+                f"{fail_count} failed, {selected_count} selected")
+          print(f"{'='*80}\n")
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"selected_count={selected_count}\n")
+              f.write(f"success_count={success_count}\n")
+              f.write(f"fail_count={fail_count}\n")
+
+          # Exit with error only if every selected scenario failed
+          if selected_count > 0 and success_count == 0:
+              exit(1)
+          EOF
+
+      - name: Collect .atm archives
+        if: always() && steps.build.outcome != 'skipped'
+        id: collect
+        env:
+          # Name archives after the release they belong to: on pull_request
+          # that is base_ref (the target branch), since ref_name is '<pr>/merge'
+          # and head_ref is the topic branch.
+          RELEASE_BRANCH: ${{ github.base_ref || github.ref_name }}
+          # Set on pull_request only, to mark archives built from an unmerged PR.
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python3 << 'EOF'
+          import os
+          import re
+          import subprocess
+
+          board = '${{ matrix.board }}'
+          workspace = '${{ github.workspace }}'
+
+          # Artifact names disallow several characters that are legal in branch
+          # names, so keep only characters safe for both filenames and artifacts.
+          branch_safe = re.sub(r'[^A-Za-z0-9._-]', '-', os.environ['RELEASE_BRANCH'])
+          pr_number = os.environ.get('PR_NUMBER', '')
+          pr_suffix = f'-pr{pr_number}' if pr_number else ''
+          board_safe = board.replace('/', '-')
+          archive_name = f'openair-{branch_safe}{pr_suffix}-{board_safe}.tar.gz'
+          archive_path = os.path.join(workspace, archive_name)
+          tar_path = os.path.join(workspace, f'{board_safe}.tar')
+
+          def scenario_of(atm_file):
+              # The instance build directory is the nearest ancestor holding
+              # build.log; its basename is the twister scenario name.
+              d = os.path.dirname(atm_file)
+              while d.startswith(workspace) and len(d) > len(workspace):
+                  if os.path.isfile(os.path.join(d, 'build.log')):
+                      return os.path.basename(d)
+                  d = os.path.dirname(d)
+              return os.path.basename(os.path.dirname(atm_file))
+
+          atm_files = []
+          for out_dir in ('twister-normal', 'twister-mcuboot'):
+              root_dir = os.path.join(workspace, out_dir)
+              for root, _dirs, files in os.walk(root_dir):
+                  for name in files:
+                      if name.endswith('.atm'):
+                          atm_files.append(os.path.join(root, name))
+
+          atm_files.sort()
+
+          for atm_file in atm_files:
+              scenario = scenario_of(atm_file)
+              basename = os.path.basename(atm_file)
+              # The .atm basename carries the board but not the scenario, so
+              # prefix it to keep entries unique within the flat archive.
+              new_name = f'{scenario}-{basename}'
+              print(f"  Adding {basename} -> {new_name}")
+              subprocess.run(
+                  [
+                      'tar', '-rf', tar_path,
+                      '--transform', f's|.*|{new_name}|',
+                      '-C', os.path.dirname(atm_file),
+                      basename,
+                  ],
+                  check=True,
+                  capture_output=True,
+              )
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              if atm_files:
+                  subprocess.run(['gzip', '-f', tar_path], check=True)
+                  os.rename(f'{tar_path}.gz', archive_path)
+                  print(f"Created archive: {archive_name} ({len(atm_files)} .atm files)")
+                  f.write("has_archive=true\n")
+                  f.write(f"archive_name={archive_name}\n")
+                  f.write(f"archive_path={archive_path}\n")
+                  f.write(f"atm_count={len(atm_files)}\n")
+              else:
+                  print("No .atm files were produced")
+                  f.write("has_archive=false\n")
+                  f.write("atm_count=0\n")
+          EOF
+
+      - name: Upload release archive artifact
+        if: always() && steps.collect.outputs.has_archive == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.collect.outputs.archive_name }}
+          path: ${{ steps.collect.outputs.archive_path }}
+          retention-days: 30
+
+      - name: Build summary
+        if: always()
+        run: |
+          echo "## Release Archives: ${{ matrix.board }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scenarios selected:** ${{ steps.build.outputs.selected_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Succeeded:** ${{ steps.build.outputs.success_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Failed:** ${{ steps.build.outputs.fail_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.collect.outputs.has_archive }}" == "true" ]; then
+            ARCHIVE_PATH="${{ steps.collect.outputs.archive_path }}"
+            ARCHIVE_SIZE=$(du -h "$ARCHIVE_PATH" | cut -f1)
+            echo "**Archive:** \`${{ steps.collect.outputs.archive_name }}\` ($ARCHIVE_SIZE)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Archive contents:" >> $GITHUB_STEP_SUMMARY
+            tar -tzf "$ARCHIVE_PATH" | while read file; do
+              echo "- $file" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "⚠️ No .atm files generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  release:
+    needs: build
+    if: always() && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/rel_')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all release archives
+        uses: actions/download-artifact@v8
+        with:
+          path: archives
+          merge-multiple: true
+
+      - name: Publish archives to GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          ARCHIVES=(archives/*.tar.gz)
+          if [ ${#ARCHIVES[@]} -eq 0 ]; then
+            echo "No archives to publish"
+            exit 0
+          fi
+
+          TAG_NAME="build-${{ github.run_number }}"
+          RELEASE_NAME="Build ${{ github.run_number }}"
+
+          if ! gh release view "$TAG_NAME" --repo ${{ github.repository }} > /dev/null 2>&1; then
+            echo "Creating release $TAG_NAME"
+            gh release create "$TAG_NAME" \
+              --repo ${{ github.repository }} \
+              --title "$RELEASE_NAME" \
+              --notes "Automated release archives from workflow run ${{ github.run_number }}<br>Commit: ${{ github.sha }}" \
+              --target ${{ github.sha }}
+          fi
+
+          gh release upload "$TAG_NAME" "${ARCHIVES[@]}" --repo ${{ github.repository }} --clobber

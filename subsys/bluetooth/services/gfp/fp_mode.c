@@ -24,6 +24,9 @@ LOG_MODULE_DECLARE(gfps, CONFIG_ATM_GFPS_LOG_LEVEL);
 
 fp_mode_t cur_mode;
 static fp_mode_switch_cb mode_switch_cb;
+static int64_t paired_mode_uptime;
+
+#define FP_MODE_PAIRED_RPA_GRACE_PERIOD_MS (5LL * SEC_PER_MIN * MSEC_PER_SEC)
 
 #ifdef CONFIG_FAST_PAIR_FMDN
 
@@ -132,6 +135,9 @@ void fp_mode_update(fp_mode_t mode)
 	if (cur_mode != mode) {
 		LOG_DBG("Update mode from %u to %u", cur_mode, mode);
 		cur_mode = mode;
+		if (mode == FP_MODE_PAIRED) {
+			paired_mode_uptime = k_uptime_get();
+		}
 #ifdef CONFIG_FAST_PAIR_FMDN
 		/* Stop power-loss recovery when unprovisioned */
 		if (mode != FP_MODE_PROVISIONED) {
@@ -185,6 +191,20 @@ uint16_t fp_mode_rpa_timeout(void)
 	       ((sys_rand16_get() % FP_RANDOM_FACTOR) + 1);
 }
 
+bool fp_mode_rpa_rotation_allowed(void)
+{
+	if (cur_mode < FP_MODE_PAIRED) {
+		return false;
+	}
+
+	if ((cur_mode == FP_MODE_PAIRED) &&
+	    ((k_uptime_get() - paired_mode_uptime) < FP_MODE_PAIRED_RPA_GRACE_PERIOD_MS)) {
+		return false;
+	}
+
+	return true;
+}
+
 power_loss_recovery_state_t fp_mode_power_loss_recovery_state_get(void)
 {
 #ifdef CONFIG_FAST_PAIR_FMDN
@@ -210,6 +230,23 @@ bool fp_mode_power_loss_recovery_required_adv(fp_mode_t mode)
 #endif
 	return false;
 }
+
+#if defined(CONFIG_ZTEST)
+void fp_mode_test_adv_sync(void)
+{
+	fp_mode_adv_sync(FP_MODE_ADV_SYNC_REASON_MODE_CHANGE);
+}
+
+void fp_mode_test_adv_sync_plr_state(void)
+{
+	fp_mode_adv_sync(FP_MODE_ADV_SYNC_REASON_PLR_STATE_CHANGE);
+}
+
+void fp_mode_test_adv_sync_plr_periodic(void)
+{
+	fp_mode_adv_sync(FP_MODE_ADV_SYNC_REASON_PLR_PERIODIC_TOGGLE);
+}
+#endif /* CONFIG_ZTEST */
 
 #ifdef CONFIG_FAST_PAIR_FMDN
 static void power_loss_recovery_timeout_handler(struct k_work *work)
@@ -311,4 +348,43 @@ bool fp_mode_power_loss_is_periodic(void)
 	return (power_loss_recovery_state == POWER_LOSS_RECOVERY_PERIODIC &&
 		power_loss_recovery_periodic_active);
 }
-#endif
+
+#if defined(CONFIG_ZTEST)
+void fp_mode_test_plr_start(void)
+{
+	fp_mode_power_loss_recovery_start();
+}
+
+void fp_mode_test_plr_stop(void)
+{
+	fp_mode_power_loss_recovery_stop();
+}
+
+bool fp_mode_test_plr_is_periodic(void)
+{
+	return fp_mode_power_loss_is_periodic();
+}
+
+void fp_mode_test_plr_timeout(void)
+{
+	power_loss_recovery_timeout_handler(NULL);
+}
+
+void fp_mode_test_plr_periodic(void)
+{
+	power_loss_recovery_periodic_handler(NULL);
+}
+#endif /* CONFIG_ZTEST */
+#endif /* CONFIG_FAST_PAIR_FMDN */
+
+#if defined(CONFIG_ZTEST)
+void fp_mode_test_set_paired_mode_uptime(int64_t uptime)
+{
+	paired_mode_uptime = uptime;
+}
+
+void fp_mode_test_set_mode(fp_mode_t mode)
+{
+	cur_mode = mode;
+}
+#endif /* CONFIG_ZTEST */

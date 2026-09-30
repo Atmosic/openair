@@ -1,0 +1,66 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  Atmosic ATM PDM controller (DMIC)
+
+  Pins are configured through the pinctrl driver. The pinctrl-0 state must list
+  the PDM clock group first (index 0) and the PDM data group second (index 1),
+  e.g.:
+
+    &pinctrl {
+        pdm0_clk_default: pdm0_clk_default {
+            pinmux = <16 PINMUX_PDM0_CLK>;
+        };
+        pdm0_data_default: pdm0_data_default {
+            pinmux = <13 PINMUX_PDM0_IN>;
+        };
+    };
+
+    &pdm0 {
+        status = "okay";
+        pinctrl-0 = <&pdm0_clk_default &pdm0_data_default>;
+        pinctrl-names = "default";
+    };
+
+compatible: "atmosic,atm-pdm"
+
+include: [base.yaml, pinctrl-device.yaml]
+
+properties:
+  reg:
+    required: true
+    description: |
+      Two reg tuples:
+        [0] PDM APB register block base address and size
+        [1] PDM ping-pong buffer base address and size
+
+  interrupts:
+    required: true
+
+  clocks:
+    required: true
+    description: Audio reference clock used by the PDM digital processor.
+
+  clock-frequency:
+    type: int
+    default: 1000000
+    description: |
+      PDM bit clock frequency in Hz driven to the microphone (500000-4000000).
+      The hardware divider is: pdm_clk_sel = round(aud_clk / clock-frequency) - 1
+      where aud_clk comes from the clocks phandle (e.g. 16 MHz for clk_16M).
+      Valid divider range is sel=3..31, giving 500 kHz to 4 MHz.
+
+  pinctrl-0:
+    required: true
+
+  pinctrl-names:
+    required: true
+
+  mic-bias-gpios:
+    type: phandle-array
+    description: |
+      Optional GPIO that controls the MIC_BIAS power supply for the external
+      PDM microphone. The driver sets this GPIO high on START and low on STOP.
+      If not specified, the microphone is assumed to be always powered.

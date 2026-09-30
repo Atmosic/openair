@@ -1,6 +1,6 @@
-# Copyright (c) Atmosic 2024-2025
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ATM_VENDOR
 	bool "Atmosic Vendor command core and parser library"
@@ -73,6 +73,7 @@ config VND_MALLOC
 
 config VND_IO_CTRL
 	bool "[0xF80A] IO Control - set io pin."
+	select GPIO
 
 config VND_GADC_V2
 	bool "[0xF80B] GADC - set gadc value."
@@ -80,6 +81,7 @@ config VND_GADC_V2
 
 config VND_GPIO_TEST
 	bool "[0xF80E] GPIO Self Test."
+	select GPIO
 
 config VND_COREMARK
 	bool "[0xF810] coremark - get coremark score multiplied by 100."
@@ -98,6 +100,15 @@ config VND_WHILE_ONE
 
 config VND_SET_TX_PWR
 	bool "[0xF814] set max Tx power."
+
+config VND_BYPASS_RX_DC_CAL
+	bool "[0xF815] Bypass RX DC offset calibration on HCI reset."
+	help
+	  When enabled, adds a vendor command (OCF=0x15, OGF=0xF8) that sets
+	  a flag to skip the on-demand RX DC offset calibration triggered on
+	  HCI_reset complete. Intended for production tools (e.g. MPTool) that
+	  manage calibration themselves. Typically selected by
+	  ATM_HCI_RESET_RX_DC_CAL.
 
 config VND_PMU_RADIO_REGR
 	bool "[0xFC32] PMU Radio Register Read."
@@ -127,7 +138,7 @@ config VND_API_SET_MAX_TX_POWER
 
 config VND_API_SET_ADV_TX_POWER
 	bool "Set Advertising Transmitter Power."
-	depends on (SOC_SERIES_ATM34 || SOC_SERIES_ATM53)
+	depends on (SOC_SERIES_ATM34 || SOC_SERIES_ATM5)
 	help
 	  Direct configuration of advertising TX power is not supported on the ATM33 series. Instead, it can be set indirectly through the atm_vendor_set_max_tx_power() API.
 
@@ -136,6 +147,6 @@ config VND_API_SET_CON_TX_POWER
 
 config VND_API_SET_SCAN_CHMAP
 	bool "[0xFFE0] Set Scan Channel Map."
-	depends on (SOC_SERIES_ATM34 || SOC_SERIES_ATM53)
+	depends on (SOC_SERIES_ATM34 || SOC_SERIES_ATM5)
 
 endif # ATM_VENDOR_API

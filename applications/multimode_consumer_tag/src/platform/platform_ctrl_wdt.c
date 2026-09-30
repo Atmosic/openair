@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file platform_ctrl_wdt.c
- *
- * @brief Platform control wdt For Multimode Consumer Tag
- *
- * Copyright (C) Atmosic 2025-2026
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <errno.h>
@@ -33,7 +25,7 @@ LOG_MODULE_DECLARE(multimode_consumer_tag, CONFIG_MULTIMODE_CONSUMER_TAG_LOG_LEV
 #define WDT_MAX_WINDOW_MS 10000
 #define WDT_FEED_INTERVAL K_SECONDS(8)
 
-static struct device const *wdog_dev = DEVICE_DT_GET(DT_NODELABEL(wdog0));
+static struct device const *wdog_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 static int wdt_channel_id;
 
 static void wdt_feed_timer_handler(struct k_timer *timer)
@@ -61,8 +53,8 @@ int platform_ctrl_wdt_init(void)
 	if (!device_is_ready(wdog_dev)) {
 		LOG_ERR("wdog0 not ready");
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
-				     AT_CMD_TAG_ERR_WDOG);
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(), AT_CMD_TAG_ERR_WDOG);
 #endif
 		return -ENODEV;
 	}
@@ -81,8 +73,8 @@ int platform_ctrl_wdt_init(void)
 	if (wdt_channel_id < 0) {
 		LOG_ERR("Watchdog install error: %d", wdt_channel_id);
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
-				     AT_CMD_TAG_ERR_WDOG);
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(), AT_CMD_TAG_ERR_WDOG);
 #endif
 		return -EIO;
 	}
@@ -91,8 +83,8 @@ int platform_ctrl_wdt_init(void)
 	if (ret < 0) {
 		LOG_ERR("Watchdog setup error: %d", ret);
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
-				     AT_CMD_TAG_ERR_WDOG);
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(), AT_CMD_TAG_ERR_WDOG);
 #endif
 		return -EIO;
 	}

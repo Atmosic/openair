@@ -71,4 +71,4 @@ To flash the built images:
 
 .. code-block:: bash
 
-    west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+    west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink [--erase_all]

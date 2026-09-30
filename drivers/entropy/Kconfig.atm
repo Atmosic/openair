@@ -1,7 +1,7 @@
 # Atmosic TRNG configuration
 
-# Copyright (c) 2023 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2023-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ENTROPY_ATM_TRNG
 	bool "Atmosic True Random Number Generator (TRNG) Driver"
@@ -14,6 +14,11 @@ config ENTROPY_ATM_TRNG
 config ENTROPY_ATM_RING_ENTRIES
 	int "Number of entries in ring buffer between ISR and driver methods"
 	default 8
+
+config ENTROPY_ATM_DELAY_MS
+	int "Maximum delay before reporting a failure to gather entropy"
+	default 600 if ATM_RADIO_HAL_MGR
+	default 30
 
 config ENTROPY_ATM_STATS
 	bool "Debug statistics for internal driver operations"

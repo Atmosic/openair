@@ -18,6 +18,13 @@ config RRSP_ADV_TIMEOUT_CS
 	range 0 360000
 	default 0
 
+config RRSP_SUBRATE_TEST
+	bool "Enable LE connection subrating test"
+	select BT_SUBRATING
+	help
+	  Request new subrating parameters after the CS default settings are
+	  configured and register a callback for subrate changed events.
+
 config BTN_FACTORY_RESET
 	bool "Factory reset with long press button for 10s in power on state"
 	help
@@ -46,6 +53,21 @@ config BTN_FAKE_CS_DATA
 	select RAS_PTS_FAKE_CS_DATA
 	help
 	  Press button in connected state to generate fake CS data
+
+config BTN_FORCE_DISABLE_CS
+	bool "Force disable/revert CS function with button"
+	help
+	  Press button in connected state to force disable or revert the CS
+	  function. This option is not supported when CONFIG_BTN_ON_OFF is
+	  enabled.
+	  In RRSP_MMI_STATE_CS_PROC_EN, the CS procedure is disabled first, then
+	  the CS configuration is removed after the procedure disable complete
+	  event, and the reflector role is disabled after the configuration
+	  removed event. In RRSP_MMI_STATE_CS_SETUP_CMP, the CS configuration is
+	  removed directly, then the reflector role is disabled after the
+	  configuration removed event. In RRSP_MMI_STATE_CONNECTED, the CS
+	  reflector role is reverted (re-enabled) by setting default settings
+	  with reflector role enabled.
 
 config RRSP_BUZZER_IND
 	bool "Enable Buzzer indication"

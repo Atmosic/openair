@@ -57,7 +57,7 @@ west build -p always -b <BOARD>@mcuboot openair/applications/atm_tput/tput_centr
 ### Flash Command
 
 ```bash
-west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+west flash --no-rebuild --device <DEVICE_ID> --jlink [--erase_flash]
 ```
 
 ## Configuration

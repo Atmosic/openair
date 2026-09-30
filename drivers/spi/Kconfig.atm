@@ -1,7 +1,7 @@
 # ATM SPI configuration options
 
-# Copyright (c) 2021-2023 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2021-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 menuconfig SPI_ATM
 	bool "Atmosic SPI driver"
@@ -19,5 +19,14 @@ config SPI_ATM_WATCHDOG
 config SPI_ATM_DMA
 	bool "When possible, use DMA for SPI transfers"
 	depends on ATM_DMA && !ATM_DMA_MINIMAL
+
+config SPI_ATM_AUTO_CLK_GATE
+	bool "Automatically gate SPI peripheral clock between transactions"
+	help
+	  Automatically disables the SPI peripheral clock after each
+	  transaction completes and re-enables it before the next transaction
+	  starts. This reduces power consumption during idle periods at the
+	  cost of a small re-enable latency at the beginning of each
+	  transaction.
 
 endif # SPI_ATM

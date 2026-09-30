@@ -5,7 +5,7 @@
  *
  * @brief Secure Assert library
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
  *
  *******************************************************************************
  */
@@ -24,7 +24,8 @@
 void sec_assert(const char *file, int line)
 {
 
-#if defined(CONFIG_SOC_FAMILY_ATM) && defined(SECURE_PROC_ENV)
+#if defined(CONFIG_SOC_FAMILY_ATM) &&                                                              \
+	(defined(SECURE_PROC_ENV) || defined(CONFIG_ATM_SEC_ASSERT_TEST))
 	sec_switch_console();
 #endif
 
@@ -36,8 +37,13 @@ void sec_assert(const char *file, int line)
     }
 #endif
     PRINTF("\n");
+
+#ifdef CONFIG_ATM_SEC_ASSERT_COVERAGE_RETURN
+    return;
+#else
     GLOBAL_INT_STOP();
     __BKPT(0);
     while (1)
 	;
+#endif
 }

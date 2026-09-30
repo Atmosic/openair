@@ -1,6 +1,9 @@
 common:
   sysbuild: true
   harness: ztest
+  depends_on:
+    - i2c
+    - lis2dh
 
 tests:
   applications.sensor_beacon.tests.atm:

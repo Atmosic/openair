@@ -54,7 +54,7 @@ The test suite tests the real DTM 2-wire library implementation by:
 ## Running the Tests
 
 ```bash
-west twister -p <BOARD>@normal/<SOC_SERIES>/ns -T openair/tests/lib/dtm_2wire -s tests.lib.dtm_2wire.atm --device-testing --device-serial /dev/ttyACM1 --device-flash-timeout=210 --west-flash="--device=<DEVICE_ID>,--jlink,--erase_all,--fast_load" -c --extra-args=CONFIG_ATM_EUI_ALLOW_RANDOM=y -v
+west twister -p <BOARD>@normal/<SOC_SERIES>/ns -T openair/tests/lib/dtm_2wire -s tests.lib.dtm_2wire.atm --device-testing --device-serial /dev/ttyACM1 --device-flash-timeout=210 --west-flash="--device=<DEVICE_ID>,--jlink,--erase_all" -c --extra-args=CONFIG_ATM_EUI_ALLOW_RANDOM=y -v
 ```
 
 ## Test Structure

@@ -1,0 +1,22 @@
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  Atmosic CMSDK watchdog with QSPI reset workaround integration.
+
+  This is an extended version of the ARM CMSDK watchdog driver that
+  integrates the QSPI reset workaround. The driver will always
+  poll QSPI REMOTE_STATUS register before watchdog reset to ensure
+  flash is ready for ROM code.
+
+compatible: "atmosic,cmsdk-watchdog"
+
+include: base.yaml
+
+properties:
+  reg:
+    required: true
+
+  clocks:
+    required: true

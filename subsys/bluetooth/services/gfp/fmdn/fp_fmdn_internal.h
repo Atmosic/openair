@@ -185,6 +185,10 @@ typedef struct {
 	uint8_t motion_base_nonce[BCNA_RNDM_NONCE_LEN];
 	/// true once motion_base_nonce has been captured for this session
 	bool motion_base_nonce_set;
+	/// Authentication key captured for Motion Notification authentication in this session
+	uint8_t motion_secret_key[BCNA_AUTH_KEY_MAX_LEN];
+	/// Motion Notification authentication key length; zero means UTP bypass
+	uint16_t motion_secret_key_len;
 	/// challenge valid
 	bool is_challenge_valid;
 	/// secret key
@@ -192,6 +196,15 @@ typedef struct {
 	/// secret key len
 	uint16_t secret_key_len;
 } bcna_conn_ctx_t;
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+/**
+ * @brief Clear the Motion Notification authentication state for a connection.
+ *
+ * @param conn_idx Bluetooth connection index
+ */
+void fp_fmdn_motion_auth_state_clear(uint8_t conn_idx);
+#endif
 
 /// GATT Beacon Action write data header structure
 typedef struct {

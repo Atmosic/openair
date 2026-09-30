@@ -55,6 +55,7 @@ typedef enum {
     ATM_MAC_MGR_PROT_NONE, /*!< No protocol */
     ATM_MAC_MGR_PROT_BLE, /*!< BLE */
     ATM_MAC_MGR_PROT_154, /*!< 15.4 */
+    ATM_MAC_MGR_PROT_TRNG, /*!< Random number generation */
     ATM_MAC_MGR_PROT_FLASH, /*!< Flash operations */
     ATM_MAC_MGR_PROT_CAL, /*!< Periodic calibration */
     ATM_MAC_MGR_PROT_NUM,
@@ -284,6 +285,13 @@ void atm_mac_mgr_handler(void);
  * @note This function may be called from interrupt context.
  */
 void atm_mac_mgr_trigger_deferred(void);
+
+/**
+ * @brief Clear interrupt which triggers deferred start
+ *
+ * @note This function may be called from interrupt context.
+ */
+void atm_mac_mgr_clear_deferred(void);
 
 /**
  * @brief Handle radio manager deferred start interrupt

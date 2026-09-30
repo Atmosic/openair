@@ -19,7 +19,8 @@ config SOC_RESET_HOOK
 
 config ATM_HAL_ENABLE_NSC_IN_RAM
 	bool
-	depends on $(dt_nodelabel_bool_prop,sec_tz,allow_nsc_in_ram)
+	default y
+	depends on $(dt_nodelabel_bool_prop,sec_tz,allow_nsc_in_ram) || ATM_NO_TZ
 	help
 	  Support non-secure callable API relocation to RAM.  This includes
 	  moving performance critical HAL functions to RAM.

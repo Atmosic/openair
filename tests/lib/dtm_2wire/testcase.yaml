@@ -19,3 +19,7 @@ tests:
     timeout: 180
     extra_configs:
       - CONFIG_UU_TEST_OPENAIR="dtm_hci_bridge.c;dtm_mgr.c;dtm_mgr_proc.c"
+  tests.lib.dtm_2wire.atm.simulated_rx:
+    <<: *base_config
+    extra_configs:
+      - CONFIG_DTM_2WIRE_RX_TESTING_SIMULATED=y

@@ -1,6 +1,7 @@
 /*
- * SPDX-License-Identifier: LicenseRef-Atmosic
  * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #pragma once
@@ -37,6 +38,18 @@ int beacon_adv_start(void);
 int beacon_adv_stop(void);
 
 /**
+ * @brief Restart the connectable advertising set after disconnection
+ *
+ * The connectable advertising set (conn_adv_set) stops automatically when a
+ * BLE connection is established.  Call this from the disconnection callback to
+ * make the device connectable again without touching the non-connectable
+ * beacon advertising set (adv_set), which continues running uninterrupted.
+ *
+ * @return 0 on success, negative error code on failure
+ */
+int beacon_conn_adv_restart(void);
+
+/**
  * @brief Update beacon advertisement data
  *
  * @param data Pointer to sensor data to include in advertisement
@@ -57,7 +70,8 @@ int beacon_set_adv_data(void);
 /**
  * @brief Update advertising interval
  *
- * Stops advertising, updates interval parameters, and restarts advertising.
+ * Updates the advertising interval in-place using bt_le_ext_adv_update_param.
+ * The advertising set continues running without being stopped or recreated.
  *
  * @param interval Advertising interval in units of 0.625ms (400-16384)
  * @return 0 on success, negative error code on failure
@@ -74,6 +88,17 @@ int beacon_adv_update_interval(uint32_t interval);
  * @return 0 on success, negative error code on failure
  */
 int beacon_adv_update_device_name(const char *name);
+
+/**
+ * @brief Set advertising interval buffer without updating advertising
+ *
+ * Stores the interval for use by beacon_adv_init(). Intended for settings
+ * loading before Bluetooth is ready.
+ *
+ * @param interval Advertising interval in units of 0.625ms (400-16384)
+ * @return 0 on success, negative error code on failure
+ */
+int beacon_adv_set_interval_value(uint32_t interval);
 
 /**
  * @brief Set device name buffer without updating advertising

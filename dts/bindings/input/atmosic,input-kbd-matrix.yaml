@@ -1,4 +1,5 @@
 # Copyright (c) Atmosic 2025-2026
+#
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
 description: Atmosic keyboard matrix input controller
@@ -13,6 +14,25 @@ properties:
 
     interrupts:
       required: true
+
+    disable-ghost-key:
+        type: boolean
+        description: |
+          Disable the ATM5 keyboard matrix hardware ghost-key detection.
+          This property defaults to false when omitted.
+
+    enable-64khz-scan:
+        type: boolean
+        description: |
+          Enable the ATM5 keyboard matrix 64 kHz scan clock.
+          This property defaults to false when omitted.
+
+    t3-zero-war:
+        type: boolean
+        description: |
+          Enable the ATM33 KSM T3=0 hardware workaround. When enabled,
+          the driver automatically uses T3=1 if any configured KSI mapping
+          uses KSI0; otherwise it uses T3=0.
 
     row0-pin:
         type: int

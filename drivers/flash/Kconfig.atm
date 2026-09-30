@@ -1,6 +1,6 @@
-# Copyright (c) 2023-2025 Atmosic
+# Copyright (c) 2023-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config FLASH_ATM_RUID
 	bool "Read Unique API"
@@ -8,6 +8,16 @@ config FLASH_ATM_RUID
 	depends on !MCUBOOT
 	select FLASH_HAS_EX_OP
 	select FLASH_EX_OP_ENABLED
+
+config FLASH_ATM_MAN_ID
+	bool "Read manufacturer ID API"
+	depends on SOC_FLASH_ATM
+	depends on !MCUBOOT
+	select FLASH_HAS_EX_OP
+	select FLASH_EX_OP_ENABLED
+	help
+	  Expose the manufacturer ID discovered during flash probing through
+	  the FLASH_ATM_EX_OP_MAN_ID extended operation.
 
 choice FLASH_ATM_ABNORMAL_TEST_MODE
 	prompt "Flash abnormal test mode"
@@ -43,6 +53,15 @@ config SOC_FLASH_ATM
 	help
 	  Enable Atmosic external flash driver.
 
+config SOC_FLASH_ATM_BRINGUP_API
+	bool "Expose the external flash bring-up sequence"
+	depends on SOC_FLASH_ATM
+	select ATM_SPI
+	help
+	  Expose flash_atm_bringup(), which resets and probes the external flash
+	  and programs the AHB bridge. Needed by images that run before the flash
+	  has been configured by the ROM or a bootloader.
+
 config SOC_FLASH_ATM_USE_BREAK_IN
 	bool "Allow the use of Atmosic flash break-in HW support if available"
 	default y
@@ -71,6 +90,18 @@ config SOC_FLASH_ATM_RRAM
 	default y
 	help
 	  Enable Atmosic RRAM driver.
+
+config SOC_FLASH_ATM_RRAM_USE_DMA
+	bool "Program RRAM with the DMA engine"
+	depends on SOC_FLASH_ATM_RRAM
+	select ATM_DMA
+	help
+	  Issue RRAM writes and erases as DMA transfers instead of a CPU store
+	  loop. A DMA transfer cannot be interrupted, so it holds the AHB bus for
+	  the whole operation and delays interrupt service, which realtime
+	  applications such as the BLE link controller cannot tolerate. Only
+	  enable this for standalone programming images that run with nothing
+	  else on the core.
 
 config SOC_FLASH_ATM_USE_SW_MANAGED_ERASE
 	bool "Manage external flash erase with software"

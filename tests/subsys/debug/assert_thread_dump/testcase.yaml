@@ -1,0 +1,29 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+common:
+  tags:
+    - debug
+    - assert_thread_dump
+  sysbuild: true
+  timeout: 60
+  harness: console
+  harness_config:
+    type: multi_line
+    ordered: true
+    regex:
+      - "=== ASSERT: Thread Dump ==="
+      - "pender"
+      - "PC=0x[0-9a-f]{8} LR=0x[0-9a-f]{8} SP=0x[0-9a-f]{8}"
+      - "IPSR: 0x[0-9a-f]{8}"
+      - "=== END Thread Dump ==="
+
+tests:
+  tests.subsys.debug.assert_thread_dump.atm: {}
+  tests.subsys.debug.assert_thread_dump.atm.assert_info:
+    extra_configs:
+      - CONFIG_TEST_TRIGGER_ASSERT_INFO=y
+  tests.subsys.debug.assert_thread_dump.atm.k_panic:
+    extra_configs:
+      - CONFIG_TEST_TRIGGER_K_PANIC=y

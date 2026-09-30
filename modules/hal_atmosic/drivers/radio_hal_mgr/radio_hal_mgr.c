@@ -145,3 +145,8 @@ void atm_mac_mgr_trigger_deferred(void)
 {
     NVIC_SetPendingIRQ(MGR_DEFER_IRQn);
 }
+
+void atm_mac_mgr_clear_deferred(void)
+{
+    NVIC_ClearPendingIRQ(MGR_DEFER_IRQn);
+}

@@ -1,14 +1,9 @@
-/**
- *******************************************************************************
+/*
+ * Copyright (c) 2020-2026 Atmosic
  *
- * @file atm_vendor.c
- *
- * @brief Atmosic Vendor Command Core
- *
- * Copyright (C) Atmosic 2020-2025
- *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
+
 #ifdef CONFIG_SOC_FAMILY_ATM
 #include <zephyr/kernel.h>
 #include <zephyr/arch/cpu.h>
@@ -16,6 +11,11 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/init.h>
 #include <zephyr/sys/reboot.h>
+#if CONFIG_PM
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/state.h>
+#include <zephyr/pm/policy.h>
+#endif
 #include "atm_hci_uart.h"
 #endif
 #include <inttypes.h>
@@ -58,8 +58,12 @@
 #define CONFIG_BT_HCI_RAW_CMD_EXT
 #endif
 
-#ifdef CFG_VND_IO_CTRL
+#if defined(CFG_VND_IO_CTRL) || defined(CFG_VND_GPIO_TEST)
+#ifdef CONFIG_SOC_FAMILY_ATM
+#include <zephyr/drivers/gpio.h>
+#else
 #include "atm_gpio.h"
+#endif
 #endif
 
 #if defined(CFG_VND_TAG_RD_V1) || defined(CFG_VND_TAG_RD_V2)
@@ -80,7 +84,9 @@
 #endif
 
 #ifdef CFG_VND_PSM
+#ifndef CONFIG_SOC_FAMILY_ATM
 #include "pseq.h"
+#endif
 #endif
 
 #ifdef CFG_NONRF_HARV
@@ -109,6 +115,10 @@
 
 #ifdef CONFIG_SOC_FAMILY_ATM
 LOG_MODULE_REGISTER(atm_vendor, CONFIG_ATM_HCI_UART_LOG_LEVEL);
+#ifdef CFG_VND_BYPASS_RX_DC_CAL
+/* Flag set by BYPASS_RX_DC_CAL vendor command to skip calibration on reset */
+static bool rx_dc_cal_bypass;
+#endif
 #else
 static uint8_t const AG_READY_EVT[] = {H4_MSG_LC_HCI_EVT, HCI_EVT_VENDOR, 0x06,
     SEVT_DUT_READY, 'A', 'T', 'M', 'F', 'G'};
@@ -760,6 +770,29 @@ static void vendor_gadc_cmp_handler(uint8_t **bufptr, uint32_t *size)
 }
 #endif // CONFIG_GADC_V1 || CONFIG_GADC_V2
 
+#if defined(CONFIG_SOC_FAMILY_ATM) && (defined(CFG_VND_IO_CTRL) || defined(CFG_VND_GPIO_TEST))
+/* Map absolute pin to Zephyr GPIO device (16 pins per bank). */
+static bool atm_io_ctrl_get_dev(uint8_t abs_pin, const struct device **dev, gpio_pin_t *local_pin)
+{
+	static const struct device *const gpio_devs[] = {
+		DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0)),
+		DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1)),
+		DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio2)),
+		DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio3)),
+	};
+	uint8_t bank = abs_pin / 16;
+
+	if (bank >= ARRAY_SIZE(gpio_devs) || !gpio_devs[bank]) {
+		return false;
+	}
+
+	*dev = gpio_devs[bank];
+	*local_pin = abs_pin % 16;
+
+	return device_is_ready(*dev);
+}
+#endif /* CONFIG_SOC_FAMILY_ATM && (CFG_VND_IO_CTRL || CFG_VND_GPIO_TEST) */
+
 #ifdef CFG_VND_IO_CTRL
 static void vendor_io_handler(uint8_t const *buf)
 {
@@ -771,7 +804,29 @@ static void vendor_io_handler(uint8_t const *buf)
 // Handle IO control HCI command
 static void io_control(void)
 {
-    switch (dat.io_cmd.op) {
+#ifdef CONFIG_SOC_FAMILY_ATM
+	const struct device *dev;
+	gpio_pin_t local_pin;
+
+	if (!atm_io_ctrl_get_dev(dat.io_cmd.io, &dev, &local_pin)) {
+		return;
+	}
+	switch (dat.io_cmd.op) {
+	case IO_CMD_OP_SETUP: {
+		gpio_pin_configure(dev, local_pin, dat.io_cmd.par ? GPIO_OUTPUT : GPIO_INPUT);
+	} break;
+	case IO_CMD_OP_READ: {
+		int val = gpio_pin_get(dev, local_pin);
+		dat.io_cmd.par = (val > 0);
+	} break;
+	case IO_CMD_OP_WRITE: {
+		gpio_pin_set(dev, local_pin, dat.io_cmd.par);
+	} break;
+	default: {
+	} break;
+	}
+#else
+	switch (dat.io_cmd.op) {
 	case IO_CMD_OP_SETUP: {
 	    atm_gpio_setup(dat.io_cmd.io);
 	    if (dat.io_cmd.par) {
@@ -788,7 +843,8 @@ static void io_control(void)
 	} break;
 	default: {
 	} break;
-    }
+	}
+#endif /* CONFIG_SOC_FAMILY_ATM */
 }
 
 static void vendor_io_cmp_handler(uint8_t **bufptr, uint32_t *size)
@@ -805,6 +861,26 @@ static bool gpio_self_test(uint8_t input_io, uint8_t output_io)
 {
     bool test_pass = true;
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+    const struct device *in_dev, *out_dev;
+    gpio_pin_t in_pin, out_pin;
+
+    if (!atm_io_ctrl_get_dev(input_io, &in_dev, &in_pin) ||
+	!atm_io_ctrl_get_dev(output_io, &out_dev, &out_pin)) {
+	    return false;
+    }
+    gpio_pin_configure(in_dev, in_pin, GPIO_INPUT);
+    gpio_pin_configure(out_dev, out_pin, GPIO_OUTPUT);
+    gpio_pin_set(out_dev, out_pin, 0);
+    if (gpio_pin_get(in_dev, in_pin)) {
+	    test_pass = false;
+    }
+    gpio_pin_set(out_dev, out_pin, 1);
+    if (!gpio_pin_get(in_dev, in_pin)) {
+	    test_pass = false;
+    }
+    gpio_pin_configure(out_dev, out_pin, GPIO_INPUT);
+#else
     atm_gpio_setup(input_io);
     atm_gpio_setup(output_io);
 #ifdef PIN_UART1_TX
@@ -829,6 +905,7 @@ static bool gpio_self_test(uint8_t input_io, uint8_t output_io)
 	PINMUX_UART_SET(1, TX);
     }
 #endif
+#endif /* CONFIG_SOC_FAMILY_ATM */
     DEBUG_TRACE("input: %d output: %d pass:%d", input_io, output_io, test_pass);
     return test_pass;
 }
@@ -1089,11 +1166,56 @@ static void vendor_psm_handler(uint8_t const *buf)
     dat.psm_cmd.psm_mode = buf[0];
 }
 
+#ifdef CONFIG_SOC_FAMILY_ATM
+static void vendor_psm_config(uint8_t cmdpsm)
+{
+#ifdef CONFIG_PM
+	switch (cmdpsm) {
+	case PSM_DEEP:
+		LOG_DBG("PSM_DEEP: forcing PM_STATE_SUSPEND_TO_IDLE");
+#ifndef CONFIG_COVERAGE
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+#endif
+		break;
+
+	case PSM_RETAIN:
+		/* Force PM_STATE_SUSPEND_TO_RAM */
+		LOG_DBG("PSM_RETAIN: forcing PM_STATE_SUSPEND_TO_RAM");
+#ifndef CONFIG_COVERAGE
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+#endif
+		break;
+
+	case PSM_HIBERNATE:
+		/* Force PM_STATE_SOFT_OFF with substate 0 */
+		LOG_DBG("PSM_HIBERNATE: forcing PM_STATE_SOFT_OFF substate 0");
+#ifndef CONFIG_COVERAGE
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, 0);
+#endif
+		break;
+
+	case PSM_SOC_OFF:
+		/* Force PM_STATE_SOFT_OFF with substate 1 */
+		LOG_DBG("PSM_SOC_OFF: forcing PM_STATE_SOFT_OFF substate 1");
+#ifndef CONFIG_COVERAGE
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, 1);
+#endif
+		break;
+
+	case PSM_NONE:
+	default:
+		break;
+	}
+#endif /* CONFIG_PM */
+}
+#endif /* CONFIG_SOC_FAMILY_ATM */
+
 static uint8_t cmd_psm;
 
 static void vendor_psm_cmp_handler(uint8_t **bufptr, uint32_t *size)
 {
     init_hci_event(PSM_CMD_OCF, PSM_CMD_OGF, 1, HCI_EVT_SUCCESS, bufptr, size);
+#ifndef CONFIG_SOC_FAMILY_ATM
     uint8_t pgse = pseq_get_sleep_enable();
     hcievent_buffer[7] = pgse;
     if ((dat.psm_cmd.psm_mode > pgse) ||
@@ -1102,11 +1224,13 @@ static void vendor_psm_cmp_handler(uint8_t **bufptr, uint32_t *size)
 	SET_HCI_EVT_STATUS(HCI_EVT_ERROR);
 	return;
     }
-
+#endif
     switch (dat.psm_cmd.psm_mode) {
 	case PSM_NONE: {
 	    cmd_psm = dat.psm_cmd.psm_mode;
+#ifndef CONFIG_SOC_FAMILY_ATM
 	    uart_set_park_state(UART_UNPARK);
+#endif
 	} break;
 
 	case PSM_DEEP:
@@ -1114,7 +1238,9 @@ static void vendor_psm_cmp_handler(uint8_t **bufptr, uint32_t *size)
 	case PSM_HIBERNATE:
 	case PSM_SOC_OFF: {
 	    cmd_psm = dat.psm_cmd.psm_mode;
+#ifndef CONFIG_SOC_FAMILY_ATM
 	    uart_set_park_state(UART_PARK);
+#endif
 	} break;
 
 	default: {
@@ -1122,6 +1248,9 @@ static void vendor_psm_cmp_handler(uint8_t **bufptr, uint32_t *size)
 	    SET_HCI_EVT_STATUS(HCI_EVT_ERROR);
 	} break;
     };
+#ifdef CONFIG_SOC_FAMILY_ATM
+    vendor_psm_config(cmd_psm);
+#endif
 }
 #endif
 
@@ -1261,6 +1390,22 @@ static void vendor_settxpwr_cmp_handler(uint8_t **bufptr, uint32_t *size)
 #endif
 
 #ifdef CONFIG_BT_HCI_RAW_CMD_EXT
+#ifdef CFG_VND_BYPASS_RX_DC_CAL
+static void vendor_bypass_rx_dc_cal_handler(uint8_t const *buf)
+{
+    ARG_UNUSED(buf);
+    rx_dc_cal_bypass = true;
+    LOG_DBG("RX DC cal on HCI reset bypassed");
+}
+
+static void vendor_bypass_rx_dc_cal_cmp_handler(uint8_t **bufptr,
+    uint32_t *size)
+{
+    init_hci_event(BYPASS_RX_DC_CAL_CMD_OCF, BYPASS_RX_DC_CAL_CMD_OGF, 0,
+	HCI_EVT_SUCCESS, bufptr, size);
+}
+#endif
+
 static void vendor_exit_vendor_mode_handler(uint8_t const *buf)
 {
     memset(&dat, 0, sizeof(dat));
@@ -1391,6 +1536,11 @@ static struct vendor_handler const vendor_handler_tab[] = {
 #ifdef CFG_VND_SET_TX_PWR
     {SET_TX_PWR_CMD_OCF, SET_TX_PWR_CMD_OGF, SET_TX_PWR_CMD_LEN, true,
 	vendor_settxpwr_handler, vendor_settxpwr_cmp_handler},
+#endif
+#ifdef CFG_VND_BYPASS_RX_DC_CAL
+    {BYPASS_RX_DC_CAL_CMD_OCF, BYPASS_RX_DC_CAL_CMD_OGF,
+	BYPASS_RX_DC_CAL_CMD_LEN, true, vendor_bypass_rx_dc_cal_handler,
+	vendor_bypass_rx_dc_cal_cmp_handler},
 #endif
     {EXIT_VENDOR_CMD_OCF, EXIT_VENDOR_CMD_OGF, EXIT_VENDOR_CMD_LEN, true,
 	vendor_exit_vendor_mode_handler, vendor_exit_vendor_mode_cmp_handler},
@@ -1607,6 +1757,13 @@ static int sys_vendor_init(void)
 }
 SYS_INIT(sys_vendor_init, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEVICE);
 #endif // CONFIG_BT_HCI_RAW_CMD_EXT
+
+#ifdef CFG_VND_BYPASS_RX_DC_CAL
+bool atm_vendor_rx_dc_cal_is_bypassed(void)
+{
+    return rx_dc_cal_bypass;
+}
+#endif
 
 void atm_vendor_init(void)
 {

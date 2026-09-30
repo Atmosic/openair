@@ -12,6 +12,8 @@ tests:
       type: one_line
       regex:
         - "Booting Zephyr OS"
+    tags:
+      - openair_release
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
   samples.bluetooth.hci_uart.atm.mcuboot:
@@ -37,6 +39,7 @@ tests:
         - "Booting Zephyr OS"
     tags:
       - mcuboot
+      - openair_release_mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y

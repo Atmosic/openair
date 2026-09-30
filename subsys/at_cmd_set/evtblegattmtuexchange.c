@@ -36,6 +36,13 @@ static void mtu_exchange_evt_handler(uint8_t ch, void const *evt_data, uint16_t 
 	at_cmd_resp(ch, at_all, evt_cmd, 0, EVT_RSP_NUM, evt->idx, evt->mtu);
 }
 
+#ifdef CONFIG_ZTEST
+void at_cmd_evt_mtu_exchange_test_handler(uint8_t ch, void const *evt_data, uint16_t evt_data_len)
+{
+	mtu_exchange_evt_handler(ch, evt_data, evt_data_len);
+}
+#endif /* CONFIG_ZTEST */
+
 void at_cmd_evt_mtu_exchange(uint8_t ch, uint8_t idx, uint16_t mtu)
 {
 	at_cmd_mtu_exchange_evt_t evt = {
@@ -65,6 +72,13 @@ static void at_cmd_gatt_mtu_updated(struct bt_conn *conn, uint16_t tx, uint16_t 
 
 	LOG_DBG("conn not found in tracking array, MTU update ignored");
 }
+
+#ifdef CONFIG_ZTEST
+void at_cmd_gatt_mtu_updated_test(struct bt_conn *conn, uint16_t tx, uint16_t rx)
+{
+	at_cmd_gatt_mtu_updated(conn, tx, rx);
+}
+#endif /* CONFIG_ZTEST */
 
 static struct bt_gatt_cb at_cmd_gatt_cb = {
 	.att_mtu_updated = at_cmd_gatt_mtu_updated,

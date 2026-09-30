@@ -10,6 +10,7 @@ menuconfig ATM_MCUMGR
 	select ZCBOR
 	select MCUMGR
 	select STREAM_FLASH
+	select FLASH_MAP
 	select IMG_MANAGER
 	select FLASH
 	select MCUMGR_GRP_IMG

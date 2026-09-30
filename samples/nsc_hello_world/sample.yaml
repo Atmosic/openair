@@ -12,7 +12,6 @@ common:
       - "Hello from Secure World"
   sysbuild: true
 tests:
-  sample.nsc_hello_world: {}
   samples.nsc_hello_world.atm:
     extra_args:
       - SB_CONFIG_SPE=y

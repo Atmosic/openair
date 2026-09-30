@@ -9,3 +9,6 @@ config ATM_HW_CFG
 	default y if ENTROPY_ATM_TRNG
 	default y if PM
 	select ATM_RESET
+	# hw_cfg_init() applies the journalled workarounds and PMU configuration
+	select ATM_WORKAROUNDS
+	select ATM_PMU

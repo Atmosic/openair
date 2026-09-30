@@ -805,18 +805,27 @@ class DevStreeParser:  # pylint: disable=too-many-instance-attributes
             "ota_staging",
             "EXT_FLASH_OTA_STAGING",
         )
-        # Flash app (NSPE or APP) in slot 2 partition
+        # Flash app (NSPE or APP) and trailer live inside slot2_partition (split_img only)
         slot2_partition = utils_get_node_by_lable(flash0, "slot2_partition")
         if slot2_partition:
+            # SLOT2_IMG from slot2_partition: full image-2 primary slot
+            # (APP or NS_APP + SLOT2_TRAILER) used by mcuboot
+            self._parse_partition(
+                flash0, "slot2_partition", flash0_start, "slot2_img", "SLOT2_IMG"
+            )
             app_label = "app_partition" if self.no_spe else "nspe_partition"
             attr_prefix = "APP" if self.no_spe else "NS_APP"
             self._parse_partition(
-                flash0, app_label, flash0_start, "nspe/app", attr_prefix
+                slot2_partition, app_label, flash0_start, "nspe/app", attr_prefix
             )
-        # split flash image in slot2 image trailer
-        self._parse_partition(
-            flash0, "slot2_trailer", flash0_start, "slot2_trailer", "SLOT2_TRAILER"
-        )
+            # slot2_trailer is a child of slot2_partition
+            self._parse_partition(
+                slot2_partition,
+                "slot2_trailer",
+                flash0_start,
+                "slot2_trailer",
+                "SLOT2_TRAILER",
+            )
         # NSPE or APP STAGING from slot3_partition
         if self.no_spe:
             self._parse_partition(

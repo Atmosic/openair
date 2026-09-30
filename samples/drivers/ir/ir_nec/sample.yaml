@@ -1,0 +1,15 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+sample:
+  name: ATM NEC IR Blaster Sample
+tests:
+  samples.drivers.ir.ir_nec.atm:
+    sysbuild: true
+    depends_on: ir
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "IR NEC sample complete"

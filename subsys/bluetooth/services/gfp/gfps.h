@@ -44,10 +44,6 @@ typedef struct gfps_hdlrs_s {
 	fp_fmdn_ring_action_cb ring_action_cb;
 	/// FP FMDN battery status callback function
 	fp_fmdn_battery_cb battery_status_cb;
-#ifdef CONFIG_FMDN_REVERSE_RINGING
-	/// FP FMDN reverse ringing action callback function
-	fp_fmdn_reverse_ringing_action_cb reverse_ringing_action_cb;
-#endif
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 	/// FP FMDN utp owner connected callback function
 	fp_fmdn_utp_owner_conn_cb utp_owner_conn_cb;

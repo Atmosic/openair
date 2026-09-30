@@ -25,7 +25,7 @@ By default the builds use ``uart0`` with the following settings:
 * Baudrate: 460800 bit/s
 * Hardware Flow Control (RTS/CTS) enabled
 
-**ATM33/ATM34:**
+**ATM33/ATM34/ATM5:**
 
 * Baudrate: 2 Mbit/s
 * Hardware Flow Control (RTS/CTS) enabled

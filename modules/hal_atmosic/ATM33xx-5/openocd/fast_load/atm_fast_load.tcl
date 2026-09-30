@@ -18,6 +18,46 @@ set FL_RAM_OP_FW_LOAD 0x01
 set FL_RAM_OP_ERASE 0x02
 set FL_RAM_OP_VERIFY 0x04
 
+# The Zephyr agent is linked wherever the build placed it and enters through
+# its own reset handler, so it records those addresses in the generated
+# atm_fast_load.cfg. The legacy agent has neither, which is what tells the two
+# of them apart.
+proc fl_ram_zephyr_image {} {
+    return [info exists ::_FL_RAM_RESET_HANDLER_PROGRAM]
+}
+
+# Tracing for the Zephyr handoff. The core is running the agent rather than the
+# ROM by the time anything can go wrong, so these are the only report of where
+# it ended up. They go to the OpenOCD log with echo, because a failing run never
+# gets as far as the stdout the caller collects afterwards.
+proc fl_ram_trace_enabled {} {
+    return [info exists ::env(DEBUG)]
+}
+
+proc fl_ram_report_cpu { tag } {
+    echo [format "<fast_load> %s: pc=%s sp=%s lr=%s xPSR=%s" $tag \
+	[lindex [reg pc] 2] [lindex [reg sp] 2] [lindex [reg lr] 2] \
+	[lindex [reg xPSR] 2]]
+}
+
+proc fl_ram_trace_cpu { tag } {
+    if {![fl_ram_trace_enabled]} {
+	return
+    }
+    fl_ram_report_cpu $tag
+}
+
+proc fl_ram_trace_mem { tag addr words } {
+    if {![fl_ram_trace_enabled]} {
+	return
+    }
+    set dump {}
+    for {set i 0} {$i < $words} {incr i} {
+	lappend dump [format 0x%08x [mrw [expr {$addr + 4 * $i}]]]
+    }
+    echo [format "<fast_load> %s @0x%08x: %s" $tag $addr [join $dump " "]]
+}
+
 proc fl_ram_program_page { fn } {
     if {[info exists ::env(DEBUG)]} {
 	puts "<fast_load> program sector ..."
@@ -26,8 +66,9 @@ proc fl_ram_program_page { fn } {
     halt
 
     global _FL_RAM_PLATFORM
-    if { $_FL_RAM_PLATFORM == "ATM22xx-x0x" ||
-	$_FL_RAM_PLATFORM == "ATM22xx-x1x" } {
+    if { ![fl_ram_zephyr_image] &&
+	($_FL_RAM_PLATFORM == "ATM22xx-x0x" ||
+	$_FL_RAM_PLATFORM == "ATM22xx-x1x") } {
 	bp 0x2f8 2 hw
 	resume; sleep 1 busy; wait_halt
 	rbp 0x2f8
@@ -107,8 +148,15 @@ proc fl_ram_get_program_wait_timeout { opcode flash_type} {
     }
 
     global FLASH_${flash_name}_SEC_ERASE_TIME_4K
+    global FLASH_${flash_name}_SEC_ERASE_TIME_${block}K
     if { [expr { $opcode & $FL_RAM_OP_ERASE }] } {
-	set etime [set FLASH_${flash_name}_SEC_ERASE_TIME_4K]
+	# a standalone erase states its length in 4K sectors, while an erase
+	# paired with a write covers the sector that write goes to
+	if { $opcode == $FL_RAM_OP_ERASE } {
+	    set etime [set FLASH_${flash_name}_SEC_ERASE_TIME_4K]
+	} else {
+	    set etime [set FLASH_${flash_name}_SEC_ERASE_TIME_${block}K]
+	}
 	set FL_RAM_PROG_WAIT_TIME [expr {$FL_RAM_PROG_WAIT_TIME + $etime}]
     }
 
@@ -180,7 +228,7 @@ proc fl_ram_erase { region_size region_start {er_sector_size 4096} } {
 	}
 
 	set er_length [expr {$region_size / $er_sector_size}]
-	if { [expr {$region_size % $er_sector_size}] } {
+	if { $region_size % $er_sector_size } {
 	    incr er_length 1
 	}
 
@@ -220,15 +268,16 @@ proc fl_ram_erase { region_size region_start {er_sector_size 4096} } {
     # set write flash address
     mww [expr {$fl_ram_buf0_addr + 4}] $region_start
 
+    # Keep OpenOCD from accessing AHB while an RRAM DMA transfer is active.
+    poll off
     fl_ram_program_page $fl_ram_kick_program
 
     after [expr {$er_dft_wait_time * 10 }]
     set fl_owner_er_retry 100
     set target_ram_addr [expr {$fl_ram_buf0_addr + 8}]
-    poll off
     while { $fl_owner_er_retry > 0 } {
 	if {[catch {set fl_ram_ret_owner [mrb $fl_ram_buf0_addr]} err]} {
-	    puts "Get fl_ram_ret_owner failed, retry"
+	    puts "Get fl_ram_ret_owner failed, retry: $err"
 	    after 200
 	    incr fl_owner_er_retry -1
 	    continue
@@ -373,7 +422,7 @@ proc fl_ram_write { image region_start opcode } {
 	set fl_owner_rd_retry 100
 	while { $fl_owner_rd_retry > 0 } {
 	    if {[catch {set fl_ram_ret_owner [mrb $fl_ram_buf0_addr]} err]} {
-		puts "Get fl_ram_ret_owner failed, retry"
+		puts "Get fl_ram_ret_owner failed, retry: $err"
 		after 50
 		incr fl_owner_rd_retry -1
 		continue
@@ -512,9 +561,6 @@ proc fl_ram_init {} {
 proc atm_fast_load { image {opcode 0x01} {region_start 0x0} } {
     adapter speed 4000
 
-    # wait fl_ram ready
-    sleep 50
-
     global _FL_RAM_BLOCK_INFO
     global FL_RAM_VER_OFS
     set fl_ram_block_info $_FL_RAM_BLOCK_INFO
@@ -547,16 +593,31 @@ proc atm_fast_load { image {opcode 0x01} {region_start 0x0} } {
 
     set FL_RAM_ARM_INSTR_MODE_MASK 0xFFFFFFFE
     set fl_ram_kick_program $_FL_RAM_KICK_PROGRAM
-    set fn_kick [mrw [expr {$fl_ram_block_info + $FL_RAM_KICK_PROG_OFS}]]
-    if {[expr {$fn_kick & $FL_RAM_ARM_INSTR_MODE_MASK}] != \
-	$fl_ram_kick_program} {
-	error [format "<fast_load> wrong kick program: 0x%x" $fn_kick]
+    set fl_ram_ready_retry 10
+    while {1} {
+	if {[fl_ram_zephyr_image] && [fl_ram_trace_enabled]} {
+	    fl_ram_trace_mem "nego" $fl_ram_block_info 8
+	    echo [format "<fast_load> expect kick 0x%08x" $fl_ram_kick_program]
+	}
+	set fn_kick [mrw [expr {$fl_ram_block_info + $FL_RAM_KICK_PROG_OFS}]]
+	if {($fn_kick & $FL_RAM_ARM_INSTR_MODE_MASK) == \
+	    $fl_ram_kick_program} {
+	    break
+	}
+	if {!$fl_ram_ready_retry} {
+	    error [format "<fast_load> wrong kick program: 0x%x" $fn_kick]
+	}
+	resume
+	sleep 100
+	halt
+	incr fl_ram_ready_retry -1
     }
 
     fl_ram_init
 
     global FL_RAM_OP_ERASE
     if { $opcode == $FL_RAM_OP_ERASE } {
+	# a standalone erase states the region size where an image would go
 	fl_ram_erase $image $region_start
     } else {
 	fl_ram_write $image $region_start $opcode
@@ -566,10 +627,69 @@ proc atm_fast_load { image {opcode 0x01} {region_start 0x0} } {
 proc atm2x_load_ram_image { image } {
     global _FL_RAM_PLATFORM
     global _FL_RAM_STACK_TOP
+    # The last point in main_init() the ROM is guaranteed to reach: it is
+    # done initializing, and has yet to take either of the branches that
+    # hand the CPU to an application, whether that is an NVM image (which
+    # never reaches external_flash_init()) or a flash one (which
+    # external_flash_init() boots instead of returning).
     if { $_FL_RAM_PLATFORM == "ATM22xx-x1x" } {
-	set external_flash_init 0x0000601d
+	set external_flash_init 0x0000600c
     } else {
 	set external_flash_init 0x00006b18
+    }
+
+    if {[fl_ram_zephyr_image]} {
+	global _FL_RAM_VECTOR_TABLE
+	global _FL_RAM_RESET_HANDLER_PROGRAM
+	global _FL_RAM_BLOCK_INFO
+
+	# Steal the CPU from the ROM before it hands it to whatever is
+	# already programmed. Unlike erasing the boot sector, this preserves
+	# an image a previous sysbuild domain has written (ex: MCUboot).
+	reset halt
+	fl_ram_trace_cpu "reset halt"
+	bp $external_flash_init 2 hw
+	resume; sleep 1
+	# A ROM that never reaches the breakpoint leaves nothing but a halt
+	# timeout to go on, so say where the core stopped instead.
+	if {[catch {wait_halt} err]} {
+	    catch {halt}
+	    rbp $external_flash_init
+	    fl_ram_report_cpu "ROM handoff failed"
+	    error $err
+	}
+	rbp $external_flash_init
+	fl_ram_trace_cpu "hijacked"
+
+	# The image brings its own vector table and stack, and the ROM is never
+	# returned to, so neither the fixed load address nor the stack
+	# relocation of the legacy agent applies.
+	load_image $image $_FL_RAM_VECTOR_TABLE
+	fl_ram_trace_mem "vectors" $_FL_RAM_VECTOR_TABLE 8
+	fl_ram_trace_mem "nego pre-run" $_FL_RAM_BLOCK_INFO 8
+	reg sp $_FL_RAM_STACK_TOP
+	if {[fl_ram_trace_enabled]} {
+	    echo [format "<fast_load> entry 0x%08x sp 0x%08x" \
+		[expr {$_FL_RAM_RESET_HANDLER_PROGRAM | 1}] $_FL_RAM_STACK_TOP]
+	}
+	resume [expr {$_FL_RAM_RESET_HANDLER_PROGRAM | 1}]
+
+	# Let the kernel and the fl_ram driver finish initializing before the
+	# host starts reading the negotiation block.
+	sleep 400
+
+	# Report where the agent ended up, so an image that faults early is
+	# distinguishable from one that never ran at all. Halting the core to
+	# read it out is only safe to spend the time on when tracing is asked
+	# for.
+	if {[fl_ram_trace_enabled]} {
+	    halt
+	    fl_ram_trace_cpu "after run"
+	    fl_ram_trace_mem "nego post-run" $_FL_RAM_BLOCK_INFO 8
+	    resume
+	    sleep 100
+	}
+	return
     }
 
     load_ram_image $external_flash_init $image 0x2000C000

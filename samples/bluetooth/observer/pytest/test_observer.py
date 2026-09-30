@@ -1,5 +1,5 @@
 # Copyright (C) 2025-2026 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 """
 Pytest tests for Bluetooth Observer sample.
@@ -10,6 +10,7 @@ and detect beacon advertisements.
 
 import logging
 import re
+import time
 
 import pytest  # pylint: disable=import-error
 
@@ -19,6 +20,8 @@ from twister_harness.exceptions import (  # pylint: disable=import-error
 )
 
 logger = logging.getLogger(__name__)
+
+PYTEST_TIMEOUT_GRACE_SECONDS = 5.0
 
 
 def _hex_str_to_bytes(hex_str):
@@ -116,23 +119,33 @@ def _parse_hci_evt_line(line):
 
 def _parse_device_line(line):
     """
-    Parse [DEVICE] line to extract AD evt type and PHY information.
+    Parse [DEVICE] line to extract device information.
 
     Args:
         line: [DEVICE] line
 
     Returns:
-        dict: Dictionary with 'ad_evt_type' and 'phy_info', or None if not a valid line
+        dict: Device information, or None if not a valid line
     """
     if "[DEVICE]:" not in line:
         return None
 
     result = {}
 
+    # Extract BD address
+    match = re.search(r"\[DEVICE\]:\s+([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5})", line)
+    if match:
+        result["bd_addr"] = match.group(1)
+
     # Extract AD evt type
     match = re.search(r"AD evt type (\d+)", line)
     if match:
         result["ad_evt_type"] = int(match.group(1))
+
+    # Extract advertising data length
+    match = re.search(r"AD data len: (\d+)", line)
+    if match:
+        result["data_len"] = int(match.group(1))
 
     # Extract PHY information
     match = re.search(r"Pri PHY: ([^,]+), Sec PHY: ([^,]+)", line)
@@ -165,13 +178,12 @@ def _is_address_match(addr, expected_bd_addr):
     return _normalize_bd_addr(addr) == _normalize_bd_addr(expected_bd_addr)
 
 
-def _check_payload_match(hci_line, device_line, scan_ctx, found, payload_type):
+def _check_hci_payload_match(hci_line, scan_ctx, found, payload_type):
     """
-    Check if HCI EVT line contains matching payload (ADV or RSP).
+    Check an HCI EVT line for a matching payload independently.
 
     Args:
         hci_line: HCI EVT line to parse
-        device_line: [DEVICE] line for additional validation
         scan_ctx: Scan context containing expected payloads and PHY info
         found: Current found status
         payload_type: Type of payload ('adv' or 'rsp')
@@ -195,41 +207,35 @@ def _check_payload_match(hci_line, device_line, scan_ctx, found, payload_type):
     if not payload_matches:
         return found
 
-    # Check AD evt type from [DEVICE] line
-    expected_evt_type = 2 if payload_type == "adv" else 4  # 2=ADV_IND, 4=SCAN_RSP
-    if device_line:
-        device_info = _parse_device_line(device_line)
-        if device_info and device_info.get("ad_evt_type") != expected_evt_type:
-            return found
-
-    # Payload matched successfully
     payload_name = "Advertisement" if payload_type == "adv" else "Scan Response"
-    logger.info("Found matching %s payload from %s", payload_name, addr)
-
-    # Check PHY pattern if specified
-    phy_key = f"{payload_type}_phy"
-    phy_pattern = scan_ctx.get(phy_key)
-    if not phy_pattern:
-        return True
-
-    # Verify PHY matches if specified
-    if device_line:
-        device_info = _parse_device_line(device_line)
-        if device_info and device_info.get("phy_info") == phy_pattern:
-            logger.info("Found matching %s with PHY: %s", payload_name, phy_pattern)
-            return True
-
-    return found
+    logger.info("Found matching %s HCI payload from %s", payload_name, addr)
+    return True
 
 
-def _check_adv_match(hci_line, device_line, scan_ctx, found_adv):
-    """Check if HCI EVT line contains matching advertisement payload."""
-    return _check_payload_match(hci_line, device_line, scan_ctx, found_adv, "adv")
+def _check_device_match(device_line, scan_ctx, found, payload_type):
+    """Check a [DEVICE] line independently for a matching device record."""
+    if found or not scan_ctx.get(f"{payload_type}_bytes"):
+        return found
 
+    device_info = _parse_device_line(device_line)
+    if not device_info:
+        return found
 
-def _check_rsp_match(hci_line, device_line, scan_ctx, found_rsp):
-    """Check if HCI EVT line contains matching scan response payload."""
-    return _check_payload_match(hci_line, device_line, scan_ctx, found_rsp, "rsp")
+    expected_evt_type = 2 if payload_type == "adv" else 4
+    expected_payload = scan_ctx[f"{payload_type}_bytes"]
+    phy_pattern = scan_ctx.get(f"{payload_type}_phy")
+    matches = (
+        device_info.get("ad_evt_type") == expected_evt_type
+        and _is_address_match(device_info.get("bd_addr"), scan_ctx.get("bd_addr"))
+        and device_info.get("data_len") == expected_payload[0]
+        and (not phy_pattern or device_info.get("phy_info") == phy_pattern)
+    )
+    if not matches:
+        return found
+
+    payload_name = "Advertisement" if payload_type == "adv" else "Scan Response"
+    logger.info("Found matching %s [DEVICE] record", payload_name)
+    return True
 
 
 def _log_expected_payloads(adv_hex, rsp_hex, adv_phy, rsp_phy):
@@ -270,17 +276,82 @@ def _init_scan_context(expected_payloads, expected_bd_addr):
     )
 
 
-def _process_hex_scan_lines(hci_line, device_line, scan_ctx, found_adv, found_rsp):
-    """Process HCI EVT and [DEVICE] lines and check for payload matches."""
-    if "HCI EVT: 3e" not in hci_line:
-        return found_adv, found_rsp
+def _init_found_status(expected_adv_bytes, expected_rsp_bytes):
+    """Initialize independent HCI and [DEVICE] match status."""
+    return {
+        "adv_hci": expected_adv_bytes is None,
+        "adv_device": expected_adv_bytes is None,
+        "rsp_hci": expected_rsp_bytes is None,
+        "rsp_device": expected_rsp_bytes is None,
+    }
 
-    found_adv = _check_adv_match(hci_line, device_line, scan_ctx, found_adv)
-    found_rsp = _check_rsp_match(hci_line, device_line, scan_ctx, found_rsp)
-    return found_adv, found_rsp
+
+def _process_scan_line(line, scan_ctx, found):
+    """Process one HCI or [DEVICE] line without pairing unrelated records."""
+    if "HCI EVT: 3e" in line:
+        found["adv_hci"] = _check_hci_payload_match(
+            line, scan_ctx, found["adv_hci"], "adv"
+        )
+        found["rsp_hci"] = _check_hci_payload_match(
+            line, scan_ctx, found["rsp_hci"], "rsp"
+        )
+    elif "[DEVICE]:" in line:
+        found["adv_device"] = _check_device_match(
+            line, scan_ctx, found["adv_device"], "adv"
+        )
+        found["rsp_device"] = _check_device_match(
+            line, scan_ctx, found["rsp_device"], "rsp"
+        )
 
 
-def test_observer_match_payloads(dut, expected_payloads, twister_harness_config):
+def _missing_matches(found):
+    """Return the names of independent matches that are still missing."""
+    return ", ".join(name for name, matched in found.items() if not matched)
+
+
+def _get_timeout_seconds(base_timeout):
+    """Convert the Twister timeout to a pytest timeout with a grace period."""
+    try:
+        timeout_seconds = float(base_timeout)
+    except (TypeError, ValueError):
+        pytest.fail(f"Invalid observer timeout: {base_timeout!r}", pytrace=False)
+    timeout_seconds -= PYTEST_TIMEOUT_GRACE_SECONDS
+    if timeout_seconds <= 0:
+        pytest.fail(
+            "Observer timeout must exceed the pytest timeout grace period",
+            pytrace=False,
+        )
+    return timeout_seconds
+
+
+def _wait_for_scan_results(dut, scan_ctx, found, timeout_seconds):
+    """Read and process lines until all independent scan results are found."""
+    deadline = time.monotonic() + timeout_seconds
+    while not all(found.values()):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            missing = _missing_matches(found)
+            logger.error(
+                "Observer scan timed out after %.1f seconds; missing: %s",
+                timeout_seconds,
+                missing,
+            )
+            pytest.fail(
+                f"Observer scan timed out; missing matches: {missing}",
+                pytrace=False,
+            )
+        try:
+            line = dut.readline(timeout=min(1.0, remaining))
+        except (TwisterHarnessTimeoutException, TimeoutError):
+            continue
+
+        if line:
+            _process_scan_line(line, scan_ctx, found)
+
+
+def test_observer_match_payloads(
+    dut, expected_payloads, twister_harness_config, base_timeout
+):
     """
     Test that the observer detects specific Advertisement and Scan Response payloads.
 
@@ -306,10 +377,8 @@ def test_observer_match_payloads(dut, expected_payloads, twister_harness_config)
     scan_ctx, expected_adv_bytes, expected_rsp_bytes = _init_scan_context(
         expected_payloads, expected_bd_addr
     )
-
-    # If a type is not expected (None), consider it found
-    found_adv = expected_adv_bytes is None
-    found_rsp = expected_rsp_bytes is None
+    found = _init_found_status(expected_adv_bytes, expected_rsp_bytes)
+    timeout_seconds = _get_timeout_seconds(base_timeout)
 
     _log_expected_payloads(
         adv_hex,
@@ -318,35 +387,4 @@ def test_observer_match_payloads(dut, expected_payloads, twister_harness_config)
         expected_payloads.get("rsp_phy"),
     )
 
-    hci_lines = []  # Queue to store HCI EVT lines
-
-    while True:
-        try:
-            line = dut.readline(timeout=1.0)
-        except (TwisterHarnessTimeoutException, TimeoutError):
-            continue
-
-        if not line:
-            continue
-
-        # Track HCI EVT and [DEVICE] lines
-        if "HCI EVT: 3e" in line:
-            hci_lines.append(line)
-        elif "[DEVICE]:" in line:
-            # Process the pair of HCI EVT and [DEVICE] lines
-            # Match with the first HCI EVT in the queue
-            if hci_lines:
-                hci_line = hci_lines.pop(0)
-                found_adv, found_rsp = _process_hex_scan_lines(
-                    hci_line, line, scan_ctx, found_adv, found_rsp
-                )
-
-        if found_adv and found_rsp:
-            break
-
-    assert (
-        found_adv or not expected_adv_bytes
-    ), f"Failed to find Advertisement payload: {adv_hex}"
-    assert (
-        found_rsp or not expected_rsp_bytes
-    ), f"Failed to find Scan Response payload: {rsp_hex}"
+    _wait_for_scan_results(dut, scan_ctx, found, timeout_seconds)

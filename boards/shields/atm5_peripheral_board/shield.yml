@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
+# Copyright (c) 2026 Atmosic
+
+shields:
+  - name: atm5_peripheral_board_i2c_i2s
+    full_name: ATM5/e Peripheral Board Configured for I2C + I2S
+    vendor: atmosic
+    supported_features:
+      - audio
+      - sensor
+
+  - name: atm5_peripheral_board_mikro_bus
+    full_name: ATM5/e Peripheral Board Configured for the Mikro Bus socket
+    vendor: atmosic
+    supported_features:
+      - mikrobus
+
+  - name: atm5_peripheral_board_spi
+    full_name: ATM5/e Peripheral Board Configured for SPI
+    vendor: atmosic
+    supported_features:
+      - sensor

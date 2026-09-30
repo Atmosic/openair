@@ -121,8 +121,10 @@ __STATIC_INLINE at_tz_sau_ret_t at_tz_sau_enable(void)
  */
 __STATIC_INLINE at_tz_sau_ret_t at_tz_sau_disable(void)
 {
+#ifndef CONFIG_ZTEST
     // clear enable bit and configure to all NS
     SAU->CTRL = SAU_CTRL_ALLNS_Msk;
+#endif
     // Configure code and ram to NS callable
     SEC_CTRL_REG->NSCCFG = SEC_PRIV_CTRL_NSCCFG_RAMNSC_Msk |
 	SEC_PRIV_CTRL_NSCCFG_CODENSC_Msk;

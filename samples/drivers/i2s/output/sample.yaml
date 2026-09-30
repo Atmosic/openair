@@ -2,6 +2,10 @@ common:
   tags:
     - atm_test_with_spe
     - introduction
+  # app.overlay dereferences &i2s, so the overlay only compiles on a SoC
+  # declaring that node.
+  depends_on:
+    - i2s
 sample:
   description: i2s TX output sample
   name: i2s output

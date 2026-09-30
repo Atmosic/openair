@@ -1,0 +1,19 @@
+# The confidential and proprietary information contained in this file may
+# only be used by a person authorised under and to the extent permitted
+# by a subsisting licensing agreement from Atmosic.
+#
+# Copyright (c) Atmosic 2024
+#
+# This entire notice must be reproduced on all copies of this file
+# and copies of this file may only be made by a person if such person is
+# permitted to do so under the terms of a subsisting license agreement
+# from Atmosic.
+
+config SHIELD_PERVASIVE_EPAPER_E2266CS0C2
+	def_bool $(shields_list_contains,pervasive_epaper_e2266cs0c2)
+
+config SHIELD_PERVASIVE_EPAPER_E2266QS0F1
+	def_bool $(shields_list_contains,pervasive_epaper_e2266qs0f1)
+
+config SHIELD_PERVASIVE_EPAPER_E2741JS0B2
+	def_bool $(shields_list_contains,pervasive_epaper_e2741js0b2)

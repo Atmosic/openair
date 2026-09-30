@@ -1,0 +1,22 @@
+# Copyright (c) 2024 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config PERVASIVE
+	bool "PERVASIVE compatible display controller driver"
+	default y
+	depends on \
+		DT_HAS_PERVASIVE_E2266CS0C2_ENABLED || \
+		DT_HAS_PERVASIVE_E2266QS0F1_ENABLED || \
+		DT_HAS_PERVASIVE_E2741JS0B2_ENABLED
+	select SPI
+	help
+	  Enable driver for PERVASIVE compatible controller.
+
+config PERVASIVE_SW_FB
+	bool "Software frame buffer"
+	depends on \
+		DT_HAS_PERVASIVE_E2266CS0C2_ENABLED || \
+		DT_HAS_PERVASIVE_E2266QS0F1_ENABLED
+	help
+	  Enable software-based frame buffer

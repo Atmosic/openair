@@ -37,19 +37,11 @@
 
 LOG_MODULE_DECLARE(fmdn, CONFIG_ATM_FMDN_LOG_LEVEL);
 
-#define FMDN_CONN_INTERVAL_MIN 760
-#define FMDN_CONN_INTERVAL_MAX 800
-#define FMDN_CONN_LATENCY      0
-#define FMDN_CONN_TIMEOUT      800
-
 /// Calibrated RSSI at 0m when CONFIG_MAX_TX_PWR = 0 dBm
 #define FP_CALIBRATED_TX_PWR_0M ((int8_t)CONFIG_FAST_PAIR_TX_PWR_CALIBRATION_0M)
 
 /// FMDN Read Beacon Parameters TX Power (RSSI@0m adjusted for CONFIG_MAX_TX_PWR)
 #define FP_APP_TX_PWR_0M ((uint8_t)(int8_t)(FP_CALIBRATED_TX_PWR_0M + (int8_t)CONFIG_MAX_TX_PWR))
-
-static struct bt_le_conn_param const fmdn_conn_params = BT_LE_CONN_PARAM_INIT(
-	FMDN_CONN_INTERVAL_MIN, FMDN_CONN_INTERVAL_MAX, FMDN_CONN_LATENCY, FMDN_CONN_TIMEOUT);
 
 static fp_fmdn_utp_mode_cb utp_mode_cb;
 static fp_fmdn_ring_action_cb ring_action_cb;
@@ -64,10 +56,27 @@ static bool delay_provision_cleanup;
 
 static struct bt_gatt_attr *fmdn_attr;
 
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+void fp_fmdn_motion_auth_state_clear(uint8_t conn_idx)
+{
+	bcna_conn_ctx_t *conn_context = &conn_contexts[conn_idx];
+
+	memset(conn_context->motion_base_nonce, 0, sizeof(conn_context->motion_base_nonce));
+	conn_context->motion_base_nonce_set = false;
+	memset(conn_context->motion_secret_key, 0, sizeof(conn_context->motion_secret_key));
+	conn_context->motion_secret_key_len = 0;
+}
+#endif
+
 // Work item for deferred FMDN crypto operations (EID/DULT generation)
 typedef struct {
 	struct k_work work;
+	uint8_t eid_key[FP_FMDN_EID_KEY_LEN];
 } fp_fmdn_provision_work_item_t;
+
+#ifdef CONFIG_ZTEST
+static K_SEM_DEFINE(fmdn_provision_test_done, 0, 1);
+#endif
 
 static int fp_fmdn_bcna_resp_send(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 				  const uint8_t *rsp, uint16_t rsp_len)
@@ -86,6 +95,22 @@ static bool bcna_is_op_auth_gen(uint8_t data_id)
 		data_id == BCNA_OP_READ_RINGING_STATE || data_id == BCNA_OP_ACTIVATE_UTP ||
 		data_id == BCNA_OP_DEACTIVATE_UTP);
 }
+
+static bool bcna_utp_skip_auth_enabled(void)
+{
+	return ((fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) &&
+		(fp_storage_utp_ignore_ring_auth_get()));
+}
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+static bool bcna_is_precision_finding_op(uint8_t data_id)
+{
+	return ((data_id == BCNA_OP_RANGING_CAPABILITY) ||
+		(data_id == BCNA_OP_RANGING_CAPABILITY_CONFIG) ||
+		(data_id == BCNA_OP_RANGING_CAPABILITY_START) ||
+		(data_id == BCNA_OP_RANGING_CAPABILITY_STOP));
+}
+#endif
 
 static bool bcna_auth_key_gen(uint8_t data_id, uint8_t *secret_key, uint16_t *secret_key_len)
 {
@@ -118,12 +143,21 @@ static bool bcna_auth_key_gen(uint8_t data_id, uint8_t *secret_key, uint16_t *se
 	return true;
 }
 
-static void bcna_auth_data_gen(uint8_t *auth_data, uint16_t *auth_data_len,
+static bool bcna_auth_data_gen(uint8_t *auth_data, uint16_t *auth_data_len,
 			       bcna_write_data_t const *data, fp_fmdn_auth_data_type_t data_type,
 			       bcna_conn_ctx_t const *conn_context)
 {
 	uint8_t constant_end = 0x01;
 	uint8_t major_ver = BCNA_MJR_VER;
+
+	/* Also reached for locally built responses and notifications, where data_len
+	 * comes from a handler rather than from the peer.
+	 */
+	if ((data->header.data_len < BCNA_AUTH_KEY_LEN) ||
+	    ((data->header.data_len - BCNA_AUTH_KEY_LEN) > BCNA_ADD_DATA_MAX_LEN)) {
+		LOG_WRN("BCNA auth data: bad data_len %u", data->header.data_len);
+		return false;
+	}
 	uint16_t add_len = data->header.data_len - BCNA_AUTH_KEY_LEN;
 	if ((data_type == FP_FMDN_AUTH_DATA_RES) || (data_type == FP_FMDN_AUTH_DATA_MOTION_NOTI)) {
 		/* The first 8 bytes of HMAC-SHA256(account key, protocol major version
@@ -150,6 +184,10 @@ static void bcna_auth_data_gen(uint8_t *auth_data, uint16_t *auth_data_len,
 				 +sizeof(data->header.data_id) + sizeof(data->header.data_len) +
 				 add_len;
 	}
+	if (*auth_data_len > BCNA_AUTH_DATA_LEN) {
+		LOG_WRN("BCNA auth data: %u exceeds %u", *auth_data_len, BCNA_AUTH_DATA_LEN);
+		return false;
+	}
 	size_t offset = 0;
 	/* Motion notifications use the nonce from the Ranging Configuration (base nonce),
 	 * not the most-recently-read nonce, per the spec nonce validation rules.
@@ -169,20 +207,32 @@ static void bcna_auth_data_gen(uint8_t *auth_data, uint16_t *auth_data_len,
 	if ((data_type == FP_FMDN_AUTH_DATA_RES) || (data_type == FP_FMDN_AUTH_DATA_MOTION_NOTI)) {
 		FP_UTIL_MEMCPY_SHIFT(auth_data, &constant_end, sizeof(constant_end), offset);
 	}
+	return true;
+}
+
+static bool bcna_auth_seg_gen_with_key(bcna_conn_ctx_t const *conn_context,
+				       bcna_write_data_t const *data, uint8_t *auth_seg,
+				       fp_fmdn_auth_data_type_t data_type,
+				       const uint8_t *secret_key, uint16_t secret_key_len)
+{
+	uint8_t auth_data[BCNA_AUTH_DATA_LEN];
+	uint16_t auth_data_len;
+	if (!bcna_auth_data_gen(auth_data, &auth_data_len, data, data_type, conn_context)) {
+		return false;
+	}
+	if (!gfp_crypto_hmac_sha256(auth_data, auth_data_len, auth_seg, secret_key,
+				    secret_key_len)) {
+		LOG_WRN("Generic HMAC sha256 failed");
+		return false;
+	}
+	return true;
 }
 
 static bool bcna_auth_seg_gen(bcna_conn_ctx_t const *conn_context, bcna_write_data_t const *data,
 			      uint8_t *auth_seg, fp_fmdn_auth_data_type_t data_type)
 {
-	uint8_t auth_data[BCNA_AUTH_DATA_LEN];
-	uint16_t auth_data_len;
-	bcna_auth_data_gen(auth_data, &auth_data_len, data, data_type, conn_context);
-	if (!gfp_crypto_hmac_sha256(auth_data, auth_data_len, auth_seg, conn_context->secret_key,
-				    conn_context->secret_key_len)) {
-		LOG_WRN("Generic HMAC sha256 failed");
-		return false;
-	}
-	return true;
+	return bcna_auth_seg_gen_with_key(conn_context, data, auth_seg, data_type,
+					  conn_context->secret_key, conn_context->secret_key_len);
 }
 
 static uint16_t bcna_auth_seg_gen_validate(bcna_conn_ctx_t const *conn_context,
@@ -210,40 +260,37 @@ static uint16_t bcna_auth_validate(bcna_conn_ctx_t *conn_context, bcna_write_dat
 				       &conn_context->secret_key_len)) {
 			return BCNA_ERR_INVALID_VALUE;
 		}
+		uint16_t auth_result = bcna_auth_seg_gen_validate(conn_context, req);
 		if ((req->header.data_id == BCNA_OP_RING_STATE_CHANGE) &&
-		    (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) &&
-		    fp_storage_utp_ignore_ring_auth_get()) {
+		    (bcna_utp_skip_auth_enabled()) && (auth_result)) {
 			LOG_INF("BCNA UTP ignore ring auth");
 			return 0;
 		}
-		return bcna_auth_seg_gen_validate(conn_context, req);
+		return auth_result;
 	}
 
-#ifdef CONFIG_FMDN_PRECISION_FINDING
-	/* Per Google FMDN spec: Skip authentication for Precision Finding in UTP mode
-	 * https://developers.google.com/nearby/fast-pair/specifications/extensions/fmdn
-	 * #unwanted_tracking_protection_with_precision_finding
-	 */
-	if (((req->header.data_id == BCNA_OP_RANGING_CAPABILITY) ||
-	     (req->header.data_id == BCNA_OP_RANGING_CAPABILITY_CONFIG) ||
-	     (req->header.data_id == BCNA_OP_RANGING_CAPABILITY_START) ||
-	     (req->header.data_id == BCNA_OP_RANGING_CAPABILITY_STOP)) &&
-	    (fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) &&
-	    fp_storage_utp_ignore_ring_auth_get()) {
-		LOG_INF("BCNA UTP ignore Precision Finding auth");
-		return 0;
-	}
-#endif
-	// check with all accout keys
+	/* Check the request against all Account Keys before applying the UTP bypass. */
 	conn_context->secret_key_len = FP_ACCOUNT_KEY_LEN;
 	uint8_t account_key_list[FP_ACCOUNT_KEY_CNT * FP_ACCOUNT_KEY_LEN];
-	uint8_t acnt_key_len = fp_storage_account_key_list_get(account_key_list);
-	for (uint8_t i = 0; i < acnt_key_len; i += FP_ACCOUNT_KEY_LEN) {
+	size_t acnt_key_len = fp_storage_account_key_list_get(account_key_list);
+	for (size_t i = 0; i < acnt_key_len; i += FP_ACCOUNT_KEY_LEN) {
 		memcpy(conn_context->secret_key, account_key_list + i, FP_ACCOUNT_KEY_LEN);
 		if (!bcna_auth_seg_gen_validate(conn_context, req)) {
 			return 0;
 		}
 	}
+
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	bool is_pf_op = bcna_is_precision_finding_op(req->header.data_id);
+	/* UTP bypass is a fallback after normal Account Key validation fails. */
+	if ((is_pf_op) && (bcna_utp_skip_auth_enabled())) {
+		LOG_INF("BCNA UTP ignore Precision Finding auth");
+		memset(conn_context->secret_key, 0, sizeof(conn_context->secret_key));
+		conn_context->secret_key_len = 0;
+		return 0;
+	}
+#endif
+
 	return BCNA_ERR_UNAUTHENTICATED;
 }
 
@@ -272,10 +319,28 @@ static void fp_fmdn_apply_provisioned_state(void)
 
 static void fp_fmdn_provision_work_handler(struct k_work *work)
 {
+	fp_fmdn_provision_work_item_t *item =
+		CONTAINER_OF(work, fp_fmdn_provision_work_item_t, work);
+	bool was_provisioned = fp_mode_is_provisioned();
+
+	if (was_provisioned) {
+		/* Stop and delete the old advertising set before applying the new key. */
+		fp_fmdn_adv_recreate(true, true);
+	}
+
 	/* Save clock immediately on first provisioning so a power loss before
 	 * the first periodic fire does not lose the clock value.
 	 */
 	fp_fmdn_key_clock_save();
+
+	int err = fp_storage_eid_key_save(item->eid_key);
+	if (err) {
+		LOG_ERR("FMDN: Failed to save EID key: %d", err);
+		if (was_provisioned) {
+			fp_fmdn_adv_recreate(false, false);
+		}
+		goto provision_work_done;
+	}
 
 	fp_fmdn_apply_provisioned_state();
 
@@ -283,23 +348,28 @@ static void fp_fmdn_provision_work_handler(struct k_work *work)
 	fp_mode_update(FP_MODE_PROVISIONED);
 	LOG_INF("FMDN provisioned");
 
-	fp_fmdn_provision_work_item_t *item =
-		CONTAINER_OF(work, fp_fmdn_provision_work_item_t, work);
+	if (was_provisioned) {
+		/* The mode did not change, so explicitly recreate the advertising set. */
+		fp_fmdn_adv_recreate(false, false);
+	}
+
+provision_work_done:
+#ifdef CONFIG_ZTEST
+	k_sem_give(&fmdn_provision_test_done);
+#endif
 	k_free(item);
 }
 
 static void fp_fmdn_provision_done(uint8_t const *eidk)
 {
-	// Save EID key to storage (fast, non-blocking operation)
-	fp_storage_eid_key_save(eidk);
-
-	// Allocate and schedule deferred crypto work
+	// Allocate and schedule deferred provisioning, storage, and crypto work
 	fp_fmdn_provision_work_item_t *work_item = k_malloc(sizeof(*work_item));
 	if (!work_item) {
 		LOG_ERR("FMDN: Failed to allocate work item");
 		return;
 	}
 
+	memcpy(work_item->eid_key, eidk, sizeof(work_item->eid_key));
 	work_item->work = (struct k_work)Z_WORK_INITIALIZER(fp_fmdn_provision_work_handler);
 	int err = atm_work_submit_to_app_work_q(&work_item->work);
 	if (err < 0) {
@@ -354,10 +424,12 @@ ssize_t fp_fmdn_bcna_read(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 		LOG_ERR("BCNA: failed to generate random nonce: err=%d", err);
 		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 	}
-	/* Each nonce read marks the start of a new session — reset the base nonce
-	 * so the 1st Set Configuration of this session re-captures it.
+	/* Each nonce read enables authentication for one write request. Keep the
+	 * Motion Notification authentication state until Motion is disabled or the
+	 * connection is disconnected.
 	 */
-	conn_context->motion_base_nonce_set = false;
+	conn_context->secret_key_len = 0;
+	memset(conn_context->secret_key, 0, sizeof(conn_context->secret_key));
 	rsp[0] = BCNA_MJR_VER;
 	memcpy(rsp + BCNA_MJR_VER_LEN, conn_context->random_nonce,
 	       sizeof(conn_context->random_nonce));
@@ -519,6 +591,13 @@ static size_t fp_fmdn_bcna_set_eid_key_handle(bcna_conn_ctx_t const *conn_contex
 	if (!fp_fmdn_bcna_set_clear_eik_check(conn_context, resp)) {
 		return BT_GATT_ERR(BCNA_ERR_UNAUTHENTICATED);
 	}
+	/* addition_data is not initialised beyond what the peer sent, so without this
+	 * a short request would provision an EIK derived from stack contents.
+	 */
+	if ((resp->header.data_len - BCNA_AUTH_KEY_LEN) < FP_FMDN_EID_KEY_LEN) {
+		LOG_WRN("BCNA Set EID: additional data too short: %u", resp->header.data_len);
+		return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+	}
 	uint8_t eidk[FP_FMDN_EID_KEY_LEN];
 	gfp_crypto_aes_ecb_dec(eidk, resp->addition_data, GFP_CRYPTO_AES_BLOCK_LEN_BYTES,
 			       conn_context->secret_key, GFP_CRYPTO_AES_ECB_128);
@@ -580,7 +659,19 @@ static bool gatt_ring_en;
 typedef struct {
 	struct bt_conn *conn;
 } ring_noti_info_t;
-static ring_noti_info_t *ring_info;
+static ring_noti_info_t ring_info;
+static bool ring_info_valid;
+
+static void fp_fmdn_ring_info_release(void)
+{
+	struct bt_conn *conn = ring_info.conn;
+
+	ring_info.conn = NULL;
+	ring_info_valid = false;
+	if (conn) {
+		bt_conn_unref(conn);
+	}
+}
 
 static uint16_t fp_fmdn_bcna_ring_state_resp_handler(bcna_write_data_t *resp, uint16_t *resp_len,
 						     uint8_t ring_state, uint16_t ring_to_ds)
@@ -601,33 +692,65 @@ static uint16_t fp_fmdn_bcna_ring_state_resp_handler(bcna_write_data_t *resp, ui
 	return 0;
 }
 
-static void fp_fmdn_gatt_ring_stop_noti_send(struct k_work *work)
+/* Shared core: build, auth-sign and send a Data ID 0x05 notification.
+ * release_conn=true  → ring has stopped: release ring_info afterward.
+ * release_conn=false → ring still active (duration override): keep ring_info.
+ */
+static void fp_fmdn_gatt_ring_noti_send_common(bool release_conn)
 {
-	if (!ring_info || !fmdn_attr) {
-		return;
+	if ((!ring_info_valid) || (!ring_info.conn) || (!fmdn_attr)) {
+		LOG_WRN("BCNA ring notify: no active connection");
+		goto cleanup;
 	}
-	bcna_conn_ctx_t *conn_context = &conn_contexts[bt_conn_index(ring_info->conn)];
+	struct bt_conn *conn = bt_conn_ref(ring_info.conn);
+	if (!conn) {
+		LOG_WRN("BCNA ring notify: connection is no longer valid");
+		goto cleanup;
+	}
+	bcna_conn_ctx_t *conn_context = &conn_contexts[bt_conn_index(conn)];
 	bcna_write_data_t ring_noti;
 	uint16_t ring_noti_len = 0;
 	ring_noti.header.data_id = BCNA_OP_RING_STATE_CHANGE;
 	fp_fmdn_bcna_ring_state_resp_handler(&ring_noti, &ring_noti_len, cur_ring_state,
 					     cur_ring_to_ds);
 	if (!ring_noti_len) {
-		return;
+		bt_conn_unref(conn);
+		goto cleanup;
 	}
-	/// update auth key from resp data
 	uint8_t auth_seg_resp[GFP_CRYPTO_SHA256_DIG_LEN];
 	if (!bcna_auth_seg_gen(conn_context, &ring_noti, auth_seg_resp, FP_FMDN_AUTH_DATA_RES)) {
-		LOG_WRN("BCNA ring notify bcna_auth_seg_gen failed");
-		return;
+		LOG_WRN("BCNA ring notify: auth gen failed");
+		bt_conn_unref(conn);
+		goto cleanup;
 	}
 	memcpy(ring_noti.auth_key, auth_seg_resp, BCNA_AUTH_KEY_LEN);
-	LOG_INF("BCNA ring stop send notify");
-	fp_fmdn_bcna_resp_send(ring_info->conn, fmdn_attr, (uint8_t *)&ring_noti, ring_noti_len);
-	k_free(ring_info);
-	ring_info = NULL;
+	if (release_conn) {
+		LOG_INF("BCNA ring stop send notify");
+	} else {
+		LOG_INF("BCNA ring override send notify (duration_ds=%u)", cur_ring_to_ds);
+	}
+	fp_fmdn_bcna_resp_send(conn, fmdn_attr, (uint8_t *)&ring_noti, ring_noti_len);
+	bt_conn_unref(conn);
+
+cleanup:
+	if (release_conn) {
+		fp_fmdn_ring_info_release();
+	}
+}
+
+static void fp_fmdn_gatt_ring_stop_noti_send(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	fp_fmdn_gatt_ring_noti_send_common(true);
 }
 K_WORK_DEFINE(fp_fmdn_gatt_ring_stop_noti, fp_fmdn_gatt_ring_stop_noti_send);
+
+static void fp_fmdn_gatt_ring_override_noti_send(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	fp_fmdn_gatt_ring_noti_send_common(false);
+}
+K_WORK_DEFINE(fp_fmdn_gatt_ring_override_noti, fp_fmdn_gatt_ring_override_noti_send);
 
 static void fp_fmdn_ring_state_stop(uint8_t state)
 {
@@ -639,7 +762,11 @@ static void fp_fmdn_ring_state_stop(uint8_t state)
 		ring_action_cb(cur_ring_state == FP_FMDN_RING_STATE_STARTED, FMDN_RING_OP_RING_ALL,
 			       FP_FMDN_RING_VOL_DEFAULT, cur_ring_to_ds);
 	}
-	atm_work_submit_to_app_work_q(&fp_fmdn_gatt_ring_stop_noti);
+	int err = atm_work_submit_to_app_work_q(&fp_fmdn_gatt_ring_stop_noti);
+	if (err < 0) {
+		LOG_ERR("Failed to submit ring stop notification work: %d", err);
+		fp_fmdn_ring_info_release();
+	}
 }
 
 static void fp_fmdn_ring_timeout_handler(struct k_work *work)
@@ -652,13 +779,48 @@ K_WORK_DELAYABLE_DEFINE(fp_fmdn_ring_timer_id, fp_fmdn_ring_timeout_handler);
 static void fp_fmnd_gatt_ring_update(bool en, uint16_t to_ds, uint8_t ring_op, uint8_t ring_vol_lvl)
 {
 	if (ring_action_cb) {
-		ring_action_cb(en, ring_op, ring_vol_lvl, to_ds);
+		uint16_t app_to_ds = ring_action_cb(en, ring_op, ring_vol_lvl, to_ds);
+		/* When starting, always use the application's returned duration so
+		 * the GATT response and read-ringing-state handler both reflect the
+		 * effective value without requiring a separate override notification.
+		 * The app returns ring_to_ds unchanged if it does not want to override.
+		 */
+		if (en) {
+			to_ds = app_to_ds;
+			cur_ring_to_ds = to_ds;
+		}
 	}
 	if (en && to_ds) {
 		uint16_t to_s = to_ds / 10;
 		atm_work_reschedule_for_app_work_q(&fp_fmdn_ring_timer_id, K_SECONDS(to_s));
 	} else {
 		k_work_cancel_delayable(&fp_fmdn_ring_timer_id);
+	}
+}
+
+void fp_fmdn_gatt_set_ring_duration_override(uint16_t duration_ds)
+{
+	if (!gatt_ring_en) {
+		return;
+	}
+	if (duration_ds) {
+		/* Reschedule the safety timer for the ongoing ring session only.
+		 * Also reset the ring state reference point so that
+		 * fp_fmdn_bcna_ring_read_ringing_state_handle reports remaining
+		 * time consistent with the rescheduled timer.
+		 */
+		cur_ring_to_ds = duration_ds;
+		ring_start_time_ms = k_uptime_get();
+		atm_work_reschedule_for_app_work_q(&fp_fmdn_ring_timer_id,
+						   K_MSEC((uint32_t)duration_ds * 100));
+		/* Notify the seeker of the overridden duration via an unsolicited
+		 * Data ID 0x05 notification so it knows the actual ring duration.
+		 */
+		atm_work_submit_to_app_work_q(&fp_fmdn_gatt_ring_override_noti);
+	} else {
+		/* Zero duration — stop ringing immediately. */
+		k_work_cancel_delayable(&fp_fmdn_ring_timer_id);
+		fp_fmdn_ring_state_stop(FP_FMDN_RING_STATE_STOPED_TIMEOUT);
 	}
 }
 
@@ -691,6 +853,14 @@ static size_t fp_fmdn_bcna_ring_state_change_handle(bcna_write_data_t *resp, uin
 	uint8_t ring_op;
 	uint8_t ring_vol_lvl;
 	uint8_t offset = 0;
+
+	const size_t req_add_data_len =
+		sizeof(ring_op) + sizeof(cur_ring_to_ds) + sizeof(ring_vol_lvl);
+
+	if ((resp->header.data_len - BCNA_AUTH_KEY_LEN) < req_add_data_len) {
+		LOG_WRN("BCNA Ring: additional data too short: %u", resp->header.data_len);
+		return BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+	}
 	memcpy(&ring_op, resp->addition_data + offset, sizeof(ring_op));
 	offset += sizeof(ring_op);
 	cur_ring_to_ds = atm_get_be16(resp->addition_data + offset);
@@ -825,9 +995,14 @@ ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr
 	bcna_w_req.header.data_id = net_buf_simple_pull_u8(&bcna_buf);
 	bcna_w_req.header.data_len = net_buf_simple_pull_u8(&bcna_buf);
 
-	if (bcna_w_req.header.data_len != net_buf_simple_max_len(&bcna_buf)) {
-		LOG_ERR("BCNA: request with incorrect length: %u!=%u", bcna_w_req.header.data_len,
-			net_buf_simple_max_len(&bcna_buf));
+	/* Below BCNA_AUTH_KEY_LEN the add_data_len subtraction below underflows, and
+	 * above the addition_data capacity the copy overruns bcna_w_req.
+	 */
+	if ((bcna_w_req.header.data_len < BCNA_AUTH_KEY_LEN) ||
+	    (bcna_w_req.header.data_len > (BCNA_AUTH_KEY_LEN + BCNA_ADD_DATA_MAX_LEN)) ||
+	    (bcna_w_req.header.data_len != net_buf_simple_max_len(&bcna_buf))) {
+		LOG_ERR("BCNA: request with invalid length: %u (buffer %u)",
+			bcna_w_req.header.data_len, net_buf_simple_max_len(&bcna_buf));
 		err = BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
 		goto finish;
 	}
@@ -874,11 +1049,27 @@ ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr
 		err = fp_fmdn_bcna_ring_read_ringing_state_handle(&bcna_w_req, &resp_len);
 		break;
 	case BCNA_OP_RING_STATE_CHANGE:
+		if ((add_data_len) && (gatt_ring_en) &&
+		    ((!ring_info_valid) || (ring_info.conn != conn)) &&
+		    (bcna_w_req.addition_data[0] != FMDN_RING_OP_RING_STOP)) {
+			LOG_WRN("BCNA Ring: another connection owns the active ring");
+			err = BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+			break;
+		}
 		err = fp_fmdn_bcna_ring_state_change_handle(&bcna_w_req, &resp_len);
-		if (gatt_ring_en) {
-			ring_info = k_malloc(sizeof(ring_noti_info_t));
-			__ASSERT(ring_info, "malloc ring_info failed");
-			ring_info->conn = conn;
+		if ((!err) && (!gatt_ring_en) && (ring_info_valid)) {
+			fp_fmdn_ring_info_release();
+		}
+		if ((!err) && (gatt_ring_en) && (!ring_info_valid)) {
+			struct bt_conn *conn_ref = bt_conn_ref(conn);
+			if (!conn_ref) {
+				LOG_ERR("BCNA Ring: failed to reference connection");
+				fp_fmdn_ring_state_stop(FP_FMDN_RING_STATE_STOPED_TIMEOUT);
+				err = BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+				break;
+			}
+			ring_info.conn = conn_ref;
+			ring_info_valid = true;
 		}
 		break;
 	case BCNA_OP_ACTIVATE_UTP:
@@ -890,18 +1081,6 @@ ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr
 #ifdef CONFIG_FMDN_PRECISION_FINDING
 	case BCNA_OP_RANGING_CAPABILITY:
 	case BCNA_OP_RANGING_CAPABILITY_CONFIG:
-		/* Capture the base nonce for motion notification auth from the 1st
-		 * Set Configuration only. OOB v2+ allows multiple Set Configuration
-		 * messages per session (technology transitioning), but the nonce used
-		 * for all motion notification HMAC calculations must always be the one
-		 * read before the very first Set Configuration in the session.
-		 */
-		if ((bcna_w_req.header.data_id == BCNA_OP_RANGING_CAPABILITY_CONFIG) &&
-		    !conn_context->motion_base_nonce_set) {
-			memcpy(conn_context->motion_base_nonce, conn_context->random_nonce,
-			       BCNA_RNDM_NONCE_LEN);
-			conn_context->motion_base_nonce_set = true;
-		}
 		/* fall through */
 	case BCNA_OP_RANGING_CAPABILITY_START:
 	case BCNA_OP_RANGING_CAPABILITY_STOP:
@@ -914,16 +1093,39 @@ ssize_t fp_fmdn_bcna_write(struct bt_conn *conn, const struct bt_gatt_attr *attr
 		err = BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
 		goto finish;
 	}
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+	if ((bcna_w_req.header.data_id == BCNA_OP_RANGING_CAPABILITY_CONFIG) && (!err) &&
+	    (!conn_context->motion_base_nonce_set)) {
+		/* Capture the authentication key and nonce after the first successful
+		 * Set Configuration. Subsequent Ring requests must not affect Motion
+		 * Notification authentication for this ranging session.
+		 */
+		memcpy(conn_context->motion_base_nonce, conn_context->random_nonce,
+		       BCNA_RNDM_NONCE_LEN);
+		memcpy(conn_context->motion_secret_key, conn_context->secret_key,
+		       sizeof(conn_context->motion_secret_key));
+		conn_context->motion_secret_key_len = conn_context->secret_key_len;
+		conn_context->motion_base_nonce_set = true;
+	}
+#endif
 	if (resp_len && !err) {
 		/// update auth key from resp data
-		uint8_t auth_seg_resp[GFP_CRYPTO_SHA256_DIG_LEN];
-		if (!bcna_auth_seg_gen(conn_context, &bcna_w_req, auth_seg_resp,
-				       FP_FMDN_AUTH_DATA_RES)) {
-			LOG_WRN("BCNA response bcna_auth_seg_gen failed");
-			err = BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
-			goto finish;
+#ifdef CONFIG_FMDN_PRECISION_FINDING
+		if (bcna_is_precision_finding_op(bcna_w_req.header.data_id) &&
+		    (!conn_context->secret_key_len)) {
+			memset(bcna_w_req.auth_key, 0, sizeof(bcna_w_req.auth_key));
+		} else
+#endif
+		{
+			uint8_t auth_seg_resp[GFP_CRYPTO_SHA256_DIG_LEN];
+			if (!bcna_auth_seg_gen(conn_context, &bcna_w_req, auth_seg_resp,
+					       FP_FMDN_AUTH_DATA_RES)) {
+				LOG_WRN("BCNA response bcna_auth_seg_gen failed");
+				err = BT_GATT_ERR(BCNA_ERR_INVALID_VALUE);
+				goto finish;
+			}
+			memcpy(bcna_w_req.auth_key, auth_seg_resp, BCNA_AUTH_KEY_LEN);
 		}
-		memcpy(bcna_w_req.auth_key, auth_seg_resp, BCNA_AUTH_KEY_LEN);
 		fp_fmdn_bcna_resp_send(conn, attr, (uint8_t *)&bcna_w_req, resp_len);
 	}
 finish:
@@ -1011,6 +1213,10 @@ static void fp_fmdn_gatt_disconnected(struct bt_conn *conn, uint8_t reason)
 	if (!fp_conn_validate(conn)) {
 		return;
 	}
+	if ((ring_info_valid) && (ring_info.conn == conn)) {
+		/* Keep ringing and its timeout active; only remove the notification target. */
+		fp_fmdn_ring_info_release();
+	}
 	LOG_DBG("FMDN Gatt Disconnect");
 	if (!fp_mode_is_provisioned()) {
 		return;
@@ -1058,15 +1264,11 @@ static void fp_fmdn_security_changed(struct bt_conn *conn, bt_security_t level,
 	fp_fhpf_gatt_security_changed(conn, level, err);
 #endif
 
-	// Log successful pairing for FMDN connection
-	if (level >= BT_SECURITY_L2) {
+	// Log successful Security Mode 1 Level 4 connection for FMDN reverse ringing
+	if (level >= BT_SECURITY_L4) {
 		LOG_INF("FMDN connection secured: %s level:%u", addr, level);
-		if (fp_mode_is_provisioned()) {
-			bt_conn_le_param_update(conn, &fmdn_conn_params);
-		}
-
 #ifdef CONFIG_FMDN_REVERSE_RINGING
-		// Handle reverse ringing encryption enabled
+		// Handle reverse ringing Security Mode 1 Level 4 enabled
 		fp_fmdn_reverse_ringing_encryption_enabled(conn);
 #endif
 	}
@@ -1149,13 +1351,11 @@ static void fp_fmdn_bcna_motion_notify_send(struct bt_conn *conn, uint8_t nego_v
 	noti.addition_data[1 + sizeof(motion_hdr)] = (uint8_t)st;
 	uint16_t noti_len = sizeof(noti.header) + noti.header.data_len;
 
-	/* Skip auth in UTP mode (per FMDN UTP precision finding spec) */
-	bool skip_auth = ((fp_storage_utp_mode_get() == FP_FMDN_UTP_MODE_ON) &&
-			  fp_storage_utp_ignore_ring_auth_get());
-	if (!skip_auth) {
+	if (conn_context->motion_secret_key_len) {
 		uint8_t auth_seg[GFP_CRYPTO_SHA256_DIG_LEN];
-		if (!bcna_auth_seg_gen(conn_context, &noti, auth_seg,
-				       FP_FMDN_AUTH_DATA_MOTION_NOTI)) {
+		if (!bcna_auth_seg_gen_with_key(
+			    conn_context, &noti, auth_seg, FP_FMDN_AUTH_DATA_MOTION_NOTI,
+			    conn_context->motion_secret_key, conn_context->motion_secret_key_len)) {
 			LOG_WRN("BCNA motion notify: auth gen failed");
 			return;
 		}
@@ -1189,6 +1389,13 @@ void fp_fmdn_gatt_init(struct bt_gatt_attr *attr)
 
 void fp_fmdn_gatt_deinit(void)
 {
+	int cancel_err = k_work_cancel_delayable(&fp_fmdn_ring_timer_id);
+	if (cancel_err < 0) {
+		LOG_WRN("Failed to cancel ring timer: %d", cancel_err);
+	}
+	gatt_ring_en = false;
+	fp_fmdn_ring_info_release();
+
 	/* Stop periodic clock saving */
 	fp_fmdn_key_clock_periodic_save_stop();
 
@@ -1220,3 +1427,60 @@ void fp_fmdn_ranging_handler_register(fp_fmdn_ranging_handler_t const *handler)
 	fp_fhpf_gatt_ranging_handler_register(handler);
 }
 #endif
+
+#ifdef CONFIG_ZTEST
+void fp_fmdn_gatt_test_set_ring_en(bool en)
+{
+	gatt_ring_en = en;
+}
+
+bool fp_fmdn_gatt_test_get_ring_en(void)
+{
+	return gatt_ring_en;
+}
+
+void fp_fmdn_gatt_test_run_ring_stop_noti(void)
+{
+	fp_fmdn_gatt_ring_stop_noti_send(NULL);
+}
+
+void fp_fmdn_gatt_test_run_ring_override_noti(void)
+{
+	fp_fmdn_gatt_ring_override_noti_send(NULL);
+}
+
+void fp_fmdn_gatt_test_run_conn_action(void)
+{
+	fp_fmdn_gatt_conn_invoke_action(NULL);
+}
+
+void fp_fmdn_gatt_test_run_disconn_action(void)
+{
+	fp_fmdn_gatt_disconn_invoke_action(NULL);
+}
+
+void fp_fmdn_gatt_test_connected(struct bt_conn *conn, uint8_t err)
+{
+	fp_fmdn_gatt_connected(conn, err);
+}
+
+void fp_fmdn_gatt_test_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	fp_fmdn_gatt_disconnected(conn, reason);
+}
+
+void fp_fmdn_gatt_test_security_changed(struct bt_conn *conn, bt_security_t level,
+					enum bt_security_err err)
+{
+	fp_fmdn_security_changed(conn, level, err);
+}
+
+int fp_fmdn_gatt_test_run_provision_done(uint8_t const *eidk)
+{
+	while (k_sem_take(&fmdn_provision_test_done, K_NO_WAIT) == 0) {
+	}
+
+	fp_fmdn_provision_done(eidk);
+	return k_sem_take(&fmdn_provision_test_done, K_SECONDS(1));
+}
+#endif /* CONFIG_ZTEST */

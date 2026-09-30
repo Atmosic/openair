@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file fp_tag_platform.c
- *
- * @brief Platform For fp tag
- *
- * Copyright (C) Atmosic 2025-2026
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <zephyr/drivers/gpio.h>
@@ -83,14 +75,28 @@ static void sound_stop(void)
 #endif
 }
 
+#if defined(CONFIG_LIS2DH_TRIGGER) || defined(CONFIG_AT_CMD_TAGMOTIONRPT)
+static void fmna_platform_motion_event(void)
+{
+	fmna_motion_detection_notify();
+}
+#endif
+
 static void motion_init(void)
 {
 	platform_ctrl_motion_detect_init();
+#if defined(CONFIG_LIS2DH_TRIGGER) || defined(CONFIG_AT_CMD_TAGMOTIONRPT)
+	platform_ctrl_motion_detect_set_event_cb(fmna_platform_motion_event);
+	platform_ctrl_motion_detect_trigger_enable(true);
+#endif
 	LOG_DBG("motion_init");
 }
 
 static void motion_deinit(void)
 {
+#if defined(CONFIG_LIS2DH_TRIGGER) || defined(CONFIG_AT_CMD_TAGMOTIONRPT)
+	platform_ctrl_motion_detect_trigger_enable(false);
+#endif
 	platform_ctrl_motion_detect_action(false);
 	LOG_DBG("motion_deinit");
 }
@@ -165,9 +171,16 @@ static struct fmna_init_params const fmna_init_params = {
 		      .motion_deinit = motion_deinit,
 		      .motion_detected = motion_detected},
 	.battery_cb = {.battery_level_get = battery_level_get},
-	.state_cb = {
-		.state_notify = state_notify,
-	}};
+	.state_cb =
+		{
+			.state_notify = state_notify,
+		},
+#ifdef CONFIG_FMNA_CUSTOM_CONN_PARAMS
+	.conn_interval_min = CONFIG_FMNA_CONN_INTERVAL_MIN,
+	.conn_interval_max = CONFIG_FMNA_CONN_INTERVAL_MAX,
+	.conn_supervision_timeout = CONFIG_FMNA_CONN_TIMEOUT,
+#endif
+};
 
 static void fmna_tag_platform_init(tag_state_notify_cb fn_cb)
 {
@@ -177,7 +190,7 @@ static void fmna_tag_platform_init(tag_state_notify_cb fn_cb)
 	if (err) {
 		LOG_ERR("Invalid Bluetooth address format");
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), AT_CMD_TAG_MODE_FMNA,
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(), AT_CMD_TAG_MODE_FMNA,
 				     AT_CMD_TAG_ERR_INVALID_PARAM);
 #endif
 		return;

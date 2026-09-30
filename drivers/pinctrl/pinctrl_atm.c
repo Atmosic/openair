@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2024-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/drivers/pinctrl.h>
@@ -27,6 +27,7 @@
 static int pinctrl_configure_pin(uint8_t pin, uint8_t signal, uint8_t pupd, uint8_t pdsn)
 {
 	// TODO: check if pin is valid for signal (at_pinmux.h, __MASK macros?)
+	//       does not seem to be checked on ATMx2, also has no __MASK macros
 
 	// Ensure only 1 Pull option is set
 	bool pull_clear = pupd & ATM_NO_PULL;
@@ -36,15 +37,41 @@ static int pinctrl_configure_pin(uint8_t pin, uint8_t signal, uint8_t pupd, uint
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_SOC_SERIES_ATMX2
+#define WRPR_REG CMSDK_WRPR
+#define GPIO_SET_INPUT_PULLDOWN(_) return -ENOTSUP
+#define PIN_PULLDOWN(_) return -ENOTSUP
+#define PINMUX_GPIO 0
+#define PIN_PDSN_CFG(pin, val) ARG_UNUSED(val)
+#else
 #define WRPR_REG CMSDK_WRPR0_NONSECURE
+#endif
 
 	/* Drive Strength */
 	PIN_PDSN_CFG(pin, pdsn);
 
 	/* Pinmux Assingment */
+#ifdef CONFIG_ATM_PINCTRL_CLEAR_PUPD_OVRD_ON_GPIO
+#define PIN_PUPD_OVRD_CLR(pin)                                                                     \
+	if ((WRPRPINS_PUPD_OVRD__WRITE & (1ULL << (pin))) != 0) {                                  \
+		PIN_PULL_CLR(pin);                                                                 \
+	}
+#else
+#define PIN_PUPD_OVRD_CLR(pin)
+#endif
+
 #define PIN_CASE(pin)                                                                              \
 	case pin: {                                                                                \
 		if (signal == PINMUX_GPIO) {                                                       \
+			/* Clear any WRPR PUPD_OVRD override before applying GPIO                  \
+			 * controller pull settings; WRPR overrides take priority over             \
+			 * the GPIO controller pull registers, so the GPIO-level                   \
+			 * bias-pull-up/down would be ineffective without clearing it first.       \
+			 * Guard with the write mask so PIN_PULL_CLR is only called on             \
+			 * pins that actually support the PUPD_OVRD register bit.                  \
+			 */                                                                        \
+			PIN_PUPD_OVRD_CLR(pin)                                                     \
+			COND_CODE_0(defined(CONFIG_SOC_SERIES_ATMX2) && IN_RANGE(pin, 14, 17), (   \
 			if (pull_clear) {                                                          \
 				GPIO_SET_HIGHZ(PIN2GPIO(pin));                                     \
 			} else if (pull_up) {                                                      \
@@ -52,6 +79,7 @@ static int pinctrl_configure_pin(uint8_t pin, uint8_t signal, uint8_t pupd, uint
 			} else if (pull_down) {                                                    \
 				GPIO_SET_INPUT_PULLDOWN(PIN2GPIO(pin));                            \
 			}                                                                          \
+			), (return -ENOTSUP;));                                                    \
 		} else {                                                                           \
 			if (pull_clear) {                                                          \
 				PIN_PULL_CLR(pin);                                                 \

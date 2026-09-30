@@ -4,6 +4,17 @@
  * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
+/*
+ * This test exercises the raw ARM CMSDK watchdog driver directly, so
+ * force the watchdog0 alias back to wdog0 even on SoCs that default it
+ * to the unified watchdog wrapper for user applications.
+ */
 &wdog0 {
 	status = "okay";
+};
+
+/ {
+	aliases {
+		watchdog0 = &wdog0;
+	};
 };
