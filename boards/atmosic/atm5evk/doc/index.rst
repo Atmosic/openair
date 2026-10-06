@@ -159,11 +159,11 @@ Build the application with the default secure board::
 
 2. Flashing the Application:
 
-Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.
+Atmosic provides a mechanism to speed up programming time called FAST LOAD, which is enabled by default. Apply the option ``--no-fast-load`` to disable it and use the normal load flow.
 
 Flash the application::
 
-  west flash --device <DEVICE_ID> --dl --fast_load --verify -d build/<BOARD>/<APP> --erase_flash
+  west flash --device <DEVICE_ID> --dl --verify -d build/<BOARD>/<APP> --erase_flash
 
 Note that adding ``--erase_flash`` is required for flash-only devices like ATM5/e platforms. To erase multiple specific flash regions, repeat ``--erase_flash=address,size``; for example, ``--erase_flash=0x200000,0x1000 --erase_flash=0x201000,0x1000``.
 
@@ -196,15 +196,15 @@ When passing ``-DCONFIG_BOOTLOADER_MCUBOOT=y`` on the application build command 
 
 Flash MCUboot
 
-Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
+Atmosic provides a mechanism to speed up programming time called FAST LOAD, which is enabled by default. Apply the option ``--no-fast-load`` to disable it and use the normal load flow.::
 
-   west flash --verify --device <DEVICE_ID> --dl --fast_load -d build/<BOARD>/mcuboot --noreset --erase_flash
+   west flash --verify --device <DEVICE_ID> --dl -d build/<BOARD>/mcuboot --noreset --erase_flash
 
 Note that adding ``--erase_flash`` is required for flash-only devices like ATM5/e platforms. It is only needed when you flash the first image, such as MCUboot in this example. Do not add ``--erase_flash`` while flashing the application below. For multiple specific regions, repeat ``--erase_flash=address,size``.
 
 Flash the signed application image::
 
-   west flash --verify --device <DEVICE_ID> --dl --fast_load -d build/<BOARD>/<APP>
+   west flash --verify --device <DEVICE_ID> --dl -d build/<BOARD>/<APP>
 
 ===================
 BLE Link Controller
