@@ -192,7 +192,7 @@ Build with Inline PCT (IPT) support:
 
 .. code-block:: bash
 
-   west build -p always -b <BOARD>@mcuboot openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.ipt
+   west build -p always -b <BOARD> openair/applications/ras_rrsp_reflector --sysbuild -T applications.ras_rrsp_reflector.atm.ipt
 
 Build with MCUboot command:
 Run the following command to build the MCUboot and application
