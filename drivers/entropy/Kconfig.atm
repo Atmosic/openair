@@ -8,6 +8,7 @@ config ENTROPY_ATM_TRNG
 	default y
 	depends on DT_HAS_ATMOSIC_ATM_TRNG_ENABLED
 	select ENTROPY_HAS_DRIVER
+	select ENTROPY_NEEDS_PRNG
 	help
 	  Enable True Random Number Generator (TRNG) driver for Atmosic SOCs.
 

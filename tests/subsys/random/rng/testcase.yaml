@@ -11,6 +11,10 @@ tests:
   tests.subsys.random.rng.atm: &base_config
     sysbuild: true
 
+  tests.subsys.random.rng.atm.psa:
+    extra_configs:
+      - CONFIG_PSA_CRYPTO=y
+
   # Coverage twin: the entropy-device random generator routes sys_rand_get /
   # sys_csrand_get through entropy_atm_get_entropy(), so this scenario
   # instruments the Atmosic entropy driver. See the "Zephyr Coverage" guide
