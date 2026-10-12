@@ -148,6 +148,13 @@ When enabled, BUTTON_1 state at boot determines the runtime behavior:
 - BUTTON_1 not pressed (or absent): Use simple beacon (continuous 100ms advertising)
 - BUTTON_1 pressed: Use the configured base profile
 
+**Scan Request Filtering**
+
+In order to measure consistent power performance, atm_beacon by default builds
+REFBCN_POWER_PROFILE, which configures CONFIG_BT_FILTER_ACCEPT_LIST=y. This will
+receive and discard any scan request packets. If scan response transmissions are
+desired, manually set CONFIG_BT_FILTER_ACCEPT_LIST=n.
+
 Advertising Parameters
 ======================
 

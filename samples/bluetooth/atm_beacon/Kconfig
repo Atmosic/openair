@@ -23,6 +23,7 @@ config REFBCN_POWER_PROFILE
 	bool "hibernate beacon demo"
 	select ADV_OPTS_USE_IDENTITY
 	select ADV_OPTS_SCANNABLE
+	select ADV_OPTS_FILTER_SCAN_REQ
 	select ADV_FLAGS_LE_ONLY_GENERAL_DISC
 	help
 	  Select this option to enable power profile.
@@ -341,5 +342,8 @@ config ADV_FLAGS
 config ADV_TOUT
 	int
 	default 0
+
+config BT_FILTER_ACCEPT_LIST
+	default y
 
 source "Kconfig.zephyr"
