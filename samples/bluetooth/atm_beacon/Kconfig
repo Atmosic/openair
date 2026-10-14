@@ -346,4 +346,7 @@ config ADV_TOUT
 config BT_FILTER_ACCEPT_LIST
 	default y
 
+config ATM_PLF_DEBUG
+	default n # Debug printing can disturb power measurements
+
 source "Kconfig.zephyr"
