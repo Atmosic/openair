@@ -1,0 +1,19 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+sample:
+  name: OLED text
+  description: Print centered text on an OLED via the
+    character framebuffer (CFB)
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "oled_text"
+  tags:
+    - display
+tests:
+  samples.drivers.display.gme.atm: {}

@@ -1,0 +1,83 @@
+/*
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
+ * Copyright (c) 2026 Atmosic
+ */
+#include "pinctrl_i2c.dtsi"
+
+/{
+	mikrobus_header: mikrobus-connector {
+		compatible = "mikro-bus";
+		#gpio-cells = <2>;
+		gpio-map-mask = <0xffffffff 0xffffffc0>;
+		gpio-map-pass-thru = <0 0x3f>;
+		gpio-map = <0 0 &gpio2 5 0>,	/* AN   -> P37 */
+			   <1 0 &gpio2 15 0>,	/* RST  -> P47 */
+			   <2 0 &gpio0 12 0>,	/* CS   -> P12 */
+			   <3 0 &gpio0 13 0>,	/* SCK  -> P13 */
+			   <4 0 &gpio0 15 0>,	/* MISO -> P15 */
+			   <5 0 &gpio0 14 0>,	/* MOSI -> P14 */
+						/* +3.3V */
+						/* GND */
+			   <6 0 &gpio2 6 0>,	/* PWM  -> P38 */
+			   <7 0 &gpio2 7 0>,	/* INT  -> P39 */
+			   <8 0 &gpio1 12 0>,	/* RX   -> P28 */
+			   <9 0 &gpio1 13 0>,	/* TX   -> P29 */
+			   <10 0 &gpio1 0 0>,	/* SCL  -> P16 */
+			   <11 0 &gpio1 1 0>;	/* SDA  -> P17 */
+						/* +5V */
+						/* GND */
+	};
+};
+
+&pinctrl {
+	// SPI 1
+	spi1_cs_peri_board: spi1_cs_peri_board {
+		pinmux = <12 PINMUX_SPI1_CS>;
+	};
+
+	spi1_clk_peri_board: spi1_clk_peri_board {
+		pinmux = <13 PINMUX_SPI1_CLK>;
+	};
+
+	spi1_mosi_peri_board: spi1_mosi_peri_board {
+		pinmux = <14 PINMUX_SPI1_MOSI>;
+	};
+
+	spi1_miso_peri_board: spi1_miso_peri_board {
+		pinmux = <15 PINMUX_SPI1_MISO>;
+	};
+};
+
+&adc {
+	// ADC 0+ single (P37)
+	mikrobus_adc: channel@9 {
+		reg = <9>;
+		zephyr,gain = "ADC_GAIN_1_4";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+};
+
+&i2c0 {
+	pinctrl-0 = <&i2c0_sda_peri_board &i2c0_scl_peri_board>;
+};
+
+&pwm1 {
+	pin = <38>;
+};
+
+&spi1 {
+	// Cannot be used when I2C switch is enabled due to pin conflicts
+	pinctrl-0 = <&spi1_cs_peri_board &spi1_clk_peri_board &spi1_mosi_peri_board &spi1_miso_peri_board>;
+};
+
+&uart0 {
+	rx-pin = <28>;
+	tx-pin = <29>;
+};
+
+mikrobus_i2c: &i2c0 {};
+mikrobus_pwm: &pwm1 {};
+mikrobus_serial: &uart0 {};
+mikrobus_spi: &spi1 {};

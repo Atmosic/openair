@@ -1,11 +1,7 @@
-/**
- *******************************************************************************
- *
+/*
  * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <zephyr/kernel.h>
@@ -23,6 +19,21 @@
 /** Magic number to identify valid secure fault data */
 #define SPE_SECURE_FAULT_STORAGE_MAGIC 0x53504546 /* 'SPEF' */
 
+#ifndef SECURE_PROC_ENV
+/* Non-SPE build (e.g. unit/coverage tests in the NS image). */
+static atm_spe_secure_fault_data_t gcov_fault_storage_buf;
+static volatile atm_spe_secure_fault_data_t *spe_fault_storage =
+    &gcov_fault_storage_buf;
+
+bool mem_check_has_access(void const *ptr, uint32_t len, bool ns_caller,
+    bool write);
+static inline void sec_switch_console(void)
+{
+}
+static inline void sec_switch_console_ns(void)
+{
+}
+#else
 #define FAULT_STORAGE_BASE DT_REG_ADDR(DT_NODELABEL(spe_fault_storage))
 #define FAULT_STORAGE_SIZE DT_REG_SIZE(DT_NODELABEL(spe_fault_storage))
 
@@ -32,6 +43,7 @@ BUILD_ASSERT(FAULT_STORAGE_SIZE >= sizeof(atm_spe_secure_fault_data_t),
 
 static volatile atm_spe_secure_fault_data_t *spe_fault_storage =
     (volatile atm_spe_secure_fault_data_t *)FAULT_STORAGE_BASE;
+#endif
 
 static int spe_secure_fault_storage_init(void)
 {

@@ -5,12 +5,14 @@
  *
  * @brief Atmosic ATLC power management driver
  *
- * Copyright (C) Atmosic 2023-2024
+ * Copyright (C) Atmosic 2023-2026
  *
  *******************************************************************************
  */
 
 #pragma once
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +31,14 @@ void atm_mac_lock_sync(void);
  * @brief Release lock.  Internal operation is thread safe.
  */
 void atm_mac_unlock(void);
+
+/**
+ * @brief Get the current remaining timed ATLC sleep duration in Zephyr ticks.
+ *
+ * @return Remaining sleep duration in Zephyr ticks, zero when the timer has
+ *         expired, or K_TICKS_FOREVER when no timed ATLC sleep is active.
+ */
+int64_t atm_ble_sleep_remaining_ticks(void);
 
 #ifdef __cplusplus
 }

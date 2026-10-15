@@ -143,6 +143,8 @@ typedef struct
   uint16_t  maxPawrRspDataLen;      /*!< Maximum PAwR response data size. */
   uint16_t  minPerAdvDurUsec;       /*!< Minimum periodic advertising time. */
   uint8_t   maxPawrRxBufNumber;     /*!< Maximum number of PAwR Rx buffers. */
+  uint8_t   pawrDataReqWindowSize;  /*!< Maximum number of subevents requested in one PAwR data request event. */
+  bool      pawrDataReqOverride;    /*!< true to enforce latest-request override behavior; false to preserve legacy hole requests. */
   /* Scanner */
   uint8_t   maxScanReqRcvdEvt;      /*!< Maximum scan request received events. */
   uint16_t  maxExtScanDataLen;      /*!< Maximum extended scan data size. */
@@ -225,7 +227,7 @@ typedef struct
   uint16_t  csBufSize;             /*!< Buffer size for CS result.*/
   uint8_t   csNumStepsReport;       /*!< Number of steps data in one HCI report. Use maximum value if set to 0. */
   uint8_t   csLe2mPhySup;           /*!< CS LE 2M PHY supported. */
-  int8_t    csMaxTxPwrBoundary;      /*!< Maximum CS TX power level boundary supported. */
+  int8_t    csTxPwrOverride;         /*!< CS TX power override; LL_PWR_CTRL_TXPOWER_UNAVAILABLE if unused. */
   /* eISOAL. */
   uint8_t   unsegmentedFramedModeSup;  /*!< Unsegmented framed mode supported. */
   /* FSU */
@@ -404,6 +406,7 @@ typedef enum
 #define LL_OP_MODE_FLAG_BYPASS_INSTANT_DISCON       (UINT64_C(1) << 30)  /*!< Bypass disconnect when instant is past. */
 #define LL_OP_MODE_FLAG_DIS_RX                      (UINT64_C(1) << 31)  /*!< Disable Rx functionality (Tx-only platform). */
 #define LL_OP_MODE_FLAG_DIS_CONN_PARAM_REQ_PROC     (UINT64_C(1) << 32)  /*!< Disable Connection Parameters Request Procedure. */
+#define LL_OP_MODE_FLAG_FILTER_PEER_SUBRATE_EVT     (UINT64_C(1) << 33)  /*!< Filter LE Subrate Change Event for peer-initiated subrate changes. */
 /* diagnostics only */
 #define LL_OP_MODE_FLAG_ENA_CS_TEST_UNSYNC_MODE     (UINT64_C(1) << 55)  /*!< Enable CS test unsync mode. */
 #define LL_OP_MODE_FLAG_ENA_CS_DBG_VECTOR           (UINT64_C(1) << 56)  /*!< Enable CS debug vector. */
@@ -1681,6 +1684,14 @@ typedef struct
   legacyAdvDataBuffer *pLegacyAdvDataBuffer; /*!< legacy advertising data buffer. */
 #endif
   const uint8_t *pData;         /*!< Data buffer. */
+  /* ISR staging fields for task-level RPA resolution (internal use only, not sent to Host). */
+  uint64_t      peerAddr;       /*!< Peer Address. */
+  uint64_t      localAddr;      /*!< Local address. */
+  uint16_t      did;            /*!< Advertising data ID in ADI. */
+  uint8_t       pduType;        /*!< PDU type. */
+  uint8_t       extHdrFlags;    /*!< Extended header flags. */
+  bool          peerAddrRand;   /*!< Tx address type is random. */
+  bool          localAddrRand;  /*!< Rx address type is random. */
 } LlExtAdvReportInd_t;
 
 /*! \brief      Extended scan enable confirm */

@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include "compiler.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -18,7 +18,8 @@ Requirements
 1. Atmosic EVK <:ref:`board | serial <atmosic_evk>`>
 
 .. note::
-    - Currently, only the **ATM34/e** series of Atmosic devices are supported.
+    - Currently, the **ATM34/e** and **ATM53/e** series of Atmosic devices are supported.
+    - **ATM52** does not support channel sounding.
 
 2. Button
 
@@ -184,6 +185,14 @@ The following dependencies are automatically selected when this option is enable
       CONFIG_ENABLE_CS_REF_IPT=y
       CONFIG_CS_PROC_ANT_CFG_SEL=0
 
+.. note::
+   On **ATM53/e** devices, a 2×2 antenna configuration is supported with CS reflector IPT. ``CONFIG_CS_PROC_ANT_CFG_SEL=7`` selects the 2×2 antenna configuration when using this feature on ATM53/e:
+
+   .. code-block:: bash
+
+      CONFIG_ENABLE_CS_REF_IPT=y
+      CONFIG_CS_PROC_ANT_CFG_SEL=7
+
 .. important::
    **Reflector Requirement**: The paired reflector device must also have CS Enhancement 1 support enabled (e.g., ``CONFIG_ATM_ENA_LL_FEAT_CS_ENH1=y`` on the reflector side). The initiator reads the reflector's extended features after connection and only enables IPT in the CS config if the reflector advertises support.
 
@@ -263,6 +272,31 @@ The default value ``0x3FF8`` clears all step data for Mode 2.
    ``CONFIG_RREQ_SET_RAS_FILTER`` and has no effect unless the filter is
    enabled.
 
+Testing
+*******
+
+The EVK running this application is the Channel Sounding initiator. Connect it to a compatible
+reflector EVK running the :ref:`ras_rrsp_reflector <ras_rrsp_reflector-application>` application.
+Connect UART0 from the initiator EVK to the **Atmosic CS Plot Tool** using a baud rate of
+**2000000**. The distance result is displayed in the CS Plot Tool.
+
+Default configuration (without Inline PCT)
+===========================================
+
+1. Build and flash this application using the default target below.
+2. Build and flash a compatible reflector using its default target, then scan for
+   **Atmosic_RRSP** and complete pairing.
+3. Connect the initiator EVK UART0 to the **Atmosic CS Plot Tool** at **2000000 baud**.
+4. Start a Channel Sounding session from the initiator application and verify the distance result
+   in the CS Plot Tool.
+
+Inline PCT (IPT) configuration
+===============================
+
+Build both peers with their Inline PCT targets: use
+``applications.ras_rreq_initiator.atm.ipt`` for this application and
+``applications.ras_rrsp_reflector.atm.ipt`` for the reflector.
+
 Building and Running
 ********************
 
@@ -274,8 +308,14 @@ Build with UART0 as console and shell command:
 
    west build -p always -b <BOARD> openair/applications/ras_rreq_initiator --sysbuild -T applications.ras_rreq_initiator.atm
 
+Build with Inline PCT (IPT) support:
+
+.. code-block:: bash
+
+   west build -p always -b <BOARD> openair/applications/ras_rreq_initiator --sysbuild -T applications.ras_rreq_initiator.atm.ipt
+
 Flash command:
 
 .. code-block:: bash
 
-   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink [--erase_all]

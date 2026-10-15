@@ -42,7 +42,7 @@ enum {
 	FP_ADV_BT_ID = 0,
 	/// FP FMDN adv BT ID
 	FP_FMDN_ADV_BT_ID,
-#ifdef CONFIG_FAST_PAIR_FMDN_DULT
+#if defined(CONFIG_FAST_PAIR_FMDN_DULT) && defined(CONFIG_DULT_ADV_SUPPORT)
 	/// FP DULT adv BT ID
 	FP_DULT_ADV_BT_ID,
 #endif

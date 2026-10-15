@@ -73,3 +73,8 @@ ZTEST_SUITE(dtm_message_processing, NULL, dtm_2wire_setup, dtm_2wire_before, dtm
 
 ZTEST_SUITE(dtm_state_machine, NULL, dtm_2wire_setup, dtm_2wire_before, dtm_2wire_after,
 	    dtm_2wire_teardown);
+
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_SIMULATED
+ZTEST_SUITE(dtm_simulated_rx, NULL, dtm_2wire_setup, dtm_2wire_before, dtm_2wire_after,
+	    dtm_2wire_teardown);
+#endif

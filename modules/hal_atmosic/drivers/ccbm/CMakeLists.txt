@@ -1,7 +1,9 @@
 # Coin Cell Battery Management (CCBM) Driver
 #
-# Copyright (C) Atmosic 2025
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 if(CONFIG_ATM_CCBM)
   zephyr_library()

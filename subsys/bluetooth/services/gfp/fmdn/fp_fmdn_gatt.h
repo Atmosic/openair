@@ -77,10 +77,14 @@ void fp_fmdn_gatt_utp_mode_reg(fp_fmdn_utp_mode_cb const hdlr);
  * @param[in] action enable/disable ring action
  * @param[in] ring_op ring operation
  * @param[in] ring_vol_lvl ring volume level
- * @param[in] ring_to_ds ring timeout in deciseconds
+ * @param[in] ring_to_ds ring timeout in deciseconds requested by the seeker
+ * @return effective ring duration in deciseconds when action=true; the caller
+ *         uses this value for the safety timer and the GATT response. Return
+ *         @p ring_to_ds unchanged to keep the seeker-requested duration.
+ *         Ignored when action=false.
  */
-typedef void (*fp_fmdn_ring_action_cb)(bool action, uint8_t ring_op, uint8_t ring_vol_lvl,
-				       uint16_t ring_to_ds);
+typedef uint16_t (*fp_fmdn_ring_action_cb)(bool action, uint8_t ring_op, uint8_t ring_vol_lvl,
+					   uint16_t ring_to_ds);
 
 /**
  * @brief fmdn ring action handler register
@@ -88,6 +92,24 @@ typedef void (*fp_fmdn_ring_action_cb)(bool action, uint8_t ring_op, uint8_t rin
  */
 __NONNULL_ALL
 void fp_fmdn_gatt_ring_action_reg(fp_fmdn_ring_action_cb const hdlr);
+
+/**
+ * @brief Overwrite the active ring duration for the safety timer (one-shot)
+ *
+ * Applies to the current ring session only. When set to a non-zero value, the
+ * internal safety timer uses @p duration_ds instead of the phone-requested
+ * value. The override is automatically cleared when the ring stops (timeout,
+ * GATT request, or button press), so the next ring uses the phone value normally.
+ *
+ * If ringing is already active, the safety timer is rescheduled immediately;
+ * @p duration_ds is the remaining time from NOW, not from ring start.
+ *
+ * @param duration_ds ring duration in deciseconds; 0 stops ringing immediately
+ *
+ * @note Must be called from the application work queue context; not ISR-safe.
+ * @note Duration is in deciseconds, aligned with the GATT protocol specification.
+ */
+void fp_fmdn_gatt_set_ring_duration_override(uint16_t duration_ds);
 
 #ifdef CONFIG_FAST_PAIR_FMDN_DULT
 /**

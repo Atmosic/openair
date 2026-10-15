@@ -1,13 +1,15 @@
+/*
+ * Copyright (c) 2021-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file at_cmd.c
  *
  * @brief Atmosic AT Command Core
- *
- * Copyright (C) Atmosic 2021-2026
- *
- * SPDX-License-Identifier: Apache-2.0
  *
  *******************************************************************************
  */
@@ -79,11 +81,15 @@ extern at_cmd_t const __at_cmd_end;
 
 static bool at_cmd_dbg;
 
-static at_cmd_alloc_ctx_t at_ctx[AT_CMD_XFER_MAX_NUM];
+static at_cmd_alloc_ctx_t at_ctx[CONFIG_AT_CMD_XFER_MAX_NUM];
+
+#ifdef CONFIG_AT_CMD_LOCK_SET
+static bool at_cmd_locked[CONFIG_AT_CMD_XFER_MAX_NUM];
+#endif
 
 static void at_cmd_resp_data(at_cmd_ch_t ch, char const *data, uint16_t len)
 {
-	if ((ch < AT_CMD_XFER_MAX_NUM) && at_ctx[ch].resp) {
+	if ((ch < CONFIG_AT_CMD_XFER_MAX_NUM) && at_ctx[ch].resp) {
 		at_ctx[ch].resp(ch, data, len);
 	}
 }
@@ -417,6 +423,13 @@ bool at_cmd_proc(at_cmd_ch_t ch, void const *data, uint16_t data_len)
 		return false;
 	}
 
+#ifdef CONFIG_AT_CMD_LOCK_SET
+	if (at_cmd_is_locked(ch) && !cmd->lock_exempt) {
+		at_send_status(ch, AT_CMD_ERR_LOCKED, NULL);
+		return false;
+	}
+#endif
+
 	size_t clen = strlen(cmd->str);
 	if (xlen == clen) {
 		/* Bare zero-parameter exec: AT+CMD\r\n */
@@ -454,9 +467,27 @@ bool at_cmd_proc(at_cmd_ch_t ch, void const *data, uint16_t data_len)
 	return true;
 }
 
+#ifdef CONFIG_AT_CMD_LOCK_SET
+bool at_cmd_is_locked(at_cmd_ch_t ch)
+{
+	if (ch >= CONFIG_AT_CMD_XFER_MAX_NUM) {
+		return false;
+	}
+	return at_cmd_locked[ch];
+}
+
+void at_cmd_lock(at_cmd_ch_t ch, bool lock)
+{
+	if (ch >= CONFIG_AT_CMD_XFER_MAX_NUM) {
+		return;
+	}
+	at_cmd_locked[ch] = lock;
+}
+#endif
+
 at_cmd_ch_t at_cmd_alloc(at_cmd_alloc_ctx_t const *ctx)
 {
-	for (int ch = 0; ch < AT_CMD_XFER_MAX_NUM; ch++) {
+	for (int ch = 0; ch < CONFIG_AT_CMD_XFER_MAX_NUM; ch++) {
 		if (!at_ctx[ch].resp) {
 			at_ctx[ch].xfer =
 				(ctx->xfer != AT_CMD_DFT_XFER_UART) ? ctx->xfer : at_cmd_xfer_uart;
@@ -465,8 +496,7 @@ at_cmd_ch_t at_cmd_alloc(at_cmd_alloc_ctx_t const *ctx)
 		}
 	}
 
-	ATM_LOG(E, "Please increase the AT_CMD_XFER_MAX_NUM in makefile to support "
-		   "more transfer layer!");
+	ATM_LOG(E, "Please increase CONFIG_AT_CMD_XFER_MAX_NUM to support more transfer layers!");
 	ASSERT_ERR(0);
 	return AT_CMD_INVALID_CH;
 }

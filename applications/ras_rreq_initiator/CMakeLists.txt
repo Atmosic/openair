@@ -18,3 +18,6 @@ set(app_sources
 target_sources(app PRIVATE
   ${app_sources}
 )
+
+target_sources_ifdef(CONFIG_RREQ_USE_ARIAD app PRIVATE src/cs_distance.c)
+target_sources_ifdef(CONFIG_RREQ_USE_DISPLAY app PRIVATE src/cs_display.c)

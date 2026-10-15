@@ -33,6 +33,7 @@ tests:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_XIP;-DTEST_STORAGE_IN_FLASH;-DCONFIG_FLASH_ATM_RUID=y"
   tests.drivers.flash.common.atm.ruid.mcuboot.flash_xip:
     tags:
+      - mcuboot
       - flash_xip
     depends_on:
       - flash

@@ -48,15 +48,27 @@ static bool using_simple_beacon;
 
 #define PMU_BATT_LIION_HARV_ENABLED ((DT_NODE_HAS_PROP(PMU_NODE, batt_type) && (DT_PROP(PMU_NODE, batt_type) == BATT_TYPE_LI_ION)) && (DT_PROP_OR(PMU_NODE, rf_harv, 0) || DT_PROP_OR(PMU_NODE, nonrf_harv, 0)))
 
-#if PMU_BATT_LIION_HARV_ENABLED
+#if defined(CONFIG_REFBCN_SIMPLE_BEACON) && defined(CONFIG_RETAINED_MEM_ATM_HIB)
+#define REFBCN_PROFILE_RETENTION
+#endif
+
+#if defined(REFBCN_PROFILE_RETENTION) || PMU_BATT_LIION_HARV_ENABLED
 #include <zephyr/drivers/retained_mem.h>
 #include <zephyr/device.h>
 
 static const struct device *retained_mem_dev;
 
-/* Memory layout offsets to prevent overlap */
-#define RETAINED_MEM_BATT_OFFSET    0
-#define RETAINED_MEM_BATT_SIZE      4  /* sizeof(uint32_t) */
+struct retained_state {
+#if PMU_BATT_LIION_HARV_ENABLED
+	uint32_t batt;
+#endif
+#ifdef REFBCN_PROFILE_RETENTION
+	uint32_t profile;
+#endif
+};
+
+static struct retained_state retained_state;
+#define RETAINED_MEM_STATE_OFFSET 0
 #endif
 
 #if PMU_BATT_LIION_HARV_ENABLED
@@ -64,9 +76,43 @@ static const struct device *retained_mem_dev;
 #include "reset.h"
 #include "batt_model.h"
 static dev_state_t batt_state;
-static uint32_t batt_persistent_data;
 
 #define BATT_PERSIST_TAG 0x1E3C0000
+#endif
+
+#ifdef REFBCN_PROFILE_RETENTION
+#define PROFILE_BASE_MAGIC   0x42434E30
+#define PROFILE_SIMPLE_MAGIC 0x42434E31
+
+static bool simple_beacon_profile_restore(void)
+{
+	int ret = retained_mem_read(retained_mem_dev, RETAINED_MEM_STATE_OFFSET,
+				    (uint8_t *)&retained_state, sizeof(retained_state));
+	if (ret) {
+		LOG_WRN("Failed to restore beacon profile (err %d)", ret);
+		return false;
+	}
+
+	if (retained_state.profile == PROFILE_SIMPLE_MAGIC) {
+		using_simple_beacon = true;
+	} else if (retained_state.profile == PROFILE_BASE_MAGIC) {
+		using_simple_beacon = false;
+	} else {
+		return false;
+	}
+
+	return true;
+}
+
+static void simple_beacon_profile_save(void)
+{
+	retained_state.profile = using_simple_beacon ? PROFILE_SIMPLE_MAGIC : PROFILE_BASE_MAGIC;
+	int ret = retained_mem_write(retained_mem_dev, RETAINED_MEM_STATE_OFFSET,
+				     (const uint8_t *)&retained_state, sizeof(retained_state));
+	if (ret) {
+		LOG_WRN("Failed to retain beacon profile (err %d)", ret);
+	}
+}
 #endif
 
 #if defined(CONFIG_REFBCN_SOCOFF_BEACON) || defined(CONFIG_REFBCN_SIMPLE_BEACON) ||                \
@@ -538,23 +584,23 @@ static void batt_flag_set(uint8_t idx, bool value)
 {
 	ASSERT_INFO(idx < 16, idx, 16);
 
-	int ret = retained_mem_read(retained_mem_dev, RETAINED_MEM_BATT_OFFSET,
-		(uint8_t *)&batt_persistent_data, sizeof(batt_persistent_data));
+	int ret = retained_mem_read(retained_mem_dev, RETAINED_MEM_STATE_OFFSET,
+				    (uint8_t *)&retained_state, sizeof(retained_state));
 	if (ret) {
 		LOG_INF("Failed to restore data from the retained memory");
 		return;
 	}
 	LOG_INF("Battery flag set: %u %u", idx, value);
-	if ((batt_persistent_data & 0xFFFF0000) != BATT_PERSIST_TAG) {
-		batt_persistent_data = BATT_PERSIST_TAG;
+	if ((retained_state.batt & 0xFFFF0000) != BATT_PERSIST_TAG) {
+		retained_state.batt = BATT_PERSIST_TAG;
 	}
 	if (value) {
-		batt_persistent_data |= (1 << idx);
+		retained_state.batt |= (1 << idx);
 	} else {
-		batt_persistent_data &= ~(1 << idx);
+		retained_state.batt &= ~(1 << idx);
 	}
-	ret = retained_mem_write(retained_mem_dev, RETAINED_MEM_BATT_OFFSET,
-		(uint8_t *)&batt_persistent_data, sizeof(batt_persistent_data));
+	ret = retained_mem_write(retained_mem_dev, RETAINED_MEM_STATE_OFFSET,
+				 (uint8_t *)&retained_state, sizeof(retained_state));
 	if (ret) {
 		LOG_ERR("Failed to save data to the retained memory (err %d)", ret);
 	}
@@ -565,22 +611,22 @@ static bool batt_flag_get(uint8_t idx)
 	bool flag;
 	ASSERT_INFO(idx < 16, idx, 16);
 
-	int ret = retained_mem_read(retained_mem_dev, RETAINED_MEM_BATT_OFFSET,
-		(uint8_t *)&batt_persistent_data, sizeof(batt_persistent_data));
+	int ret = retained_mem_read(retained_mem_dev, RETAINED_MEM_STATE_OFFSET,
+				    (uint8_t *)&retained_state, sizeof(retained_state));
 	if (ret) {
 		LOG_ERR("Failed to restore data from the retained memory (err %d)", ret);
 		return false;
 	}
-	if ((batt_persistent_data & 0xFFFF0000) != BATT_PERSIST_TAG) {
-		batt_persistent_data = BATT_PERSIST_TAG;
+	if ((retained_state.batt & 0xFFFF0000) != BATT_PERSIST_TAG) {
+		retained_state.batt = BATT_PERSIST_TAG;
 	}
-	flag = !!(batt_persistent_data & (1 << idx));
-	ret = retained_mem_write(retained_mem_dev, RETAINED_MEM_BATT_OFFSET,
-		(uint8_t *)&batt_persistent_data, sizeof(batt_persistent_data));
+	flag = !!(retained_state.batt & (1 << idx));
+	ret = retained_mem_write(retained_mem_dev, RETAINED_MEM_STATE_OFFSET,
+				 (uint8_t *)&retained_state, sizeof(retained_state));
 	if (ret) {
 		LOG_ERR("Failed to save data to the retained memory (err %d)", ret);
 	}
-	LOG_INF("Battery flag get: %u %u %u", idx, flag, batt_persistent_data);
+	LOG_INF("Battery flag get: %u %u %u", idx, flag, retained_state.batt);
 
 	return flag;
 }
@@ -600,7 +646,7 @@ static dev_state_t batt_state_get(void)
 
 int main(void)
 {
-#if PMU_BATT_LIION_HARV_ENABLED
+#if defined(REFBCN_PROFILE_RETENTION) || PMU_BATT_LIION_HARV_ENABLED
 	retained_mem_dev = DEVICE_DT_GET(DT_NODELABEL(retained_mem_hib));
 	if (!device_is_ready(retained_mem_dev)) {
 		LOG_ERR("Retained memory device not ready");
@@ -609,18 +655,30 @@ int main(void)
 #endif
 
 #ifdef CONFIG_REFBCN_SIMPLE_BEACON
-	using_simple_beacon = is_boot_type(TYPE_POWER_ON);
-#ifdef BUTTON_1_EXIST
-	static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(DT_NODELABEL(button0), gpios);
-	int ret = gpio_pin_configure_dt(&button, GPIO_INPUT);
-	if (ret) {
-		LOG_ERR("button error (err %d)", ret);
-		return ret;
-	}
-	if (using_simple_beacon && gpio_pin_get_dt(&button)) {
-		using_simple_beacon = false;
+	bool profile_restored = false;
+#ifdef REFBCN_PROFILE_RETENTION
+	if (!is_boot_unretained()) {
+		profile_restored = simple_beacon_profile_restore();
 	}
 #endif
+	if (!profile_restored) {
+		using_simple_beacon = is_boot_type(TYPE_POWER_ON);
+#ifdef BUTTON_1_EXIST
+		static const struct gpio_dt_spec button =
+			GPIO_DT_SPEC_GET(DT_NODELABEL(button0), gpios);
+		int ret = gpio_pin_configure_dt(&button, GPIO_INPUT);
+		if (ret) {
+			LOG_ERR("button error (err %d)", ret);
+			return ret;
+		}
+		if (using_simple_beacon && gpio_pin_get_dt(&button)) {
+			using_simple_beacon = false;
+		}
+#endif
+#ifdef REFBCN_PROFILE_RETENTION
+		simple_beacon_profile_save();
+#endif
+	}
 #if defined(LED_1_EXIST) && defined(CONFIG_PM)
 	if (using_simple_beacon) {
 		int ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);

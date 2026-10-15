@@ -1,0 +1,44 @@
+sample:
+  name: Bluetooth Peripheral ESL
+  description: Demonstrates the ESL (Electronic Shelf Label) GATT Service
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "Adv Start"
+  tags:
+    - ble_pawr
+    - bluetooth
+    - atm_test_with_spe
+  depends_on:
+    - esl
+tests:
+  applications.peripheral_esl.atm: &base_config
+    extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DINIT_BP_FREQ=48000000;-DATM_APP_FLASH_RESERVED_SIZE=0x9000"
+  applications.peripheral_esl.atm.mcuboot:
+    tags:
+      - mcuboot
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DINIT_BP_FREQ=48000000;-DATM_APP_FLASH_RESERVED_SIZE=0x9000;-DATM_STORAGE_SIZE=0x1000;-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+  applications.peripheral_esl.atm.pytest:
+    extra_args:
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_APP_FLASH_RESERVED_SIZE=0x9000"
+    harness: pytest
+    tags:
+      - esl_pytest
+    timeout: 600
+  applications.peripheral_esl.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 300
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="esls.c;display_pervasive.c"

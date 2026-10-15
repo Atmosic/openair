@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2022-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+&pinctrl {
+	pdm0_clk_default: pdm0_clk_default {
+		pinmux = <20 PINMUX_PDM0_CLK>;
+	};
+
+	pdm0_data_default: pdm0_data_default {
+		pinmux = <21 PINMUX_PDM0_IN>;
+	};
+};
+
+&pdm0 {
+	/* P6 is freed by disabling the board LED below. */
+	mic-bias-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+};
+
+&led1 {
+	status = "disabled";
+};
+
+&led2 {
+	status = "disabled";
+};
+
+&button0 {
+	status = "disabled";
+};
+
+&button1 {
+	status = "disabled";
+};
+
+&uart0 {
+	status = "disabled";
+};
+
+&pwm3 {
+	pin = <29>;
+};
+
+&input_kbd_matrix {
+	row0-pin = <3>;
+	row0-ksi = <3>;
+	row1-pin = <4>;
+	row1-ksi = <4>;
+	row2-pin = <18>;
+	row2-ksi = <5>;
+	row3-pin = <19>;
+	row3-ksi = <6>;
+	col0-pin = <25>;
+	col0-kso = <12>;
+	col1-pin = <17>;
+	col1-kso = <4>;
+	col2-pin = <14>;
+	col2-kso = <1>;
+	col3-pin = <22>;
+	col3-kso = <9>;
+	status = "okay";
+};
+

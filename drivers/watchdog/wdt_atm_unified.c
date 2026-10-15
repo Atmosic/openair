@@ -1,12 +1,13 @@
-/*
+/**
+ *******************************************************************************
+ *
+ * @file wdt_atm_unified.c
+ *
+ * @brief Atmosic Unified Watchdog Wrapper Driver
+ *
  * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
- */
-
-/**
- * @file
- * @brief Atmosic Unified Watchdog Wrapper Driver
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  * This driver wraps the upstream ARM CMSDK APB watchdog driver and adds
  * Atmosic PMU watchdog management. It presents a single unified watchdog
@@ -19,10 +20,13 @@
  *
  * Active State Behavior:
  * - Both ARM and PMU watchdogs are configured with the same timeout
- * - PMU watchdog timeout = ARM timeout + 100ms offset
+ * - PMU watchdog warning offset is configured by
+ *   CONFIG_ATM_WDT_PMU_WARN_OFFSET_SEC
  * - Both watchdogs fed simultaneously via wdt_feed()
  * - PMU watchdog warning interrupt fires if ARM watchdog hardware fails
  * - User callback invoked before system reset
+ *
+ *******************************************************************************
  */
 
 #include <zephyr/device.h>
@@ -35,8 +39,8 @@
 #ifdef CONFIG_ATM_PMU_WDT_ENABLE
 #include "pmu.h"
 #include "at_wrpr.h"
-#include "at_apb_pseq_regs_core_macro.h"
 #include "timer.h"
+#include "at_apb_pseq_regs_core_macro.h"
 #include "spi.h"     /* For PMU_TOP_READ macro */
 #include "pmu_spi.h" /* For PMU register addresses */
 
@@ -138,17 +142,18 @@ static void wdt_atm_pmu_wdog_warn_clear_intr(void)
  * @brief PMU watchdog warning interrupt handler
  *
  * Called by central PMU_Handler() in pmu.c when PMU watchdog warning fires.
- * The interrupt source is cleared in pmu_isr_source() before this is called.
+ * The interrupt source is cleared in pmu_isr_source() before this handler.
  *
  * If PMU watchdog warning fired during active state, it indicates that the
  * ARM watchdog hardware failed to trigger. The handler feeds the PMU watchdog
  * and invokes the user-registered callback to allow the application to decide
  * what action to take (e.g., log information, perform recovery, or initiate a
- * system reset).
+ * system reset). This function can run from the direct PMU ISR, so it must not
+ * perform logging or other operations that can acquire kernel locks.
  */
 void wdt_pmu_handler(void)
 {
-	LOG_INF("PMU watchdog warning fired!");
+	wdt_atm_pmu_wdog_warn_clear_intr();
 
 	/* Feed/reset PMU watchdog by reading the PMU_WDOG register */
 	WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
@@ -161,7 +166,6 @@ void wdt_pmu_handler(void)
 	const struct device *unified_dev = DEVICE_DT_INST_GET(0);
 	struct wdt_atm_unified_data *data = unified_dev->data;
 	if (data->user_callback) {
-		LOG_DBG("Calling user callback from PMU warning handler");
 		data->user_callback(unified_dev, 0);
 	} else {
 		sys_reboot(SYS_REBOOT_COLD);
@@ -198,28 +202,37 @@ static int wdt_atm_setup(const struct device *dev, uint8_t options)
 	}
 
 #ifdef CONFIG_ATM_PMU_WDT_ENABLE
+#define PMU_WARNING_OFFSET_MS (CONFIG_ATM_WDT_PMU_WARN_OFFSET_SEC * 1000)
+
 	/* Setup PMU watchdog for active state */
 	if (data->timeout_ms > 0) {
 		/* Configure PMU watchdog timeout duration */
 		uint64_t cycles;
-		WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
-		{
-#define PMU_WARNING_OFFSET_MS (CONFIG_ATM_WDT_PMU_WARN_OFFSET_SEC * 1000)
-			/* Convert timeout from milliseconds to 32 KHz clock cycles */
-			cycles = atm_ms_to_lpc(data->timeout_ms + PMU_WARNING_OFFSET_MS);
-			pseq_core_config_soc_off(cycles);
+		int64_t pmu_timeout_ms = (int64_t)data->timeout_ms + PMU_WARNING_OFFSET_MS;
+		/* Keep the offset arithmetic signed. A negative warning offset
+		 * must not wrap to a multi-year watchdog timeout. If the offset
+		 * is earlier than the ARM timeout, leave the PMU watchdog disabled
+		 * in active state; the ARM watchdog remains the reset source. */
+		if (pmu_timeout_ms > 0) {
+			uint32_t effective_timeout_ms = (uint32_t)pmu_timeout_ms;
+
+			WRPR_CTRL_PUSH(CMSDK_PMU, WRPR_CTRL__CLK_ENABLE)
+			{
+				cycles = atm_ms_to_lpc(effective_timeout_ms);
+				pseq_core_config_soc_off(cycles);
+			}
+			WRPR_CTRL_POP();
+
+			/* Enable PMU watchdog */
+			pmu_set_pmu_wdog_reset(true);
+			data->pmu_enabled = true;
+
+			/* Enable PMU watchdog warning interrupt */
+			wdt_atm_pmu_wdog_warn_enable_intr();
+
+			LOG_DBG("PMU watchdog enabled with timeout %u ms (%llu cycles)",
+				effective_timeout_ms, cycles);
 		}
-		WRPR_CTRL_POP();
-
-		/* Enable PMU watchdog */
-		pmu_set_pmu_wdog_reset(true);
-		data->pmu_enabled = true;
-
-		/* Enable PMU watchdog warning interrupt */
-		wdt_atm_pmu_wdog_warn_enable_intr();
-
-		LOG_DBG("PMU watchdog enabled with timeout %u ms (%llu cycles)",
-			data->timeout_ms + PMU_WARNING_OFFSET_MS, cycles);
 	}
 #endif
 

@@ -10,7 +10,7 @@
  *
  * Copyright (C) Atmosic 2025-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -19,6 +19,10 @@
 
 #include "arch.h"
 #include "at_apb_pseq_regs_core_macro.h"
+
+// enabled on platforms without SHUB
+#ifndef __PSEQ_SENSOR_HUB_CONTROL_MACRO__
+
 #include "at_wrpr.h"
 #include "retained_mem_hib_backend.h"
 
@@ -200,3 +204,5 @@ int retained_mem_backend_init(const struct device *dev)
 
 	return 0;
 }
+
+#endif /* !__PSEQ_SENSOR_HUB_CONTROL_MACRO__ */

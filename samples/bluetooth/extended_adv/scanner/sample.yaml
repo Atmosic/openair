@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
 sample:
   name: Bluetooth Extended Advertising Scanner
 common:
@@ -14,3 +18,16 @@ tests:
         - Starting Extended Advertising Demo
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+  samples.bluetooth.extended_adv.scanner.atm.two_dev:
+    sysbuild: true
+    timeout: 60
+    tags:
+      - two_dev
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Connected state!"
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+

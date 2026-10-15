@@ -12,6 +12,9 @@ tests:
   samples.sensor.lis2dh.atm:
     sysbuild: true
     harness: console
+    depends_on:
+      - i2c
+      - lis2dh
     harness_config:
       type: one_line
       regex:

@@ -5,7 +5,9 @@
  *
  * @brief Secure debug authentication library
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -32,6 +34,17 @@
 // counter value will be included in the static challenge
 #define STATIC_CHALLENGE_INCLUDE_SEC_CTR
 #endif // !defined(CONFIG_SOC_FAMILY_ATM) || defined(CONFIG_ATM_SEC_COUNTER)
+#ifdef CONFIG_ZTEST
+// allow the test to define the read-only ranges for the static hash
+extern void const *atm_debug_auth_test_rom_addr;
+extern uint32_t const atm_debug_auth_test_rom_len;
+#define DEBUG_AUTH_ROM_SCAN_ADDR atm_debug_auth_test_rom_addr
+#define DEBUG_AUTH_ROM_SCAN_SIZE atm_debug_auth_test_rom_len
+extern void const *atm_debug_auth_test_jrnl_addr;
+extern uint32_t const atm_debug_auth_test_jrnl_len;
+#define DEBUG_AUTH_JRNL_SCAN_ADDR atm_debug_auth_test_jrnl_addr
+#define DEBUG_AUTH_JRNL_SCAN_SIZE atm_debug_auth_test_jrnl_len
+#else
 #ifdef CONFIG_SOC_FAMILY_ATM
 #define SEC_JRNL_START DT_REG_ADDR(DT_NODELABEL(sec_jrnl))
 #define SEC_JRNL_SIZE DT_REG_SIZE(DT_NODELABEL(sec_jrnl))
@@ -39,6 +52,13 @@
 #define SEC_JRNL_START 0x1008f800
 #define SEC_JRNL_SIZE 1776
 #endif // CONFIG_SOC_FAMILY_ATM
+// don't sha the first word of ROM to avoid a null pointer compile time
+// error
+#define DEBUG_AUTH_ROM_SCAN_ADDR  ((void *)(CMSDK_FLASH_BASE + sizeof(uint32_t)))
+#define DEBUG_AUTH_ROM_SCAN_SIZE  (ROM_SIZE - sizeof(uint32_t))
+#define DEBUG_AUTH_JRNL_SCAN_ADDR ((void *)SEC_JRNL_START)
+#define DEBUG_AUTH_JRNL_SCAN_SIZE SEC_JRNL_SIZE
+#endif // CONFIG_ZTEST
 #endif // DEBUG_AUTH_STATIC_CHALLENGE
 
 #define CHALLENGE_WORDS 16
@@ -326,14 +346,12 @@ static void generate_static_challenge(void)
 	.digest_endianess = ATM_SHA256_ENDIANESS_BIG};
     success =
 	success && (atm_sha256_init(&sha_params) == ATM_SHA256_RES_SUCCESS);
-    // don't sha the first word of ROM to avoid a null pointer compile time
-    // error
+    success =
+	    success && (atm_sha256_update_pio(DEBUG_AUTH_ROM_SCAN_ADDR, DEBUG_AUTH_ROM_SCAN_SIZE) ==
+			ATM_SHA256_RES_SUCCESS);
     success = success &&
-	(atm_sha256_update_pio((void *)(CMSDK_FLASH_BASE + sizeof(uint32_t)),
-	     ROM_SIZE - sizeof(uint32_t)) == ATM_SHA256_RES_SUCCESS);
-    success = success &&
-	(atm_sha256_update_pio((void *)SEC_JRNL_START, SEC_JRNL_SIZE) ==
-	    ATM_SHA256_RES_SUCCESS);
+	      (atm_sha256_update_pio(DEBUG_AUTH_JRNL_SCAN_ADDR, DEBUG_AUTH_JRNL_SCAN_SIZE) ==
+	       ATM_SHA256_RES_SUCCESS);
 
 #ifdef STATIC_CHALLENGE_INCLUDE_SEC_CTR
     uint16_t counter;
@@ -446,7 +464,11 @@ void atm_debug_auth_init(uint8_t const *key, debug_write_t write_cb
 {
     public_key = key;
     uart_write_cb = write_cb;
-#ifndef DEBUG_AUTH_STATIC_CHALLENGE
+    unlocked = false;
+#ifdef DEBUG_AUTH_STATIC_CHALLENGE
+    static_challenge_valid = false;
+#else
+    challenge_valid = false;
     trng_get_entropy_cb = trng_get_cb;
     hmac_drbg_init();
 #endif

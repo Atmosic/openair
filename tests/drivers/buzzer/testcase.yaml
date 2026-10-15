@@ -8,6 +8,10 @@ common:
     - pwm
     - buzzer
     - atm_buzzer
+  # app.overlay wires the atmosic,atm3x-pwm-buzzer node to pwm3, which only the
+  # ATM3x PWM block routes.
+  depends_on:
+    - atm3x_pwm
 
 tests:
   tests.drivers.buzzer.atm: &base_config {}

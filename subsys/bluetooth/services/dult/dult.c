@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file dult.c
  *
  * @brief Atmosic Detecting Unwanted Location Trackers (DULT) Middleware
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -38,6 +42,9 @@ static dult_mode_t cur_no_mode;
 static dult_hdlrs_t const *dult_hdlrs;
 static dult_user_info_t const *dult_user_info;
 static bool dult_enabled;
+static ssize_t (*dult_overwritten_write_handler)(struct bt_conn *conn,
+						 const struct bt_gatt_attr *attr, const void *buf,
+						 uint16_t len, uint16_t offset, uint8_t flags);
 
 // DULT Service Near Owner Response
 typedef struct ble_dult_no_resp_s {
@@ -219,7 +226,7 @@ static void dult_sound_play_timer_handler(struct k_work *work)
 	atm_work_submit_to_app_work_q(&dult_gatt_sound_play_complete_ind);
 
 	/* Stop the sound by calling the callback with false */
-	if (dult_hdlrs->sound_action_cb) {
+	if (dult_hdlrs && dult_hdlrs->sound_action_cb) {
 		dult_hdlrs->sound_action_cb(false);
 	}
 }
@@ -240,7 +247,7 @@ static void dult_sound_play_invoke_update(struct k_work *work)
 						   K_SECONDS(DULT_PLAY_SOUND_DUR_SEC));
 		sound_play = true;
 	}
-	if (dult_hdlrs->sound_action_cb) {
+	if (dult_hdlrs && dult_hdlrs->sound_action_cb) {
 		dult_hdlrs->sound_action_cb(sound_play);
 	}
 }
@@ -308,7 +315,7 @@ static ssize_t dult_write_err_handle(struct bt_conn *conn, const struct bt_gatt_
 static dult_battery_level_t dult_get_battery_level(void)
 {
 	uint8_t battery_percentage = DULT_BATTERY_LEVEL_NONE;
-	if (dult_hdlrs->battery_status_cb) {
+	if (dult_hdlrs && dult_hdlrs->battery_status_cb) {
 		battery_percentage = dult_hdlrs->battery_status_cb();
 	}
 	if (battery_percentage == DULT_BATTERY_LEVEL_NONE) {
@@ -328,6 +335,10 @@ static dult_battery_level_t dult_get_battery_level(void)
 static ssize_t dult_write_handler(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 				  const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
 {
+	if (dult_overwritten_write_handler) {
+		return dult_overwritten_write_handler(conn, attr, buf, len, offset, flags);
+	}
+
 	ssize_t res = len;
 	uint16_t opcode;
 	int err = 0;
@@ -532,7 +543,9 @@ BT_CONN_CB_DEFINE(dult_conn_callbacks) = {
 int dult_init(void)
 {
 	LOG_DBG("start");
-	cur_no_mode = DULT_NO_MODE_UNKNOWN;
+	if (!dult_enabled) {
+		cur_no_mode = DULT_NO_MODE_UNKNOWN;
+	}
 	return 0;
 }
 
@@ -628,3 +641,150 @@ void dult_handlers_register(dult_hdlrs_t const *hdlrs, dult_user_info_t const *u
 	dult_adv_bt_id_set(bt_id);
 #endif
 }
+
+struct bt_gatt_service_static const *dult_svc_get(void)
+{
+	return &dult_svc;
+}
+
+void dult_overwrite_write_handler(ssize_t (*write_handler)(struct bt_conn *conn,
+							   const struct bt_gatt_attr *attr,
+							   const void *buf, uint16_t len,
+							   uint16_t offset, uint8_t flags))
+{
+	dult_overwritten_write_handler = write_handler;
+}
+
+void dult_restore_write_handler(void)
+{
+	dult_overwritten_write_handler = NULL;
+}
+
+#ifdef CONFIG_ZTEST
+/* Test hooks: expose internal static callbacks for unit test coverage */
+
+void dult_test_indicate_params_destroy_cb(void)
+{
+	struct bt_gatt_indicate_params *params;
+
+	if (!k_mem_slab_alloc(&indicate_params_slab, (void **)&params, K_NO_WAIT)) {
+		dult_indicate_params_destroy_cb(params);
+	}
+}
+
+void dult_test_clear_handlers(void)
+{
+	dult_hdlrs = NULL;
+	dult_user_info = NULL;
+}
+
+int dult_test_write_bad_offset(void)
+{
+	uint8_t buf[2] = {0x03, 0x00};
+
+	return (int)dult_write_handler(NULL, NULL, buf, sizeof(buf), 1, 0);
+}
+
+int dult_test_write_bad_len(void)
+{
+	uint8_t buf[1] = {0x03};
+
+	return (int)dult_write_handler(NULL, NULL, buf, sizeof(buf), 0, 0);
+}
+
+int dult_test_write_not_initialized(void)
+{
+	uint8_t buf[2] = {0x03, 0x00};
+
+	return (int)dult_write_handler(NULL, NULL, buf, sizeof(buf), 0, 0);
+}
+
+dult_battery_level_t dult_test_get_battery_level(void)
+{
+	return dult_get_battery_level();
+}
+
+void dult_test_safe_malloc(void)
+{
+	void *p = dult_safe_malloc(4);
+
+	k_free(p);
+}
+
+struct bt_gatt_attr *dult_test_gatt_get_attr(void)
+{
+	return dult_gatt_get_attr(DULT_NON_OWNER_CHARACTERISTIC);
+}
+
+void dult_test_read_id_update_enable(void)
+{
+	dult_read_id_update(true);
+}
+
+void dult_test_read_id_update_disable(void)
+{
+	dult_read_id_update(false);
+}
+
+void dult_test_read_id_timer_handler(void)
+{
+	dult_dult_read_id_timer_handler(NULL);
+}
+
+void dult_test_sound_complete_ind_null(void)
+{
+	/* sound_info is NULL → covers the early-return path */
+	dult_gatt_sound_play_complete_ind_send(NULL);
+}
+
+void dult_test_sound_complete_ind_send(void)
+{
+	/* Allocate a fake sound_info so the non-early-return (GATT indication)
+	 * path of dult_gatt_sound_play_complete_ind_send is exercised. */
+	sound_info = k_malloc(sizeof(sound_ind_info_t));
+	__ASSERT(sound_info, "malloc sound_info failed");
+	sound_info->conn = NULL;
+	dult_gatt_sound_play_complete_ind_send(NULL);
+}
+
+void dult_test_sound_play_timer_handler(void)
+{
+	dult_sound_play_timer_handler(NULL);
+}
+
+void dult_test_sound_play_invoke_update(void)
+{
+	dult_sound_play_invoke_update(NULL);
+}
+
+int dult_test_write_err_handle_ok(void)
+{
+	return (int)dult_write_err_handle(NULL, NULL, 0x003, 2, 0);
+}
+
+int dult_test_write_err_handle_enomem(void)
+{
+	return (int)dult_write_err_handle(NULL, NULL, 0x003, 2, -ENOMEM);
+}
+
+int dult_test_write_err_handle_other(void)
+{
+	return (int)dult_write_err_handle(NULL, NULL, 0x003, 2, -EIO);
+}
+
+#ifdef CONFIG_DULT_ADV_SUPPORT
+void dult_test_disconnected(uint8_t reason)
+{
+	dult_disconnected(NULL, reason);
+}
+#endif /* CONFIG_DULT_ADV_SUPPORT */
+
+int dult_test_write_opcode(uint16_t opcode)
+{
+	uint8_t buf[2];
+
+	sys_put_le16(opcode, buf);
+	return (int)dult_write_handler(NULL, NULL, buf, sizeof(buf), 0, 0);
+}
+
+#endif /* CONFIG_ZTEST */

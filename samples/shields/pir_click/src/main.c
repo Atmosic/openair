@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,7 +14,7 @@ LOG_MODULE_REGISTER(pir_click, LOG_LEVEL_INF);
 #define PIR_SAMPLE_INTERVAL_MS 500
 #define MCP_NODE               DT_NODELABEL(mcp3221)
 #define ADC_NODE               DT_NODELABEL(adc)
-#define ADC_CHANNEL            ADC_CHANNEL_CFG_DT(DT_CHILD(ADC_NODE, channel_7))
+#define ADC_CHANNEL            ADC_CHANNEL_CFG_DT(DT_NODELABEL(mikrobus_adc))
 
 static const struct device *const mcp_dev = DEVICE_DT_GET(MCP_NODE);
 static const struct device *const adc_dev = DEVICE_DT_GET(ADC_NODE);

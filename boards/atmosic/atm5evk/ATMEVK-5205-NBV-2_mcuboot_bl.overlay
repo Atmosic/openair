@@ -1,0 +1,7 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+#include <arm/atmosic/ATM5xxx_mcuboot_bl.overlay>

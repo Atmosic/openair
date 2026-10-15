@@ -14,4 +14,6 @@ common:
     regex:
       - "Hello World! (.*)"
 tests:
-  samples.hello_world.atm: {}
+  samples.hello_world.atm:
+    tags:
+      - openair_release

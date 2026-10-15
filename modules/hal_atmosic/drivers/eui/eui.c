@@ -61,10 +61,14 @@ static int eui_setting_read_cb(const char *key, size_t len,
     // Distinguish EUIs based on length
     if ((len == EUI48_LEN_BYTES) && (param == eui48)) {
 	ret = read_cb(cb_arg, param, len);
-	eui48_inited = true;
+	if (ret == EUI48_LEN_BYTES) {
+	    eui48_inited = true;
+	}
     } else if ((len == EUI64_LEN_BYTES) && (param == eui64)) {
 	ret = read_cb(cb_arg, param, len);
-	eui64_inited = true;
+	if (ret == EUI64_LEN_BYTES) {
+	    eui64_inited = true;
+	}
     } else {
 	return 0; // Keep searching
     }

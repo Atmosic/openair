@@ -1,0 +1,20 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_SEC_ASSERT_TEST
+	bool "Enable sec_assert for testing"
+	depends on ZTEST
+	help
+	  Enables testing options for this driver.
+
+if ATM_SEC_ASSERT_TEST
+
+config ATM_SEC_ASSERT_COVERAGE_RETURN
+	bool "Return from sec_assert instead of halting under gcov coverage"
+	depends on COVERAGE
+	help
+	  When enabled, sec_assert() returns to its caller instead of halting.
+	  This is only intended for coverage testing.
+
+endif

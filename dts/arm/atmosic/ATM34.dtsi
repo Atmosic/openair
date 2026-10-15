@@ -117,6 +117,11 @@
 	};
 };
 
+#ifdef ATM_DTS_USER_APP
+/* Default the user application to the unified watchdog wrapper. */
+#include <common/atmosic/atm_wdt_unified.dtsi>
+#endif
+
 &nvic {
 	arm,num-irq-priority-bits = <4>;
 };

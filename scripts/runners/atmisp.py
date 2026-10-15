@@ -32,6 +32,7 @@ DEFAULT_OPENOCD_TELNET_PORT = 4444
 DEFAULT_OPENOCD_GDB_PORT = 3333
 DEFAULT_OPENOCD_RESET_HALT_CMD = "reset init"
 DEFAULT_OPENOCD_TARGET_HANDLE = "_TARGETNAME"
+DEFAULT_FAST_LOAD_RAM_CMD = "atmx3_load_ram_image"
 
 
 @contextlib.contextmanager
@@ -89,6 +90,9 @@ def _is_last_domain(build_dir):
 class AtmispBinaryRunner(ZephyrBinaryRunner):
     """Runner front-end for atmisp."""
 
+    # set once any sysbuild domain of this flash invocation erased the device
+    erase_honored = False
+
     # pylint: disable=too-many-arguments, too-many-locals, too-many-branches, too-many-statements
     def __init__(
         self,
@@ -104,8 +108,6 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         verify=False,
         erase_all=False,
         erase_flash=False,
-        erase_flash_size=None,
-        erase_flash_addr=None,
         erase_rram=False,
         ext_flash_base_addr=0x200000,
         noreset=False,
@@ -114,6 +116,7 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         factory_data_file=False,
         fast_load=False,
         fast_load_bin="",
+        fast_load_ram_cmd=DEFAULT_FAST_LOAD_RAM_CMD,
         atmwstk=None,
         pre_init=None,
         no_init=False,
@@ -213,26 +216,33 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
             "CONFIG_DT_HAS_ATMOSIC_RRAM_CONTROLLER_ENABLED"
         )
 
+        self.erase_flash_regions = self.parse_erase_regions(
+            erase_flash, "--erase_flash"
+        )
+        self.erase_rram_regions = self.parse_erase_regions(erase_rram, "--erase_rram")
         self.erase_all = erase_all
         if erase_all:
             self.erase_flash = True
+            self.erase_flash_regions = [(None, None)]
             # Only enable RRAM erase if SOC supports it
             if has_rram:
                 self.erase_rram = True
+                self.erase_rram_regions = []
             else:
+                self.erase_rram = False
                 self.logger.warning(
                     "--erase_all: RRAM not supported on this SOC, "
                     "skipping RRAM erase (flash erase will proceed)"
                 )
         else:
-            self.erase_flash = erase_flash
-            self.erase_rram = erase_rram
+            self.erase_flash = bool(erase_flash)
+            self.erase_rram = bool(erase_rram)
             if not has_rram and self.erase_rram:
                 # Reject RRAM erase if SOC does not support it
                 self.logger.error("RRAM is not supported on this SOC")
                 sys.exit(1)
-        self.erase_flash_size = erase_flash_size
-        self.erase_flash_addr = erase_flash_addr
+        if self.erase_flash or self.erase_rram:
+            AtmispBinaryRunner.erase_honored = True
         self.ext_flash_base_addr = ext_flash_base_addr
         self.rram = rram
         self.openocd_config = openocd_config
@@ -312,14 +322,37 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
                 self.elf_name.append(Path(settings_elf_path).as_posix())
 
         self.use_elf = use_elf
-        if fast_load and not use_elf:
+        # fast_load is enabled by default, but it only applies when the board
+        # actually supports it (board.cmake provides --fast_load_bin) and we are
+        # not flashing an ELF. Otherwise fall back to the normal load path so a
+        # default-on fast_load never breaks a platform that lacks it (e.g. LUX).
+        can_fast_load = (
+            fast_load
+            and not use_elf
+            and bool(fast_load_bin)
+            and cfg.hex_file is not None
+        )
+        if fast_load and not use_elf and not fast_load_bin:
+            self.logger.warning(
+                "fast_load unavailable for this board (no --fast_load_bin); "
+                "using normal load"
+            )
+
+        objdump = None
+        if can_fast_load:
+            # The objdump locate at the same directory with gdb
+            if cfg.gdb:
+                objdump = cfg.gdb.replace("-gdb-py", "-objdump").replace(
+                    "-gdb", "-objdump"
+                )
+            if not objdump or not os.path.exists(objdump):
+                self.logger.warning("<fast_load> objdump not found; using normal load")
+                can_fast_load = False
+
+        if can_fast_load:
             self.fast_load = True
             self.fl_bin = fast_load_bin
-            # The objdump locate at the same directory with gdb
-            objdump = cfg.gdb.replace("-gdb-py", "-objdump").replace("-gdb", "-objdump")
-            if not os.path.exists(objdump):
-                self.logger.error("<fast_load> %s not exist", objdump)
-                sys.exit(1)
+            self.fl_ram_cmd = fast_load_ram_cmd
             self.fl_prog_addr = None
 
             for file in self.hex_name:
@@ -344,6 +377,7 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         else:
             self.fast_load = False
             self.fl_bin = None
+            self.fl_ram_cmd = None
         self.cfg_cmd = []
 
     @staticmethod
@@ -364,6 +398,36 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
                     f"Invalid memory_space format: {entry}. Expected format: TYPE,START,SIZE"
                 ) from e
         return memory_spaces
+
+    @staticmethod
+    def parse_erase_regions(erase_args, option_name):
+        """Parse repeated erase options and their optional address and size."""
+        if erase_args is True:
+            erase_args = [""]
+        elif isinstance(erase_args, str):
+            erase_args = [erase_args]
+
+        regions = []
+        for erase_arg in erase_args or []:
+            if not erase_arg:
+                regions.append((None, None))
+                continue
+
+            values = erase_arg.split(",")
+            if len(values) != 2:
+                raise ValueError(
+                    f"Invalid {option_name} value: {erase_arg}. "
+                    "Expected address,size"
+                )
+            try:
+                regions.append((int(values[0], 0), int(values[1], 0)))
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid {option_name} value: {erase_arg}. "
+                    "Expected numeric address,size"
+                ) from e
+
+        return regions
 
     @staticmethod
     def find_target_memory_space(hex_file, memory_spaces):
@@ -388,7 +452,22 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
     @classmethod
     def capabilities(cls):
         """capabilities of this runner"""
-        return RunnerCaps(commands={"flash", "attach", "debug", "debugserver"})
+        return RunnerCaps(commands={"flash", "attach", "debug", "debugserver", "reset"})
+
+    @classmethod
+    # pylint: disable=unused-argument
+    def args_from_previous_runner(cls, previous_runner, args):
+        """drop erase requests already honored by a previous domain"""
+        # west flash instantiates this runner once per sysbuild domain
+        # with the same command line. The erase belongs to the device,
+        # not to a domain: repeating it would wipe the image an
+        # earlier domain already programmed (e.g. MCUboot before the
+        # application). Only the immediately previous runner is passed
+        # here, so rely on the sticky flag to cover every later domain.
+        if cls.erase_honored:
+            args.erase_all = False
+            args.erase_flash = None
+            args.erase_rram = None
 
     @classmethod
     def do_add_parser(cls, parser):
@@ -410,29 +489,23 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         )
         parser.add_argument(
             "--erase_flash",
-            default=False,
+            default=None,
             required=False,
-            action="store_true",
-            help="Erase flash, if not --erase_flash_size, erase whole flash by default",
-        )
-        parser.add_argument(
-            "--erase_flash_addr",
-            required=False,
-            help="Specify erase flash addr as 0x200000, "
-            "only take effect with --erase_flash or --erase_all.",
-        )
-        parser.add_argument(
-            "--erase_flash_size",
-            required=False,
-            help="Specify erase flash size as 0x800000, "
-            "only take effect with --erase_flash or --erase_all.",
+            action="append",
+            nargs="?",
+            const="",
+            metavar="[address,size]",
+            help="Erase flash, optionally at address,size; can be specified multiple times",
         )
         parser.add_argument(
             "--erase_rram",
-            default=False,
+            default=None,
             required=False,
-            action="store_true",
-            help="Erase RRAM",
+            action="append",
+            nargs="?",
+            const="",
+            metavar="[address,size]",
+            help="Erase RRAM, optionally at address,size; can be specified multiple times",
         )
         parser.add_argument(
             "--rram",
@@ -512,16 +585,33 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         )
         parser.add_argument(
             "--fast_load",
+            default=True,
+            required=False,
+            action="store_true",
+            help="Enable fast load feature (enabled by default; kept for "
+            "backward compatibility). Use --no-fast-load to disable.",
+        )
+        parser.add_argument(
+            "--no-fast-load",
+            "--no_fast_load",
+            dest="no_fast_load",
             default=False,
             required=False,
             action="store_true",
-            help="Enable fast load feature",
+            help="Disable fast load feature (fast load is enabled by default).",
         )
         parser.add_argument(
             "--fast_load_bin",
             default="",
             required=False,
             help="Path to fast_load.bin",
+        )
+        parser.add_argument(
+            "--fast_load_ram_cmd",
+            default=DEFAULT_FAST_LOAD_RAM_CMD,
+            required=False,
+            help="OpenOCD command loading the fast_load RAM image, defaults to "
+            f'"{DEFAULT_FAST_LOAD_RAM_CMD}"',
         )
 
         parser.add_argument(
@@ -615,16 +705,11 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
             noreset=args.noreset,
             use_elf=args.use_elf,
             erase_flash=args.erase_flash,
-            erase_flash_addr=(
-                int(args.erase_flash_addr, 16) if args.erase_flash_addr else None
-            ),
-            erase_flash_size=(
-                int(args.erase_flash_size, 16) if args.erase_flash_size else None
-            ),
             ext_flash_base_addr=int(args.ext_flash_base_addr, 16),
             factory_data_file=args.factory_data_file,
-            fast_load=args.fast_load,
+            fast_load=args.fast_load and not args.no_fast_load,
             fast_load_bin=args.fast_load_bin,
+            fast_load_ram_cmd=args.fast_load_ram_cmd,
             target_handle=args.target_handle,
             atmwstk=args.atmwstk,
             prog_rom=args.prog_rom,
@@ -684,7 +769,7 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         """perform this runner"""
         self.require(self.openocd_cmd[0])
         is_split_img = self.build_config.getboolean("CONFIG_ATM_SPLIT_IMG")
-        if not is_split_img:
+        if not is_split_img and command != "reset":
             self.ensure_output("bin")
 
         if self.openocd_config is not None:
@@ -698,27 +783,13 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
             os.environ["SWDIF"] = "FTDI"
             if self.dl:
                 os.environ["SWDBOARD"] = "DL"
+        if command == "reset":
+            self.do_reset()
+            return
         if command == "flash":
             if self.reset_only:
                 self.logger.info("Skipping flash operation (--reset_only specified)")
-
-                # Only reset on the last domain in sysbuild
-                if not _is_last_domain(self.cfg.build_dir):
-                    self.logger.info("Not the last domain, skipping reset")
-                    return
-
-                self.logger.info(
-                    "Last domain - performing reset to run existing firmware..."
-                )
-                # FTDI needs extra step to set GPIO pins first
-                if not self.jlink:
-                    self.do_reset_target()
-                # Connect SWD and trigger reset on exit
-                self.call(
-                    self.openocd_cmd
-                    + self.cfg_cmd
-                    + ["-c init", "-c set _RESET_HARD_ON_EXIT 1", "-c exit"]
-                )
+                self.do_reset()
                 return
             storage_type = "Ext Flash"
             if self.rram:
@@ -758,6 +829,24 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         else:
             self.do_debugserver(**kwargs)
 
+    def do_reset(self):
+        """reset the target to run the already programmed firmware"""
+        # Only reset on the last domain in sysbuild
+        if not _is_last_domain(self.cfg.build_dir):
+            self.logger.info("Not the last domain, skipping reset")
+            return
+
+        self.logger.info("Performing reset to run existing firmware...")
+        # FTDI needs extra step to set GPIO pins first
+        if not self.jlink:
+            self.do_reset_target()
+        # Connect SWD and trigger reset on exit
+        self.call(
+            self.openocd_cmd
+            + self.cfg_cmd
+            + ["-c init", "-c set _RESET_HARD_ON_EXIT 1", "-c exit"]
+        )
+
     def do_reset_target(self):
         """perform reset target"""
         with _temp_environ(FTDI_BENIGN_BOOT="1", FTDI_HARD_RESET="1"):
@@ -790,7 +879,7 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         if self.fast_load:
             cmd_flash = cmd_prefix + [
                 "-c init",
-                "-c atmx3_load_ram_image " + self.fl_bin,
+                "-c " + self.fl_ram_cmd + " " + self.fl_bin,
             ]
         else:
             cmd_flash = cmd_prefix + ["-c init", "-c verify_rom_version"]
@@ -798,43 +887,71 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
             if self.fast_load:
                 fl_cmd_erase = "0x02"
                 if self.erase_rram:
-                    cmd_flash += [
-                        "-c atm_fast_load 0xFFFFFFFF " + fl_cmd_erase + " 0x10000"
-                    ]
+                    for erase_addr, erase_size in self.erase_rram_regions or [
+                        (None, None)
+                    ]:
+                        erase_size = (
+                            hex(erase_size) if erase_size is not None else "0xFFFFFFFF"
+                        )
+                        erase_addr = (
+                            hex(erase_addr) if erase_addr is not None else "0x10000"
+                        )
+                        cmd_flash += [
+                            "-c atm_fast_load "
+                            + erase_size
+                            + " "
+                            + fl_cmd_erase
+                            + " "
+                            + erase_addr
+                        ]
                 if self.erase_flash:
-                    if self.erase_flash_size:
-                        erase_size = hex(self.erase_flash_size)
-                    else:
-                        erase_size = "0xFFFFFFFF"
-                    if self.erase_flash_addr:
-                        erase_addr = hex(self.erase_flash_addr)
-                    else:
-                        erase_addr = hex(self.ext_flash_base_addr)
-                    cmd_flash += [
-                        "-c atm_fast_load "
-                        + erase_size
-                        + " "
-                        + fl_cmd_erase
-                        + " "
-                        + erase_addr
-                    ]
+                    for erase_addr, erase_size in self.erase_flash_regions:
+                        erase_size = (
+                            hex(erase_size) if erase_size is not None else "0xFFFFFFFF"
+                        )
+                        erase_addr = (
+                            hex(erase_addr)
+                            if erase_addr is not None
+                            else hex(self.ext_flash_base_addr)
+                        )
+                        cmd_flash += [
+                            "-c atm_fast_load "
+                            + erase_size
+                            + " "
+                            + fl_cmd_erase
+                            + " "
+                            + erase_addr
+                        ]
             else:
                 if self.erase_flash:
-                    if self.erase_flash_size:
-                        erase_size = hex(self.erase_flash_size)
-                        if self.erase_flash_addr:
-                            erase_addr = hex(
-                                self.erase_flash_addr - self.ext_flash_base_addr
+                    for erase_addr, erase_size in self.erase_flash_regions:
+                        if erase_size is not None:
+                            erase_addr = (
+                                hex(erase_addr - self.ext_flash_base_addr)
+                                if erase_addr is not None
+                                else "0x0"
                             )
+                            cmd_flash += [
+                                "-c atm_erase_flash "
+                                + hex(erase_size)
+                                + " "
+                                + erase_addr
+                            ]
                         else:
-                            erase_addr = "0x0"
-                        cmd_flash += [
-                            "-c atm_erase_flash " + erase_size + " " + erase_addr
-                        ]
-                    else:
-                        cmd_flash += ["-c catch {atm_erase_flash}"]
+                            cmd_flash += ["-c catch {atm_erase_flash}"]
                 if self.erase_rram:
-                    cmd_flash += ["-c atm_erase_rram_all"]
+                    for erase_addr, erase_size in self.erase_rram_regions or [
+                        (None, None)
+                    ]:
+                        if erase_addr is not None and erase_size is not None:
+                            cmd_flash += [
+                                "-c atm_erase_rram "
+                                + hex(erase_addr)
+                                + " "
+                                + hex(erase_size)
+                            ]
+                        else:
+                            cmd_flash += ["-c atm_erase_rram_all"]
         if self.fast_load:
             fl_cmd_write = "0x01"
             if self.verify:
@@ -919,41 +1036,43 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
         if self.fast_load:
             cmd_flash = cmd_prefix + [
                 "-c init",
-                "-c atmx3_load_ram_image " + self.fl_bin,
+                "-c " + self.fl_ram_cmd + " " + self.fl_bin,
             ]
         else:
             cmd_flash = cmd_prefix + ["-c init"]
         if self.erase_flash:
             if self.fast_load:
                 fl_cmd_erase = "0x02"
-                if self.erase_flash_size:
-                    erase_size = hex(self.erase_flash_size)
-                else:
-                    erase_size = "0xFFFFFFFF"
-                if self.erase_flash_addr:
-                    erase_addr = hex(self.erase_flash_addr)
-                else:
-                    erase_addr = hex(self.ext_flash_base_addr)
-                cmd_flash += [
-                    "-c atm_fast_load "
-                    + erase_size
-                    + " "
-                    + fl_cmd_erase
-                    + " "
-                    + erase_addr
-                ]
+                for erase_addr, erase_size in self.erase_flash_regions:
+                    erase_size = (
+                        hex(erase_size) if erase_size is not None else "0xFFFFFFFF"
+                    )
+                    erase_addr = (
+                        hex(erase_addr)
+                        if erase_addr is not None
+                        else hex(self.ext_flash_base_addr)
+                    )
+                    cmd_flash += [
+                        "-c atm_fast_load "
+                        + erase_size
+                        + " "
+                        + fl_cmd_erase
+                        + " "
+                        + erase_addr
+                    ]
             else:
-                if self.erase_flash_size:
-                    erase_size = hex(self.erase_flash_size)
-                    if self.erase_flash_addr:
-                        erase_addr = hex(
-                            self.erase_flash_addr - self.ext_flash_base_addr
+                for erase_addr, erase_size in self.erase_flash_regions:
+                    if erase_size is not None:
+                        erase_addr = (
+                            hex(erase_addr - self.ext_flash_base_addr)
+                            if erase_addr is not None
+                            else "0x0"
                         )
+                        cmd_flash += [
+                            "-c atm_erase_flash " + hex(erase_size) + " " + erase_addr
+                        ]
                     else:
-                        erase_addr = "0x0"
-                    cmd_flash += ["-c atm_erase_flash " + erase_size + " " + erase_addr]
-                else:
-                    cmd_flash += ["-c catch {atm_erase_flash}"]
+                        cmd_flash += ["-c catch {atm_erase_flash}"]
         if self.fast_load:
             fl_cmd_write = "0x01"
             if self.verify:
@@ -1011,7 +1130,7 @@ class AtmispBinaryRunner(ZephyrBinaryRunner):
                     "-c atm_load_flash "
                     + img
                     + " "
-                    + str(region_start)
+                    + str(region_start + (load_address & 0x1FFFFF))
                     + " "
                     + str(region_size)
                 ]

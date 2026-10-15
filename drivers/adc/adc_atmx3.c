@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2021-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atmx3_adc
@@ -36,6 +36,8 @@ LOG_MODULE_REGISTER(adc_atm, CONFIG_ADC_LOG_LEVEL);
 #include "pmu_swreg_regs_core_macro.h"
 #include "pmu_gadc_regs_core_macro.h"
 #include "timer.h"
+#include "atm_adc.h"
+#include "atm_adc_capture.h"
 
 #define Z_CMSDK_GADC        ((CMSDK_AT_APB_GADC_TypeDef *)DT_REG_ADDR(DT_NODELABEL(adc)))
 #define ATM_GADC_RESOLUTION 11
@@ -228,18 +230,9 @@ __STATIC_FORCEINLINE void gadc_analog_control(bool enable)
 	WRPR_CTRL_POP();
 }
 
-static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
+/* Apply the configured gain extension to the channel's GAIN_CONFIG field */
+static void gadc_apply_channel_gain(GADC_CHANNEL_ID ch)
 {
-	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL);
-
-	gadc_analog_control(true);
-
-	NVIC_EnableIRQ(DT_INST_IRQN(0));
-
-	Z_CMSDK_GADC->INTERRUPT_MASK = 0;
-	Z_CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
-	Z_CMSDK_GADC->INTERRUPT_CLEAR = 0;
-
 	switch (ch) {
 	case VBATT: {
 		DGADC_GAIN_CONFIG0__CH1_GAIN_SEL__MODIFY(Z_CMSDK_GADC->GAIN_CONFIG0, gext[ch]);
@@ -282,6 +275,21 @@ static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
 		ASSERT_ERR(0);
 	} break;
 	}
+}
+
+static void gadc_start_measurement(struct device const *dev, GADC_CHANNEL_ID ch)
+{
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL);
+
+	gadc_analog_control(true);
+
+	NVIC_EnableIRQ(DT_INST_IRQN(0));
+
+	Z_CMSDK_GADC->INTERRUPT_MASK = 0;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = 0;
+
+	gadc_apply_channel_gain(ch);
 
 	Z_CMSDK_GADC->CTRL = DGADC_CTRL__WATCH_CHANNELS__WRITE(1 << ch) |
 			     DGADC_CTRL__AVERAGING_AMOUNT__WRITE(
@@ -639,3 +647,325 @@ static struct gadc_atm_data gadc_atm_data_0 = {
 };
 DEVICE_DT_INST_DEFINE(0, gadc_atm_init, NULL, &gadc_atm_data_0, NULL, POST_KERNEL,
 		      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &api_atm_driver_api);
+
+#ifdef CONFIG_ATM_ADC_CAPTURE
+
+/* GADC input clock at CLKDIV 0; every CLKDIV step halves it */
+#define GADC_CAPTURE_CLK_MAX_HZ 2000000U
+
+#define GADC_CAPTURE_CLKDIV_NUM BIT(DGADC_CTRL__CLKDIV__WIDTH)
+#define GADC_CAPTURE_WAIT_MAX   BIT_MASK(DGADC_CTRL__WAIT_AMOUNT__WIDTH)
+
+/* This datapath has no decimation filter, so hardware averaging is the only
+ * decimation available and cannot be switched off the way ATM34 does. osr_sel
+ * therefore selects AVERAGING_AMOUNT such that the 2^avg samples folded into
+ * one output match the ATM34 OSR ladder. */
+#define GADC_CAPTURE_AVG_MAX 7U
+#define GADC_CAPTURE_OSR_MAX BIT(GADC_CAPTURE_AVG_MAX)
+#define GADC_CAPTURE_OSR_NUM 4U
+
+/* Datapath cycles a conversion costs on top of the averaged samples */
+#define GADC_CAPTURE_CONV_OVERHEAD 2U
+
+#define GADC_CAPTURE_CYCLES_PER_MS (CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000U)
+
+/* FIFO reads between clock reads while waiting for a sample. k_cycle_get_32()
+ * takes the timer driver's spinlock, so consulting it on every poll would cost
+ * more than the sample period it is timing; a burst of plain FIFO reads is far
+ * cheaper and only costs precision on an error path. */
+#define GADC_CAPTURE_POLLS_PER_CLOCK_READ 16U
+
+static bool capture_active;
+static GADC_CHANNEL_ID capture_ch;
+
+/* INTRPT1 latches a conversion that completed while the FIFO was full. The FIFO
+ * does not overwrite, so that sample was dropped. Unlike the ATM34 FIFO_DBG
+ * flag this is sticky until cleared, so one check per drain is enough. */
+static bool gadc_capture_overran(void)
+{
+	return DGADC_INTERRUPTS__INTRPT1__READ(Z_CMSDK_GADC->INTERRUPTS);
+}
+
+/* Busy-poll until the FIFO has a sample, storing it in @p out. */
+static int gadc_capture_wait(uint32_t *out, uint32_t timeout_cyc)
+{
+	uint32_t start = 0;
+	bool timing = false;
+
+	for (;;) {
+		for (unsigned int i = 0; i < GADC_CAPTURE_POLLS_PER_CLOCK_READ; i++) {
+			*out = Z_CMSDK_GADC->DATAPATH_OUTPUT;
+			if (!(*out & DGADC_DATAPATH_OUTPUT__EMPTY__MASK)) {
+				return 0;
+			}
+		}
+
+		if (!timing) {
+			/* Deferred so a sample that lands within the first burst
+			 * never pays for a clock read at all, which is the
+			 * common case when the drain outruns the converter. */
+			start = k_cycle_get_32();
+			timing = true;
+		} else if ((k_cycle_get_32() - start) > timeout_cyc) {
+			return -ETIMEDOUT;
+		}
+	}
+}
+
+/* Conversion period, in GADC clocks, for an averaging selector and wait count */
+static uint32_t gadc_capture_period(uint8_t osrsel, uint32_t wait)
+{
+	return (GADC_CAPTURE_OSR_MAX >> osrsel) + GADC_CAPTURE_CONV_OVERHEAD + wait;
+}
+
+/* Pick the fastest CLKDIV/AVERAGING_AMOUNT/WAIT_AMOUNT triple at or below
+ * want_hz. Ties are broken towards the larger decimation, which folds more
+ * samples into the same output rate. */
+static int gadc_capture_select_rate(uint32_t want_hz, uint8_t osr_req, uint8_t *out_clkdiv,
+				    uint8_t *out_osrsel, uint16_t *out_wait, uint32_t *out_rate)
+{
+	uint32_t best = 0;
+
+	if (!want_hz) {
+		return -EINVAL;
+	}
+
+	for (uint8_t osrsel = 0; osrsel < GADC_CAPTURE_OSR_NUM; osrsel++) {
+		if ((osr_req != ATM_ADC_CAPTURE_OSR_AUTO) && (osrsel != osr_req)) {
+			continue;
+		}
+		uint32_t base = gadc_capture_period(osrsel, 0);
+
+		for (uint8_t clkdiv = 0; clkdiv < GADC_CAPTURE_CLKDIV_NUM; clkdiv++) {
+			uint32_t clk = GADC_CAPTURE_CLK_MAX_HZ >> clkdiv;
+			/* Shortest period whose rate does not exceed the
+			 * request: floor(clk/p) <= want is p > clk/(want+1). */
+			uint32_t period = MAX((clk / (want_hz + 1U)) + 1U, base);
+
+			if ((period - base) > GADC_CAPTURE_WAIT_MAX) {
+				continue;
+			}
+
+			uint32_t rate = clk / period;
+
+			if ((rate > want_hz) || (rate <= best)) {
+				continue;
+			}
+			best = rate;
+			*out_clkdiv = clkdiv;
+			*out_osrsel = osrsel;
+			*out_wait = period - base;
+		}
+	}
+
+	if (!best) {
+		return -EINVAL;
+	}
+
+	*out_rate = best;
+	return 0;
+}
+
+int atm_adc_capture_start(struct atm_adc_capture_cfg const *cfg, uint32_t *actual_rate_hz)
+{
+	if (!cfg || !cfg->channel || (cfg->channel >= CHANNEL_NUM_MAX)) {
+		return -EINVAL;
+	}
+	if ((cfg->osr_sel != ATM_ADC_CAPTURE_OSR_AUTO) && (cfg->osr_sel >= GADC_CAPTURE_OSR_NUM)) {
+		return -EINVAL;
+	}
+	/* AVERAGING_AMOUNT already carries the decimation */
+	if ((cfg->avg_exp != ATM_ADC_CAPTURE_AVG_AUTO) && cfg->avg_exp) {
+		return -EINVAL;
+	}
+
+	uint8_t clkdiv, osrsel;
+	uint16_t wait;
+	uint32_t rate;
+	int ret = gadc_capture_select_rate(cfg->sample_rate_hz, cfg->osr_sel, &clkdiv, &osrsel,
+					   &wait, &rate);
+	if (ret) {
+		LOG_ERR("No capture rate at or below %u Hz", cfg->sample_rate_hz);
+		return ret;
+	}
+
+	/* The context lock starts out taken until gadc_atm_init() releases it. */
+	if (!device_is_ready(DEVICE_DT_INST_GET(0))) {
+		return -ENODEV;
+	}
+
+	if (capture_active) {
+		return -EBUSY;
+	}
+
+	/* Block one-shot conversions for the lifetime of the capture: they share
+	 * CTRL and the analog front end. */
+	adc_context_lock(&gadc_atm_data_0.ctx, false, NULL);
+	capture_active = true;
+	capture_ch = (GADC_CHANNEL_ID)cfg->channel;
+
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__CLK_ENABLE | WRPR_CTRL__CLK_SEL);
+	gadc_analog_control(true);
+
+	/* The datapath is drained by polling, so keep the FIFO-overrun interrupt
+	 * out of the way: gadc_atm_isr() would tear the capture down as soon as
+	 * the drain fell behind. */
+	irq_disable(DT_INST_IRQN(0));
+	Z_CMSDK_GADC->INTERRUPT_MASK = 0;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = DGADC_INTERRUPT_CLEAR__WRITE;
+	Z_CMSDK_GADC->INTERRUPT_CLEAR = 0;
+
+	gadc_apply_channel_gain(capture_ch);
+
+	Z_CMSDK_GADC->CTRL = DGADC_CTRL__WATCH_CHANNELS__WRITE(1U << capture_ch) |
+			     DGADC_CTRL__AVERAGING_AMOUNT__WRITE(GADC_CAPTURE_AVG_MAX - osrsel) |
+			     DGADC_CTRL__WAIT_AMOUNT__WRITE(wait) |
+			     DGADC_CTRL__CLKDIV__WRITE(clkdiv) |
+			     DGADC_CTRL__MODE__WRITE(0); // Continuous mode
+
+	// Flush old FIFO values
+	while (!(Z_CMSDK_GADC->DATAPATH_OUTPUT & DGADC_DATAPATH_OUTPUT__EMPTY__MASK)) {
+		YIELD();
+	}
+
+	// Need to wait for analog side to settle before enabling digital datapath
+	atm_timer_lpc_delay(1);
+
+	DGADC_CTRL__ENABLE_DP__SET(Z_CMSDK_GADC->CTRL);
+
+	LOG_DBG("capture ch=%u clkdiv=%u osr_sel=%u wait=%u rate=%u Hz", (unsigned int)capture_ch,
+		clkdiv, osrsel, wait, rate);
+
+	if (actual_rate_hz) {
+		*actual_rate_hz = rate;
+	}
+
+	return 0;
+}
+
+int atm_adc_capture_read(int16_t *buf, size_t max, size_t *out_n, uint32_t sample_timeout_ms)
+{
+	if (!buf || !out_n || !max) {
+		return -EINVAL;
+	}
+	if (!capture_active) {
+		return -EPERM;
+	}
+
+	/* Converted once, and to cycles rather than ms: k_uptime_get() costs a
+	 * call into the timer driver plus a 64-bit software divide, which on its
+	 * own exceeds the sample period at capture rates. Nothing on the path
+	 * taken when a sample is already waiting reads a clock. */
+	uint32_t timeout_cyc = (sample_timeout_ms > (UINT32_MAX / GADC_CAPTURE_CYCLES_PER_MS))
+				       ? UINT32_MAX
+				       : (sample_timeout_ms * GADC_CAPTURE_CYCLES_PER_MS);
+
+	size_t n = 0;
+	int ret = 0;
+
+	while (n < max) {
+		uint32_t out = Z_CMSDK_GADC->DATAPATH_OUTPUT;
+
+		if (out & DGADC_DATAPATH_OUTPUT__EMPTY__MASK) {
+			if (!sample_timeout_ms) {
+				/* A zero budget means "take what is there", so
+				 * running dry is not an error. */
+				goto done;
+			}
+			ret = gadc_capture_wait(&out, timeout_cyc);
+			if (ret) {
+				goto done;
+			}
+		}
+
+		struct gadc_fifo_s f = {
+			.value = DGADC_DATAPATH_OUTPUT__DATA__READ(out),
+		};
+		/* The FIFO carries a mantissa and an exponent rather than a
+		 * plain sample. Folding the exponent back in keeps every entry
+		 * on one scale, in half-LSB units, so a consumer can treat the
+		 * burst as a single contiguous waveform. */
+		int32_t sample = (f.exponent >= 0) ? ((int32_t)f.sample_x2 << f.exponent)
+						   : ((int32_t)f.sample_x2 >> -f.exponent);
+
+		/* Same polarity correction as the one-shot path's nominal gain */
+		if ((capture_ch == PORT1_SINGLE_ENDED_1) || (capture_ch == PORT0_SINGLE_ENDED_1)) {
+			sample = -sample;
+		}
+
+		buf[n++] = CLAMP(sample, INT16_MIN, INT16_MAX);
+	}
+
+done:
+	*out_n = n;
+
+	/* An overrun invalidates the burst as a contiguous record regardless of
+	 * where it happened, so it is reported ahead of a stall: lost samples
+	 * are the worse fault. */
+	if (gadc_capture_overran()) {
+		LOG_ERR("GADC FIFO overrun: samples dropped, capture restart required");
+		return -EIO;
+	}
+
+	return ret;
+}
+
+int atm_adc_capture_stop(void)
+{
+	if (!capture_active) {
+		return -EPERM;
+	}
+
+	Z_CMSDK_GADC->CTRL = 0;
+	if (capture_ch == LI_ION_BATT) {
+		pmu_set_liion_measurement(false);
+	}
+	gadc_analog_control(false);
+	/* Drops any stale samples and clears the latched overrun, so the next
+	 * capture starts from a clean FIFO. */
+	WRPR_CTRL_SET(Z_CMSDK_GADC, WRPR_CTRL__SRESET);
+
+	capture_active = false;
+	adc_context_release(&gadc_atm_data_0.ctx, 0);
+
+	return 0;
+}
+
+#endif /* CONFIG_ATM_ADC_CAPTURE */
+
+#ifdef CONFIG_ATM_ADC_TEST_API
+
+int atm_adc_test_raw_samples(uint8_t channel, int16_t *buf, uint8_t buf_len)
+{
+	if (!buf || !buf_len) {
+		return -EINVAL;
+	}
+
+	struct atm_adc_capture_cfg cfg = {
+		.channel = channel,
+		/* Largest decimation, at the undivided clock */
+		.sample_rate_hz = GADC_CAPTURE_CLK_MAX_HZ / gadc_capture_period(0, 0),
+		.osr_sel = 0,
+	};
+
+	int ret = atm_adc_capture_start(&cfg, NULL);
+	if (ret) {
+		return ret;
+	}
+
+#define ATM_ADC_TEST_API_POLL_TIMEOUT_MS 50
+	size_t n;
+	ret = atm_adc_capture_read(buf, buf_len, &n, ATM_ADC_TEST_API_POLL_TIMEOUT_MS);
+
+	atm_adc_capture_stop();
+
+	/* Callers want independent samples, not a contiguous record, so a FIFO
+	 * overrun costs nothing here: every sample stored is still valid. */
+	if (ret == -EIO) {
+		ret = 0;
+	}
+
+	return ret;
+}
+
+#endif /* CONFIG_ATM_ADC_TEST_API */

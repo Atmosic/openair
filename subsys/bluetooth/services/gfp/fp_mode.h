@@ -93,6 +93,13 @@ void fp_mode_switch_reg(fp_mode_switch_cb const hdlr);
 uint16_t fp_mode_rpa_timeout(void);
 
 /**
+ * @brief Check whether the current mode allows RPA rotation
+ *
+ * @return true if RPA rotation is allowed
+ */
+bool fp_mode_rpa_rotation_allowed(void);
+
+/**
  * @brief Get current power loss recovery state
  *
  * @return current PLR state
@@ -126,5 +133,18 @@ bool fp_mode_power_loss_is_periodic(void);
 #ifdef __cplusplus
 }
 #endif
+
+#if defined(CONFIG_ZTEST)
+void fp_mode_test_adv_sync(void);
+void fp_mode_test_adv_sync_plr_state(void);
+void fp_mode_test_adv_sync_plr_periodic(void);
+void fp_mode_test_plr_start(void);
+void fp_mode_test_plr_stop(void);
+bool fp_mode_test_plr_is_periodic(void);
+void fp_mode_test_plr_timeout(void);
+void fp_mode_test_plr_periodic(void);
+void fp_mode_test_set_paired_mode_uptime(int64_t uptime);
+void fp_mode_test_set_mode(fp_mode_t mode);
+#endif /* CONFIG_ZTEST */
 
 ///@}

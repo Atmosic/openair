@@ -1,13 +1,20 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ATM_SEC_DEBUG_AUTH
 	bool "Atmosic Secure Debug Authentication"
-	depends on TRUSTED_EXECUTION_SECURE && MCUBOOT
+	depends on (TRUSTED_EXECUTION_SECURE && MCUBOOT) || ZTEST
+
+if ATM_SEC_DEBUG_AUTH
+
+config ATM_SEC_DEBUG_AUTH_STATIC_CHALLENGE
+	bool "Use a static (ROM/Secure Journal derived) debug auth challenge"
+	default y
 
 config ATM_SEC_DEBUG_AUTH_SIGNATURE_KEY_FILE
         string "Secure Boot key file"
-        depends on ATM_SEC_DEBUG_AUTH
         default "root-debug-ec-p256.pem"
+
+endif # ATM_SEC_DEBUG_AUTH
 

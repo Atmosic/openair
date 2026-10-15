@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file main.c
- *
- * @brief Multimode Consumer Tag application
- *
- * Copyright (C) Atmosic 2025-2026
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -25,7 +17,7 @@
 #ifdef CONFIG_TAG_LED_IND
 #include "platform_ctrl_led.h"
 #endif
-#ifdef CONFIG_TAG_BTN_OTA_MODE
+#ifdef CONFIG_TAG_OTA_MODE
 #include "platform_ctrl_ota.h"
 #endif
 #include "platform_ctrl_wdt.h"
@@ -51,7 +43,8 @@ static void tag_bt_ready(void)
 	if (!bt_is_ready()) {
 		LOG_ERR("bt_is_ready is not ready");
 #ifdef CONFIG_AT_CMD_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(),
 				     AT_CMD_TAG_ERR_BLE_INIT);
 #endif
 	}
@@ -105,14 +98,14 @@ int main(void)
 
 	platform_indicate_state(TAG_IND_STATE_BOOTED, platform_tag_supported_mode_mask_get());
 
-#ifdef CONFIG_TAG_BTN_OTA_MODE
+#ifdef CONFIG_TAG_OTA_MODE
 	if (platform_ctrl_ota_init()) {
 		LOG_INF("System is in OTA mode");
 		platform_indicate_state(TAG_IND_STATE_OTA_IN_PROGRESS,
 					platform_tag_supported_mode_mask_get());
 		return 0;
 	}
-#endif // CONFIG_TAG_BTN_OTA_MODE
+#endif // CONFIG_TAG_OTA_MODE
 
 	tag_bt_ready();
 

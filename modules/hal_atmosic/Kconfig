@@ -1,13 +1,44 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 rsource "*/Kconfig"
+
+config ATM_PD
+	bool "Atmosic forced-power-down prep (atm_pd_prep) mechanism"
+	default y if PM
+	help
+	  Enables the forced-power-down prep-hook registry (ATM_PD_PREP_DEFINE /
+	  atm_pd_prep_run) and the atm_pseq_soc_off()/atm_pseq_hibernate() entry
+	  points. Defaults to y when Zephyr power management (PM) is enabled, but
+	  can be selected independently (e.g. by the fast low-power mode driver)
+	  so the mechanism is available without the full PM subsystem.
 
 config ATM_PLF_DEBUG
 	bool "Debugging for low level platform drivers"
 	default y
 	depends on PRINTK
+
+config ATM_ASSERT_THREAD_DUMP
+	bool "Dump thread info on assert and fatal error"
+	depends on CPU_CORTEX_M
+	select THREAD_ANALYZER
+	select THREAD_NAME
+	help
+	  Print detailed information for all threads (state, priority,
+	  PC/LR/SP, stack usage, raw stack words), IRQ/SysTick/NVIC state
+	  and thread analyzer statistics when an assertion (assert_err or
+	  assert_param) or a Zephyr fatal error occurs. The dump runs at
+	  most once per fatal path.
+
+config ATM_ASSERT_THREAD_DUMP_MAX_WORDS
+	int "Maximum number of stack words to dump per thread"
+	depends on ATM_ASSERT_THREAD_DUMP
+	default 16
+	range 1 1024
+	help
+	  Set the maximum number of raw stack words printed for each thread
+	  during the thread dump.
 
 config ATM_BUILD_CORE_C_FILES
 	bool "Build core.c files if present. Only meant for internal debugging"

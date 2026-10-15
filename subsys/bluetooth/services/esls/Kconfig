@@ -1,0 +1,113 @@
+# Copyright (c) 2024-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config BT_ESLS
+	bool "Support for GATT Electronic Shelf Label Service"
+	select BT_EAD
+	select BT_EXT_ADV
+	select BT_OBSERVER
+	select BT_PER_ADV_SYNC
+	select BT_PER_ADV_SYNC_RSP
+	select BT_PER_ADV_SYNC_TRANSFER_RECEIVER
+	select SMF
+	select PSA_WANT_ALG_CCM
+	select PSA_WANT_KEY_TYPE_AES
+
+if BT_ESLS
+
+config BT_ESLS_DISPLAY_NUM
+	int "Number of Display"
+	range 0 102
+	default 1
+	depends on DISPLAY
+
+if BT_ESLS_DISPLAY_NUM > 0
+
+config BT_ESLS_IMAGE_NUM
+	int "Maximum Image Number"
+	range 1 255
+	default 1
+
+config BT_ESLS_IMAGE_MAX_SIZE
+	int "Maximum Image Size"
+	range 1 20000
+	default 8192
+
+config ESLS_IMG_WQ_STACK_SIZE
+	int "Thread Stack Size for Image"
+	range 16 2048
+	default 1024
+
+config ESLS_IMG_WQ_PRIO
+	int "ESL Image Workqueue priority"
+	default 2
+
+config BT_OTS
+	default y
+
+config BT_OTS_DIR_LIST_OBJ
+	default y
+
+config BT_OTS_OACP_WRITE_SUPPORT
+	default y
+
+config BT_OTS_OACP_CHECKSUM_SUPPORT
+	default y
+
+config BT_OTS_OACP_PATCH_SUPPORT
+	default y
+
+config BT_OTS_MAX_OBJ_CNT
+	default 2
+
+endif # BT_ESLS_DISPLAY_NUM
+
+config BT_ESLS_SENSOR_NUM
+	int "Number of Sensor"
+	range 0 255
+	default 1
+	depends on SENSOR
+
+config BT_ESLS_SYNCHRONIZED_TIMEOUT_SEC
+	int "Timeout for No Valid Message in SYNCHRONIZED state to enter Unsynchronized State"
+	range 1 3600
+	default 3600
+
+config BT_ESLS_UNSYNCHRONIZED_TIMEOUT_SEC
+	int "Timeout for Unsynchronized state to enter Unassociate State"
+	range 1 3600
+	default 3600
+
+config BT_ESLS_ADV_MANU_DATA_MAX
+	int "Maximum manufacture data length in adv data"
+	range 0 6
+	default 0
+
+config BT_ESLS_LED_NUM
+	int "Maximum LED Number"
+	range 0 255
+	default 0
+	depends on LED
+
+if BT_ESLS_LED_NUM > 0
+
+config ESLS_LED_WQ_STACK_SIZE
+	int "Thread Stack Size for LED"
+	range 16 2048
+	default 1024
+
+config ESLS_LED_WQ_PRIO
+	int "ESL LED Workqueue priority"
+	default 2
+
+endif
+
+config APP_WORK_Q
+	default y
+
+module = BT_ESLS
+module-str = BT_ESLS
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # BT_ESLS

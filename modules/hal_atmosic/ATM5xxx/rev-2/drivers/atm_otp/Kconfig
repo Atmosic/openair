@@ -1,0 +1,7 @@
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_OTP
+	bool "Atmosic One-Time Programmed module"
+	default y if TRUSTED_EXECUTION_SECURE && DT_HAS_ATMOSIC_OTP_ENABLED

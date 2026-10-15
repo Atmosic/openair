@@ -28,8 +28,8 @@ Parameters:
  * @brief TAG state event data (local structure)
  */
 typedef struct {
-	uint8_t protocol;             /**< TAG protocol */
-	at_cmd_evt_tag_state_t state; /**< TAG state */
+	uint8_t protocol; /**< TAG protocol */
+	uint8_t state;    /**< TAG state */
 } tag_state_evt_t;
 
 static void evt_tag_state_handler(uint8_t ch, void const *evt_data, uint16_t evt_data_len)
@@ -46,7 +46,7 @@ static void evt_tag_state_handler(uint8_t ch, void const *evt_data, uint16_t evt
 	at_cmd_resp(ch, at_all, evt_cmd, 0, EVT_RSP_NUM, evt->protocol, evt->state);
 }
 
-void at_cmd_evt_tag_state(uint8_t ch, uint8_t protocol, at_cmd_evt_tag_state_t state)
+void at_cmd_evt_tag_state(uint8_t ch, uint8_t protocol, uint8_t state)
 {
 	tag_state_evt_t const evt = {
 		.protocol = protocol,

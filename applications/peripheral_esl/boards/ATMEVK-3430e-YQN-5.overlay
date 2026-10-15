@@ -1,0 +1,16 @@
+/*
+ * Copyright (c) 2022-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+#include "../app.overlay"
+
+&led2 {
+	/*
+	 * Remap led2 to P1.14.
+	 * The original pin (P0.7) conflicts with the 'pervasive_interface'
+	 * dc-gpios on this board.
+	 */
+	gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
+};

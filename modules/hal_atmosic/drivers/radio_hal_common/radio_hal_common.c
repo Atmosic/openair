@@ -89,9 +89,6 @@ uint16_t const atlc_tff0_st_offset = TFF0_ST_OFFSET;
 uint16_t const atlc_rff0_st_offset = RFF0_ST_OFFSET;
 uint16_t const atlc_tx_buf_tcm_offset = TX_DATA_BUF_TCM_OFFSET;
 uint16_t const atlc_ack_154_buf_tcm_offset = ACK_154_BUF_TCM_OFFSET;
-static atm_mac_switch_callback_t switch_callback;
-static atm_mac_switch_ch_base_callback_t switch_ch_base_callback;
-
 #ifdef CONFIG_SOC_FAMILY_ATM
 ISR_DIRECT_DECLARE(ATLC_Handler)
 #else
@@ -184,33 +181,6 @@ uint8_t atm_mac_get_tx_power_index(int8_t power_level)
 	}
     }
     return 0;
-}
-
-void atm_mac_register_switch_callback(atm_mac_switch_callback_t callback)
-{
-    switch_callback = callback;
-}
-
-void atm_mac_radio_switch_mode(bool mode_154)
-{
-    static bool mode_154_enabled = false;
-    if ((switch_callback) && (mode_154_enabled != mode_154)) {
-	mode_154_enabled = mode_154;
-	switch_callback(mode_154);
-    }
-}
-
-void atm_mac_register_switch_ch_base_callback(atm_mac_switch_ch_base_callback_t
-    callback)
-{
-    switch_ch_base_callback = callback;
-}
-
-void atm_mac_radio_switch_ch_base(uint32_t ch_base)
-{
-    if (switch_ch_base_callback) {
-	switch_ch_base_callback(ch_base);
-    }
 }
 
 uint32_t atm_mac_rand(void)

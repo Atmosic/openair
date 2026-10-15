@@ -6,11 +6,21 @@
 config ATM_RADIO_CAL
 	bool "Atmosic Radio Calibration module"
 	depends on ATM_HW_CFG && ATM_RADIO_HAL_MGR
+	default y
 
 if ATM_RADIO_CAL
 
 config ATM_RADIO_CAL_REPEAT_MS
 	int "Number of milliseconds between calibrations. 0 to disable"
 	default 0
+
+config ATM_RADIO_CAL_DECISION
+	bool "Decide when to apply calibration on a per-packet basis"
+	depends on ATM_RADIO_CAL_REPEAT_MS = 0
+	default y
+
+config ATM_RADIO_CAL_DEMAND
+	bool "Enable on-demand RX DC offset calibration request API"
+	depends on ATM_RADIO_CAL_REPEAT_MS = 0
 
 endif

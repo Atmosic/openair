@@ -6,6 +6,12 @@
 
 #pragma once
 
+#include <stdint.h>
+
+#ifdef CONFIG_AT_CMD_TAGADDR
+#include <zephyr/bluetooth/bluetooth.h>
+#endif
+
 #ifdef CONFIG_AT_CMD_TAG_SET
 
 /**
@@ -23,29 +29,63 @@ typedef enum {
 	AT_CMD_TAG_ERR_BUZZER,        /**< Buzzer configuration error */
 } at_cmd_tag_err_t;
 
-/**
- * @brief TAG state event values for +TAGSTATE event responses.
- *
- * These states represent the lifecycle of a tag from initialization through
- * pairing completion, as well as OTA (firmware update) states.
- * States are used in AT+TAGSTATE event notifications.
- */
+/** Common operation type for AT command callbacks that support query/set. */
 typedef enum {
-	AT_CMD_TAG_EVT_STATE_BOOTED,    /**< System booted */
-	AT_CMD_TAG_EVT_STATE_INIT_DONE, /**< Tag initialized, ready for pairing */
-	AT_CMD_TAG_EVT_STATE_UNPAIRED,  /**< Tag unpaired */
-	AT_CMD_TAG_EVT_STATE_PAIRING,   /**< Tag in pairing mode */
-	AT_CMD_TAG_EVT_STATE_PAIRED,    /**< Tag successfully paired with host */
-} at_cmd_evt_tag_state_t;
+	AT_CMD_TAG_OP_GET,
+	AT_CMD_TAG_OP_SET,
+} at_cmd_tag_op_t;
+
+#ifdef CONFIG_AT_CMD_TAGRANGING
+/** Runtime ranging gate action. Values are part of the AT command format. */
+typedef enum {
+	AT_CMD_TAG_RANGING_GATE_OFF = 0,
+	AT_CMD_TAG_RANGING_GATE_ON = 1,
+} at_cmd_tag_ranging_gate_action_t;
+
+/** Technology bitmask values for AT+TAGRANGING. */
+enum {
+	AT_CMD_TAG_RANGING_TECH_MASK_UWB = 0x01,
+	AT_CMD_TAG_RANGING_TECH_MASK_CS = 0x02,
+	AT_CMD_TAG_RANGING_TECH_MASK_ALL =
+		AT_CMD_TAG_RANGING_TECH_MASK_UWB | AT_CMD_TAG_RANGING_TECH_MASK_CS,
+};
+
+/** Host-provisioned UWB ranging capability. */
+typedef struct {
+	uint8_t addr[2];
+	uint32_t channel_mask;
+	uint32_t preamble_mask;
+	uint32_t config_id_mask;
+	uint16_t min_ranging_int;
+	uint8_t min_slot_dur;
+	uint8_t device_role;
+} at_cmd_tag_ranging_cap_uwb_t;
+
+/** Host-provisioned BLE CS ranging capability. */
+typedef struct {
+	uint8_t sec_type;
+} at_cmd_tag_ranging_cap_cs_t;
+
+/** Get or set the host-provisioned UWB ranging capability. */
+typedef at_cmd_tag_err_t (*at_cmd_tag_ranging_cap_uwb_cb_t)(
+	at_cmd_tag_op_t op, at_cmd_tag_ranging_cap_uwb_t *capability);
+/** Get or set the host-provisioned BLE CS ranging capability. */
+typedef at_cmd_tag_err_t (*at_cmd_tag_ranging_cap_cs_cb_t)(at_cmd_tag_op_t op,
+							   at_cmd_tag_ranging_cap_cs_t *capability);
+/** Get or set the runtime ranging technology gate. */
+typedef at_cmd_tag_err_t (*at_cmd_tag_ranging_gate_cb_t)(at_cmd_tag_op_t op,
+							 at_cmd_tag_ranging_gate_action_t action,
+							 uint8_t *tech_mask);
+#endif /* CONFIG_AT_CMD_TAGRANGING */
 
 /**
  * @brief Submit TAG state event
  *
  * @param ch AT command channel
  * @param protocol TAG protocol
- * @param state TAG state (see #at_cmd_evt_tag_state_t)
+ * @param state TAG state
  */
-void at_cmd_evt_tag_state(uint8_t ch, uint8_t protocol, at_cmd_evt_tag_state_t state);
+void at_cmd_evt_tag_state(uint8_t ch, uint8_t protocol, uint8_t state);
 
 /**
  * @brief Submit TAG error event
@@ -81,6 +121,40 @@ void at_cmd_evt_buzzer_action(uint8_t ch, uint8_t evt, uint8_t ring_vol, uint16_
 void at_cmd_evt_motionctl(uint8_t ch, uint8_t enable);
 #endif
 
+#ifdef CONFIG_AT_EVT_TAGRANGING
+/** Submit a Central-originated ranging action event. */
+void at_cmd_evt_tag_ranging(uint8_t ch, uint8_t tech_id, uint8_t action);
+#ifdef CONFIG_ATM_AT_CMDTEST
+void at_cmd_evt_tag_ranging_test_invalid_len(uint8_t ch);
+#endif
+#endif
+
+#ifdef CONFIG_AT_EVT_TAGRANGINGCAP
+/** Submit a Central ranging capability request event. */
+void at_cmd_evt_tag_ranging_cap(uint8_t ch, uint8_t tech_id);
+#ifdef CONFIG_ATM_AT_CMDTEST
+void at_cmd_evt_tag_ranging_cap_test_invalid_len(uint8_t ch);
+#endif
+#endif
+
+#ifdef CONFIG_AT_EVT_TAGRANGINGCFGUWB
+/** Submit a UWB ranging configuration summary event. */
+void at_cmd_evt_tag_ranging_cfg_uwb(uint8_t ch, uint8_t session_key_len, uint8_t config_id,
+				    uint8_t channel, uint8_t role, uint8_t mode,
+				    uint8_t start_immediately);
+#ifdef CONFIG_ATM_AT_CMDTEST
+void at_cmd_evt_tag_ranging_cfg_uwb_test_invalid_len(uint8_t ch);
+#endif
+#endif
+
+#ifdef CONFIG_AT_EVT_TAGRANGINGCFGCS
+/** Submit a BLE CS ranging configuration summary event. */
+void at_cmd_evt_tag_ranging_cfg_cs(uint8_t ch, uint8_t sec_type, uint8_t start_immediately);
+#ifdef CONFIG_ATM_AT_CMDTEST
+void at_cmd_evt_tag_ranging_cfg_cs_test_invalid_len(uint8_t ch);
+#endif
+#endif
+
 #ifdef CONFIG_AT_CMD_TAGMOTIONRPT
 /**
  * @brief Callback used to handle AT+TAGMOTIONRPT requests.
@@ -99,7 +173,10 @@ typedef at_cmd_tag_err_t (*at_cmd_tag_motionrpt_cb_t)(int16_t x_cs2, int16_t y_c
  * @brief Submit GFP reverse ringing phone status event (+EVTTAGGFPREVERSERING)
  *
  * @param ch  AT command channel
- * @param evt Reverse ringing event (0=CONNECTED, 1=STARTED, 2=STOPPED)
+ * @param evt Reverse ringing event (0=CONNECTED, 1=STARTED, 2=STOPPED, 3=ADV_STARTED,
+ * 4=ADV_TIMEOUT, 5=PHONE_FAILED, 6=TIMEOUT_LOCAL, 7=PHONE_TIMEOUT,
+ * 8=START_CONFIRMED, 9=STOP_CONFIRMED, 10=PHONE_STOPPED_DISCONNECTED,
+ * 11=PHONE_START_TIMEOUT)
  */
 void at_cmd_evt_gfp_reverse_ring(uint8_t ch, uint8_t evt);
 #endif
@@ -133,13 +210,10 @@ typedef enum {
 	AT_CMD_TAG_MODE_STF = 0x04,
 } at_cmd_tag_mode_t;
 
-/**
- * @brief TAGMODE callback operation types.
- */
-typedef enum {
-	AT_CMD_TAG_MODE_OP_GET,
-	AT_CMD_TAG_MODE_OP_SET,
-} at_cmd_tag_mode_op_t;
+/** Backward-compatible TAGMODE operation type and values. */
+typedef at_cmd_tag_op_t at_cmd_tag_mode_op_t;
+#define AT_CMD_TAG_MODE_OP_GET AT_CMD_TAG_OP_GET
+#define AT_CMD_TAG_MODE_OP_SET AT_CMD_TAG_OP_SET
 
 /**
  * @brief Callback used to handle TAGMODE query/update requests.
@@ -148,7 +222,7 @@ typedef enum {
  * @param mode Input/output protocol bitmask.
  * @return Tag AT command error code (at_cmd_tag_err_t).
  */
-typedef at_cmd_tag_err_t (*at_cmd_tag_mode_cb_t)(at_cmd_tag_mode_op_t op, uint8_t *mode);
+typedef at_cmd_tag_err_t (*at_cmd_tag_mode_cb_t)(at_cmd_tag_op_t op, uint8_t *mode);
 #endif /* CONFIG_AT_CMD_TAGMODE */
 
 #ifdef CONFIG_AT_CMD_TAGSTART
@@ -245,6 +319,17 @@ typedef enum {
 typedef at_cmd_tag_err_t (*at_cmd_tag_gfp_ind_cb_t)(at_cmd_tag_gfp_ind_action_t action);
 #endif /* CONFIG_AT_CMD_TAGGFPIND */
 
+#ifdef CONFIG_AT_CMD_TAGADDR
+/**
+ * @brief Callback used to handle AT+TAGADDR requests.
+ *
+ * @param protocol Tag protocol (0x01=fmna, 0x02=fhn, 0x04=stf).
+ * @param[out] addr Advertising BT address for the given protocol.
+ * @return Tag AT command error code (at_cmd_tag_err_t).
+ */
+typedef at_cmd_tag_err_t (*at_cmd_tag_addr_cb_t)(uint8_t protocol, bt_addr_le_t *addr);
+#endif /* CONFIG_AT_CMD_TAGADDR */
+
 /**
  * @brief Callback table for tag-related AT commands.
  */
@@ -282,6 +367,18 @@ typedef struct {
 #ifdef CONFIG_AT_CMD_TAGMOTIONRPT
 	at_cmd_tag_motionrpt_cb_t motionrpt_cb;
 #endif /* CONFIG_AT_CMD_TAGMOTIONRPT */
+#ifdef CONFIG_AT_CMD_TAGADDR
+	at_cmd_tag_addr_cb_t addr_cb;
+#endif /* CONFIG_AT_CMD_TAGADDR */
+#ifdef CONFIG_AT_CMD_TAGRANGINGCAPUWB
+	at_cmd_tag_ranging_cap_uwb_cb_t ranging_cap_uwb_cb;
+#endif /* CONFIG_AT_CMD_TAGRANGINGCAPUWB */
+#ifdef CONFIG_AT_CMD_TAGRANGINGCAPCS
+	at_cmd_tag_ranging_cap_cs_cb_t ranging_cap_cs_cb;
+#endif /* CONFIG_AT_CMD_TAGRANGINGCAPCS */
+#ifdef CONFIG_AT_CMD_TAGRANGING
+	at_cmd_tag_ranging_gate_cb_t ranging_gate_cb;
+#endif /* CONFIG_AT_CMD_TAGRANGING */
 } at_cmd_set_tag_callbacks_t;
 
 #endif /* CONFIG_AT_CMD_TAG_SET */

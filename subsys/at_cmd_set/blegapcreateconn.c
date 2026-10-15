@@ -86,8 +86,17 @@ static void fn_cmd_handler(at_cmd_param_t *param)
 
 	cp.timeout = timeout_sec * 100; /* N × 10 ms per unit */
 
+	/* Use a configurable supervision timeout so platforms with a faster
+	 * baseband clock (e.g. INIT_BP_FREQ=64000000, which fires timers at
+	 * 0.75× nominal speed) can be given enough headroom for SMP key
+	 * exchange to complete before the supervision timer expires.
+	 */
+	static const struct bt_le_conn_param conn_param =
+		BT_LE_CONN_PARAM_INIT(BT_GAP_INIT_CONN_INT_MIN, BT_GAP_INIT_CONN_INT_MAX, 0,
+				      CONFIG_AT_CMD_BLEGAPCREATECONN_INIT_TIMEOUT);
+
 	struct bt_conn *conn = NULL;
-	int err = bt_conn_le_create(&peer, &cp, BT_LE_CONN_PARAM_DEFAULT, &conn);
+	int err = bt_conn_le_create(&peer, &cp, &conn_param, &conn);
 
 	if (err) {
 		LOG_ERR("bt_conn_le_create failed (err %d)", err);

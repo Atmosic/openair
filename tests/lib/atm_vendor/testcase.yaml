@@ -1,0 +1,28 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+common:
+  # The commands enabled by default, e.g. VND_XTAL_32K_PIN_OUT, call into
+  # atm_vendor_drv entry points that the ATMx2 HAL does not implement.
+  depends_on:
+    - atm_vendor_drv
+tests:
+  tests.lib.atm_vendor.atm: &base_config
+    sysbuild: true
+    harness: ztest
+    tags:
+      - bluetooth
+      - atm_vendor
+    extra_args:
+      - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
+    timeout: 60
+  tests.lib.atm_vendor.atm.gcov:
+    <<: *base_config
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="atm_vendor.c;atm_hci_uart.c"

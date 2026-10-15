@@ -1,0 +1,12 @@
+# Copyright (c) Atmosic 2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config AUDIO_ADPCM_ENC
+	bool "IMA ADPCM encoder"
+	default n
+	help
+	  Enable the Atmosic IMA ADPCM 4-bit encoder library.
+	  Provides adpcm_reset(), adpcm_encode_sample(), adpcm_get_index(),
+	  and adpcm_encode_buf().
+
