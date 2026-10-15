@@ -92,6 +92,9 @@ retry_memcpy:
     CMSDK_AT_DMA->SIZE = n;
 
     CMSDK_AT_DMA->RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
+#ifdef CONFIG_SOC_SERIES_ATMX2
+    CMSDK_AT_DMA->RESET_INTERRUPT = 0;
+#endif
 
     CMSDK_AT_DMA->OPMODE = AT_DMA_OPMODE__GO__MASK;
 
@@ -102,6 +105,9 @@ retry_memcpy:
 	}
 	YIELD();
     }
+#ifdef CONFIG_SOC_SERIES_ATMX2
+    CMSDK_AT_DMA->OPMODE = 0;
+#endif
 
     err_stat = CMSDK_AT_DMA->ERR_STAT;
 
@@ -181,6 +187,9 @@ void *dma_memset_inline(void *m, int c, size_t n)
 	CMSDK_AT_DMA->SIZE = sz;
 
 	CMSDK_AT_DMA->RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
+#ifdef CONFIG_SOC_SERIES_ATMX2
+	CMSDK_AT_DMA->RESET_INTERRUPT = 0;
+#endif
 
 	CMSDK_AT_DMA->OPMODE = AT_DMA_OPMODE__GO__MASK |
 			       AT_DMA_OPMODE__CONST_TRANS__MASK;
@@ -195,6 +204,9 @@ void *dma_memset_inline(void *m, int c, size_t n)
 	    }
 	    YIELD();
 	}
+#ifdef CONFIG_SOC_SERIES_ATMX2
+	CMSDK_AT_DMA->OPMODE = 0;
+#endif
 
 	err_stat = CMSDK_AT_DMA->ERR_STAT;
 
@@ -487,8 +499,6 @@ void dma_rx_async_stop(void)
 
     if (chan2_cb) {
 	CMSDK_AT_DMA->CHAN2_OPMODE = AT_DMA_OPMODE__STOP__MASK;
-	CMSDK_AT_DMA->CHAN2_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
-	NVIC_ClearPendingIRQ(DMA2_IRQn);
 	chan2_cb = NULL;
 #ifdef CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_PM
@@ -496,6 +506,11 @@ void dma_rx_async_stop(void)
 #endif
 	k_sem_give(&dma_rx_sem);
 #endif // CONFIG_SOC_FAMILY_ATM
+	while (AT_DMA_CHAN2_STATUS__BUSY__READ(CMSDK_AT_DMA->CHAN2_STATUS)) {
+	    YIELD();
+	}
+	CMSDK_AT_DMA->CHAN2_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
+	NVIC_ClearPendingIRQ(DMA2_IRQn);
     }
 
     GLOBAL_INT_RESTORE();
@@ -661,8 +676,6 @@ void dma_tx_async_stop(void)
 
     if (chan3_cb) {
 	CMSDK_AT_DMA->CHAN3_OPMODE = AT_DMA_OPMODE__STOP__MASK;
-	CMSDK_AT_DMA->CHAN3_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
-	NVIC_ClearPendingIRQ(DMA3_IRQ_NUM);
 	chan3_cb = NULL;
 #ifdef CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_PM
@@ -670,6 +683,11 @@ void dma_tx_async_stop(void)
 #endif
 	dma3_isr_tx_set ? dma3_isr_tx_set = false : k_sem_give(&dma_tx_sem);
 #endif // CONFIG_SOC_FAMILY_ATM
+	while (AT_DMA_CHAN3_STATUS__BUSY__READ(CMSDK_AT_DMA->CHAN3_STATUS)) {
+	    YIELD();
+	}
+	CMSDK_AT_DMA->CHAN3_RESET_INTERRUPT = AT_DMA_RESET_INTERRUPT__WRITE;
+	NVIC_ClearPendingIRQ(DMA3_IRQ_NUM);
     }
 
     GLOBAL_INT_RESTORE();

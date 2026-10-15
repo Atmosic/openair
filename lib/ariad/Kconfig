@@ -1,0 +1,15 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_ARIAD_LIB
+	bool "Atmosic Ariad channel-sounding distance estimator library"
+	select CMSIS_DSP
+	select CMSIS_DSP_TRANSFORM
+	select CMSIS_DSP_COMPLEXMATH
+	select CMSIS_DSP_STATISTICS
+	select CMSIS_DSP_MATRIX
+	select FPU_SHARING
+	help
+	  Links the prebuilt libariad.a for this SoC revision from
+	  openair/lib/ariad, together with its public headers.

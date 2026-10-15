@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+#include "../app.overlay"
+
+&pervasive_interface {
+	dc-gpios = <&gpio2 7 GPIO_ACTIVE_LOW>; /* P39 */
+	reset-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>; /* P37 */
+	busy-gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>; /* P38 */
+};
+
+&pinctrl {
+	i2c0_sda_default: i2c0_sda_default {
+		pinmux = <17 PINMUX_I2C0_SDA>;
+	};
+
+	i2c0_scl_default: i2c0_scl_default {
+		pinmux = <16 PINMUX_I2C0_SCL>;
+	};
+};

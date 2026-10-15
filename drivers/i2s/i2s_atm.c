@@ -1,7 +1,7 @@
 /*
- * Copyright (C) Atmosic 2025-2026
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #define DT_DRV_COMPAT atmosic_atm_i2s
@@ -109,7 +109,6 @@ struct i2s_atm_stream {
 
 struct i2s_atm_config {
 	void (*fn_cfg_tx_pin)(void);
-	uint32_t sys_clk_freq;
 };
 struct i2s_atm_data {
 	i2s_cfg_t cfg;
@@ -123,6 +122,7 @@ struct i2s_atm_data {
 	void *tx_write_cb_arg;
 	bool in_write_cb;
 	uint16_t uf_err_count;
+	bool clk_enabled; /* true once configure() has opened the clock gate */
 #ifdef CONFIG_PM
 	bool pm_tx_constraint_on;
 #endif
@@ -138,6 +138,7 @@ static void i2s_atm_pm_tx_constraint_set(struct device const *dev)
 
 	if (!data->pm_tx_constraint_on) {
 		data->pm_tx_constraint_on = true;
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -149,6 +150,7 @@ static void i2s_atm_pm_tx_constraint_release(struct device const *dev)
 
 	if (data->pm_tx_constraint_on) {
 		data->pm_tx_constraint_on = false;
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	}
@@ -165,8 +167,7 @@ static STRUCT_SECTION_ITERABLE(k_mem_slab, tx_0_mem_slab) = Z_MEM_SLAB_INITIALIZ
 	CONFIG_I2S_TX_BLOCK_NUM);
 #endif
 
-static int i2s_config_convert(struct device const *dev, const struct i2s_config *cfg,
-			      i2s_cfg_t *cfg_atm)
+static int i2s_config_convert(const struct i2s_config *cfg, i2s_cfg_t *cfg_atm)
 {
 	i2s_cfg_txrx_t *trx = &cfg_atm->trx;
 
@@ -213,15 +214,33 @@ static int i2s_config_convert(struct device const *dev, const struct i2s_config 
 	}
 	trx->mstr_sckws = !(cfg->options & I2S_OPT_FRAME_CLK_TARGET);
 
-#define I2S_16M_CLK 0
-#define I2S_32M_CLK 1
-	uint32_t i2s_clks[] = {
+	// I2S_SEL encodings: 0 = 16MHz, 1 = 32MHz, 2..9 = pll frequency/1..8.
+#define I2S_16M_CLK      0
+#define I2S_32M_CLK      1
+#define I2S_PLL_CLK(div) ((div) + 1)
+#define I2S_PLL_DIV_MAX  8
+#define I2S_CLK_FREQ_MAX 32000000
+
+	// 16M always available. Other options may remain 0 (unset) if not available
+	uint32_t i2s_clks[I2S_PLL_CLK(I2S_PLL_DIV_MAX) + 1] = {
 		[I2S_16M_CLK] = 16000000,
-		[I2S_32M_CLK] = 32000000,
 	};
-	int i2s_clk_cnt = ARRAY_SIZE(i2s_clks);
-	if (((struct i2s_atm_config *)dev->config)->sys_clk_freq < 32000000) {
-		i2s_clk_cnt = 1;
+
+	// 32M available when CLKHPC_EN is set (aka using the doubler)
+	if (CLKRSTGEN_CLK_BP_CTRL__DOUBLER_CLUSTER_SEL__READ(
+		    CMSDK_CLKRSTGEN_NONSECURE->CLK_BP_CTRL)) {
+		i2s_clks[I2S_32M_CLK] = 32000000;
+	}
+
+	// PLL available when PLL is enabled. pll_freq reports 16M when disabled
+	uint32_t pll_freq = at_clkrstgen_pll_freq();
+	if (pll_freq > i2s_clks[I2S_16M_CLK]) {
+		for (int div = 1; div <= I2S_PLL_DIV_MAX; div++) {
+			uint32_t freq = pll_freq / div;
+			if (freq <= I2S_CLK_FREQ_MAX) {
+				i2s_clks[I2S_PLL_CLK(div)] = freq;
+			}
+		}
 	}
 
 	uint16_t ws_cnt[] = {
@@ -233,13 +252,19 @@ static int i2s_config_convert(struct device const *dev, const struct i2s_config 
 	};
 
 	uint32_t nearest_diff = 0xffffffff;
-	for (int i = 0; i < i2s_clk_cnt; i++) {
+	for (int i = 0; i < ARRAY_SIZE(i2s_clks); i++) {
+		if (!i2s_clks[i]) {
+			continue;
+		}
 		for (int j = 0; j < ARRAY_SIZE(ws_cnt); j++) {
 			if (ws_cnt[j] < trx->sd_offset + trx->sdw) {
 				continue;
 			}
 			uint16_t ck2sck = DIV_ROUND_CLOSEST(i2s_clks[i] / (ws_cnt[j] * 2),
 							    cfg->frame_clk_freq);
+			if (!ck2sck) {
+				continue;
+			}
 			uint32_t real_frame_freq = i2s_clks[i] / ck2sck / (ws_cnt[j] * 2);
 			uint32_t diff = ATM_ABS(real_frame_freq - cfg->frame_clk_freq);
 			LOG_DBG("i2s_clks[%d] = %" PRIu32 ", ws_cnt[%d] = %" PRIu16
@@ -272,11 +297,12 @@ static int i2s_atm_configure(struct device const *dev, enum i2s_dir dir,
 	struct i2s_atm_data *i2s_data = dev->data;
 	i2s_cfg_t *cfg_atm = &i2s_data->cfg;
 	// Support TX currently
-	if ((dir != I2S_DIR_TX) || i2s_data->i2s_cfg || i2s_config_convert(dev, cfg, cfg_atm) < 0) {
+	if ((dir != I2S_DIR_TX) || i2s_data->i2s_cfg || i2s_config_convert(cfg, cfg_atm) < 0) {
 		return -EINVAL;
 	}
 
 	i2s_data->i2s_cfg = cfg;
+	i2s_data->clk_enabled = true;
 
 	CMSDK_CLKRSTGEN_NONSECURE->CLK_AUD_CTRL =
 		CLKRSTGEN_CLK_AUD_CTRL__I2S_SEL__WRITE(cfg_atm->aud_ctrl_i2s) |
@@ -549,7 +575,9 @@ static void i2s_back_to_ready(struct device const *dev)
 	}
 #endif
 	i2s_data->i2s_cfg = NULL;
-	i2s_tx_stop_transfer(i2s_data->dev);
+	if (i2s_data->clk_enabled) {
+		i2s_tx_stop_transfer(i2s_data->dev);
+	}
 	stream->state = I2S_STATE_READY;
 }
 
@@ -768,7 +796,6 @@ static int i2s_atm_init(struct device const *dev)
 	}                                                                                          \
 	static struct i2s_atm_config const config = {                                              \
 		.fn_cfg_tx_pin = i2s_atm_config_tx_pins,                                           \
-		.sys_clk_freq = DT_INST_PROP_BY_PHANDLE(n, clocks, clock_frequency),               \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(n, &i2s_atm_init, NULL, &atm_data, &config, POST_KERNEL,             \
 			      CONFIG_I2S_INIT_PRIORITY, &i2s_atm_driver_api);
@@ -776,3 +803,44 @@ static int i2s_atm_init(struct device const *dev)
 BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 1, "one instance supported");
 
 DT_INST_FOREACH_STATUS_OKAY(I2S_DEVICE_INIT)
+
+/* ── Test hooks ─────────────────────────────────────────────────────────── */
+#ifdef CONFIG_ZTEST
+/**
+ * @brief Invoke the I2S ISR handler directly for coverage testing.
+ *
+ * Calls I2S_Handler() outside of interrupt context.  This exercises
+ * the underflow and IRQ status branches in the ISR without requiring
+ * a real I2S underflow event.
+ */
+void i2s_atm_test_invoke_isr(void)
+{
+	I2S_Handler();
+}
+
+/* Reset driver to NOT_READY for use in test fixtures. */
+void i2s_atm_test_reset(const struct device *dev)
+{
+	struct i2s_atm_data *i2s_data = dev->data;
+	struct i2s_atm_stream *stream = &i2s_data->tx;
+
+	i2s_queue_drop(dev);
+#ifdef CONFIG_ATM_FIFO_TX_ISR
+	void *mem_block;
+	int size;
+
+	while ((size = RING_BUF_GET(stream->rdy_q, mem_block))) {
+		ASSERT_ERR(size == sizeof(void *));
+		k_mem_slab_free(stream->mem_slab, mem_block);
+	}
+#endif
+	i2s_data->i2s_cfg = NULL;
+
+	if (i2s_data->clk_enabled) {
+		i2s_tx_stop_transfer(dev);
+		i2s_data->clk_enabled = false;
+	}
+
+	stream->state = I2S_STATE_NOT_READY;
+}
+#endif /* CONFIG_ZTEST */

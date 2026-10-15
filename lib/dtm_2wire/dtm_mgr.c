@@ -64,7 +64,7 @@ static bool cmd_completion(uint16_t opcode, const void *buf, uint8_t len)
 		dtm_reset_complete(status);
 		handled = true;
 	} break;
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	case BT_HCI_OP_LE_ENH_RX_TEST:
 #endif
 	case BT_HCI_OP_LE_ENH_TX_TEST: {

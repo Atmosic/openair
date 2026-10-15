@@ -1,0 +1,20 @@
+# Copyright (c) 2025 Atmosic
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config ATM_LPC_RCOS
+	bool "Atmosic Low Power Clock xtal omit module"
+	depends on ATM_ATLC
+
+config ATM_FORCE_LPC_RCOS
+	bool "Use RCOS for LPC even with xtal present"
+	depends on ATM_LPC_RCOS
+
+config ATM_LPC_RCOS_VALID_SECONDS
+	int "Duration for RCOS measurement to remain valid (seconds)"
+	default 5
+	depends on ATM_LPC_RCOS
+	help
+         Duration for an RCOS measurement to remain valid in seconds.
+         The value is converted to 32kHz clock cycles internally
+         (value * 32768). Default is 5 seconds.

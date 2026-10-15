@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -254,7 +254,7 @@ int main(void)
 #else
 	bt_gatt_cb_register(&gatt_callbacks);
 
-#if defined(CONFIG_SOC_SERIES_ATM34) || defined(CONFIG_SOC_SERIES_ATM53)
+#if defined(CONFIG_SOC_SERIES_ATM34) || defined(CONFIG_SOC_SERIES_ATM5)
 	err = atm_vendor_set_adv_tx_power(CONFIG_ATM_ADV_TX_POWER_DBM);
 	if (err) {
 		LOG_ERR("Failed to set adv TX power level %d", CONFIG_ATM_ADV_TX_POWER_DBM);

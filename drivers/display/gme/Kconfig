@@ -1,0 +1,21 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config GME_OLED
+	bool "GME12864 family OLED driver"
+	default y
+	depends on DT_HAS_ATMOSIC_GME_OLED_ENABLED
+	select I2C
+	help
+	  Driver for GME12864 family monochrome OLED modules on I2C, including the bare
+	  COG variants whose controller cannot take long or back-to-back transfers. See
+	  the atmosic,gme-oled binding.
+
+if GME_OLED
+
+module = GME_OLED
+module-str = gme_oled
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # GME_OLED

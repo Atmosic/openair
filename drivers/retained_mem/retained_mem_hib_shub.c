@@ -7,11 +7,11 @@
  *
  * This backend implementation uses SHUB (Sensor Hub) hardware combined with
  * PSEQ PERSISTENT registers for retained memory storage. This is used on
- * ATM33/ATM34 platforms.
+ * platforms with SHUB support.
  *
  * Copyright (C) Atmosic 2025-2026
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -21,11 +21,17 @@
 
 #include "arch.h"
 #include "at_apb_pseq_regs_core_macro.h"
+
+// enabled on platforms with SHUB
+#ifdef __PSEQ_SENSOR_HUB_CONTROL_MACRO__
 #include "at_apb_shub_regs_core_macro.h"
 #include "at_wrpr.h"
 #include "atm_utils_c.h"
-
 #include "retained_mem_hib_backend.h"
+
+#if !defined(CMSDK_SHUB_BASE) && defined(CMSDK_SHUB_NONSECURE_BASE)
+#define CMSDK_SHUB_BASE CMSDK_SHUB_NONSECURE_BASE
+#endif
 
 LOG_MODULE_DECLARE(retained_mem_hib, CONFIG_RETAINED_MEM_LOG_LEVEL);
 
@@ -311,3 +317,5 @@ int retained_mem_backend_init(const struct device *dev)
 
 	return 0;
 }
+
+#endif /* __PSEQ_SENSOR_HUB_CONTROL_MACRO__ */

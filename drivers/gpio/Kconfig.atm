@@ -1,7 +1,9 @@
 # Atmosic GPIO driver configuration
-
-# Copyright (c) 2025 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+#
 
 config GPIO_ATM
 	bool "Atmosic GPIO driver with automatic pinmux"
@@ -22,12 +24,35 @@ config GPIO_ATM
 	  Note: This driver reuses functions from the ARM CMSDK AHB GPIO
 	  driver (gpio_cmsdk_ahb.c) which is compiled as part of this driver.
 
+if GPIO_ATM
+
+config GPIO_ATM_ALLOW_DISCONNECT
+	bool "Allow GPIO_DISCONNECTED to clear pull-up/pull-down and input enable"
+	help
+	  The ARM CMSDK AHB GPIO driver (gpio_cmsdk_ahb.c), which this driver
+	  reuses, normally rejects gpio_pin_configure() calls with
+	  -ENOTSUP when neither GPIO_INPUT nor GPIO_OUTPUT is set (i.e.
+	  GPIO_DISCONNECTED). This means callers relying on
+	  GPIO_DISCONNECTED to tear down a pin's input enable and
+	  pull-up/pull-down configuration silently fail, leaving those
+	  registers latched.
+
+	  Enable this option to allow GPIO_DISCONNECTED requests to fall
+	  through and actually clear the outenable/inenable/pullup_enable/
+	  pulldown_enable registers for the pin, instead of returning
+	  -ENOTSUP.
+
+	  Default is 'n' to preserve existing behavior; enable explicitly
+	  in applications that depend on GPIO_DISCONNECTED clearing pin
+	  state.
+
 config GPIO_ATM_RESET_GPIOS_ON_WARM_RESET
 	bool "Reset GPIO state on warm reset"
-	depends on GPIO_ATM
 	default y if MCUBOOT
 	default y if !BOOTLOADER_MCUBOOT && (ATM_NO_TZ || TRUSTED_EXECUTION_NONSECURE)
 	select ATM_RESET
 	help
 	  This option resets GPIO pin states during either due to warm
 	  reset or watchdog reset
+
+endif # GPIO_ATM

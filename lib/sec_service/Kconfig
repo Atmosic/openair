@@ -1,9 +1,17 @@
-# Copyright (c) 2025 Atmosic
+# Copyright (c) 2025-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_VERIFY_ATMWSTK
+	bool "Verify the fixed ATMWSTK image integrity at runtime"
+	depends on USE_FIXED_ATMWSTK
+	select ATM_SHA2
+	help
+	  Enable ATMWSTK stack verification API.
 
 config ATM_PROT
 	bool "Enable Atmosic platform protections"
+	select ATM_NV_MEM_FLASH_PROT if DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
 
 if ATM_PROT
 
@@ -38,7 +46,6 @@ config ATM_PROT_AUTO
 	select ATM_PROT_DISABLE_OTP
 	select ATM_PROT_DISABLE_ROM_PATCH
 	select ATM_PROT_DISABLE_SHUB
-	select ATM_NV_MEM_FLASH_PROT if DT_HAS_ATMOSIC_SEC_NV_MEM_FLASH_PROT_ENABLED
 	help
 	  This option will protect the platform at early bootup in the absence of
 	  the SPE. When a SPE in use it will use this protection library to enable

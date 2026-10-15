@@ -1,0 +1,19 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+/* Configure PWM1 for the IR LED output on pin 25. */
+&pwm1 {
+	pin = <25>;
+	status = "okay";
+};
+
+/* This board uses PWM1 instead of the generic sample PWM3. */
+/ {
+	ir_blaster: ir_blaster {
+		compatible = "atmosic,ir-nec";
+		pwms = <&pwm1 1 0 0>;
+	};
+};

@@ -1,6 +1,8 @@
 common:
   tags:
     - atm_test_with_spe
+  extra_args:
+    - EXTRA_CONF_FILE="bt.conf;serial.conf;shell-mgmt.conf"
 tests:
   samples.subsys.mgmt.mcumgr.smp_svr.atm.mcuboot:
     sysbuild: true
@@ -11,6 +13,7 @@ tests:
         - smp_sample
     tags:
       - mcuboot
+      - openair_release_mcuboot
     extra_args:
       - SB_CONFIG_BOOTLOADER_MCUBOOT=y
       - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y

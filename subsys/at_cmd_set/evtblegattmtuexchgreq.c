@@ -33,6 +33,13 @@ static void mtuexchgreq_evt_handler(uint8_t ch, void const *evt_data, uint16_t e
 	at_cmd_resp(ch, at_all, evt_cmd, 0, EVT_RSP_NUM, evt->idx, evt->err);
 }
 
+#ifdef CONFIG_ZTEST
+void at_cmd_evt_mtuexchgreq_test_handler(uint8_t ch, void const *evt_data, uint16_t evt_data_len)
+{
+	mtuexchgreq_evt_handler(ch, evt_data, evt_data_len);
+}
+#endif /* CONFIG_ZTEST */
+
 void at_cmd_evt_mtuexchgreq(uint8_t ch, uint8_t idx, uint8_t err)
 {
 	at_cmd_mtuexchgreq_evt_t evt = {

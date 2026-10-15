@@ -21,15 +21,27 @@
 #define ATM_SPE_SIZE 0
 #endif
 
-// Size of memory held-back in reserve at the end of flash for a flash_xip
-// configuration.  This reserve is not used for the image or data (OTA)
-// partitions.  Applications are free to define partitions in the reserve
-// area using application specific overlays.
-// Note: for normal RRAM execution (non-Flash XIP) the remaining flash after
-//       the default partitions are added (i.e. OTA partitions) is free to
-//       use by the application.  No reservation is explicitly required.
+// Size of application-specific memory held back in reserve at the end of flash.
+// Applications may define partitions in the reserve area using overlays.
+// FLASH_XIP_RSVD_SIZE is retained as a compatibility alias for existing
+// applications.  New applications should define ATM_APP_FLASH_RESERVED_SIZE.
+#if !defined(ATM_APP_FLASH_RESERVED_SIZE) && defined(FLASH_XIP_RSVD_SIZE)
+#define ATM_APP_FLASH_RESERVED_SIZE FLASH_XIP_RSVD_SIZE
+#endif
+#ifndef ATM_APP_FLASH_RESERVED_SIZE
+#define ATM_APP_FLASH_RESERVED_SIZE 0
+#endif
+
+// For Flash-XIP, this reserve is not used for image or data (OTA) partitions.
+// Note: for normal RRAM execution (non-Flash XIP), the remaining flash after
+// the default partitions are added is free to use by the application.
 #ifndef FLASH_XIP_RSVD_SIZE
-#define FLASH_XIP_RSVD_SIZE 0
+#define FLASH_XIP_RSVD_SIZE ATM_APP_FLASH_RESERVED_SIZE
+#endif
+#if defined(ATM_APP_FLASH_RESERVED_SIZE) && defined(FLASH_XIP_RSVD_SIZE)
+#if (ATM_APP_FLASH_RESERVED_SIZE != FLASH_XIP_RSVD_SIZE)
+#error "Flash reservation macros must have the same value"
+#endif
 #endif
 
 #ifdef ATM_APP_PART_DEFS
@@ -44,6 +56,13 @@
 #define ATM_FLASH_BLOCK_SIZE 4096
 #define ROUND_DOWN_FLASH_BLK(s) \
     (((s) / ATM_FLASH_BLOCK_SIZE) * ATM_FLASH_BLOCK_SIZE)
+#if ((ATM_APP_FLASH_RESERVED_SIZE % ATM_FLASH_BLOCK_SIZE) != 0)
+#error "Application flash reservation must be aligned"
+#endif
+#if (ATM_APP_FLASH_RESERVED_SIZE > FLASH_SIZE)
+#error "Application flash reservation exceeds FLASH_SIZE"
+#endif
+#define ATM_APP_FLASH_RESERVED_OFFSET (FLASH_SIZE - ATM_APP_FLASH_RESERVED_SIZE)
 
 #ifndef ATM_FACTORY_SIZE
 #define ATM_FACTORY_SIZE 0x800
@@ -86,9 +105,8 @@
 #endif
 
 #ifdef RUN_IN_FLASH
-#define ATM_FLASH_APP_SIZE \
-    ROUND_DOWN_FLASH_BLK( \
-	FLASH_SIZE - ATM_TEST_STORAGE_SIZE - FLASH_XIP_RSVD_SIZE)
+#define ATM_FLASH_APP_SIZE                                                                         \
+	ROUND_DOWN_FLASH_BLK(ATM_APP_FLASH_RESERVED_OFFSET - ATM_TEST_STORAGE_SIZE)
 #if (ATM_FLASH_APP_SIZE <= 0)
 #error "FLASH APP size underflow, please check FLASH_SIZE"
 #endif

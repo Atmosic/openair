@@ -12,6 +12,7 @@
 
 #include <zephyr/kernel.h>
 #include "arch.h"
+#include "at_lc_regs_core_macro.h"
 
 #define DT_DRV_COMPAT atmosic_ble
 
@@ -154,10 +155,30 @@ done:
 
 #ifdef CONFIG_PM
 static int32_t plf_sleep_min = 0xa0;
-static uint8_t ble_sleep_cnt; /* 0 = inactive, non-zero = active count */
+static bool ble_sleep_active;
+static uint32_t ble_sleep_target_lpc;
 #endif
 
 static unsigned int ble_key;
+
+int64_t atm_ble_sleep_remaining_ticks(void)
+{
+#if defined(CONFIG_PM) && defined(CONFIG_ATM_ATLC)
+    /* No timed BLE sleep is active; there is no custom deadline. */
+    if (!ble_sleep_active) {
+	return K_TICKS_FOREVER;
+    }
+
+    uint32_t sleep_duration = ble_sleep_target_lpc - atm_get_sys_time();
+    if ((int32_t)sleep_duration <= 0) {
+	return 0;
+    }
+
+    return (int64_t)atm_lpc_to(Z_HZ_ticks, sleep_duration);
+#else
+    return K_TICKS_FOREVER;
+#endif
+}
 
 static int ble_sem_take(k_timeout_t timeout)
 {
@@ -174,7 +195,6 @@ ble_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
 #ifndef CONFIG_PM
     return;
 #else
-    k_ticks_t ticks = K_TICKS_FOREVER;
     // ble_sleep_duration == 0 means no timer (external wakeup only)
     if (ble_sleep_duration) {
 	// @note: Make any necessary timing adjustments to exit-latency-us
@@ -183,41 +203,18 @@ ble_to_deep_sleep(bool *pseq_sleep, uint32_t *int_set, bool ble_asleep,
 	    // Too short; don't involve PSEQ
 	    return;
 	}
-
-	// Convert lpcycles to ticks
-	ticks = atm_lpc_to(Z_HZ_ticks, ble_sleep_duration);
+	ble_sleep_target_lpc = atm_get_sys_time() + ble_sleep_duration;
     }
-
-    ble_sleep_cnt = ble_sleep_duration ? 1 : 0;
+    ble_sleep_active = ble_sleep_duration != 0;
 
     pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-    ble_sem_take(K_TICKS(ticks));
+    /* PM hook tracks the deadline; ATLC wake IRQ gives ble_sem. */
+    ble_sem_take(K_FOREVER);
     pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
     *pseq_sleep = true;
+    ble_sleep_active = false;
 #endif
 }
-
-#ifdef CONFIG_PM
-static void ble_notify_pm_state_exit(enum pm_state state)
-{
-    if (state != PM_STATE_SUSPEND_TO_RAM) {
-	return;
-    }
-    if (!ble_sleep_cnt) {
-	return;
-    }
-    if (ble_sleep_cnt > CONFIG_ATM_BLE_RETENTION_WAKEUP_THRESHOLD) {
-	ble_sleep_cnt = 0;
-	NVIC_SetPendingIRQ(BLE_GIVE_IRQn);
-    } else {
-	ble_sleep_cnt++;
-    }
-}
-
-static struct pm_notifier ble_pm_notifier = {
-    .state_exit = ble_notify_pm_state_exit,
-};
-#endif
 
 /*
  * @note: Can be called from zero-latency ATLC_IRQn, so kernel calls are
@@ -554,17 +551,35 @@ static int ble_driver_init(struct device const *dev)
     ble_driver_init_part2();
 #endif
 
-#ifdef CONFIG_PM
-    pm_notifier_register(&ble_pm_notifier);
-#endif
-
     LOG_DBG("exit");
     return 0;
 }
 
-#elif CONFIG_PM
+#ifdef CONFIG_ATM_PD
+#include "power.h"
 
-#include "at_lc_regs_core_macro.h"
+/*
+ * Forced-power-down prep: force the ATLC to sleep before the SoC hibernates so
+ * it powers down cleanly. Only hibernate needs this (soc_off powers the radio
+ * off regardless). Runs early, before flash is armed off.
+ */
+static void
+ble_pd_prep(enum atm_pd_method method, enum atm_pd_urgency urgency)
+{
+    ARG_UNUSED(urgency);
+    if (method != ATM_PD_METHOD_HIBERNATE) {
+	return;
+    }
+    // Force ATLC to sleep
+    ATLC_LC_LP_CTRL0__SW_WU_REQ__CLR(CMSDK_ATLC_NONSECURE->LC_LP_CTRL0);
+    CMSDK_ATLC_NONSECURE->LC_LP_CTRL2 = ATLC_LC_LP_CTRL2__SLP_TM__WRITE(0);
+    CMSDK_ATLC_NONSECURE->LC_LP_CTRL3 = ATLC_LC_LP_CTRL3__SLP__MASK;
+}
+
+ATM_PD_PREP_DEFINE(ble, 10, ble_pd_prep);
+#endif // CONFIG_ATM_PD
+
+#elif CONFIG_PM
 
 static int ble_driver_init(struct device const *dev)
 {

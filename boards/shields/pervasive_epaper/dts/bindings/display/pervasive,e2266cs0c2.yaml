@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: Pervasive 2.66 152x296 EPD display controller
+
+compatible: "pervasive,e2266cs0c2"
+
+include: pervasive,common.yaml

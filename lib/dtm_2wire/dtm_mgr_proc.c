@@ -1,13 +1,7 @@
-/**
- *******************************************************************************
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
- * @file dtm_mgr_proc.c
- *
- * @brief DTM command processing for Zephyr
- *
- * Copyright (C) Atmosic 2025-2026
- *
- *******************************************************************************
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -21,6 +15,9 @@
 #include "dtm_mgr.ih"
 #include "dtm_hci_bridge.h"
 #include "rf_api.h"
+#ifdef CONFIG_DTM_2WIRE_RESET_RX_DC_CAL
+#include "radio_cal.h"
+#endif
 
 LOG_MODULE_REGISTER(dtm_mgr_proc, CONFIG_DTM_2WIRE_LOG_LEVEL);
 
@@ -30,6 +27,27 @@ LOG_MODULE_REGISTER(dtm_mgr_proc, CONFIG_DTM_2WIRE_LOG_LEVEL);
 #define MAX_SUP_PHY_MODE DTM_PARAM_PHY_MODE_LE_1M
 #endif
 
+/*
+ * CONFIG_FORCE_TX_PWR (RF driver Kconfig) pins the transmit power to a fixed
+ * dBm value, applied by the RF driver in rf_init(). The reserved value 255
+ * means "forced TX power disabled" and must match UNSET_FORCE_TX_PWR_VALUE in
+ * the RF driver. When forced, DTM must use that power and reject host attempts
+ * to change it via the Set TX Power Level control command.
+ */
+#if defined(CONFIG_FORCE_TX_PWR) && (CONFIG_FORCE_TX_PWR != 255)
+#define DTM_TX_PWR_FORCED 1
+#endif
+
+/* Default DTM TX power: configured RF maximum, or 0 dBm if not defined. */
+#ifdef CONFIG_MAX_TX_PWR
+#define DTM_DEFAULT_TX_PWR_DBM CONFIG_MAX_TX_PWR
+#else
+#define DTM_DEFAULT_TX_PWR_DBM 0
+#endif
+
+// Callback for TX power level changes (registered by external modules)
+static dtm_tx_pwr_callback_t tx_pwr_callback;
+
 // State for the DTM command processor
 struct dtm_state {
 	uint8_t length_ext; // current length extension bits
@@ -38,19 +56,26 @@ struct dtm_state {
 	int8_t tx_pwr_lvl;  // transmitter power level in dBm
 	uint16_t max_tx_octets;
 	uint16_t max_tx_time;
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	uint8_t rx_mod_idx; // current modulation index
 	uint16_t max_rx_octets;
 	uint16_t max_rx_time;
+#endif
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_SIMULATED
+	bool sim_rx_active; // true when a simulated RX test is running
+#endif
+#ifdef CONFIG_DTM_2WIRE_RESET_RX_DC_CAL
+	bool rx_dc_cal_bypass; // bypass flag set by vendor DTM ctrl command
+	bool rx_dc_cal_done;   // true after first calibration has been triggered
 #endif
 };
 
 static struct dtm_state dtm_env = {
 	.phy_mode = DTM_PARAM_PHY_MODE_LE_1M,
-	.tx_pwr_lvl = BT_HCI_TX_TEST_POWER_MAX_SET, // Default to maximum power
+	.tx_pwr_lvl = DTM_DEFAULT_TX_PWR_DBM,
 	.max_tx_octets = BT_HCI_LE_MAX_TX_OCTETS_MAX,
 	.max_tx_time = BT_HCI_LE_MAX_TX_TIME_MAX,
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	.rx_mod_idx = DTM_PARAM_RECV_ASSUME_STD,
 	.max_rx_octets = BT_HCI_LE_MAX_RX_OCTETS_MAX,
 	.max_rx_time = BT_HCI_LE_MAX_RX_TIME_MAX,
@@ -62,7 +87,7 @@ void dtm_set_data_len_caps(uint16_t max_tx_octets, uint16_t max_tx_time, uint16_
 {
 	dtm_env.max_tx_octets = max_tx_octets;
 	dtm_env.max_tx_time = max_tx_time;
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	dtm_env.max_rx_octets = max_rx_octets;
 	dtm_env.max_rx_time = max_rx_time;
 #endif
@@ -77,7 +102,7 @@ static uint8_t dtm_get_pdu_support_info(uint8_t type, uint16_t *value)
 	case DTM_PARAM_READ_PDU_MAX_TX_TIME:
 		*value = dtm_env.max_tx_time / 2; /* per Part F 3.3.1: units are time/2 */
 		break;
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	case DTM_PARAM_READ_PDU_MAX_RX_OCTETS:
 		*value = dtm_env.max_rx_octets;
 		break;
@@ -111,19 +136,17 @@ static uint8_t dtm_test_setup_handler(uint8_t ctrl, uint8_t param, uint16_t *res
 	case DTM_CTRL_RESET: {
 		dtm_env.phy_mode = DTM_PARAM_PHY_MODE_LE_1M;
 		dtm_env.length_ext = 0;
-		dtm_env.tx_pwr_lvl = BT_HCI_TX_TEST_POWER_MAX_SET;
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+		dtm_env.tx_pwr_lvl = DTM_DEFAULT_TX_PWR_DBM;
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 		dtm_env.rx_mod_idx = DTM_PARAM_RECV_ASSUME_STD;
 #endif
 		dtm_hci_bridge_send_cmd(BT_HCI_OP_RESET, NULL, 0);
 		// Need to defer status until command completion received
 		*defer_status = true;
 	} break;
-#ifdef CONFIG_DTM_2WIRE_EXT
 	case DTM_CTRL_SET_LEN_EXT: {
 		dtm_env.length_ext = DTM_PARAM_GET_LEN_EXT(param);
 	} break;
-#endif
 	case DTM_CTRL_SET_PHY_MODE: {
 		if (DTM_PARAM_GET_PHY_MODE(param) > MAX_SUP_PHY_MODE) {
 			status = BT_HCI_ERR_UNSUPP_REMOTE_FEATURE;
@@ -131,7 +154,7 @@ static uint8_t dtm_test_setup_handler(uint8_t ctrl, uint8_t param, uint16_t *res
 		}
 		dtm_env.phy_mode = DTM_PARAM_GET_PHY_MODE(param);
 	} break;
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	case DTM_CTRL_SET_RECV_MODE: {
 		if (DTM_PARAM_GET_RECV_MOD_IDX(param) > DTM_PARAM_RECV_ASSUME_STABLE) {
 			status = BT_HCI_ERR_UNSUPP_REMOTE_FEATURE;
@@ -143,10 +166,9 @@ static uint8_t dtm_test_setup_handler(uint8_t ctrl, uint8_t param, uint16_t *res
 	case DTM_CTRL_READ_TEST_FEAT: {
 		if (DTM_PARAM_READ_TEST_FEAT_TEST_CASES ==
 		    DTM_PARAM_GET_READ_TEST_FEAT_TYPE(param)) {
-			*response = DTM_SUPPORT_TX_HAS_STD_MOD_IDX |
+			*response = DTM_SUPPORT_TX_HAS_STD_MOD_IDX | DTM_SUPPORT_LENGTH_EXT_MASK |
 #ifdef CONFIG_DTM_2WIRE_EXT
-				    DTM_SUPPORT_LENGTH_EXT_MASK | DTM_SUPPORT_LE_2M_PHY_MASK |
-				    DTM_SUPPORT_LE_CODED_PHY_MASK |
+				    DTM_SUPPORT_LE_2M_PHY_MASK | DTM_SUPPORT_LE_CODED_PHY_MASK |
 #endif
 				    0;
 		} else {
@@ -157,6 +179,12 @@ static uint8_t dtm_test_setup_handler(uint8_t ctrl, uint8_t param, uint16_t *res
 		status = dtm_get_pdu_support_info(DTM_PARAM_GET_PDU_SUP_TYPE(param), response);
 	} break;
 	case DTM_CTRL_SET_TX_PWR_LVL: {
+#ifdef DTM_TX_PWR_FORCED
+		LOG_ERR("DTM TX power fixed by CONFIG_FORCE_TX_PWR (%d dBm); "
+			"Set TX Power Level rejected",
+			CONFIG_FORCE_TX_PWR);
+		status = BT_HCI_ERR_UNSUPP_REMOTE_FEATURE;
+#else
 		int8_t tx_pwr = DTM_PARAM_GET_TX_PWR_LVL(param);
 
 		/* Validate TX power range */
@@ -176,7 +204,17 @@ static uint8_t dtm_test_setup_handler(uint8_t ctrl, uint8_t param, uint16_t *res
 		}
 
 		LOG_DBG("DTM TX power level set to: %d dBm", dtm_env.tx_pwr_lvl);
+#endif /* DTM_TX_PWR_FORCED */
+		if (tx_pwr_callback) {
+			tx_pwr_callback(dtm_env.tx_pwr_lvl);
+		}
 	} break;
+#ifdef CONFIG_DTM_2WIRE_RESET_RX_DC_CAL
+	case DTM_CTRL_BYPASS_RX_DC_CAL: {
+		dtm_env.rx_dc_cal_bypass = true;
+		LOG_DBG("DTM RX DC cal on reset bypassed");
+	} break;
+#endif
 	default: {
 		status = BT_HCI_ERR_UNSUPP_REMOTE_FEATURE;
 	} break;
@@ -191,18 +229,24 @@ static uint8_t dtm_test_setup_handler(uint8_t ctrl, uint8_t param, uint16_t *res
 
 static uint8_t send_le_tx_test(struct bt_hci_cp_le_enh_tx_test *tx_params)
 {
+#ifdef DTM_TX_PWR_FORCED
+	/* TX power is forced by CONFIG_FORCE_TX_PWR, overriding any DTM setting. */
+	int8_t tx_pwr = CONFIG_FORCE_TX_PWR;
+#else
+	int8_t tx_pwr = dtm_env.tx_pwr_lvl;
+#endif
+
 	LOG_DBG("DTM TX test chan:%d, len:%d, pk_type:%d, phy:%d, tx_pwr:%d dBm", tx_params->tx_ch,
-		tx_params->test_data_len, tx_params->pkt_payload, tx_params->phy,
-		dtm_env.tx_pwr_lvl);
+		tx_params->test_data_len, tx_params->pkt_payload, tx_params->phy, tx_pwr);
 
 	/* Set TX power using RF driver before starting TX test */
-	rf_set_txpwr_override(dtm_env.tx_pwr_lvl);
+	rf_set_txpwr_override(tx_pwr);
 
 	return dtm_hci_bridge_send_cmd(BT_HCI_OP_LE_ENH_TX_TEST, (uint8_t *)tx_params,
 				       sizeof(*tx_params));
 }
 
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 static uint8_t send_le_rx_test(struct bt_hci_cp_le_enh_rx_test *rx_params)
 {
 	LOG_DBG("DTM RX test chan:%d, phy:%d, mod_idx:%d", rx_params->rx_ch, rx_params->phy,
@@ -214,7 +258,7 @@ static uint8_t send_le_rx_test(struct bt_hci_cp_le_enh_rx_test *rx_params)
 
 union le_txrx_test_params {
 	struct bt_hci_cp_le_enh_tx_test tx;
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	struct bt_hci_cp_le_enh_rx_test rx;
 #endif
 };
@@ -237,7 +281,7 @@ static uint8_t dtm_start_txrx_test(uint8_t chan, uint8_t length, uint8_t pkt_typ
 		test_params.tx.tx_ch = chan;
 		test_params.tx.phy = phy_mode;
 	}
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	else {
 		test_params.rx.rx_ch = chan;
 		test_params.rx.phy = phy_mode;
@@ -245,12 +289,14 @@ static uint8_t dtm_start_txrx_test(uint8_t chan, uint8_t length, uint8_t pkt_typ
 #endif
 
 #ifdef CONFIG_DTM_2WIRE_EXT
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	if (phy_mode == DTM_PARAM_PHY_MODE_LE_S2 && !tx) {
 		// for RX, S8/S2 are the same (LE CODED).  Host should not ask
 		// for S2 in the RX test, but just in case map this PHY to S8
 		// (legal value).
 		test_params.rx.phy = DTM_PARAM_PHY_MODE_LE_S8;
 	}
+#endif
 #endif
 
 	if (tx) {
@@ -276,7 +322,7 @@ static uint8_t dtm_start_txrx_test(uint8_t chan, uint8_t length, uint8_t pkt_typ
 		}
 		test_params.tx.pkt_payload = payload_type;
 	}
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	else {
 		if (dtm_env.rx_mod_idx == DTM_PARAM_RECV_ASSUME_STD) {
 			test_params.rx.mod_index = BT_HCI_LE_MOD_INDEX_STANDARD;
@@ -290,7 +336,7 @@ static uint8_t dtm_start_txrx_test(uint8_t chan, uint8_t length, uint8_t pkt_typ
 		LOG_DBG("DTM starting TX test!");
 		status = send_le_tx_test(&test_params.tx);
 	}
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_ENABLED
 	else {
 		LOG_DBG("DTM starting RX test!");
 		status = send_le_rx_test(&test_params.rx);
@@ -331,7 +377,7 @@ void dtm_process_message(uint16_t message)
 		status = dtm_test_setup_handler(DTM_GET_CTRL(message), DTM_GET_PARAM(message),
 						&response, &defer_status);
 	} break;
-#ifdef CONFIG_DTM_2WIRE_RX_TESTING
+#if defined(CONFIG_DTM_2WIRE_RX_TESTING_ENABLED) || defined(CONFIG_DTM_2WIRE_RX_TESTING_SIMULATED)
 	case DTM_CMD_RX_TEST:
 #endif
 	case DTM_CMD_TX_TEST: {
@@ -341,6 +387,17 @@ void dtm_process_message(uint16_t message)
 		}
 		uint8_t pkt_length =
 			DTM_GET_TXRX_LEN(message) | (dtm_env.length_ext << DTM_LEN_EXT_SHIFT);
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_SIMULATED
+		if (command == DTM_CMD_RX_TEST) {
+			/* Simulated RX: accept command, mark test active locally.
+			 * No HCI command is sent; status stays SUCCESS and
+			 * defer_status stays false so a success response is sent
+			 * immediately. */
+			dtm_env.sim_rx_active = true;
+			dtm_env.test_active = true;
+			break;
+		}
+#endif
 		status = dtm_start_txrx_test(DTM_GET_TXRX_FREQ(message), pkt_length,
 					     DTM_GET_TXRX_PKT(message), dtm_env.phy_mode,
 					     (command == DTM_CMD_TX_TEST));
@@ -350,6 +407,17 @@ void dtm_process_message(uint16_t message)
 		}
 	} break;
 	case DTM_CMD_TEST_END: {
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_SIMULATED
+		if (dtm_env.sim_rx_active) {
+			/* Simulated RX test end: always report 0 packets received.
+			 * Set defer_status to suppress the default status send. */
+			dtm_env.sim_rx_active = false;
+			dtm_env.test_active = false;
+			dtm_send_pkt_report_evt(0);
+			defer_status = true;
+			break;
+		}
+#endif
 		status = dtm_hci_bridge_send_cmd(BT_HCI_OP_LE_TEST_END, NULL, 0);
 		if (status == BT_HCI_ERR_SUCCESS) {
 			// defer until dtm_test_end()
@@ -373,6 +441,21 @@ void dtm_process_message(uint16_t message)
 void dtm_reset_complete(uint8_t status)
 {
 	dtm_env.test_active = false;
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_SIMULATED
+	dtm_env.sim_rx_active = false;
+#endif
+#ifdef CONFIG_DTM_2WIRE_RESET_RX_DC_CAL
+	/* Trigger on-demand RX DC offset calibration on the first successful
+	 * DTM reset after boot, unless bypassed by the DTM_CTRL_BYPASS_RX_DC_CAL
+	 * control command (for MPTool production testing).
+	 */
+	if (!dtm_env.rx_dc_cal_done && (status == BT_HCI_ERR_SUCCESS) &&
+	    !dtm_env.rx_dc_cal_bypass) {
+		LOG_DBG("DTM reset complete: triggering RX DC cal");
+		atm_radio_cal_request();
+		dtm_env.rx_dc_cal_done = true;
+	}
+#endif
 	dtm_send_test_status_evt(status, 0);
 }
 
@@ -393,4 +476,9 @@ void dtm_test_end(uint8_t status, uint16_t recv_count)
 	} else {
 		dtm_send_pkt_report_evt(recv_count);
 	}
+}
+
+void dtm_mgr_register_tx_pwr_callback(dtm_tx_pwr_callback_t callback)
+{
+	tx_pwr_callback = callback;
 }

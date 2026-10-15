@@ -13,7 +13,7 @@ tests:
   samples.bluetooth.atm_beacon.atm: &atm_base
     sysbuild: true
     harness: console
-    harness_config:  &harness_config_base
+    harness_config: &harness_config_base
       type: one_line
       regex:
         - Booting Zephyr OS
@@ -27,6 +27,10 @@ tests:
       - &sbcn_conf CONFIG_REFBCN_SIMPLE_BEACON=y
   samples.bluetooth.atm_beacon.atm.sbcn_nobut:
     <<: *sbcn_base
+    # no_button.overlay disables &button0, so the overlay only compiles on a
+    # board declaring that node.
+    depends_on:
+      - &button0 button0
     extra_args:
       - EXTRA_DTC_OVERLAY_FILE=no_button.overlay
   samples.bluetooth.atm_beacon.atm.sbcn_noled:
@@ -40,6 +44,8 @@ tests:
       - CONFIG_SOFT_OFF=n
   samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled: &sbcn_nobut_noled_base
     <<: *sbcn_base
+    depends_on:
+      - *button0
     extra_args:
       - &sbcn_nobut_noled_args EXTRA_DTC_OVERLAY_FILE=no_button.overlay;no_led.overlay
   samples.bluetooth.atm_beacon.atm.sbcn_nobut_noled.short:
@@ -58,6 +64,7 @@ tests:
       - mcuboot
       - flash_xip
     depends_on:
+      - *button0
       - flash
       - rram
       - xip
@@ -121,6 +128,7 @@ tests:
     extra_configs:
       - &log_conf CONFIG_LOG=y
       - &hci_conf CONFIG_BT_HCI_CORE_LOG_LEVEL_INF=y
+      - &filter_conf CONFIG_BT_FILTER_ACCEPT_LIST=n
   samples.bluetooth.atm_beacon.atm.two_dev.pp_bcn: # power profile
     <<: *two_dev_base
   samples.bluetooth.atm_beacon.atm.two_dev.sbcn: # simple beacon
@@ -129,36 +137,42 @@ tests:
       - *sbcn_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
   samples.bluetooth.atm_beacon.atm.two_dev.shbcn: # simple harvesting beacon
     <<: *two_dev_base
     extra_configs:
       - *shbcn_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
   samples.bluetooth.atm_beacon.atm.two_dev.ext_scn: # extended scannable beacon
     <<: *two_dev_base
     extra_configs:
       - *ext_scn_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
   samples.bluetooth.atm_beacon.atm.two_dev.ibeacon: # iBeacon
     <<: *two_dev_base
     extra_configs:
       - *ibeacon_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
   samples.bluetooth.atm_beacon.atm.two_dev.ext_adv: # extended advertising beacon
     <<: *two_dev_base
     extra_configs:
       - *ext_adv_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
   samples.bluetooth.atm_beacon.atm.two_dev.ext_con: # extended connectable beacon
     <<: *two_dev_base
     extra_configs:
       - *ext_con_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
   samples.bluetooth.atm_beacon.atm.two_dev.wurx_bcn: # WURX beacon
     <<: *two_dev_base
     tags:
@@ -170,18 +184,21 @@ tests:
       - *wurx_bcn_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
   samples.bluetooth.atm_beacon.atm.two_dev.lr_coded: # Long Range coded PHY
     <<: *two_dev_base
     extra_configs:
       - *lr_coded_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
   samples.bluetooth.atm_beacon.atm.two_dev.2m_secondary: # 2M secondary beacon
     <<: *two_dev_base
     extra_configs:
       - *2m_secondary_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf
       - *2m_secondary_data_len
       - CONFIG_ADV_MAX_EVT=60 # extend adv max evt to 60 for the test
   samples.bluetooth.atm_beacon.atm.two_dev.lr500_coded: # Long Range 500kbps coded PHY
@@ -190,3 +207,4 @@ tests:
       - *lr500_coded_conf
       - *log_conf
       - *hci_conf
+      - *filter_conf

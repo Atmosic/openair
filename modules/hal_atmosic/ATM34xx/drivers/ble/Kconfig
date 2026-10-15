@@ -34,6 +34,7 @@ config ATM_ATLC
 	bool "Atmosic ATLC driver"
 	default y if BT || IEEE802154_ATM34
 	depends on DT_HAS_ATMOSIC_BLE_ENABLED
+	select PM_CUSTOM_TICKS_HOOK if PM
 
 if ATM_ATLC
 
@@ -47,12 +48,6 @@ config ATM_BLE_DRIVER_SLEEP
 config ATLC_DEEP_SLEEP
 	bool "ATLC deep sleep enable"
 	default y if ATM_BLE_DRIVER_SLEEP
-
-config ATM_BLE_RETENTION_WAKEUP_THRESHOLD
-	int "Number of consecutive retention wakeups before kicking the BLE thread"
-	default 100
-	range 1 254
-	depends on PM
 
 config ATM_BLE_STACK_SIZE
 	int "Size of the event loop thread stack"

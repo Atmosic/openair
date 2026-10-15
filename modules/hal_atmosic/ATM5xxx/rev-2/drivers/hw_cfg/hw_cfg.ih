@@ -1,0 +1,44 @@
+/**
+ ******************************************************************************
+ *
+ * @file hw_cfg.ih
+ *
+ * @brief Hardware Configuration internal APIs
+ *
+ * Copyright (C) Atmosic 2025-2026
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ *
+ ******************************************************************************
+ */
+
+#pragma once
+
+#ifndef HW_CFG_INTERNAL_GUARD
+#error "hw_cfg.ih should only be included in hw_cfg source files"
+#endif
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    bool force_lpc_rcos;
+    bool assert_on_cal_fail;
+    bool is_for_sim;
+    uint8_t max_tx_power;
+} hw_cfg_core_param;
+
+void hw_cfg_atlc_init(bool enable_antenna_switching);
+void hw_cfg_core_cal(void);
+void hw_cfg_radio_init(void);
+void hw_cfg_rev_hash_check(void);
+bool hw_cfg_core_init(hw_cfg_core_param const *param);
+bool hw_cfg_core_attempt_calibration(void);
+
+#ifdef __cplusplus
+}
+#endif

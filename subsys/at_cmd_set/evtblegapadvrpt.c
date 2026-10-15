@@ -44,6 +44,13 @@ static void adv_rpt_evt_handler(uint8_t ch, void const *evt_data, uint16_t evt_d
 		    evt->data_len);
 }
 
+#ifdef CONFIG_ZTEST
+void at_cmd_adv_rpt_evt_handler_test(uint8_t ch, void const *evt_data, uint16_t evt_data_len)
+{
+	adv_rpt_evt_handler(ch, evt_data, evt_data_len);
+}
+#endif /* CONFIG_ZTEST */
+
 void at_cmd_evt_adv_rpt(uint8_t ch, const struct bt_le_scan_recv_info *info,
 			struct net_buf_simple *buf)
 {
@@ -132,6 +139,13 @@ static void at_cmd_scan_recv(const struct bt_le_scan_recv_info *info, struct net
 	at_cmd_evt_adv_rpt(ctx->ch, info, buf);
 }
 
+#ifdef CONFIG_ZTEST
+void at_cmd_scan_recv_test(const struct bt_le_scan_recv_info *info, struct net_buf_simple *buf)
+{
+	at_cmd_scan_recv(info, buf);
+}
+#endif /* CONFIG_ZTEST */
+
 static int evtblegapadvrpt_init(void)
 {
 	static struct bt_le_scan_cb at_cmd_scan_callbacks = {
@@ -147,5 +161,12 @@ static int evtblegapadvrpt_init(void)
 
 	return 0;
 }
+
+#ifdef CONFIG_ZTEST
+int at_cmd_evt_adv_rpt_test_init(void)
+{
+	return evtblegapadvrpt_init();
+}
+#endif /* CONFIG_ZTEST */
 
 SYS_INIT(evtblegapadvrpt_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

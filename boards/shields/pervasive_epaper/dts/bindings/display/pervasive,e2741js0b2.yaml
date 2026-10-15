@@ -1,0 +1,8 @@
+# Copyright (c) 2024 Atmosic
+# SPDX-License-Identifier: Apache-2.0
+
+description: Pervasive 7.41 480x800 EPD display controller
+
+compatible: "pervasive,e2741js0b2"
+
+include: pervasive,common.yaml

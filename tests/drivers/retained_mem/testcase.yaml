@@ -9,9 +9,21 @@ common:
 tests:
   tests.drivers.retained_mem.atm:
     {}
-  tests.drivers.retained_mem.atm.fixed_offset_0:
+  tests.drivers.retained_mem.atm.gcov:
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_UU_TEST_OPENAIR="retained_mem_hib.c;retained_mem_hib_expansion.c;retained_mem_hib_shub.c"
+  tests.drivers.retained_mem.atm.fixed_offset_0_no_mutex.gcov:
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
     extra_configs:
       - CONFIG_RETAINED_MEM_ATM_FIXED_OFFSET_0=y
-  tests.drivers.retained_mem.atm.force_no_mutex:
-    extra_configs:
       - CONFIG_RETAINED_MEM_MUTEX_FORCE_DISABLE=y
+      - CONFIG_UU_TEST_OPENAIR="retained_mem_hib.c;retained_mem_hib_expansion.c;retained_mem_hib_shub.c"

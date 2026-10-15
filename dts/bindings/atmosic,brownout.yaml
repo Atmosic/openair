@@ -1,0 +1,98 @@
+# Copyright (c) 2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  Atmosic brownout policy.
+
+  When threshold properties are absent, the driver selects defaults based on
+  the SoC and battery configuration. Applications can override these properties
+  in a Devicetree overlay. Set ``CONFIG_ATM_BROWNOUT=n`` to disable brownout
+  support.
+
+compatible: "atmosic,brownout"
+
+include: base.yaml
+
+properties:
+  brownout-thr-vbat:
+    type: int
+    required: false
+    description: |
+      Raw brownout threshold, ``X``, programmed by the brownout driver. The
+      voltage formula depends on the SoC, battery type, and battery level:
+
+      - Rechargeable or non-rechargeable, > 1.8 V (ATM33 and ATM34
+        non-VBATLI):
+
+        ``V = 1.4 V + 0.05 V * X``
+      - Rechargeable or non-rechargeable, <= 1.8 V (ATM33 and ATM34
+        non-VBATLI):
+
+        ``V = 0.9 V + 0.025 V * X``
+      - Li-ion, > 1.8 V (ATM34 VBATLI):
+
+        ``V = 2.4 V + 0.05 V * X``
+      - Li-ion, <= 1.8 V (ATM34 VBATLI):
+
+        ``V = 1.9 V + 0.025 V * X``
+      - ATM5 boost mode:
+
+        ``V = 0.875 V + 0.025 V * X``
+      - ATM5 buck mode:
+
+        ``V = 1.75 V + 0.05 V * X``
+
+      The ATM34 driver validates the following raw ranges at build time:
+
+      - Rechargeable or non-rechargeable, > 1.8 V: ``8`` through ``31``;
+        default ``14``
+      - Rechargeable or non-rechargeable, <= 1.8 V: ``4`` through ``31``;
+        default ``4``
+      - Li-ion, > 1.8 V: ``6`` through ``31``; default ``10``
+      - Li-ion, <= 1.8 V: ``0`` through ``31``; default ``8``
+
+      On ATM5, the valid raw range is ``3`` through ``14`` and the default is
+      ``3``.
+
+      ATM33 VBATLI configurations use a separate GADC threshold
+      (``brownout-thr-vbatli-mv``) and do not use this property.
+
+  brownout-thr-vbatli-mv:
+    type: int
+    required: false
+    description: |
+      ATM33 Li-ion GADC brownout threshold in millivolts. This property is
+      used only when ``batt-type = <0>``. The driver converts it to volts and
+      compares it with the calibrated GADC VBAT measurement.
+
+      When this property is absent, the ATM33 driver selects 2800 mV for the
+      HSC battery model or 3250 mV for the standard Li-ion battery model.
+
+  brownout-thr-vstore:
+    type: int
+    required: false
+    description: |
+      Raw VSTORE brownout threshold for SoCs that support a VSTORE threshold.
+      This board-level value is programmed by the brownout driver.
+
+  brownout-thr-vbat-hysteresis-delta:
+    type: int
+    required: false
+    description: |
+      Raw delta that raises ``brownout-thr-vbat`` to the threshold used to wake
+      from brownout hibernation. The delta must be non-negative, and the
+      summed raw threshold must be within the applicable platform range;
+      invalid configurations are rejected at build time.
+
+      The resulting hysteresis voltage formula includes a fixed +0.1 V offset.
+      The sum must satisfy the same battery-type and battery-level-specific raw
+      range as ``brownout-thr-vbat``. When absent, the ATM34 driver selects the
+      following fallback delta values:
+
+      - Rechargeable or non-rechargeable, > 1.8 V: ``4``
+      - Rechargeable or non-rechargeable, <= 1.8 V: ``0``
+      - Li-ion, > 1.8 V: ``6``
+      - Li-ion, <= 1.8 V: ``8``
+
+      On ATM5, the summed raw threshold must be ``3`` through ``14``; the
+      default delta is ``5``.

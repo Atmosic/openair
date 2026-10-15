@@ -1,0 +1,30 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+sample:
+  description: BLE HID Remote Controller sample
+  name: BLE HID Remote Controller sample
+common:
+  sysbuild: true
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "rc_gap: Advertising Start"
+  tags:
+    - bluetooth
+    - hid_remote
+  depends_on:
+    - hid_remote
+tests:
+  applications.hid_remote.atm: {}
+  applications.hid_remote.atm.mcuboot.ota:
+    tags:
+      - mcuboot
+    extra_args:
+      - SB_CONFIG_BOOTLOADER_MCUBOOT=y
+      - SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_SCRATCH=y
+      - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_MCUBOOT_SWAP_WITH_OFFSET=0"
+      - EXTRA_CONF_FILE="basic_ota_bt.conf"

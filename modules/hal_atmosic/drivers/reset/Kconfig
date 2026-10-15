@@ -16,3 +16,11 @@ config RESET_PRINT
 	bool "Log reset reason on boot"
 	default y if !MCUBOOT
 	depends on ATM_PLF_DEBUG
+
+config RESET_TEST_STUB
+	bool "Reset driver test stub"
+	depends on ATM_RESET
+	depends on ZTEST
+	help
+	  Enable test stubs for the reset driver to allow mocking boot status
+	  and register reads in unit tests.

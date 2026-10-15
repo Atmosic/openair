@@ -1,0 +1,96 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+description: |
+  GME12864 family monochrome OLED module on I2C.
+
+  These modules ship with an SSD1306, SSD1315 or compatible controller. Zephyr's
+  solomon,ssd1306 driver covers the well-behaved ones; this binding exists for the bare
+  COG variants, whose controller sits behind ITO tracks on the glass and will not accept
+  an arbitrarily long transfer or a back-to-back one. max-write-len and write-gap-us
+  express those two limits, which cannot be described to the upstream driver.
+
+compatible: "atmosic,gme-oled"
+
+include: [display-controller.yaml, i2c-device.yaml]
+
+properties:
+  width:
+    required: true
+  height:
+    required: true
+
+  multiplex-ratio:
+    type: int
+    default: 63
+    description: Multiplex ratio, command 0xA8. Normally height - 1.
+
+  display-offset:
+    type: int
+    default: 0
+    description: Vertical COM shift, command 0xD3.
+
+  prechargep:
+    type: int
+    default: 0x22
+    description: |
+      Pre-charge period, command 0xD9. 0x22 suits an SSD1306; a QG-2864KMBEG39 asks for
+      0xF1 in its own datasheet.
+
+  vcom-desel-level:
+    type: int
+    default: 0x20
+    description: |
+      VCOMH deselect level, command 0xDB. 0x20 suits an SSD1306; a QG-2864KMBEG39 asks
+      for 0x40. Affects contrast and ghosting only, never whether the panel responds.
+
+  contrast:
+    type: int
+    default: 0xcf
+    description: Contrast, command 0x81.
+
+  segment-remap:
+    type: boolean
+    description: Reverse the column order, command 0xA1 instead of 0xA0.
+
+  com-invdir:
+    type: boolean
+    description: Reverse the COM scan direction, command 0xC8 instead of 0xC0.
+
+  com-sequential:
+    type: boolean
+    description: Sequential rather than alternative COM pin layout, command 0xDA.
+
+  inversion-on:
+    type: boolean
+    description: Start with the display inverted, command 0xA7 instead of 0xA6.
+
+  use-internal-iref:
+    type: boolean
+    description: Select the internal current reference, command 0xAD.
+
+  max-write-len:
+    type: int
+    default: 0
+    description: |
+      Split writes so no single I2C transaction carries more than this many payload
+      bytes; each chunk repeats the control byte, which the controller reads as a
+      continuation. Zero sends every write whole.
+
+      A QG-2864KMBEG39 with 2.2k pull-ups measured a limit of 8 bytes at 400 kHz.
+
+  write-gap-us:
+    type: int
+    default: 0
+    description: |
+      Idle the bus for this long after each write. Zero does not wait.
+
+      Independent of max-write-len: the panel above needs both, and either alone is not
+      enough. 16-byte chunks acknowledge every time when spaced 20 ms apart, then fail
+      84 times out of 88 sent back to back.
+
+  ready-time-ms:
+    type: int
+    default: 10
+    description: Time from power-up until the controller accepts commands.

@@ -1,15 +1,7 @@
-/**
- *******************************************************************************
- *
- * @file platform_ctrl_led.c
- *
- * @brief Platform control led For Multimode Consumer Tag
- *
- * Copyright (C) Atmosic 2025-2026
+/*
+ * Copyright (c) 2025-2026 Atmosic
  *
  * SPDX-License-Identifier: LicenseRef-Atmosic
- *
- *******************************************************************************
  */
 
 #include <zephyr/logging/log.h>
@@ -135,7 +127,8 @@ static void led_update_pattern(struct led_blink_param *param, struct k_work_dela
 	if (pattern_num > LED_BLINK_PATTERN_MAX) {
 		LOG_ERR("Pattern number:%d exceeds max:%d ", pattern_num, LED_BLINK_PATTERN_MAX);
 #ifdef CONFIG_AT_CMD_TAG_SET
-		at_cmd_evt_tag_error(at_cmd_uart_ch_get(), platform_tag_supported_mode_mask_get(),
+		at_cmd_evt_tag_error(at_cmd_set_uart_ch_get(),
+				     platform_tag_supported_mode_mask_get(),
 				     AT_CMD_TAG_ERR_INVALID_PARAM);
 #endif
 		return;

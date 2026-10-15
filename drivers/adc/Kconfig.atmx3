@@ -1,7 +1,7 @@
 # ADC configuration options
 
-# Copyright (c) 2021-2023 Atmosic
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2021-2026 Atmosic
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ADC_ATMx3
 	bool "Atmosic ATMx3 ADC driver"
@@ -22,5 +22,25 @@ config CBPRINTF_FP_SUPPORT
 config ADC_ASYNC
 	default y
 	bool "Enable asynchronous mode"
+
+config ATM_ADC_CAPTURE
+	bool "Enable GADC continuous-mode capture API"
+	help
+	    Exposes atm_adc_capture_start()/read()/stop(), which run the GADC
+	    free-running in continuous mode so raw samples can be drained at
+	    the converter rate instead of one conversion at a time. No
+	    calibration or unit conversion is applied to the samples.
+
+	    Unrelated to ADC_STREAM: samples are drained by polling, not
+	    through RTIO.
+
+config ATM_ADC_TEST_API
+	bool "Enable ADC test API (TEST ONLY)"
+	select ATM_ADC_CAPTURE
+	help
+	    Exposes atm_adc_test_raw_samples() which reads raw GADC samples
+	    from a single channel via direct register access, for hardware
+	    bring-up and validation. Bypasses the Zephyr ADC subsystem and
+	    calibration; not for production use.
 
 endif

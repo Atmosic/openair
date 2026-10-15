@@ -30,7 +30,11 @@ LOG_MODULE_REGISTER(rrsp_mmi, CONFIG_RRSP_MMI_LOG_LEVEL);
 
 typedef enum rrsp_mmi_work_evt_e {
 	RRSP_MMI_WORK_EVT_ADV,
-	RRSP_MMI_WORK_EVT_CS_DEFAULT,
+	RRSP_MMI_WORK_EVT_CS_SET_ROLE,
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	RRSP_MMI_WORK_EVT_CS_PROC_DISABLE,
+	RRSP_MMI_WORK_EVT_CS_REMOVE_CONFIG,
+#endif
 	RRSP_MMI_WORK_EVT_INVALID,
 } rrsp_mmi_work_evt_t;
 
@@ -38,6 +42,7 @@ struct rrsp_mmi_event_work_info {
 	struct k_work work;
 	uint8_t pending_cnt;
 	rrsp_mmi_work_evt_t event;
+	bool cs_role_enable;
 };
 
 typedef struct rrsp_mmi_ctrl_s {
@@ -45,8 +50,17 @@ typedef struct rrsp_mmi_ctrl_s {
 	rrsp_mmi_evt_t evt;
 	struct bt_conn *curr_conn;
 	struct rrsp_mmi_event_work_info event_work;
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+	struct k_work_delayable subrate_work;
+#endif
 	uint16_t remaining_cs_cnt;
 	uint8_t cs_cfg;
+	bool cs_role_enabled;
+	bool cs_config_created;
+	bool cs_sec_enabled;
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	bool cs_force_off;
+#endif
 } rrsp_mmi_ctrl_t;
 
 static rrsp_mmi_ctrl_t rrsp_mmi;
@@ -81,6 +95,12 @@ static void rrsp_mmi_disconnected_cb(struct bt_conn *conn, uint8_t reason)
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	LOG_INF("Disconnected %s reason:%#x", addr, reason);
 	rrsp_mmi.curr_conn = NULL;
+	rrsp_mmi.cs_role_enabled = false;
+	rrsp_mmi.cs_config_created = false;
+	rrsp_mmi.cs_sec_enabled = false;
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	rrsp_mmi.cs_force_off = false;
+#endif
 	rrsp_mmi_run_event(RRSP_MMI_EVT_BT_DISC);
 }
 
@@ -100,13 +120,23 @@ static void rrsp_mmi_cs_config_created_cb(struct bt_conn *conn, uint8_t status,
 		LOG_INF("CS config creation complete. ID: %d enhance:%x", config->id,
 			config->cs_enhancements_1);
 		rrsp_mmi.cs_cfg = config->id;
+		rrsp_mmi.cs_config_created = true;
+		rrsp_mmi_run_event(RRSP_MMI_EVT_CS_CFG_CREATED);
 	}
+}
+
+static void rrsp_mmi_cs_config_removed_cb(struct bt_conn *conn, uint8_t config_id)
+{
+	LOG_INF("CS config removed. ID: %d", config_id);
+	rrsp_mmi.cs_config_created = false;
+	rrsp_mmi_run_event(RRSP_MMI_EVT_CS_CFG_RM);
 }
 
 static void rrsp_mmi_cs_security_enabled_cb(struct bt_conn *conn, uint8_t status)
 {
 	if (status == BT_HCI_ERR_SUCCESS) {
 		LOG_INF("CS security enabled.");
+		rrsp_mmi.cs_sec_enabled = true;
 		rrsp_mmi_run_event(RRSP_MMI_EVT_CS_SEC_EN);
 	}
 }
@@ -149,14 +179,48 @@ static void rrsp_mmi_le_phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_
 }
 #endif
 
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+#define RRSP_SUBRATE_REQ_DELAY_MS 500
+
+static void rrsp_mmi_subrate_changed_cb(struct bt_conn *conn,
+					const struct bt_conn_le_subrate_changed *params)
+{
+	if (params->status == BT_HCI_ERR_SUCCESS) {
+		LOG_INF("Subrate changed: factor %u cont_num %u latency %u timeout %u",
+			params->factor, params->continuation_number, params->peripheral_latency,
+			params->supervision_timeout);
+	} else {
+		LOG_ERR("Subrate change failed (HCI status 0x%02x)", params->status);
+	}
+}
+
+static void rrsp_mmi_security_changed_cb(struct bt_conn *conn, bt_security_t level,
+					 enum bt_security_err err)
+{
+	if (err) {
+		LOG_ERR("Security failed level:%u err:%d", level, err);
+		return;
+	}
+
+	LOG_INF("Security changed level:%u, scheduling subrate in %d ms", level,
+		RRSP_SUBRATE_REQ_DELAY_MS);
+	atm_work_schedule_for_app_work_q(&rrsp_mmi.subrate_work, K_MSEC(RRSP_SUBRATE_REQ_DELAY_MS));
+}
+#endif
+
 BT_CONN_CB_DEFINE(rrsp_mmi) = {
 	.connected = rrsp_mmi_connected_cb,
 	.disconnected = rrsp_mmi_disconnected_cb,
 #ifdef CONFIG_BT_USER_PHY_UPDATE
 	.le_phy_updated = rrsp_mmi_le_phy_updated,
 #endif
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+	.subrate_changed = rrsp_mmi_subrate_changed_cb,
+	.security_changed = rrsp_mmi_security_changed_cb,
+#endif
 	.le_cs_read_remote_capabilities_complete = rrsp_mmi_remote_capabilities_cb,
 	.le_cs_config_complete = rrsp_mmi_cs_config_created_cb,
+	.le_cs_config_removed = rrsp_mmi_cs_config_removed_cb,
 	.le_cs_security_enable_complete = rrsp_mmi_cs_security_enabled_cb,
 	.le_cs_procedure_enable_complete = rrsp_mmi_cs_procedure_enabled_cb,
 	.le_cs_subevent_data_available = rrsp_mmi_cs_subevent_result_cb,
@@ -221,20 +285,98 @@ static void rrsp_mmi_start_adv(void)
 	}
 }
 
-static void rrsp_mmi_cs_set_default(void)
+static void rrsp_mmi_cs_set_role(bool enable)
 {
+	if (!rrsp_mmi.curr_conn) {
+		LOG_WRN("No connection, skip CS role set");
+		return;
+	}
+
 	const struct bt_le_cs_set_default_settings_param default_settings = {
 		.enable_initiator_role = false,
-		.enable_reflector_role = true,
+		.enable_reflector_role = enable,
 		.cs_sync_antenna_selection = BT_LE_CS_ANTENNA_SELECTION_OPT_REPETITIVE,
 		.max_tx_power = BT_HCI_OP_LE_CS_MAX_MAX_TX_POWER,
 	};
 
 	int err = bt_le_cs_set_default_settings(rrsp_mmi.curr_conn, &default_settings);
 	if (err) {
-		LOG_ERR("Failed to configure default CS settings (err %d)", err);
+		LOG_ERR("Failed to set CS reflector role:%u (err %d)", enable, err);
+		return;
+	}
+
+	rrsp_mmi.cs_role_enabled = enable;
+	LOG_INF("CS reflector role %s", enable ? "enabled" : "disabled");
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	if (!enable) {
+		rrsp_mmi.cs_force_off = false;
+	}
+#endif
+}
+
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+static void rrsp_mmi_cs_proc_disable(void)
+{
+	if (!rrsp_mmi.curr_conn) {
+		LOG_WRN("No connection, skip CS procedure disable");
+		return;
+	}
+
+	const struct bt_le_cs_procedure_enable_param param = {
+		.config_id = rrsp_mmi.cs_cfg,
+		.enable = BT_CONN_LE_CS_PROCEDURES_DISABLED,
+	};
+
+	int err = bt_le_cs_procedure_enable(rrsp_mmi.curr_conn, &param);
+	if (err) {
+		LOG_ERR("Failed to disable CS procedure (err %d)", err);
 	}
 }
+
+static void rrsp_mmi_cs_remove_config(void)
+{
+	if (!rrsp_mmi.curr_conn) {
+		LOG_WRN("No connection, skip CS config remove");
+		return;
+	}
+
+	int err = bt_le_cs_remove_config(rrsp_mmi.curr_conn, rrsp_mmi.cs_cfg);
+	if (err) {
+		LOG_ERR("Failed to remove CS config (err %d)", err);
+	}
+}
+#endif
+
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+#define RRSP_SUBRATE_FACTOR                 12
+#define RRSP_SUBRATE_MAX_LATENCY            4
+#define RRSP_SUBRATE_SUPERVISION_TIMEOUT_CS 600 /* units: 10ms */
+static void rrsp_mmi_subrate_request(void)
+{
+	if (!rrsp_mmi.curr_conn) {
+		LOG_WRN("No connection, skip subrate request");
+		return;
+	}
+
+	const struct bt_conn_le_subrate_param subrate_param = {
+		.subrate_min = RRSP_SUBRATE_FACTOR,
+		.subrate_max = RRSP_SUBRATE_FACTOR,
+		.max_latency = RRSP_SUBRATE_MAX_LATENCY,
+		.continuation_number = 0,
+		.supervision_timeout = RRSP_SUBRATE_SUPERVISION_TIMEOUT_CS,
+	};
+
+	int err = bt_conn_le_subrate_request(rrsp_mmi.curr_conn, &subrate_param);
+	if (err) {
+		LOG_ERR("Failed to request subrate params (err %d)", err);
+	}
+}
+
+static void rrsp_mmi_subrate_work_handler(struct k_work *work)
+{
+	rrsp_mmi_subrate_request();
+}
+#endif
 
 static void rrsp_mmi_evt_work_handler(struct k_work *work)
 {
@@ -245,9 +387,17 @@ static void rrsp_mmi_evt_work_handler(struct k_work *work)
 	case RRSP_MMI_WORK_EVT_ADV: {
 		rrsp_mmi_start_adv();
 	} break;
-	case RRSP_MMI_WORK_EVT_CS_DEFAULT: {
-		rrsp_mmi_cs_set_default();
+	case RRSP_MMI_WORK_EVT_CS_SET_ROLE: {
+		rrsp_mmi_cs_set_role(info->cs_role_enable);
 	} break;
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	case RRSP_MMI_WORK_EVT_CS_PROC_DISABLE: {
+		rrsp_mmi_cs_proc_disable();
+	} break;
+	case RRSP_MMI_WORK_EVT_CS_REMOVE_CONFIG: {
+		rrsp_mmi_cs_remove_config();
+	} break;
+#endif
 	default: {
 		LOG_ERR("Unexpected event");
 	} break;
@@ -255,14 +405,20 @@ static void rrsp_mmi_evt_work_handler(struct k_work *work)
 	info->pending_cnt -= 1;
 }
 
-static void rrsp_mmi_evt_work_put(rrsp_mmi_work_evt_t evt)
+static void rrsp_mmi_evt_work_put_role(rrsp_mmi_work_evt_t evt, bool role_enable)
 {
 	rrsp_mmi.event_work.pending_cnt += 1;
 	if (rrsp_mmi.event_work.pending_cnt > 1) {
 		LOG_ERR("event overwrite:%d->%d", rrsp_mmi.event_work.event, evt);
 	}
 	rrsp_mmi.event_work.event = evt;
+	rrsp_mmi.event_work.cs_role_enable = role_enable;
 	atm_work_submit_to_app_work_q(&rrsp_mmi.event_work.work);
+}
+
+static void rrsp_mmi_evt_work_put(rrsp_mmi_work_evt_t evt)
+{
+	rrsp_mmi_evt_work_put_role(evt, false);
 }
 
 static void rrsp_mmi_bt_ready(int err)
@@ -278,6 +434,9 @@ static void rrsp_mmi_bt_ready(int err)
 	}
 
 	k_work_init(&rrsp_mmi.event_work.work, rrsp_mmi_evt_work_handler);
+#ifdef CONFIG_RRSP_SUBRATE_TEST
+	k_work_init_delayable(&rrsp_mmi.subrate_work, rrsp_mmi_subrate_work_handler);
+#endif
 
 	rrsp_mmi_run_event(RRSP_MMI_EVT_BT_READY);
 }
@@ -364,7 +523,14 @@ static void rrsp_mmi_connected_entry(void *obj)
 	if (!rrsp_mmi.curr_conn) {
 		LOG_ERR("No connection link info");
 	}
-	rrsp_mmi_evt_work_put(RRSP_MMI_WORK_EVT_CS_DEFAULT);
+	rrsp_mmi.cs_config_created = false;
+	rrsp_mmi.cs_sec_enabled = false;
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	if (!rrsp_mmi.cs_force_off)
+#endif
+	{
+		rrsp_mmi_evt_work_put_role(RRSP_MMI_WORK_EVT_CS_SET_ROLE, true);
+	}
 #ifdef CONFIG_RRSP_LED_IND
 	rrsp_led_update(RRSP_LED_PAT_MODE_OPR, true);
 #endif
@@ -378,8 +544,16 @@ static enum smf_state_result rrsp_mmi_connected_run(void *obj)
 	case RRSP_MMI_EVT_BT_DISC: {
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_ADV]);
 	} break;
+	case RRSP_MMI_EVT_CS_CFG_CREATED:
 	case RRSP_MMI_EVT_CS_SEC_EN: {
-		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_CS_SETUP_CMP]);
+		if (rrsp_mmi.cs_role_enabled && rrsp_mmi.cs_config_created &&
+		    rrsp_mmi.cs_sec_enabled) {
+			LOG_INF("CS setup complete: role:%u cfg:%u sec:%u",
+				rrsp_mmi.cs_role_enabled, rrsp_mmi.cs_config_created,
+				rrsp_mmi.cs_sec_enabled);
+			smf_set_state(SMF_CTX(&rrsp_mmi),
+				      &rrsp_mmi_states[RRSP_MMI_STATE_CS_SETUP_CMP]);
+		}
 	} break;
 	case RRSP_MMI_EVT_PWR_OFF: {
 		int error =
@@ -391,6 +565,13 @@ static enum smf_state_result rrsp_mmi_connected_run(void *obj)
 	} break;
 	case RRSP_MMI_EVT_ADV_OFF: {
 	} break;
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	case RRSP_MMI_EVT_CS_FORCE_OFF: {
+		LOG_INF("Force disable CS: revert reflector role");
+		rrsp_mmi.cs_force_off = false;
+		rrsp_mmi_evt_work_put_role(RRSP_MMI_WORK_EVT_CS_SET_ROLE, true);
+	} break;
+#endif
 	default: {
 		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
@@ -437,6 +618,22 @@ static enum smf_state_result rrsp_mmi_cs_setup_cmp_run(void *obj)
 		}
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_OFF]);
 	} break;
+	case RRSP_MMI_EVT_CS_CFG_RM: {
+		LOG_INF("CS config removed, back to connected");
+		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_CONNECTED]);
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+		if (rrsp_mmi.cs_force_off) {
+			rrsp_mmi_evt_work_put_role(RRSP_MMI_WORK_EVT_CS_SET_ROLE, false);
+		}
+#endif
+	} break;
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	case RRSP_MMI_EVT_CS_FORCE_OFF: {
+		LOG_INF("Force disable CS: remove CS config");
+		rrsp_mmi.cs_force_off = true;
+		rrsp_mmi_evt_work_put(RRSP_MMI_WORK_EVT_CS_REMOVE_CONFIG);
+	} break;
+#endif
 	default: {
 		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
@@ -468,6 +665,12 @@ static enum smf_state_result rrsp_mmi_cs_proc_en_run(void *obj)
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_ADV]);
 	} break;
 	case RRSP_MMI_EVT_CS_PROC_DIS: {
+		LOG_INF("CS procedure disabled, back to CS setup complete");
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+		if (rrsp_mmi.cs_force_off) {
+			rrsp_mmi_evt_work_put(RRSP_MMI_WORK_EVT_CS_REMOVE_CONFIG);
+		}
+#endif
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_CS_SETUP_CMP]);
 	} break;
 	case RRSP_MMI_EVT_PWR_OFF: {
@@ -484,6 +687,22 @@ static enum smf_state_result rrsp_mmi_cs_proc_en_run(void *obj)
 		}
 		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_OFF]);
 	} break;
+	case RRSP_MMI_EVT_CS_CFG_RM: {
+		LOG_INF("CS config removed, back to connected");
+		smf_set_state(SMF_CTX(&rrsp_mmi), &rrsp_mmi_states[RRSP_MMI_STATE_CONNECTED]);
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+		if (rrsp_mmi.cs_force_off) {
+			rrsp_mmi_evt_work_put_role(RRSP_MMI_WORK_EVT_CS_SET_ROLE, false);
+		}
+#endif
+	} break;
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+	case RRSP_MMI_EVT_CS_FORCE_OFF: {
+		LOG_INF("Force disable CS: disable CS procedure");
+		rrsp_mmi.cs_force_off = true;
+		rrsp_mmi_evt_work_put(RRSP_MMI_WORK_EVT_CS_PROC_DISABLE);
+	} break;
+#endif
 	default: {
 		LOG_ERR("Unexpected evt:%u", rrsp_mmi.evt);
 	} break;
@@ -571,6 +790,13 @@ void rrsp_mmi_off(void)
 	rrsp_led_cancel_all_bg();
 #endif
 }
+
+#ifdef CONFIG_BTN_FORCE_DISABLE_CS
+void rrsp_mmi_force_cs_off(void)
+{
+	rrsp_mmi_run_event(RRSP_MMI_EVT_CS_FORCE_OFF);
+}
+#endif
 
 #ifdef CONFIG_BTN_ON_OFF
 void rrsp_mmi_unlock_sleep(void)

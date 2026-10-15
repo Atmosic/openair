@@ -246,15 +246,21 @@ Example::
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.stf_only.mcuboot.ota
 
-12) Dual-mode: Google + Apple with MCUboot + OTA
-=================================================
-Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.ota``
-- Purpose: FHN + FMNA, with MCUboot and OTA.
+12) Dual-mode: Google + Apple with MCUboot + Flash XIP (swap-using-offset) with OTA
+====================================================================================
+Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.flash_xip.ota``
+- Purpose: FHN + FMNA, with MCUboot, Flash XIP, and OTA.
+- Requires: External flash (``flash``, ``rram``, ``xip`` hardware).
+
+.. note::
+
+   The FHN + FMNA dual-mode combination requires XIP (Execute In Place) to fit within the RRAM
+   FLASH region. Use a board with external flash (e.g. ``ATMEVK-3405-YBV-5``).
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.ota
+    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.flash_xip.ota
 
 Additional OTA modes are available for this FHN + FMNA dual-mode combination:
 
@@ -277,15 +283,21 @@ Additional OTA modes are available for this FHN + FMNA dual-mode combination:
     west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
       --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.mcuboot.legacy_scratch.ota
 
-13) Dual-mode: Samsung + Apple with MCUboot + OTA
-==================================================
-Target: ``applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.ota``
-- Purpose: STF + FMNA, with MCUboot and OTA.
+13) Dual-mode: Samsung + Apple with MCUboot + Flash XIP (swap-using-offset) with OTA
+=====================================================================================
+Target: ``applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.flash_xip.ota``
+- Purpose: STF + FMNA, with MCUboot, Flash XIP, and OTA.
+- Requires: External flash (``flash``, ``rram``, ``xip`` hardware).
+
+.. note::
+
+   The STF + FMNA dual-mode combination requires XIP (Execute In Place) to fit within the RRAM
+   FLASH region. Use a board with external flash (e.g. ``ATMEVK-3405-YBV-5``).
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.ota
+    --sysbuild -T applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.flash_xip.ota
 
 Additional OTA modes are available for this STF + FMNA dual-mode combination:
 
@@ -308,15 +320,21 @@ Additional OTA modes are available for this STF + FMNA dual-mode combination:
     west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
       --sysbuild -T applications.multimode_consumer_tag.atm.stf_fmna_tag.mcuboot.legacy_scratch.ota
 
-14) Dual-mode: Samsung + Google with MCUboot + OTA
-===================================================
-Target: ``applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.ota``
-- Purpose: STF + FHN, with MCUboot and OTA.
+14) Dual-mode: Samsung + Google with MCUboot + Flash XIP (swap-using-offset) with OTA
+=====================================================================================
+Target: ``applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.flash_xip.ota``
+- Purpose: STF + FHN, with MCUboot, Flash XIP, and OTA.
+- Requires: External flash.
+
+.. note::
+
+   The STF + FHN dual-mode combination requires XIP (Execute In Place) to fit within the RRAM
+   FLASH region. Use a board with external flash (e.g. ``ATMEVK-3405-YBV-5``).
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.ota
+    --sysbuild -T applications.multimode_consumer_tag.atm.stf_fhn_tag.mcuboot.flash_xip.ota
 
 Additional OTA modes are available for this STF + FHN dual-mode combination:
 
@@ -385,26 +403,54 @@ Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo``
    integrate with the Apple Find My Network (FMNA) or Google Find Hub Network (FMDN) Precision
    Finding protocols. For production Find My products with CS-based Precision Finding, use the
    ``.oob_de.cs`` targets instead.
+   For testing instructions for standalone Channel Sounding demo, refer to the
+   :ref:`ras_rrsp_reflector <ras_rrsp_reflector-application>` README.
+
+Inline PCT (IPT) support
+------------------------
+
+To enable the CS reflector in this demo to advertise CS Enhancement 1 (Inline PCT / IPT)
+capability, add the following configuration override:
+
+.. code-block:: bash
+
+   CONFIG_ATM_ENA_LL_FEAT_CS_ENH1=y
+
+Build the demo with the override as follows:
+
+.. code-block:: bash
+
+  west build -p always -b <BOARD> openair/applications/multimode_consumer_tag \
+    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo \
+    -- -DCONFIG_ATM_ENA_LL_FEAT_CS_ENH1=y
+
+This configuration enables IPT support on the reflector side by advertising the capability to
+the peer. It does not force IPT for every Channel Sounding procedure. The phone-side Channel
+Sounding application controls whether IPT is enabled when it configures and starts the CS
+procedure.
 
 Example::
 
   west build -p always -b <BOARD> openair/applications/multimode_consumer_tag \
     --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo
 
-19) Dual-mode (FHN + FMNA) Channel Sounding demo with MCUboot + OTA
-=====================================================================
-Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo.mcuboot.ota``
-- Purpose: Same as (18) with MCUboot and OTA added.
+19) Dual-mode (FHN + FMNA) Channel Sounding demo with MCUboot + Flash XIP (swap-using-offset) with OTA
+======================================================================================================
+Target: ``applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo.mcuboot.flash_xip.ota``
+- Purpose: Same as (18) with MCUboot, Flash XIP, and OTA added.
 - Extras: ``basic_ota_bt.conf;basic_cs_pd50.conf``; ``CONFIG_ATM_CS=y``; STF disabled.
+- Requires: External flash (``flash``, ``rram``, ``xip`` hardware).
 
 .. note::
 
-   For independent Channel Sounding demo purposes only. See note in (18).
+   For independent Channel Sounding demo purposes only. See note in (18). The FHN + FMNA +
+   Channel Sounding combination requires XIP (Execute In Place) to fit within the RRAM FLASH
+   region. Use a board with external flash (e.g. ``ATMEVK-3405-YBV-5``).
 
 Example::
 
   west build -p always -b <BOARD>@mcuboot openair/applications/multimode_consumer_tag \
-    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo.mcuboot.ota
+    --sysbuild -T applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo.mcuboot.flash_xip.ota
 
 20) Dual-mode (FHN + FMNA) with Precision Finding, Flash XIP, UARP + OTA
 ==========================================================================
@@ -778,7 +824,7 @@ Use west to flash the combined sysbuild images and factory data:
 
 ::
 
-  west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink --fast_load [--erase_all]
+  west flash --no-rebuild -d build --verify --device <DEVICE_ID> --jlink [--erase_all]
 
 .. note::
     - Use the ``--erase_all`` option cautiously, as it may erase critical updated token information.

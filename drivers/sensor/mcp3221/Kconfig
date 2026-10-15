@@ -1,8 +1,8 @@
 # Low-Power 12-Bit A/D Converter with I2C Interface
 #
-# Copyright (c) 2023, Atmosic
+# Copyright (c) 2023-2026, Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config MCP3221
 	bool "MCP3221 i2c 12-bit ADC"

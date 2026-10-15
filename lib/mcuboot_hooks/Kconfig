@@ -1,6 +1,6 @@
-# Copyright (c) 2024-2025 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 if MCUBOOT
 
@@ -25,6 +25,7 @@ config ATM_MCUBOOT_LOCK_PRIMARY_SLOT
 	select ATM_MCUBOOT_HOOKS
 	# enable extension use in hooks to lock the slot
 	select ATM_MCUBOOT_EXT
+	select ATM_MCUBOOT_EXT_LOCK_PRIMARY_SLOT
 
 config ATM_MCUBOOT_PROTECT_PRIMARY_SLOT
 	bool "Protect primary image slot"
@@ -34,6 +35,7 @@ config ATM_MCUBOOT_SKIP_PRIMARY_VALIDATE_HIBER
 	bool "Skip primary slot validation on resume from hibernate"
 	# requires locking the primary slot with hooks+extensions
 	select ATM_MCUBOOT_LOCK_PRIMARY_SLOT
+	select ATM_MCUBOOT_EXT_SKIP_PRIMARY_VALIDATE_HIBER
 
 endif # DT_HAS_ATMOSIC_SEC_MEM_PROT_ENABLED
 

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/kernel.h>
@@ -17,6 +17,9 @@
 #include "ras.h"
 #include "ras_internal.h"
 #include "app_work_q.h"
+#ifdef CONFIG_BT_RAS_TEST
+#include "ras_test.h"
+#endif
 #ifdef CONFIG_RAS_PTS_FAKE_CS_DATA
 #include "cs_fakedata.h"
 #endif
@@ -33,6 +36,9 @@ LOG_MODULE_REGISTER(bt_ras, CONFIG_BT_RAS_LOG_LEVEL);
 	 (sizeof(struct ras_rd_subevent_hdr_s) * BT_RAS_MAX_SUBEVENTS_PER_PROCEDURE) +             \
 	 ((sizeof(struct ras_rd_step_data_s) + RAS_MAX_STEP_DATA_LEN) *                            \
 	  BT_RAS_MAX_STEPS_PER_PROCEDURE))
+
+// CS enhancements 1: bit 0 - IPT is enabled in the CS reflector.
+#define RAS_CS_ENH1_IPT_BIT BIT(0)
 
 typedef enum ras_buf_sts_e {
 	RAS_BUF_FREE,
@@ -74,6 +80,7 @@ typedef enum ras_sts_work_evt_e {
 typedef struct ras_sts_work_info_s {
 	struct k_work work;
 	ras_sts_work_evt_t event;
+	uint16_t ranging_cnt;
 } ras_sts_work_info_t;
 
 typedef enum ras_cp_rsp_work_type_e {
@@ -132,6 +139,9 @@ typedef struct ras_timeout_work_info_s {
 typedef struct ras_ctrl_s {
 	struct bt_conn *curr_conn;
 	uint8_t cs_select_tx_pwr;
+	uint8_t ipt_cfg_id;
+	bool ipt_cfg_en;
+	bool ipt_active;
 	uint32_t ras_feature;
 	uint16_t ras_rd_ready_cnt;
 	uint16_t ras_rd_ovrwrt_cnt;
@@ -212,7 +222,7 @@ static ras_rd_buffer_t *ras_rdbuf_free_one_buf(uint16_t *ranging_cnt)
 		return NULL;
 	}
 
-	LOG_INF("Free buf%u: ranging conter - %u", free_idx, last_rc);
+	LOG_INF("Free buf%u: ranging counter - %u", free_idx, last_rc);
 	*ranging_cnt = last_rc;
 
 	ras_buf[free_idx].status = RAS_BUF_FREE;
@@ -226,7 +236,7 @@ static void ras_rdbuf_free_all_buf(void)
 {
 	for (uint8_t i = 0; i < CONFIG_RAS_RD_BUFFER_NUM; i++) {
 		if (ras_buf[i].status != RAS_BUF_FREE) {
-			LOG_INF("Free buf%u: ranging conter - %u", i, ras_buf[i].ranging_cnt);
+			LOG_INF("Free buf%u: ranging counter - %u", i, ras_buf[i].ranging_cnt);
 			ras_buf[i].status = RAS_BUF_FREE;
 			ras_buf[i].data_offset = 0;
 			ras_buf[i].ranging_cnt = 0;
@@ -614,7 +624,11 @@ static int ras_rd_seg_notify_or_indicate(struct bt_conn *conn, const struct bt_u
 		return err;
 	}
 
-	LOG_WRN("Peer is not subscribed UUID:%x", BT_UUID_16(uuid)->val);
+	// When IPT is enabled the client relies on realtime/on-demand RD instead of
+	// the RD ready/overwritten status, so the missing subscription is expected.
+	if (!ras.ipt_active) {
+		LOG_WRN("Peer is not subscribed UUID:%x", BT_UUID_16(uuid)->val);
+	}
 	return -EINVAL;
 }
 
@@ -687,14 +701,25 @@ static void ras_rd_seg_trans_work_handler(struct k_work *work)
 	if (!ras.curr_conn || !info->rd_buf) {
 		LOG_ERR("Link is disconnect or data miss");
 		info->pending_cnt -= 1;
+		info->event = RAS_TRANS_WORK_EVT_INVALID;
 		return;
 	}
 
 	struct bt_uuid const *uuid =
 		info->is_on_demand ? BT_UUID_RAS_ONDEMAND_RD : BT_UUID_RAS_REALTIME_RD;
 
-	// Get max size
-	uint16_t seg_max = bt_gatt_get_mtu(ras.curr_conn) - RAS_SEG_DATA_GATT_HDR;
+	// Get max size; guard against MTU=0 when ATT channel detaches before work runs
+	uint16_t mtu = bt_gatt_get_mtu(ras.curr_conn);
+	if (mtu <= RAS_SEG_DATA_GATT_HDR) {
+		LOG_ERR("Invalid MTU %u during RD transfer, abort", mtu);
+		info->pending_cnt -= 1;
+		info->event = RAS_TRANS_WORK_EVT_INVALID;
+		return;
+	}
+	uint16_t seg_max = mtu - RAS_SEG_DATA_GATT_HDR;
+	if (seg_max > RAS_SEG_DATA_MAX_LEN) {
+		seg_max = RAS_SEG_DATA_MAX_LEN; /* cap to seg_buf.seg_data size */
+	}
 	int16_t unsend_len = info->rd_buf->data_offset - info->sent_len;
 
 	if (unsend_len < 0) {
@@ -799,7 +824,11 @@ static int ras_rd_sts_notify_or_indicate(struct bt_conn *conn, const struct bt_u
 		return err;
 	}
 
-	LOG_WRN("Peer is not subscribed UUID:%x", BT_UUID_16(uuid)->val);
+	// When IPT is enabled the client relies on realtime/on-demand RD instead of
+	// the RD ready/overwritten status, so the missing subscription is expected.
+	if (!ras.ipt_active) {
+		LOG_WRN("Peer is not subscribed UUID:%x", BT_UUID_16(uuid)->val);
+	}
 	return -EINVAL;
 }
 
@@ -821,25 +850,27 @@ static void ras_sts_work_handler(struct k_work *work)
 #if CONFIG_RAS_REAL_TIME_RD
 		if (ras_ind_notify_is_enable(ras.curr_conn, BT_UUID_RAS_REALTIME_RD)) {
 			ras_transit_evt_work_put(RAS_TRANS_WORK_EVT_START, false,
-						 ras.ras_rd_ready_cnt);
+						 info->ranging_cnt);
 		} else
 #endif
 		{
 			ras_rd_sts_notify_or_indicate(ras.curr_conn, BT_UUID_RAS_RD_READY,
-						      ras.ras_rd_ready_cnt);
+						      info->ranging_cnt);
 		}
 	} break;
 	case RAS_STS_WORK_EVT_RD_OVRWRT: {
 		// Stop procedure since data is overwritten
 		ras_transit_evt_work_cancel();
-		ras_timeout_evt_work_cancel(ras.ras_rd_ovrwrt_cnt);
+		if (ras.ras_timeout_work.pending_cnt) {
+			ras_timeout_evt_work_cancel(info->ranging_cnt);
+		}
 #if CONFIG_RAS_REAL_TIME_RD
 		if (ras_ind_notify_is_enable(ras.curr_conn, BT_UUID_RAS_REALTIME_RD)) {
 			break;
 		}
 #endif
 		ras_rd_sts_notify_or_indicate(ras.curr_conn, BT_UUID_RAS_RD_OVERWRITTEN,
-					      ras.ras_rd_ovrwrt_cnt);
+					      info->ranging_cnt);
 	} break;
 	default: {
 		LOG_ERR("Unexpected event");
@@ -849,7 +880,7 @@ static void ras_sts_work_handler(struct k_work *work)
 	ras.sts_work_pending -= 1;
 }
 
-static void ras_sts_evt_work_put(ras_sts_work_evt_t evt)
+static void ras_sts_evt_work_put(ras_sts_work_evt_t evt, uint16_t ranging_cnt)
 {
 	ras_sts_work_info_t *sts_wrk = k_malloc(sizeof(ras_sts_work_info_t));
 	if (!sts_wrk) {
@@ -858,6 +889,7 @@ static void ras_sts_evt_work_put(ras_sts_work_evt_t evt)
 	}
 	k_work_init(&sts_wrk->work, ras_sts_work_handler);
 	sts_wrk->event = evt;
+	sts_wrk->ranging_cnt = ranging_cnt;
 	atm_work_submit_to_app_work_q(&sts_wrk->work);
 	ras.sts_work_pending += 1;
 }
@@ -1032,6 +1064,7 @@ static void ras_clear_work(void)
 	k_work_cancel(&ras.ras_conn_work.work);
 	ras.ras_conn_work.pending_cnt = 0;
 #endif
+	ras_transit_evt_work_cancel();
 	k_work_cancel_delayable(&ras.ras_timeout_work.work);
 	ras.ras_timeout_work.pending_cnt = 0;
 	LOG_INF("RAS sts work:%u, cp_rsp work:%u", ras.sts_work_pending, ras.cp_rsp_work_pending);
@@ -1047,6 +1080,9 @@ static void ras_disconnected(struct bt_conn *conn, uint8_t reason)
 		return;
 	}
 	ras.curr_conn = NULL;
+	// Reset IPT config state for the next connection
+	ras.ipt_cfg_en = false;
+	ras.ipt_active = false;
 	// Clear all work queue related connection
 	ras_clear_work();
 	// Clear all data buf
@@ -1082,6 +1118,20 @@ static void ras_le_param_updated(struct bt_conn *conn, uint16_t interval, uint16
 	LOG_INF("interval:%u latency:%u timeout:%u", interval, latency, timeout);
 }
 
+static void ras_cs_config_complete_cb(struct bt_conn *conn, uint8_t status,
+				      struct bt_conn_le_cs_config *config)
+{
+	if (status != BT_HCI_ERR_SUCCESS || !config) {
+		LOG_WRN("CS config complete failed: status 0x%02x", status);
+		return;
+	}
+
+	// IPT status can only be derived from cs_enhancements_1 at config complete.
+	ras.ipt_cfg_id = config->id;
+	ras.ipt_cfg_en = (config->cs_enhancements_1 & RAS_CS_ENH1_IPT_BIT) != 0;
+	LOG_INF("CS config%u complete: IPT:%u", config->id, ras.ipt_cfg_en);
+}
+
 static void ras_cs_procedure_enabled_cb(struct bt_conn *conn, uint8_t status,
 					struct bt_conn_le_cs_procedure_enable_complete *params)
 {
@@ -1093,8 +1143,12 @@ static void ras_cs_procedure_enabled_cb(struct bt_conn *conn, uint8_t status,
 				ras.curr_conn = conn;
 			}
 			ras.cs_select_tx_pwr = params->selected_tx_power;
+			// IPT is active only when the enabled config id matches the one
+			// whose cs_enhancements_1 reported IPT.
+			ras.ipt_active = ras.ipt_cfg_en && (ras.ipt_cfg_id == params->config_id);
 		} else {
 			LOG_INF("CS procedures disabled.");
+			ras.ipt_active = false;
 		}
 	}
 }
@@ -1182,7 +1236,7 @@ static void ras_rdbuf_update_data(struct bt_conn_le_cs_subevent_result *result)
 					result->header.procedure_counter);
 				return;
 			}
-			ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_OVRWRT);
+			ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_OVRWRT, ras.ras_rd_ovrwrt_cnt);
 		}
 
 		if (buf->data_offset != 0) {
@@ -1246,8 +1300,17 @@ static void ras_rdbuf_update_data(struct bt_conn_le_cs_subevent_result *result)
 
 	if (result->header.procedure_done_status != BT_CONN_LE_CS_PROCEDURE_INCOMPLETE) {
 		buf->status = RAS_BUF_DONE;
-		LOG_INF("CS procedure%u done:0x%x Len:%u", buf->ranging_cnt,
-			result->header.procedure_done_status, buf->data_offset);
+		bool ntf = false;
+		if (ras.curr_conn) {
+			ntf = ras_ind_notify_is_enable(ras.curr_conn, BT_UUID_RAS_ONDEMAND_RD);
+#if CONFIG_RAS_REAL_TIME_RD
+			ntf = ntf ||
+			      ras_ind_notify_is_enable(ras.curr_conn, BT_UUID_RAS_REALTIME_RD);
+#endif
+		}
+		LOG_INF("CS procedure%u done:0x%x Len:%u IPT:%u ntf:%u", buf->ranging_cnt,
+			result->header.procedure_done_status, buf->data_offset, ras.ipt_active,
+			ntf);
 	}
 }
 
@@ -1263,7 +1326,7 @@ static void ras_cs_subevent_result_cb(struct bt_conn *conn,
 
 	if (result->header.procedure_done_status != BT_CONN_LE_CS_PROCEDURE_INCOMPLETE) {
 		ras.ras_rd_ready_cnt = result->header.procedure_counter;
-		ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY);
+		ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY, ras.ras_rd_ready_cnt);
 		if (result->header.procedure_done_status == BT_CONN_LE_CS_PROCEDURE_ABORTED) {
 			LOG_ERR("CS Procedure abort:  %u %u", result->header.procedure_counter,
 				result->header.procedure_abort_reason);
@@ -1276,6 +1339,7 @@ BT_CONN_CB_DEFINE(ras_cb) = {
 	.disconnected = ras_disconnected,
 	.security_changed = ras_security_changed,
 	.le_param_updated = ras_le_param_updated,
+	.le_cs_config_complete = ras_cs_config_complete_cb,
 	.le_cs_procedure_enable_complete = ras_cs_procedure_enabled_cb,
 	.le_cs_subevent_data_available = ras_cs_subevent_result_cb,
 };
@@ -1304,6 +1368,111 @@ static int bt_ras_init(void)
 }
 
 SYS_INIT(bt_ras_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+
+#ifdef CONFIG_BT_RAS_TEST
+
+void ras_test_rdbuf_reset_all(void)
+{
+	for (uint8_t i = 0; i < CONFIG_RAS_RD_BUFFER_NUM; i++) {
+		ras_buf[i].status = RAS_BUF_FREE;
+		ras_buf[i].data_offset = 0;
+		ras_buf[i].ranging_cnt = 0;
+	}
+}
+
+bool ras_test_rdbuf_alloc(uint16_t ranging_cnt)
+{
+	ras_rd_buffer_t *buf = ras_rdbuf_get_new();
+
+	if (!buf) {
+		return false;
+	}
+	buf->status = RAS_BUF_DONE;
+	buf->ranging_cnt = ranging_cnt;
+	buf->data_offset = 0;
+	return true;
+}
+
+bool ras_test_rdbuf_exists(uint16_t ranging_cnt)
+{
+	return ras_rdbuf_get_buf(ranging_cnt) != NULL;
+}
+
+bool ras_test_rdbuf_free(uint16_t ranging_cnt)
+{
+	return ras_rdbuf_free_buf(ranging_cnt);
+}
+
+uint8_t ras_test_rdbuf_count_free(void)
+{
+	uint8_t count = 0;
+
+	for (uint8_t i = 0; i < CONFIG_RAS_RD_BUFFER_NUM; i++) {
+		if (ras_buf[i].status == RAS_BUF_FREE) {
+			count++;
+		}
+	}
+	return count;
+}
+
+bool ras_test_rdbuf_free_one_buf(uint16_t *out_ranging_cnt)
+{
+	return ras_rdbuf_free_one_buf(out_ranging_cnt) != NULL;
+}
+
+#ifdef CONFIG_RAS_FILTER_RD
+uint16_t ras_test_filter_step_data(uint8_t mode, uint8_t *dst, const uint8_t *src, uint16_t src_len)
+{
+	return ras_filter_step_data(mode, dst, src, src_len);
+}
+#endif /* CONFIG_RAS_FILTER_RD */
+
+/* ---- curr_conn state accessor ---- */
+
+struct bt_conn *ras_test_get_curr_conn(void)
+{
+	return ras.curr_conn;
+}
+
+/* ---- timeout work test accessor ---- */
+
+void ras_test_timeout_evt_work_put(uint8_t evt, uint16_t rd_cnt, k_timeout_t delay)
+{
+	ras_timeout_evt_work_put((ras_timeout_work_evt_t)evt, rd_cnt, delay);
+}
+
+/* ---- CP indication completion callback test accessor ---- */
+
+void ras_test_cp_ind_cmp_cb(struct bt_conn *conn, uint8_t err)
+{
+	ras_cp_ind_cmp_cb(conn, NULL, err);
+}
+
+/* ---- RD segment notify/indicate completion callback test accessors ---- */
+
+void ras_test_rd_seg_notify_cmp_cb(struct bt_conn *conn)
+{
+	ras_rd_seg_notify_cmp_cb(conn, NULL);
+}
+
+void ras_test_rd_seg_ind_cmp_cb(struct bt_conn *conn, uint8_t err)
+{
+	ras_rd_seg_ind_cmp_cb(conn, NULL, err);
+}
+
+/* ---- RD status notify/indicate completion callback test accessors ---- */
+
+void ras_test_rd_sts_notify_cmp_cb(struct bt_conn *conn)
+{
+	ras_rd_sts_notify_cmp_cb(conn, NULL);
+}
+
+void ras_test_rd_sts_ind_cmp_cb(struct bt_conn *conn, uint8_t err)
+{
+	ras_rd_sts_ind_cmp_cb(conn, NULL, err);
+}
+
+#endif /* CONFIG_BT_RAS_TEST */
 
 #ifdef CONFIG_RAS_PTS_FAKE_CS_DATA
 #define CS_FAKE_DATA_CONFIG_ID         0
@@ -1348,7 +1517,7 @@ int ras_fake_cs_data(uint16_t ranging_cnt)
 		sizeof(cs_fake_data));
 
 	buf->status = RAS_BUF_DONE;
-	ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY);
+	ras_sts_evt_work_put(RAS_STS_WORK_EVT_RD_READY, ranging_cnt);
 
 	return 0;
 }

@@ -1,0 +1,27 @@
+/*
+ * Copyright (c) 2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+&wdog0 {
+	status = "okay";
+};
+
+&pwm3 {
+	status = "okay";
+};
+
+/ {
+	ir_blaster: ir_blaster {
+		compatible = "atmosic,ir-nec";
+		pwms = <&pwm3 3 0 0>;
+	};
+};
+
+&pdm0 {
+	status = "okay";
+	pinctrl-0 = <&pdm0_clk_default &pdm0_data_default>;
+	pinctrl-names = "default";
+	clock-frequency = <1000000>;
+};

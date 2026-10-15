@@ -1,0 +1,29 @@
+/*
+ * Copyright (c) 2024-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
+&pinctrl {
+	spi1_cs_default: spi1_cs_default {
+		pinmux = <12 PINMUX_SPI1_CS>;
+	};
+
+	spi1_clk_default: spi1_clk_default {
+		pinmux = <13 PINMUX_SPI1_CLK>;
+	};
+
+	spi1_mosi_default: spi1_mosi_default {
+		pinmux = <14 PINMUX_SPI1_MOSI>;
+	};
+
+	spi1_miso_default: spi1_miso_default {
+		pinmux = <15 PINMUX_SPI1_MISO>;
+	};
+};
+
+&arduino_spi {
+	pinctrl-0 = <&spi1_cs_default &spi1_clk_default &spi1_mosi_default &spi1_miso_default>;
+	pinctrl-names = "default";
+	status = "okay";
+};

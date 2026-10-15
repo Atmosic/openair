@@ -1,0 +1,14 @@
+# Copyright (c) 2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+common:
+  tags:
+    - power_management
+tests:
+  tests.subsys.pm.pseq_hib_latch.atm:
+    sysbuild: true
+    # The ATMx2 boot ROM rewrites PSEQ CTRL0 before the flash application runs,
+    # so the latch bits set at hibernation entry never reach the application and
+    # there is nothing for atm_power_pseq_release_latch() to release.
+    filter: not CONFIG_SOC_SERIES_ATMX2

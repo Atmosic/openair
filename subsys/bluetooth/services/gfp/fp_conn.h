@@ -62,4 +62,13 @@ uint8_t fp_conn_get_bt_id(uint8_t idx);
 }
 #endif
 
+#if defined(CONFIG_ZTEST)
+#include <zephyr/bluetooth/conn.h>
+
+void fp_conn_test_connected(struct bt_conn *conn, uint8_t err);
+void fp_conn_test_disconnected(struct bt_conn *conn, uint8_t reason);
+void fp_conn_test_le_param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency,
+				   uint16_t timeout);
+#endif /* CONFIG_ZTEST */
+
 ///@}

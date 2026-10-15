@@ -10,12 +10,25 @@ common:
     - batt_model
 
 tests:
-  tests.drivers.batt_model.atm.coin: {}
-  tests.drivers.batt_model.atm.dry:
+  tests.drivers.batt_model.atm.coin.gcov: &batt_model_gcov_base
+    tags:
+      - gcov
+    depends_on:
+      - gcov_capable
+    timeout: 180
+    extra_configs:
+      - CONFIG_BATT_MODEL_COIN=y
+      - CONFIG_UU_TEST_OPENAIR="batt_model_coin.c"
+  tests.drivers.batt_model.atm.dry.gcov:
+    <<: *batt_model_gcov_base
     extra_configs:
       - CONFIG_BATT_MODEL_DRY=y
-  tests.drivers.batt_model.atm.hsc_liion:
+      - CONFIG_UU_TEST_OPENAIR="batt_model_dry.c"
+  tests.drivers.batt_model.atm.hsc_liion.gcov:
+    <<: *batt_model_gcov_base
     depends_on:
+      - gcov_capable
       - energy_harvesting
     extra_configs:
       - CONFIG_BATT_MODEL_HSC_LIION=y
+      - CONFIG_UU_TEST_OPENAIR="batt_model_hsc_liion.c"

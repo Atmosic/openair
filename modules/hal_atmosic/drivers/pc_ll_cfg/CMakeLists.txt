@@ -40,6 +40,12 @@ if(CONFIG_ATM_PC_LL_CFG)
     ENA_LL_FEAT_FSU)
   zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_LL_FEAT_ECU
     ENA_LL_FEAT_ECU)
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_LL_FEAT_PAWR
+    ENA_LL_FEAT_PAWR)
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_LL_FEAT_PAST
+    ENA_LL_FEAT_PAST)
+  zephyr_compile_definitions_ifdef(CONFIG_ATM_ENA_LL_FEAT_SLV_PER_ADV
+    ENA_LL_FEAT_SLV_PER_ADV)
   if(CONFIG_BT_HCI_RAW OR NOT CONFIG_BT_EXT_ADV OR CONFIG_BT_EXT_ADV_LEGACY_SUPPORT)
     zephyr_compile_definitions(ENA_LL_FEAT_LEGACY_ADV)
   endif()

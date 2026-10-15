@@ -1,11 +1,15 @@
+/*
+ * Copyright (c) 2025-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
+ */
+
 /**
  *******************************************************************************
  *
  * @file fp_auth.c
  *
  * @brief Atmosic Google Fast Pair Service (GFPS) Authentication Middleware
- *
- * Copyright (C) Atmosic 2025-2026
  *
  *******************************************************************************
  */
@@ -38,6 +42,20 @@ struct fp_auth_conn_data {
 
 static struct fp_auth_conn_data fp_auth_connections[FP_AUTH_MAX_CONNECTIONS];
 static bool fp_auth_init_done;
+
+// Callbacks registered by fp_gatt to manage K lifetime without a back-include.
+static fp_auth_pairing_started_cb_t fp_auth_on_pairing_started;
+static fp_auth_pairing_complete_cb_t fp_auth_on_pairing_complete;
+
+void fp_auth_pairing_started_cb_reg(fp_auth_pairing_started_cb_t cb)
+{
+	fp_auth_on_pairing_started = cb;
+}
+
+void fp_auth_pairing_complete_cb_reg(fp_auth_pairing_complete_cb_t cb)
+{
+	fp_auth_on_pairing_complete = cb;
+}
 
 // Find connection data by connection pointer
 static struct fp_auth_conn_data *fp_auth_find_conn_data(struct bt_conn *conn)
@@ -115,7 +133,7 @@ static void fp_auth_cleanup_conn_data(struct bt_conn *conn)
 }
 
 // Fast Pair 10-second passkey timeout as per specification
-#define FP_PASSKEY_TIMEOUT_MS (10 * MSEC_PER_SEC) // 10 seconds
+#define FP_PASSKEY_TIMEOUT_MS FP_PAIRING_TIMEOUT_MS
 static struct bt_conn *fp_auth_passkey_timeout_conn = NULL;
 static bool fp_auth_waiting_for_passkey;
 
@@ -251,6 +269,10 @@ bool fp_auth_validate_passkey(struct bt_conn *conn, uint32_t received_passkey)
 // Bluetooth authentication callbacks for Fast Pair passkey integration
 static void fp_auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
 {
+	if (!fp_conn_validate(conn)) {
+		return;
+	}
+
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
@@ -260,6 +282,10 @@ static void fp_auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
 
 static void fp_auth_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
 {
+	if (!fp_conn_validate(conn)) {
+		return;
+	}
+
 	char addr[BT_ADDR_LE_STR_LEN];
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
@@ -282,13 +308,19 @@ static void fp_auth_pairing_complete(struct bt_conn *conn, bool bonded)
 		return;
 	}
 
+	fp_auth_passkey_timeout_cancel();
+
 	if (bonded) {
 		LOG_INF(FP_AUTH_LOG_PREFIX "Pairing successful");
 	} else {
-		LOG_WRN(FP_AUTH_LOG_PREFIX "Pairing failed");
+		LOG_WRN(FP_AUTH_LOG_PREFIX "Pairing failed (not bonded)");
 		fp_auth_clear_passkey(conn);
 	}
-	fp_auth_passkey_timeout_cancel();
+
+	// Spec step 10: reschedule K discard for the account key write window
+	if (fp_auth_on_pairing_complete) {
+		fp_auth_on_pairing_complete(bonded);
+	}
 }
 
 static void fp_auth_pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
@@ -300,6 +332,10 @@ static void fp_auth_pairing_failed(struct bt_conn *conn, enum bt_security_err re
 	LOG_INF(FP_AUTH_LOG_PREFIX "Pairing failed, reason: %d", reason);
 	fp_auth_clear_passkey(conn);
 	fp_auth_passkey_timeout_cancel();
+	// Spec step 10: discard K immediately on pairing failure
+	if (fp_auth_on_pairing_complete) {
+		fp_auth_on_pairing_complete(false);
+	}
 }
 
 static void fp_auth_cancel(struct bt_conn *conn)
@@ -315,12 +351,12 @@ static void fp_auth_cancel(struct bt_conn *conn)
 
 #if defined(CONFIG_BT_SMP_APP_PAIRING_ACCEPT)
 /**
- * @brief Unified pairing accept callback for all Fast Pair connections
+ * @brief Unified pairing accept callback for all Fast Pair connections.
  *
- * Accepts SMP pairing only when KBP has been successfully verified on this
- * specific connection.  This covers both initial pairing (mode==PAIRING_PROCESSING)
- * and subsequent pairing (mode==PROVISIONED) without requiring the overlay to be
- * re-registered after KBP completes.
+ * - Rejects NoInput/NoOutput Seekers to avoid Just Works (spec "During pairing").
+ * - Accepts only when KBP crypto has been verified on this connection (covers
+ *   both initial and subsequent pairing).
+ * - Cancels the post-KBP K discard timer (spec step 4).
  *
  * Re-encryption of existing bonds does NOT trigger this callback.
  */
@@ -331,11 +367,24 @@ static enum bt_security_err fp_auth_pairing_accept(struct bt_conn *conn,
 		return BT_SECURITY_ERR_SUCCESS;
 	}
 
+	// Reject NoInput/NoOutput to prevent Just Works pairing (spec "During pairing")
+	if (feat && (feat->io_capability == BT_IO_NO_INPUT_OUTPUT)) {
+		LOG_WRN(FP_AUTH_LOG_PREFIX
+			"Reject pairing: Seeker has NoInput/NoOutput capability");
+		return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
+	}
+
 	struct fp_auth_conn_data *data = fp_auth_find_conn_data(conn);
+
 	if (!data || !data->kbp_verified) {
 		LOG_WRN(FP_AUTH_LOG_PREFIX "Reject pairing: KBP not verified (mode=%d)",
 			fp_mode_get());
 		return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
+	}
+
+	// Pairing has started — cancel the post-KBP K discard timer (spec step 4)
+	if (fp_auth_on_pairing_started) {
+		fp_auth_on_pairing_started();
 	}
 
 	LOG_DBG(FP_AUTH_LOG_PREFIX "Accept pairing: KBP verified for conn %p", (void *)conn);
@@ -407,14 +456,25 @@ static void fp_auth_connected(struct bt_conn *conn, uint8_t err)
 
 	LOG_DBG(FP_AUTH_LOG_PREFIX "Connected");
 
-	// Register the overlay once at connect time (one-shot per connection).
-	// pairing_accept gates on kbp_verified at runtime, handling both initial
-	// and subsequent pairing without needing a second overlay call after KBP.
+	// In global mode the pairing_accept gate is installed once at init time
+	// via bt_conn_auth_cb_register, so no per-connection overlay is needed.
+#ifndef CONFIG_FAST_PAIR_AUTH_CB_GLOBAL
+	// Overlay mode: attempt overlay at connect time so that pairing_accept
+	// gates any pairing attempt (including rogue ones) before KBP is
+	// triggered. May fail (-EALREADY) if bt_smp_connected has not yet
+	// initialized smp->auth_cb; fp_auth_allow_pairing recovers the race when
+	// KBP completes, before the application calls bt_conn_set_security.
 	int overlay_err = bt_conn_auth_cb_overlay(conn, &fp_auth_pairing_callbacks);
-	if (overlay_err) {
-		LOG_ERR(FP_AUTH_LOG_PREFIX "Failed to register overlay for conn %p: %d",
-			(void *)conn, overlay_err);
+	if (overlay_err == -EALREADY) {
+		// Race: bt_smp_connected has not yet set smp->auth_cb to
+		// BT_SMP_AUTH_CB_UNINITIALIZED. fp_auth_allow_pairing will
+		// retry after the KBP write, by which time L2CAP is settled.
+		LOG_DBG(FP_AUTH_LOG_PREFIX "Overlay deferred for conn %p", (void *)conn);
+	} else if (overlay_err) {
+		LOG_ERR(FP_AUTH_LOG_PREFIX "Overlay failed for conn %p: %d", (void *)conn,
+			overlay_err);
 	}
+#endif
 }
 
 // Connection callbacks for disconnect handling
@@ -423,20 +483,39 @@ BT_CONN_CB_DEFINE(fp_auth_conn_callbacks) = {
 	.connected = fp_auth_connected,
 };
 
-void fp_auth_allow_pairing(struct bt_conn *conn)
+int fp_auth_allow_pairing(struct bt_conn *conn)
 {
 	if (!fp_conn_validate(conn)) {
-		return;
+		return -EINVAL;
 	}
 
 	struct fp_auth_conn_data *data = fp_auth_get_conn_data(conn);
 	if (!data) {
 		LOG_ERR(FP_AUTH_LOG_PREFIX "Failed to get conn data for pairing accept");
-		return;
+		return -ENOMEM;
 	}
+
+	// In global mode the gate is already active via bt_conn_auth_cb_register;
+	// no per-connection overlay is needed. Just mark KBP verified.
+#ifndef CONFIG_FAST_PAIR_AUTH_CB_GLOBAL
+	int overlay_err = bt_conn_auth_cb_overlay(conn, &fp_auth_pairing_callbacks);
+	if (overlay_err && (overlay_err != -EALREADY)) {
+		LOG_ERR(FP_AUTH_LOG_PREFIX "Overlay failed for conn %p: %d (fail-closed)",
+			(void *)conn, overlay_err);
+		return overlay_err;
+	}
+#endif
 
 	data->kbp_verified = 1;
 	LOG_DBG(FP_AUTH_LOG_PREFIX "Pairing accepted for conn %p", (void *)conn);
+	return 0;
+}
+
+bool fp_auth_is_account_key_proven(struct bt_conn *conn)
+{
+	struct fp_auth_conn_data *data = fp_auth_find_conn_data(conn);
+
+	return data && data->kbp_verified;
 }
 
 int fp_auth_init(void)
@@ -445,12 +524,26 @@ int fp_auth_init(void)
 		return 0;
 	}
 
+	// In global mode, install the pairing_accept gate once for all connections
+	// via the global auth-cb slot. latch_auth_cb will then latch our callbacks
+	// for every connection, eliminating the per-connection overlay race.
+#ifdef CONFIG_FAST_PAIR_AUTH_CB_GLOBAL
+	int auth_cb_err = bt_conn_auth_cb_register(&fp_auth_pairing_callbacks);
+	if (auth_cb_err) {
+		LOG_ERR(FP_AUTH_LOG_PREFIX "Global auth cb reg failed: %d", auth_cb_err);
+		return auth_cb_err;
+	}
+	LOG_DBG(FP_AUTH_LOG_PREFIX "Global auth callbacks registered");
+#endif
+
 	// Register Bluetooth authentication info callbacks for pairing status
 	int auth_info_err = bt_conn_auth_info_cb_register(&fp_auth_info_callbacks);
 	if (auth_info_err) {
 		LOG_ERR(FP_AUTH_LOG_PREFIX "Auth info callback reg failed: %d", auth_info_err);
 		// Clean up auth callbacks on failure
+#ifdef CONFIG_FAST_PAIR_AUTH_CB_GLOBAL
 		bt_conn_auth_cb_register(NULL);
+#endif
 		return auth_info_err;
 	}
 
@@ -482,8 +575,70 @@ void fp_auth_deinit(void)
 	// Unregister authentication info callbacks
 	bt_conn_auth_info_cb_unregister(&fp_auth_info_callbacks);
 
+	// In global mode, release the global auth-cb slot.
+#ifdef CONFIG_FAST_PAIR_AUTH_CB_GLOBAL
+	bt_conn_auth_cb_register(NULL);
+#endif
+
 	fp_auth_passkey_timeout_cancel();
 
 	fp_auth_init_done = false;
 	LOG_DBG(FP_AUTH_LOG_PREFIX "Auth deinit completed");
 }
+
+#if defined(CONFIG_ZTEST)
+void fp_auth_test_pairing_complete(struct bt_conn *conn, bool bonded)
+{
+	fp_auth_pairing_complete(conn, bonded);
+}
+
+void fp_auth_test_pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
+{
+	fp_auth_pairing_failed(conn, reason);
+}
+
+void fp_auth_test_cancel(struct bt_conn *conn)
+{
+	fp_auth_cancel(conn);
+}
+
+void fp_auth_test_passkey_timeout(void)
+{
+	fp_auth_passkey_timeout_handler(NULL);
+}
+
+void fp_auth_test_passkey_timeout_handler(void)
+{
+	fp_auth_passkey_timeout_handler(NULL);
+}
+
+void fp_auth_test_passkey_display(struct bt_conn *conn, unsigned int passkey)
+{
+	fp_auth_passkey_display(conn, passkey);
+}
+
+void fp_auth_test_passkey_confirm(struct bt_conn *conn, unsigned int passkey)
+{
+	fp_auth_passkey_confirm(conn, passkey);
+}
+
+void fp_auth_test_allow_pairing_conn(struct bt_conn *conn)
+{
+	fp_auth_allow_pairing(conn);
+}
+
+enum bt_security_err fp_auth_test_pairing_accept(struct bt_conn *conn)
+{
+	return fp_auth_pairing_accept(conn, NULL);
+}
+
+void fp_auth_test_connected(struct bt_conn *conn, uint8_t err)
+{
+	fp_auth_connected(conn, err);
+}
+
+void fp_auth_test_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	fp_auth_disconnected(conn, reason);
+}
+#endif /* CONFIG_ZTEST */

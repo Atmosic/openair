@@ -128,6 +128,13 @@ struct fmna_init_params {
 
     /** state machine callback */
     struct fmna_state_machine_cb state_cb;
+
+    /** Connection parameters requested after pairing. All zero leaves the
+     *  parameters to the Apple device. Interval units are 1.25 ms, supervision
+     *  timeout units are 10 ms; slave latency is always 0. */
+    uint16_t conn_interval_min;
+    uint16_t conn_interval_max;
+    uint16_t conn_supervision_timeout;
 };
 
 /**
@@ -276,6 +283,17 @@ void fmna_le_param_updated(struct bt_conn *conn, uint16_t interval,
  * enabled restarts the 5 minute window.
  */
 void fmna_sn_lookup_enable(void);
+
+/**
+ * @brief Notify FMNA of a motion event from a hardware trigger.
+ *
+ * When the platform has a motion-sensor interrupt (CONFIG_LIS2DH_TRIGGER),
+ * the application calls this from its motion event callback so a detected
+ * motion is handled promptly instead of waiting for the next passive poll
+ * tick. No effect unless motion detection is currently active (separated
+ * state). Must be safe to call from work-queue context.
+ */
+void fmna_motion_detection_notify(void);
 
 /**
  * @brief Get the FMNA advertising address.

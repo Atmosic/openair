@@ -6,4 +6,4 @@
 config ATM_TZ_SAU
 	bool "Atmosic TrustZone Security Attribution Unit  module"
 	default y if TRUSTED_EXECUTION_SECURE && !MCUBOOT
-	depends on DT_HAS_ATMOSIC_SEC_TZ_ENABLED
+	depends on DT_HAS_ATMOSIC_SEC_TZ_ENABLED || ZTEST

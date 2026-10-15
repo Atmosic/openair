@@ -1,10 +1,14 @@
 /* Copyright (c) 2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
+#ifndef UART_BAUD_RATE
+#define UART_BAUD_RATE 2000000
+#endif
+
 &uart0 {
-	current-speed = <2000000>;
+	current-speed = <UART_BAUD_RATE>;
 	status = "okay";
 	hw-flow-control;
 };

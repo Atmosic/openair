@@ -1,62 +1,24 @@
-# Copyright (c) 2024 Atmosic
+# Copyright (c) 2024-2026 Atmosic
 #
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Atmosic
 
 config ATM_BROWNOUT
 	bool "Enable brownout support"
+	depends on !$(dt_nodelabel_has_prop,pmu,batt-type) || \
+		$(dt_nodelabel_int_prop,pmu,batt-type) != 2
 	default y if PM
 
 if ATM_BROWNOUT
 
-config BROWNOUT_THR_VBAT
-        int "VBAT brownout threshold"
-        default 0
+config BROWNOUT_IMMEDIATELY
+        bool "Trigger brownout power-off immediately in ISR"
+        default y
         help
-            Controls the VBAT(LI) brownout threshold.
-            For VBAT level <= 1.8V,
-                VBAT threshold = 0.9 + 0.025X, where 0 <= X <= 31
-            For VBAT level > 1.8V,
-                VBAT threshold = 1.4 + 0.05X, where
-                    0 <= X <= 31, for non-rechargeable battery type
-                    0 <= X <= 17, for rechargeable battery type
-	    For VBATLI,
-		VBATLI threshold = 2.4V + 0.050X, where 2 <= X <= 31
-            The battery level is specified through OTP and is equal to BATT_LEVEL_GT_1P8V by default. It can be overwritten through the ``batt-level`` device tree property. Refer to the PMU configuration for additional details.
+            When enabled, the brownout power-off sequence (brwnout_plf_off())
+            is executed immediately in the PMU interrupt handler instead of
+            being deferred to a workqueue.
 
-config BROWNOUT_THR_VSTORE
-        int "VSTORE brownout threshold"
-        range -1 31
-        default -1
-        help
-            Controls the VSTORE brownout threshold for non-lithium ion battery types.
-            VSTORE threshold = 0.7 + 0.05X, where 0 <= X <= 31
-
-            Set to -1 (default) to use automatic battery-type-dependent defaults:
-            - Rechargeable batteries: 31 (fixed, cannot be overridden)
-            - Non-rechargeable batteries: 0
-
-            Set to 0-31 to explicitly specify the threshold value.
-
-            Note: For rechargeable batteries, this value is enforced to be 31
-            in the driver code regardless of the configured value.
-
-            The chip enters brownout if both VBAT and VSTORE are below their
-            configured thresholds.
-
-config BROWNOUT_THR_VBAT_HYSTERESIS_DELTA
-        int "VBAT brownout hysteresis delta"
-        range 0 31
-        default 10
-        help
-            Delta value added to BROWNOUT_THR_VBAT when increasing the VBAT
-            brownout threshold for hysteresis during hibernation entry.
-
-            When entering hibernation due to brownout, the VBAT threshold is
-            temporarily increased by this delta to provide hysteresis and
-            prevent rapid on/off cycling near the brownout threshold.
-
-            The effective threshold is clamped to a maximum of 31.
-
-            Set to 0 to disable hysteresis (not recommended).
+            This also suppresses the PMU status register read and print that
+            is otherwise emitted during the power-off sequence.
 
 endif

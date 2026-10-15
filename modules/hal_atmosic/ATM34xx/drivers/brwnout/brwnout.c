@@ -5,7 +5,9 @@
  *
  * @brief Brownout Driver
  *
- * Copyright (C) Atmosic 2022-2026
+ * Copyright (c) 2022-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  ******************************************************************************
  */
@@ -43,41 +45,91 @@ LOG_MODULE_REGISTER(brownout, LOG_LEVEL_INF);
 #define BROWNOUT_INTERNAL_GUARD
 #include "brwnout.ih"
 
-#ifdef CONFIG_BROWNOUT_THR_VBAT
-#define BRWNOUT_THR_VBAT CONFIG_BROWNOUT_THR_VBAT
+#ifndef BATT_TYPE
+#error "BATT_TYPE undefined"
+#endif
+#ifndef BATT_LEVEL
+#error "BATT_LEVEL undefined"
 #endif
 
-#if defined(CONFIG_BROWNOUT_THR_VSTORE) && (CONFIG_BROWNOUT_THR_VSTORE != -1)
-#define BRWNOUT_THR_VSTORE CONFIG_BROWNOUT_THR_VSTORE
+STATIC_ASSERT((BATT_TYPE != BATT_TYPE_NO_BATTERY),
+    "Brownout does not support BATT_TYPE_NO_BATTERY");
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+#if DT_INST_NODE_HAS_PROP(0, brownout_thr_vbat)
+#define BRWNOUT_THR_VBAT DT_INST_PROP(0, brownout_thr_vbat)
 #endif
+
+#if DT_INST_NODE_HAS_PROP(0, brownout_thr_vstore)
+#define BRWNOUT_THR_VSTORE DT_INST_PROP(0, brownout_thr_vstore)
+#endif
+
+#if DT_INST_NODE_HAS_PROP(0, brownout_thr_vbat_hysteresis_delta)
+#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA \
+    DT_INST_PROP(0, brownout_thr_vbat_hysteresis_delta)
+#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 
 #ifndef BRWNOUT_THR_VBAT
-#define BRWNOUT_THR_VBAT 0
+#if (BATT_TYPE == BATT_TYPE_LI_ION)
+#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
+#define BRWNOUT_THR_VBAT 10 // 2.9 V
+#else
+#define BRWNOUT_THR_VBAT 8 // 2.1 V
 #endif
+#else // BATT_TYPE == BATT_TYPE_LI_ION
+#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
+#define BRWNOUT_THR_VBAT 14 // 2.1 V
+#else
+#define BRWNOUT_THR_VBAT 4 // 1.0 V
+#endif
+#endif // BATT_TYPE == BATT_TYPE_LI_ION
+#endif // BRWNOUT_THR_VBAT
 #ifndef BRWNOUT_THR_VSTORE
 #if (BATT_TYPE == BATT_TYPE_RECHARGEABLE)
 #define BRWNOUT_THR_VSTORE 31
 #else
 #define BRWNOUT_THR_VSTORE 0
-#endif // BATT_TYPE == BATT_TYPE_RECHARGEABLE
+#endif
 #endif // BRWNOUT_THR_VSTORE
 
 #define BRWNOUT_THR_VBAT_MAX 31
 
-#ifdef CONFIG_BROWNOUT_THR_VBAT_HYSTERESIS_DELTA
-#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA \
-    CONFIG_BROWNOUT_THR_VBAT_HYSTERESIS_DELTA
+#if (BATT_TYPE == BATT_TYPE_LI_ION)
+#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
+#define BRWNOUT_THR_VBAT_MIN 6 // 2.7 V
 #else
-#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA 10
+#define BRWNOUT_THR_VBAT_MIN 0 // 1.9 V
 #endif
+#elif ((BATT_TYPE == BATT_TYPE_RECHARGEABLE) || \
+    (BATT_TYPE == BATT_TYPE_NON_RECHARGEABLE))
+#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
+#define BRWNOUT_THR_VBAT_MIN 8 // 1.8 V
+#else
+#define BRWNOUT_THR_VBAT_MIN 4 // 1.0 V
+#endif
+#else // BATT_TYPE == BATT_TYPE_LI_ION
+#define BRWNOUT_THR_VBAT_MIN 0 // 1.9 V
+#endif // BATT_TYPE == BATT_TYPE_LI_ION
 
-#ifndef MIN
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#ifndef BRWNOUT_THR_VBAT_HYSTERESIS_DELTA
+#if (BATT_TYPE == BATT_TYPE_LI_ION)
+#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
+#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA 6 // Increases threshold by 0.4 V
+#else
+#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA 8 // Increases threshold by 0.3 V
 #endif
+#else // BATT_TYPE == BATT_TYPE_LI_ION
+#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
+#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA 4 // Increases threshold by 0.3 V
+#else
+#define BRWNOUT_THR_VBAT_HYSTERESIS_DELTA 0 // Increases threshold by 0.1 V
+#endif
+#endif // BATT_TYPE == BATT_TYPE_LI_ION
+#endif // BRWNOUT_THR_VBAT_HYSTERESIS_DELTA
 
 #define BRWNOUT_THR_VBAT_WITH_HYSTERESIS \
-    MIN(BRWNOUT_THR_VBAT + BRWNOUT_THR_VBAT_HYSTERESIS_DELTA, \
-	BRWNOUT_THR_VBAT_MAX)
+    (BRWNOUT_THR_VBAT + BRWNOUT_THR_VBAT_HYSTERESIS_DELTA)
 
 #if (BATT_TYPE != BATT_TYPE_LI_ION)
 #define GOODTOSTART_THR_DEFAULT 0
@@ -90,6 +142,13 @@ static bool brwnout_disabled;
 static sw_event_id_t brwnout_event_id;
 #endif
 
+#ifdef CONFIG_BROWNOUT_IMMEDIATELY
+#define BROWNOUT_RAMFUNC __ramfunc
+#else
+#define BROWNOUT_RAMFUNC
+#endif
+
+BROWNOUT_RAMFUNC
 static void brwnout_plf_off(void)
 {
     // Increase VBAT brownout threshold for hysteresis
@@ -100,11 +159,13 @@ static void brwnout_plf_off(void)
     pmu_set_good2start_thr_vstore(GOODTOSTART_THR_BRWNOUT);
 #endif
 
+#ifndef CONFIG_BROWNOUT_IMMEDIATELY
     uint32_t pmu_status;
     WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE) {
 	pmu_status = CMSDK_PSEQ->PMU_STATUS;
     } WRPR_CTRL_POP();
     DEBUG_TRACE("pmu stat: %#" PRIx32, pmu_status);
+#endif
 
 #ifndef CONFIG_SOC_FAMILY_ATM
     pmu_set_socoff_energy_wakeup(true);
@@ -122,8 +183,14 @@ static void brwnout_plf_off(void)
     pseq_soc_off(WAKEUP_DURATION);
 #else // CONFIG_SOC_FAMILY_ATM
 #ifdef CONFIG_PM
+    WRPR_CTRL_PUSH(CMSDK_PSEQ, WRPR_CTRL__CLK_ENABLE)
+    {
+	// Set bit in PERSISTENT7 to recognize as a falling brownout wakeup
+	CMSDK_PSEQ->PERSISTENT7 |= PSEQ_PERSISTENT7_BROWNOUT_FALLING;
+    }
+    WRPR_CTRL_POP();
     brwnout_set_trigger(2);
-    atm_pseq_hibernate(IDLE_FOREVER);
+    atm_pseq_hibernate(0, ATM_PD_URGENCY_URGENT);
 #else
     STATIC_ASSERT(false, "CONFIG_PM needs to be set for brownout support");
 #endif
@@ -138,7 +205,7 @@ static void brwnout_plf_off_async(sw_event_id_t event_id,
     sw_event_clear(brwnout_event_id);
     brwnout_plf_off();
 }
-#else
+#elif !defined(CONFIG_BROWNOUT_IMMEDIATELY)
 static void brwnout_plf_off_async(struct k_work *work)
 {
     brwnout_plf_off();
@@ -153,6 +220,7 @@ K_WORK_DEFINE(brwnout_event, brwnout_plf_off_async);
  * Called by central PMU_Handler() in pmu.c when brownout interrupt fires.
  * The interrupt source is cleared in pmu_isr_source() before this is called.
  */
+BROWNOUT_RAMFUNC
 void brwnout_pmu_handler(void)
 {
     if (brwnout_disabled) {
@@ -162,25 +230,33 @@ void brwnout_pmu_handler(void)
 #ifndef CONFIG_SOC_FAMILY_ATM
     // Allow any interrupted operation to finish before hibernation
     sw_event_set(brwnout_event_id);
+#elif defined(CONFIG_BROWNOUT_IMMEDIATELY)
+    // Trigger the power-off sequence immediately in interrupt context
+    brwnout_plf_off();
 #else
     k_work_submit(&brwnout_event);
-#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 }
 
 static void brwnout_set_thresholds(void)
 {
-    STATIC_ASSERT(((BRWNOUT_THR_VBAT >= 0) && (BRWNOUT_THR_VBAT <= 31)),
-	"Brownout threshold VBAT is not within 0..31 range");
+    STATIC_ASSERT(((BRWNOUT_THR_VBAT >= BRWNOUT_THR_VBAT_MIN) &&
+		      (BRWNOUT_THR_VBAT <= BRWNOUT_THR_VBAT_MAX)),
+	"Brownout threshold VBAT is not within the configured range");
     STATIC_ASSERT(((BRWNOUT_THR_VSTORE >= 0) && (BRWNOUT_THR_VSTORE <= 31)),
 	"Brownout threshold VSTORE is not within 0..31 range");
 #if (BATT_TYPE == BATT_TYPE_RECHARGEABLE)
     STATIC_ASSERT((BRWNOUT_THR_VSTORE == 31),
 	"Brownout threshold VSTORE cannot be overridden");
-#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
-    STATIC_ASSERT((BRWNOUT_THR_VBAT <= 17),
-	"Brownout threshold VBAT is not within 0..17 range");
-#endif // (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
 #endif // (BATT_TYPE == BATT_TYPE_RECHARGEABLE)
+
+    STATIC_ASSERT((BRWNOUT_THR_VBAT_HYSTERESIS_DELTA >= 0),
+	"Brownout threshold VBAT hysteresis delta must not be negative");
+    STATIC_ASSERT(((BRWNOUT_THR_VBAT + BRWNOUT_THR_VBAT_HYSTERESIS_DELTA >=
+		       BRWNOUT_THR_VBAT_MIN) &&
+		      (BRWNOUT_THR_VBAT + BRWNOUT_THR_VBAT_HYSTERESIS_DELTA <=
+			  BRWNOUT_THR_VBAT_MAX)),
+	"Brownout threshold VBAT plus hysteresis delta is not within the configured range");
 
     pmu_set_brwnout_thr_vbat(BRWNOUT_THR_VBAT);
 #if (BATT_TYPE != BATT_TYPE_LI_ION)

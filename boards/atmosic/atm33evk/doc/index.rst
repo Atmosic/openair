@@ -164,13 +164,13 @@ For an atmevk33 board, this is typically a J-Link serial number, but it can also
 
 If the application requires Bluetooth (configured with ``CONFIG_BT`` in the prj.conf file) and uses the fixed BLE link controller image option, then the controller image requires programming.  This is typically done before programming the application and resetting (omitting the ``--noreset`` option to ``west flash``). For example::
 
-  west flash --verify --device <DEVICE_ID> --jlink --fast_load --no-rebuild -d build/<BOARD>/<APP> --use-elf --elf-file openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_CPD200.elf --noreset
+  west flash --verify --device <DEVICE_ID> --jlink --no-rebuild -d build/<BOARD>/<APP> --use-elf --elf-file openair/modules/hal_atmosic/ATM33xx-5/drivers/ble/atmwstk_CPD200.elf --noreset
 
-Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.
+Atmosic provides a mechanism to speed up programming called FAST LOAD, which is enabled by default. Apply the option ``--no-fast-load`` to disable it and use the normal load flow.
 
 Flash the application::
 
-  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<APP>
+  west flash --device <DEVICE_ID> --jlink --verify -d build/<BOARD>/<APP>
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -183,9 +183,9 @@ Using PD50 Atmosic Wireless Stack which is supported as a Statically Linked BLE 
 
 2b. Flashing the Application:
 
-Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.
+Atmosic provides a mechanism to speed up programming called FAST LOAD, which is enabled by default. Apply the option ``--no-fast-load`` to disable it and use the normal load flow.
 
-  west flash --device <DEVICE_ID> --jlink --fast_load --verify -d build/<BOARD>/<APP>
+  west flash --device <DEVICE_ID> --jlink --verify -d build/<BOARD>/<APP>
 
 
 -----------------
@@ -220,15 +220,19 @@ Note that make use of "board revision" to configure our board partitions to work
 
 Flash MCUboot
 
-Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
+Atmosic provides a mechanism to speed up programming called FAST LOAD, which is enabled by default. Apply the option ``--no-fast-load`` to disable it and use the normal load flow.::
 
-   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/mcuboot --noreset
+   west flash --verify --device <DEVICE_ID> --jlink -d build/<BOARD>/mcuboot --noreset
 
-Note that adding ``--erase_flash`` is an option to erase the entire flash, ``--erase_rram`` is an option to erase the entire RRAM, and ``--erase_all`` is an option to erase the entire RRAM and flash.
+Note that adding ``--erase_flash`` erases the entire flash, ``--erase_rram`` erases the entire RRAM, and ``--erase_all`` erases the entire RRAM and flash.
+
+To erase multiple specific regions, repeat the option with its ``address,size`` value. For example::
+
+   west flash --erase_flash=0x200000,0x1000 --erase_flash=0x201000,0x1000 --erase_rram=0x70000,0x100 --erase_rram=0x70100,0x100
 
 Flash the signed application image::
 
-   west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<APP>
+   west flash --verify --device <DEVICE_ID> --jlink -d build/<BOARD>/<APP>
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Using PD50 Atmosic Wireless Stack which is supported as a Statically Linked BLE Link Controller Library (Suboption #2)
@@ -254,15 +258,17 @@ Note that make use of "board revision" to configure our board partitions to work
 
 Flash MCUboot
 
-Atmosic provides a mechanism to increase the legacy programming time called FAST LOAD. Apply the option ``--fast_load`` to enable the FAST LOAD.::
+Atmosic provides a mechanism to speed up programming called FAST LOAD, which is enabled by default. Apply the option ``--no-fast-load`` to disable it and use the normal load flow.::
 
-  west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/mcuboot --noreset
+  west flash --verify --device <DEVICE_ID> --jlink -d build/<BOARD>/mcuboot --noreset
 
-Note that adding ``--erase_flash`` is an option to erase the entire flash, ``--erase_rram`` is an option to erase the entire RRAM, and ``--erase_all`` is an option to erase the entire RRAM and flash.
+Note that adding ``--erase_flash`` erases the entire flash, ``--erase_rram`` erases the entire RRAM, and ``--erase_all`` erases the entire RRAM and flash.
+
+For multiple specific regions, repeat ``--erase_flash=address,size`` or ``--erase_rram=address,size``.
 
 Flash the signed application image ::
 
-  west flash --verify --device <DEVICE_ID> --jlink --fast_load -d build/<BOARD>/<APP>
+  west flash --verify --device <DEVICE_ID> --jlink -d build/<BOARD>/<APP>
 
 ---------------------------
 BLE Link Controller Options

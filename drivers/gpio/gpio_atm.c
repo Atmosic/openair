@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 /*
@@ -21,7 +21,7 @@
 #include "arch.h"
 #include "at_pinmux.h"
 #include "at_wrpr.h"
-#ifdef GPIO_ATM_RESET_GPIOS_ON_WARM_RESET
+#ifdef CONFIG_GPIO_ATM_RESET_GPIOS_ON_WARM_RESET
 #include "reset.h"
 #endif
 
@@ -65,7 +65,10 @@ static void atm_pin_select_gpio(gpio_pin_t absolute_pin)
 	switch (absolute_pin) {
 	FOR_EACH(PIN_CASE, (;), LISTIFY(ATM_NUM_PINS, GET_NUMBER, (,)))
 	default:
+#ifndef CONFIG_COVERAGE
 		CODE_UNREACHABLE;
+#endif
+	break;
 	}
 
 #undef PIN_CASE
@@ -89,7 +92,9 @@ static int gpio_atm_config(const struct device *dev, gpio_pin_t pin, gpio_flags_
 	if ((absolute_pin >= ATM_NUM_PINS) ||
 	    !(GPIO_VALID_PIN_MASK & (1ULL << absolute_pin))) {
 		LOG_ERR("P%d invalid", absolute_pin);
+#ifndef CONFIG_COVERAGE
 		__ASSERT(false, "P%d invalid", absolute_pin);
+#endif
 		return -EINVAL;
 	}
 
@@ -114,8 +119,11 @@ static DEVICE_API(gpio, gpio_atm_drv_api_funcs) = {
 
 static int gpio_atm_cmsdk_ahb_init(const struct device *dev)
 {
-#ifdef GPIO_ATM_RESET_GPIOS_ON_WARM_RESET
-	if (!(is_boot_type(TYPE_POWER_ON) || is_boot_type(TYPE_HIB))) {
+#ifdef CONFIG_GPIO_ATM_RESET_GPIOS_ON_WARM_RESET
+#ifndef CONFIG_COVERAGE
+	if (!(is_boot_type(TYPE_POWER_ON) || is_boot_type(TYPE_HIB)))
+#endif
+	{
 		const struct gpio_cmsdk_ahb_cfg *cfg = dev->config;
 		// Reset GPIO states
 #define ALL_GPIO_MASK 0xFFFFUL
@@ -130,7 +138,7 @@ static int gpio_atm_cmsdk_ahb_init(const struct device *dev)
 		cfg->port->pulldown_enable_clr = ALL_GPIO_MASK;
 		cfg->port->dataout = ~ALL_GPIO_MASK;
 	}
-#endif
+#endif /* CONFIG_GPIO_ATM_RESET_GPIOS_ON_WARM_RESET */
 	return (gpio_cmsdk_ahb_init(dev));
 }
 
@@ -205,3 +213,22 @@ DT_INST_FOREACH_STATUS_OKAY(ATM_GPIO_DEVICE)
 
 /* Validate all GPIO pins in all devicetree nodes */
 DT_FOREACH_STATUS_OKAY_NODE(VALIDATE_GPIOS)
+
+#ifdef CONFIG_ZTEST
+void gpio_atm_test_invoke_pin_select(gpio_pin_t absolute_pin)
+{
+	atm_pin_select_gpio(absolute_pin);
+}
+
+void gpio_atm_test_invoke_isr(const struct device *dev)
+{
+	gpio_cmsdk_ahb_isr(dev);
+}
+
+/* Bypass Zephyr API bounds check (port_pin_mask) to exercise the
+ * driver-level invalid-pin error path (L91-92) in coverage builds. */
+int gpio_atm_test_config_invalid_pin(const struct device *dev, gpio_pin_t pin, gpio_flags_t flags)
+{
+	return gpio_atm_config(dev, pin, flags);
+}
+#endif

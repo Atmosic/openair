@@ -1,0 +1,8 @@
+# Copyright (c) 2025-2026 Atmosic
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_LCROM_IFACE
+	bool "Include interface to LCROM"
+	default y if ATM_BLE
+	select CPU_HAS_CUSTOM_FIXED_SOC_MPU_REGIONS

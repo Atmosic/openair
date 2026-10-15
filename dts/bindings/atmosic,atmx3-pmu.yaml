@@ -46,6 +46,42 @@ properties:
       The battery level is specified through OTP and defaults to ``> 1.8 V``.
       This property can override that default.
 
+  initial-volt-check-thr:
+    type: int
+    required: false
+    description: |
+      ATM34 raw initial voltage-check threshold, ``X``, used by secure early
+      initialization (``CONFIG_ATM_SEC_HW_CFG``) on every boot to determine
+      whether software may boot. This is separate from the runtime
+      ``brownout-thr-vbat`` policy. The voltage formulas include a fixed
+      +0.1 V offset:
+
+      - Rechargeable or non-rechargeable, > 1.8 V:
+
+        ``V = 1.4 V + 0.1 V + 0.05 V * X``; raw ``X``: 8 to 31; default
+        ``X``: 20
+      - Rechargeable or non-rechargeable, <= 1.8 V:
+
+        ``V = 0.9 V + 0.1 V + 0.025 V * X``; raw ``X``: 4 to 31; default
+        ``X``: 8
+      - Li-ion, > 1.8 V:
+
+        ``V = 2.4 V + 0.1 V + 0.05 V * X``; raw ``X``: 6 to 31; default
+        ``X``: 16
+      - Li-ion, <= 1.8 V:
+
+        ``V = 1.9 V + 0.1 V + 0.025 V * X``; raw ``X``: 0 to 31; default
+        ``X``: 20
+
+      The hardware selects the voltage formula from the battery configuration
+      programmed in OTP; the overlay's ``batt-type`` and ``batt-level`` do not
+      select the formula. Choose ``X`` for the battery type and level
+      programmed in OTP.
+
+      This property is consumed only on ATM34. When MCUboot is enabled in a
+      sysbuild, apply an overlay setting this property to the MCUboot image,
+      because each sysbuild image has its own Devicetree.
+
   vddio-type:
     type: int
     enum:

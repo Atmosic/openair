@@ -2,9 +2,9 @@
  * @file
  * @brief Shell APIs for Bluetooth RAS Client
  *
- * Copyright (c) 2025 Atmosic
+ * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <stdint.h>
@@ -557,3 +557,34 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 
 SHELL_CMD_ARG_REGISTER(ras_client, &ras_cli_cmds, "Bluetooth RAS client shell commands",
 		       cmd_ras_client, 1, 0);
+
+#ifdef CONFIG_ZTEST
+
+void ras_shell_test_discover_cb(int err)
+{
+	ras_discover_cb(NULL, err);
+}
+
+void ras_shell_test_rd_overwritten_cb(uint16_t ranging_counter)
+{
+	ras_ranging_data_overwritten_cb(NULL, ranging_counter);
+}
+
+void ras_shell_test_get_rd_cmpl_cb(uint16_t ranging_counter, int err)
+{
+	ras_get_ranging_data_cmpl_cb(NULL, ranging_counter, err);
+}
+
+void ras_shell_test_rd_ready_cb(struct bt_conn *conn, uint16_t ranging_counter, int err)
+{
+	ras_ranging_data_ready_cb(conn, ranging_counter, err);
+}
+
+#ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
+void ras_shell_test_realtime_cmpl_cb(int err)
+{
+	ras_get_realtime_ranging_data_cmpl_cb(NULL, err);
+}
+#endif
+
+#endif /* CONFIG_ZTEST */

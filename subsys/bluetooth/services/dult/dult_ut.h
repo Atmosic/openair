@@ -44,8 +44,9 @@ void dult_ut_reset(void);
 /**
  * @brief Begin a new UT separated period.
  *
- * Resets existing UT state and arms the 8–24 h random timeout before motion
- * detection is enabled.  Called when the device enters separated mode.
+ * Resets existing UT state and arms the random timeout (DULT_UT_TIMEOUT_MIN_SEC
+ * to DULT_UT_TIMEOUT_MAX_SEC) before motion detection is enabled.  Called when
+ * the device enters separated mode.
  */
 void dult_ut_enter_separated(void);
 
@@ -69,5 +70,16 @@ bool dult_is_gatt_sound_active(void);
  * @return true if the current mode is DULT_NO_MODE_SEPERATED.
  */
 bool dult_is_separated(void);
+
+#ifdef CONFIG_DULT_MOTION_DETECT_TRIGGER
+/**
+ * @brief Signal a hardware-detected motion event to the UT state machine.
+ *
+ * Called by the platform interrupt path instead of the polling path.
+ * Safe to call from any context — submits work to the app work queue.
+ * Events received while UT is not active are silently discarded.
+ */
+void dult_ut_motion_event(void);
+#endif /* CONFIG_DULT_MOTION_DETECT_TRIGGER */
 
 #endif /* CONFIG_DULT_MOTION_DETECT */

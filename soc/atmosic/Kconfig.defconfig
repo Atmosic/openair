@@ -38,6 +38,9 @@ config BT_BUF_ACL_RX_SIZE
 config BT_BUF_CMD_TX_SIZE
 	default 255 if BT_HCI_RAW
 
+config PSA_CRYPTO
+	default y if (BT_PRIVACY || BT_SMP || BT_HCI_RAW)
+
 if ENTROPY_ATM_TRNG
 
 # NOTE: To get the best performance from the TRNG, a suitable
@@ -59,6 +62,17 @@ choice CSPRNG_GENERATOR_CHOICE
 	depends on PSA_CRYPTO
 	default PSA_CSPRNG_GENERATOR
 endchoice
+
+# Use AES-CTR-DRBG for PSA secure random generation. Configure the AES
+# block-cipher service through PSA so the Atmosic AES driver can accelerate it.
+config MBEDTLS_CTR_DRBG_C
+	default y if PSA_CSPRNG_GENERATOR
+
+config PSA_WANT_KEY_TYPE_AES
+	default y if MBEDTLS_CTR_DRBG_C
+
+config PSA_WANT_ALG_ECB_NO_PADDING
+	default y if MBEDTLS_CTR_DRBG_C
 
 config BT_RX_STACK_SIZE
 	int

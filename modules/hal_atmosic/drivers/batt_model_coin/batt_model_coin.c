@@ -103,11 +103,7 @@ static bool batt_coin_gadc_sample(void (*cb)(uint16_t, int32_t))
 #ifndef CONFIG_SOC_FAMILY_ATM
     gadc_sample_channel(VBATT, batt_coin_calc_lvl, VBATT_GEXT_DEFAULT, NULL);
 #else
-#ifdef CONFIG_BATT_MODEL_ADC_32_BITS
     int32_t m_sample_buffer[ADC_BUFFER_SIZE];
-#else
-    int16_t m_sample_buffer[ADC_BUFFER_SIZE];
-#endif
     struct adc_sequence const sequence = {
 	.channels = BIT(ADC_CHANNEL_ID),
 	.buffer = m_sample_buffer,

@@ -38,6 +38,13 @@ static void par_evt_handler(uint8_t ch, void const *evt_data, uint16_t evt_data_
 		    evt->timeout);
 }
 
+#ifdef CONFIG_ZTEST
+void at_cmd_evt_par_test_handler(uint8_t ch, void const *evt_data, uint16_t evt_data_len)
+{
+	par_evt_handler(ch, evt_data, evt_data_len);
+}
+#endif /* CONFIG_ZTEST */
+
 void at_cmd_evt_par(uint8_t ch, uint8_t idx, uint16_t interval, uint16_t latency, uint16_t timeout)
 {
 	at_cmd_par_evt_t evt = {

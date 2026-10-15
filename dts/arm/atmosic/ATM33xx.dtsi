@@ -114,6 +114,22 @@
 		};
 	};
 
+	sec_rram_prot: sec_rram_prot {
+		compatible = "atmosic,sec-nv-mem-rram-prot";
+		blk-size = <0x800>;
+		write-prot-size = <0x80000>;
+		read-prot-size = <0x10000>;
+	};
+
+	sec_rom_prot: sec_rom_prot {
+		compatible = "atmosic,sec-nv-mem-rom-prot";
+		blk-size = <0x800>;
+		read-prot-size = <0x10000>;
+#ifdef ATM_NS_APP
+		status = "disabled";
+#endif
+	};
+
 #ifndef ATM_NS_APP
 
 	sec_jrnl: sec_jrnl@1008F800 {
@@ -215,6 +231,8 @@
 };
 
 #include "ATM33xx_partitions.dtsi"
+
+arduino_spi: &spi1 {};
 
 / {
 	chosen {

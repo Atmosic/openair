@@ -1,12 +1,9 @@
 /*                                                                           */
 /* File:       at_i2s_regs_core_macro.h                                      */
 /*                                                                           */
-/* Arguments:  /cad/tools/cadence/blueprint_3.7.5/Linux-64bit/blueprint -eval*/
-/*             $DEFINE_PROPERTY=1; -ansic at_i2s_regs_core.rdl               */
+/*                                                              */
 /*                                                                           */
-/* Blueprint:   3.7.5 (Wed Feb 1 23:58:40 PST 2012)                          */
-/* Machine:    gull                                                          */
-/* OS:         Linux 2.6.32-696.13.2.el6.x86_64                              */
+/* Blueprint:   3.7.5-atm (reduced-path-a)                                   */
 /* Description:                                                              */
 /*                                                                           */
 /* No Description Provided                                                   */

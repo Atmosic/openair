@@ -109,6 +109,35 @@ config RREQ_DISABLE_RD_SUB
 	  ranging data ready, and on-demand ranging data). Only the
 	  RAS Control Point subscription is kept.
 
+config RREQ_IQ_DUMP
+	bool "Stream the raw CS IQ records over the console UART"
+	default y
+	help
+	  On by default: Stream the raw CS IQ records over the console UART.
+
+config RREQ_USE_ARIAD
+	bool "Link the Ariad distance estimator (openair/lib/ariad)"
+	select ATM_ARIAD_LIB
+	help
+	  Links the prebuilt libariad.a from openair/lib/ariad and enables the
+	  estimator-backed CS distance path (cs_distance.c). Exercised by the
+	  applications.ras_rreq_initiator.atm.ariad test configuration.
+
+config RREQ_USE_DISPLAY
+	bool "Show the CS distance on a GME OLED"
+	depends on RREQ_USE_ARIAD
+	select I2C
+	select DISPLAY
+	select CHARACTER_FRAMEBUFFER
+	help
+	  Enables cs_display.c, which mirrors the smoothed CS distance from the
+	  Ariad estimator to a GME I2C OLED (the oled_display node in
+	  oled.overlay) through the character framebuffer. Separate from
+	  RREQ_USE_ARIAD; prj.conf sets it n by default so boards without the OLED
+	  module still build the estimator path cleanly. Set
+	  CONFIG_RREQ_USE_DISPLAY=y in prj.conf (or a board overlay) on a board
+	  that carries the OLED, and pass oled.overlay so the node exists.
+
 module = RREQ
 module-str = RREQ
 source "subsys/logging/Kconfig.template.log_config"

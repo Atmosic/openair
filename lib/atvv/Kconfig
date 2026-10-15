@@ -1,0 +1,40 @@
+# Copyright (c) Atmosic 2026
+#
+# SPDX-License-Identifier: LicenseRef-Atmosic
+
+config ATM_ATVV
+	bool "Android TV Voice (ATVV) GATT service library"
+	depends on BT && BT_PERIPHERAL
+	default n
+	help
+	  Enable the Atmosic ATVV library, which registers a static GATT
+	  service implementing the Android TV Voice (Voice over BLE) profile.
+	  Provides atvv_init(), atvv_send_audio_frame(), atvv_send_ctl(),
+	  atvv_send_caps_resp(), atvv_send_audio_start(), atvv_send_audio_stop(),
+	  atvv_send_mic_open_error(), and atvv_send_audio_sync().
+	  See the ATVV_SPEC_VERSION choice to select the wire-format spec
+	  version to implement.
+
+if ATM_ATVV
+
+config ATVV_LOG_LEVEL
+	int "ATVV log level"
+	default 3
+	range 0 4
+
+choice ATVV_SPEC_VERSION
+	prompt "ATVV protocol spec version"
+	default ATVV_SPEC_V1_0
+	help
+	  Selects which "Google Voice over BLE" spec version's wire format
+	  is implemented.
+
+config ATVV_SPEC_V0_4
+	bool "Voice over BLE [Remote control specs] v0.4e"
+
+config ATVV_SPEC_V1_0
+	bool "Google Voice over BLE spec 1.0"
+
+endchoice
+
+endif # ATM_ATVV

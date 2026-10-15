@@ -18,7 +18,7 @@ Default UART(UART0) Settings
 ****************************
 
 * ATM2 and ATM3 series baudrate: 460800 bit/s
-* ATM33/e and ATM34/e series baudrate: 2000000 bit/s
+* ATM33/e, ATM34/e, and ATM5/e series baudrate: 2000000 bit/s
 * 8 bits, no parity, 1 stop bit
 * Hardware Flow Control (RTS/CTS) enabled
 
@@ -37,7 +37,7 @@ Flash command:
 
 .. code-block:: bash
 
-   west flash --no-rebuild --device <DEVICE_ID> --jlink --fast_load [--erase_flash]
+   west flash --no-rebuild --device <DEVICE_ID> --jlink [--erase_flash]
 
 
 Debug log(UART1)

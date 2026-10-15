@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2025-2026 Atmosic
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  */
 
 #include <zephyr/sys/check.h>
@@ -1237,3 +1237,266 @@ int bt_ras_client_ranging_data_parse(struct net_buf_simple *ranging_data_buf,
 	*ranging_counter_out = rd_hdr->ranging_counter;
 	return 0;
 }
+
+#ifdef CONFIG_ZTEST
+#include "ras_client_test.h"
+
+int ras_test_rsp_code_to_err(uint8_t rsp_code)
+{
+	return ras_c_rsp_code_to_err(rsp_code);
+}
+
+uint8_t ras_test_get_handle_idx(const struct bt_uuid *uuid)
+{
+	return ras_c_get_handle_idx(uuid);
+}
+
+/* Compile-time sanity: RAS_TEST_* macros in ras.h must match the file-local
+ * enums above. */
+BUILD_ASSERT(RAS_TEST_STATE_NONE == RAS_C_STATE_NONE);
+BUILD_ASSERT(RAS_TEST_STATE_DISCOVERY == RAS_C_STATE_DISCOVERY);
+BUILD_ASSERT(RAS_TEST_STATE_READ_FEATURES_DONE == RAS_C_STATE_READ_FEATURES_DONE);
+BUILD_ASSERT(RAS_TEST_STATE_ON_DEMAND_MODE == RAS_C_STATE_ON_DEMAND_MODE);
+BUILD_ASSERT(RAS_TEST_STATE_GET_RANGING_DATA == RAS_C_STATE_GET_RANGING_DATA);
+
+BUILD_ASSERT(RAS_TEST_CHARC_RAS_FEATURES == RAS_CHARC_RAS_FEATURES);
+BUILD_ASSERT(RAS_TEST_CHARC_REALTIME_RANGING_DATA == RAS_CHARC_REALTIME_RANGING_DATA);
+BUILD_ASSERT(RAS_TEST_CHARC_ONDEMAND_RANGING_DATA == RAS_CHARC_ONDEMAND_RANGING_DATA);
+BUILD_ASSERT(RAS_TEST_CHARC_CP == RAS_CHARC_CP);
+BUILD_ASSERT(RAS_TEST_CHARC_RANGING_DATA_READY == RAS_CHARC_RANGING_DATA_READY);
+BUILD_ASSERT(RAS_TEST_CHARC_RANGING_DATA_OVERWRITTEN == RAS_CHARC_RANGING_DATA_OVERWRITTEN);
+BUILD_ASSERT(RAS_TEST_CHARC_MAX_NUM == RAS_CHARC_MAX_NUM);
+
+/* State setup */
+void ras_test_init_fake_ras_c(struct bt_conn *conn, int state)
+{
+	struct bt_ras_client *ras_c = &ras_c_list[0];
+
+	memset(ras_c, 0, sizeof(*ras_c));
+	ras_c->conn = conn;
+	ras_c->state = (enum ras_c_state)state;
+	ras_c->ras_features = UINT32_MAX;
+	sys_slist_init(&ras_c->cp_q);
+	sys_slist_init(&ras_c->cp_free_q);
+	for (int i = 0; i < CONFIG_RAS_CLIENT_CP_QUEUE_SIZE; i++) {
+		sys_slist_append(&ras_c->cp_free_q, &ras_c->cp_pool[i].node);
+	}
+	k_work_init_delayable(&ras_c->timeout_work, timeout_work_handler);
+}
+
+void ras_test_teardown_fake_ras_c(void)
+{
+	struct k_work_sync sync;
+
+	k_work_cancel_delayable_sync(&ras_c_list[0].timeout_work, &sync);
+	memset(&ras_c_list[0], 0, sizeof(ras_c_list[0]));
+}
+
+void *ras_test_get_fake_ras_c(void)
+{
+	return &ras_c_list[0];
+}
+
+/* GATT callback wrappers */
+uint8_t ras_test_ondemand_rd_notify(struct bt_conn *conn, struct bt_gatt_subscribe_params *params,
+				    const void *data, uint16_t length)
+{
+	return ras_c_ondemand_rd_notify(conn, params, data, length);
+}
+
+uint8_t ras_test_realtime_rd_notify(struct bt_conn *conn, struct bt_gatt_subscribe_params *params,
+				    const void *data, uint16_t length)
+{
+#ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
+	return ras_c_realtime_rd_notify(conn, params, data, length);
+#else
+	ARG_UNUSED(conn);
+	ARG_UNUSED(params);
+	ARG_UNUSED(data);
+	ARG_UNUSED(length);
+	return BT_GATT_ITER_STOP;
+#endif
+}
+
+uint8_t ras_test_rd_ready_ow_notify(struct bt_conn *conn, struct bt_gatt_subscribe_params *params,
+				    const void *data, uint16_t length)
+{
+	return ras_c_rd_ready_ow_notify(conn, params, data, length);
+}
+
+uint8_t ras_test_cp_notify(struct bt_conn *conn, struct bt_gatt_subscribe_params *params,
+			   const void *data, uint16_t length)
+{
+	return ras_c_cp_notify(conn, params, data, length);
+}
+
+int ras_test_check_indicate(struct bt_conn *conn, uint8_t char_idx,
+			    enum bt_ras_client_subscribe_type sub_type)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (!ras_c) {
+		return -ENODEV;
+	}
+	return ras_c_check_indicate(ras_c, char_idx, sub_type);
+}
+
+/* Field accessors / mutators */
+void ras_test_set_ondemand_buf(struct bt_conn *conn, struct net_buf_simple *buf)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->ondemand_buf_out = buf;
+	}
+}
+
+void ras_test_set_realtime_buf(struct bt_conn *conn, struct net_buf_simple *buf)
+{
+#ifdef CONFIG_RAS_CLIENT_REAL_TIME_RD
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->realtime_buf_out = buf;
+	}
+#else
+	ARG_UNUSED(conn);
+	ARG_UNUSED(buf);
+#endif
+}
+
+void ras_test_set_rd_ready_cb(struct bt_conn *conn, bt_ras_client_ranging_data_ready_cb cb)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->rd_ready_cb = cb;
+	}
+}
+
+void ras_test_set_rd_overwritten_cb(struct bt_conn *conn,
+				    bt_ras_client_ranging_data_overwritten_cb cb)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->rd_overwritten_cb = cb;
+	}
+}
+
+void ras_test_set_get_rd_cmpl_cb(struct bt_conn *conn, bt_ras_client_get_ranging_data_cmpl_cb cb)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->get_rd_cmpl_cb = cb;
+	}
+}
+
+void ras_test_set_char_prop(struct bt_conn *conn, uint8_t char_idx, uint8_t prop)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c && (char_idx < RAS_CHARC_MAX_NUM)) {
+		ras_c->char_prop[char_idx] = prop;
+	}
+}
+
+void ras_test_set_next_seg_cnt(struct bt_conn *conn, uint8_t cnt)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->next_seg_cnt = cnt;
+	}
+}
+
+void ras_test_set_ranging_counter(struct bt_conn *conn, uint16_t rc)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->ranging_counter = rc;
+	}
+}
+
+int ras_test_get_err_status(struct bt_conn *conn)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	return ras_c ? ras_c->err_status : -ENODEV;
+}
+
+int ras_test_get_state(struct bt_conn *conn)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	return ras_c ? (int)ras_c->state : -ENODEV;
+}
+
+bool ras_test_get_last_seg(struct bt_conn *conn)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	return ras_c ? ras_c->last_seg : false;
+}
+
+bool ras_test_get_cs_enabled(struct bt_conn *conn)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	return ras_c ? ras_c->cs_enabled : false;
+}
+
+struct bt_gatt_subscribe_params *ras_test_get_subscribe_params(struct bt_conn *conn,
+							       uint8_t char_idx)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (!ras_c || (char_idx >= RAS_CHARC_MAX_NUM)) {
+		return NULL;
+	}
+	return &ras_c->subscribe_params[char_idx];
+}
+
+/* Discovery-path wrappers */
+uint8_t ras_test_gatt_read_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_read_params *params,
+			      const void *data, uint16_t length)
+{
+	return ras_c_gatt_read_cb(conn, err, params, data, length);
+}
+
+void ras_test_discovery_cmpl(struct bt_conn *conn, int err)
+{
+	ras_c_discovery_cmpl(conn, err);
+}
+
+uint8_t ras_test_disc_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+			 struct bt_gatt_discover_params *params)
+{
+	return ras_c_disc_cb(conn, attr, params);
+}
+
+void ras_test_clear_cb(void)
+{
+	ras_c_cb = NULL;
+}
+
+void ras_test_set_ras_features(struct bt_conn *conn, uint32_t features)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->ras_features = features;
+	}
+}
+
+void ras_test_set_last_seg(struct bt_conn *conn, bool last_seg)
+{
+	struct bt_ras_client *ras_c = ras_c_by_conn(conn);
+
+	if (ras_c) {
+		ras_c->last_seg = last_seg;
+	}
+}
+#endif /* CONFIG_ZTEST */

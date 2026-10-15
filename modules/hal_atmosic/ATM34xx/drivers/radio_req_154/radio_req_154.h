@@ -11,7 +11,7 @@
  * the 15.4 Request Driver, all calls should go here, and no calls should go
  * directly to the 15.4 LMAC directly.
  *
- * Copyright (C) Atmosic 2023-2025
+ * Copyright (C) Atmosic 2023-2026
  *
  *******************************************************************************
  */
@@ -744,6 +744,12 @@ uint8_t atm_req_154_map_rssi_to_lqi(__UNUSED atm_req_154_interface_t interface,
  * @brief Starts transmission of unmodulated carrier.
  * @note In normal MAC operation, this function is not called.
  * @par
+ * @note This diagnostic function bypasses the Radio Manager. When the Radio
+ * Manager is present, the caller is responsible for enabling the HAL with
+ * @ref atm_mac_154_enable before activating and disabling it with
+ * @ref atm_mac_154_disable after deactivating, so that the Radio Manager's
+ * enabled-protocol tracking stays in sync with the HAL.
+ * @par
  * @note The function @ref atm_mac_154_get_state will return
  * @ref ATM_MAC_154_STATE_TX_CARRIER_WAVE while this mode is active.
  * @par
@@ -755,16 +761,18 @@ __STATIC_INLINE
 void atm_req_154_activate_carrier_wave(
     __UNUSED atm_req_154_interface_t interface, bool activate)
 {
-    // Note: This diagnostic function bypasses the Radio Manager
-    if (atm_mac_154_get_state() == ATM_MAC_154_STATE_DISABLE) {
-	atm_mac_154_enable();
-    }
     atm_mac_154_activate_carrier_wave(activate);
 }
 
 /**
  * @brief Starts transmission of modulated symbol stream.
  * @note In normal MAC operation, this function is not called.
+ * @par
+ * @note This diagnostic function bypasses the Radio Manager. When the Radio
+ * Manager is present, the caller is responsible for enabling the HAL with
+ * @ref atm_mac_154_enable before activating and disabling it with
+ * @ref atm_mac_154_disable after deactivating, so that the Radio Manager's
+ * enabled-protocol tracking stays in sync with the HAL.
  * @par
  * @note The function @ref atm_mac_154_get_state will return
  * @ref ATM_MAC_154_STATE_TX_SYMBOL_STREAM while this mode is active.
@@ -777,10 +785,6 @@ __STATIC_INLINE
 void atm_req_154_activate_symbol_stream(
     __UNUSED atm_req_154_interface_t interface, bool activate)
 {
-    // Note: This diagnostic function bypasses the Radio Manager
-    if (atm_mac_154_get_state() == ATM_MAC_154_STATE_DISABLE) {
-	atm_mac_154_enable();
-    }
     atm_mac_154_activate_symbol_stream(activate);
 }
 

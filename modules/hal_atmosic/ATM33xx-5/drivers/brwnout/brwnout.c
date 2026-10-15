@@ -5,7 +5,9 @@
  *
  * @brief Brownout Driver
  *
- * Copyright (C) Atmosic 2022-2026
+ * Copyright (c) 2022-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  ******************************************************************************
  */
@@ -46,9 +48,22 @@ LOG_MODULE_REGISTER(brownout, LOG_LEVEL_INF);
 #define BROWNOUT_INTERNAL_GUARD
 #include "brwnout.ih"
 
-#ifdef CONFIG_BROWNOUT_THR_VBAT
-#define BRWNOUT_THR_VBAT CONFIG_BROWNOUT_THR_VBAT
+STATIC_ASSERT((BATT_TYPE != BATT_TYPE_NO_BATTERY),
+    "Brownout does not support BATT_TYPE_NO_BATTERY");
+
+#ifdef CONFIG_SOC_FAMILY_ATM
+#if DT_INST_NODE_HAS_PROP(0, brownout_thr_vbat)
+#define BRWNOUT_THR_VBAT DT_INST_PROP(0, brownout_thr_vbat)
 #endif
+
+#if DT_INST_NODE_HAS_PROP(0, brownout_thr_vbatli_mv)
+#define BRWNOUT_THR_VBATLI (DT_INST_PROP(0, brownout_thr_vbatli_mv) / 1000.0f)
+#endif
+
+#if DT_INST_NODE_HAS_PROP(0, brownout_thr_vstore)
+#define BRWNOUT_THR_VSTORE DT_INST_PROP(0, brownout_thr_vstore)
+#endif
+#endif // CONFIG_SOC_FAMILY_ATM
 
 #ifndef BRWNOUT_THR_VBAT
 #define BRWNOUT_THR_VBAT 0
@@ -58,7 +73,7 @@ LOG_MODULE_REGISTER(brownout, LOG_LEVEL_INF);
 #define BRWNOUT_THR_VSTORE 31
 #else
 #define BRWNOUT_THR_VSTORE 0
-#endif // BATT_TYPE == BATT_TYPE_RECHARGEABLE
+#endif
 #endif // BRWNOUT_THR_VSTORE
 #ifndef WAKEUP_THR_VBATLI
 #ifdef BATT_MODEL_HSC
@@ -130,7 +145,7 @@ static void brwnout_plf_off(void)
     pseq_soc_off(WAKEUP_DURATION);
 #else
 #ifdef CONFIG_PM
-    atm_pseq_soc_off(WAKEUP_DURATION);
+    atm_pseq_soc_off(WAKEUP_DURATION, ATM_PD_URGENCY_URGENT);
 #endif
 #endif
 }
@@ -157,8 +172,9 @@ __FAST static rep_vec_err_t
 brwnout_prevent_hib(bool *prevent, int32_t *pseq_dur, int32_t ble_dur)
 {
     if (!brwnout_disabled && !brwnout_detect &&
-	(!(*pseq_dur) || (atm_lpc_to_cs(*pseq_dur) > 
-	(BRWNOUT_MON_INTV_LOW_PWR_MIN * CS_PER_MINUTE)))) {
+	(!(*pseq_dur) ||
+	    (atm_lpc_to_cs(*pseq_dur) >
+		(BRWNOUT_MON_INTV_LOW_PWR_MIN * CS_PER_MINUTE)))) {
 	*pseq_dur = atm_cs_to_lpc(BRWNOUT_MON_INTV_LOW_PWR_MIN * CS_PER_MINUTE);
     }
     return (RV_NEXT);

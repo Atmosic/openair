@@ -5,7 +5,9 @@
  *
  * @brief Early and secure hardware configuration
  *
- * Copyright (C) Atmosic 2022-2026
+ * Copyright (c) 2022-2026 Atmosic
+ *
+ * SPDX-License-Identifier: LicenseRef-Atmosic
  *
  *******************************************************************************
  */
@@ -21,6 +23,7 @@
 #include "arch.h"
 #include "at_wrpr.h"
 #include "at_clkrstgen.h"
+#include "pmu_cfg.h"
 #include "rram.h"
 #include "sec_jrnl.h"
 
@@ -38,15 +41,53 @@
 #endif
 #endif // CONFIG_SOC_FAMILY_ATM
 
-#ifdef CONFIG_ATM_VOLT_CHECK_THR
-#define VOLT_CHECK_THR CONFIG_ATM_VOLT_CHECK_THR
+#ifdef CONFIG_SOC_FAMILY_ATM
+#if DT_NODE_HAS_PROP(DT_NODELABEL(pmu), initial_volt_check_thr)
+#define VOLT_CHECK_THR DT_PROP(DT_NODELABEL(pmu), initial_volt_check_thr)
+#endif
+#endif // CONFIG_SOC_FAMILY_ATM
+
+#ifndef BATT_TYPE
+#error "BATT_TYPE undefined"
+#endif
+#ifndef BATT_LEVEL
+#error "BATT_LEVEL undefined"
 #endif
 
 #ifndef VOLT_CHECK_THR
-#define VOLT_CHECK_THR 20
+#if ((BATT_TYPE == BATT_TYPE_LI_ION) && (BATT_LEVEL == BATT_LEVEL_GT_1P8V))
+#define VOLT_CHECK_THR 16 // 3.3 V
+#elif (((BATT_TYPE == BATT_TYPE_RECHARGEABLE) || \
+	   (BATT_TYPE == BATT_TYPE_NON_RECHARGEABLE)) && \
+    (BATT_LEVEL == BATT_LEVEL_LE_1P8V))
+#define VOLT_CHECK_THR 8 // 1.2 V
+#else
+#define VOLT_CHECK_THR 20 // 2.5 V
 #endif
+#endif // VOLT_CHECK_THR
 
-#ifdef IS_FOR_SIM
+#if (BATT_TYPE == BATT_TYPE_LI_ION)
+#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
+#define VOLT_CHECK_THR_MIN 6 // 2.8 V
+#else
+#define VOLT_CHECK_THR_MIN 0 // 2.0 V
+#endif
+#elif ((BATT_TYPE == BATT_TYPE_RECHARGEABLE) || \
+    (BATT_TYPE == BATT_TYPE_NON_RECHARGEABLE))
+#if (BATT_LEVEL == BATT_LEVEL_GT_1P8V)
+#define VOLT_CHECK_THR_MIN 8 // 1.9 V
+#else
+#define VOLT_CHECK_THR_MIN 4 // 1.1 V
+#endif
+#else // BATT_TYPE == BATT_TYPE_LI_ION
+#define VOLT_CHECK_THR_MIN 0
+#endif // BATT_TYPE == BATT_TYPE_LI_ION
+
+STATIC_ASSERT(((VOLT_CHECK_THR >= VOLT_CHECK_THR_MIN) &&
+		  (VOLT_CHECK_THR <= 31)),
+    "Initial voltage-check threshold is not within the configured range");
+
+#if defined(IS_FOR_SIM) || defined(USE_RAMBOOT)
 #define SKIP_VOLT_CHECK true
 #else
 #define SKIP_VOLT_CHECK false

@@ -12,6 +12,9 @@ family:
         socs:
           - name: ATM34xx-2
           - name: ATM34xx-5
+      - name: ATM5
+        socs:
+          - name: ATM5xxx-2
 runners:
   run_once:
     '--erase_all':
@@ -29,6 +32,7 @@ runners:
               - ATM34xx-5
               - ATM34xx-5/ns
               - ATM34xx-5/no_TZ
+              - ATM5xxx-2
     '--erase_rram':
       - run: first
         runners:
@@ -59,3 +63,4 @@ runners:
               - ATM34xx-5
               - ATM34xx-5/ns
               - ATM34xx-5/no_TZ
+              - ATM5xxx-2

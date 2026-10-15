@@ -136,9 +136,8 @@
 // slot 2 is the NSPE in FLASH
 #define ATM_SLOT2_OFFSET 0
 // compute usable flash for slot2/slot3
-#define ATM_FLASH_USABLE_AREA_SIZE \
-    (FLASH_SIZE - ATM_MCUBOOT_SCRATCH_SIZE - ATM_SLOT1_SIZE - \
-	FLASH_XIP_RSVD_SIZE)
+#define ATM_FLASH_USABLE_AREA_SIZE                                                                 \
+	(ATM_APP_FLASH_RESERVED_OFFSET - ATM_MCUBOOT_SCRATCH_SIZE - ATM_SLOT1_SIZE)
 // split the above into equal parts and align to flash sector
 #if ATM_MCUBOOT_SWAP_WITH_OFFSET
 // For swap with offset, we will need slot3 to have one extra block
@@ -235,14 +234,14 @@
 #endif
 #endif // ATM_SLOT2_TRAILER_RSVD_SIZE
 
-// final checks against FLASH_SIZE
+// final checks against the usable flash end
 #ifdef RUN_IN_FLASH
-#if ((ATM_SLOT3_OFFSET + ATM_SLOT3_SIZE) > FLASH_SIZE)
-#error "Last partition does not fit in specified FLASH_SIZE"
+#if ((ATM_SLOT3_OFFSET + ATM_SLOT3_SIZE) > ATM_APP_FLASH_RESERVED_OFFSET)
+#error "Last image partition overlaps application-reserved flash"
 #endif
 #else
-#if ((ATM_SLOT1_OFFSET + ATM_SLOT1_SIZE) > FLASH_SIZE)
-#error "Last partition does not fit in specified FLASH_SIZE"
+#if ((ATM_SLOT1_OFFSET + ATM_SLOT1_SIZE) > ATM_APP_FLASH_RESERVED_OFFSET)
+#error "External image partition overlaps application-reserved flash"
 #endif
 #endif
 

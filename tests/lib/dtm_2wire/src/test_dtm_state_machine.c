@@ -159,9 +159,17 @@ ZTEST(dtm_state_machine, test_tx_test_lifecycle)
 
 /**
  * @brief Test DTM test lifecycle - RX test with state tracking
+ *
+ * This test drives an RX test through dtm_process_message() and relies on the
+ * HCI command-complete callback to confirm the controller accepted it.  In
+ * SIMULATED mode no HCI command is issued, so the callback never fires and the
+ * local test_active flag stays false.  Skip the test in that configuration.
  */
 ZTEST(dtm_state_machine, test_rx_test_lifecycle)
 {
+#ifdef CONFIG_DTM_2WIRE_RX_TESTING_SIMULATED
+	ztest_test_skip();
+#endif
 	reset_state_test();
 
 	/* Set callback for state tracking */

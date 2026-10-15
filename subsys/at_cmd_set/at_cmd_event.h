@@ -55,6 +55,11 @@ enum at_cmd_evt_adv_type {
  */
 void at_cmd_evt_adv_rpt(uint8_t ch, const struct bt_le_scan_recv_info *info,
 			struct net_buf_simple *buf);
+#ifdef CONFIG_ZTEST
+void at_cmd_adv_rpt_evt_handler_test(uint8_t ch, void const *evt_data, uint16_t evt_data_len);
+void at_cmd_scan_recv_test(const struct bt_le_scan_recv_info *info, struct net_buf_simple *buf);
+int at_cmd_evt_adv_rpt_test_init(void);
+#endif /* CONFIG_ZTEST */
 #endif /* CONFIG_AT_EVT_BLEGAPADVRPT */
 
 #ifdef CONFIG_AT_EVT_BLEGAPCONN
