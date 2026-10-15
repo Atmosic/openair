@@ -11,7 +11,7 @@ name: Build OpenAir Release Archives
 #
 # Pull requests to rel_*/pre_rel_* and pushes to pre_rel_*: archives are
 # uploaded as workflow artifacts. Pushes to rel_*: archives are also attached
-# to a GitHub release.
+# to a GitHub release, but only if every build job succeeded.
 
 on:
   pull_request:
@@ -261,6 +261,7 @@ jobs:
 
           selected_count = 0
           fail_count = 0
+          run_errors = 0
 
           for platform, tag_args, out_dir in passes:
               cmd = [
@@ -285,7 +286,12 @@ jobs:
 
               report_path = os.path.join(workspace, out_dir, 'twister.json')
               if not os.path.isfile(report_path):
-                  print(f"⚠️  No twister.json produced for {platform}")
+                  # No report means twister bailed out before reporting - an
+                  # unrecognized '-p' target, for instance - and leaves nothing
+                  # for the counters below to see, so it has to fail the job here.
+                  print(f"❌ twister produced no twister.json for {platform} "
+                        f"- it exited before reporting")
+                  run_errors += 1
                   continue
 
               with open(report_path, 'r') as f:
@@ -313,8 +319,9 @@ jobs:
               f.write(f"success_count={success_count}\n")
               f.write(f"fail_count={fail_count}\n")
 
-          # Exit with error only if every selected scenario failed
-          if selected_count > 0 and success_count == 0:
+          # Fail the step if any selected scenario failed; the collect and
+          # upload steps still run so partial archives remain available.
+          if run_errors or fail_count:
               exit(1)
           EOF
 
@@ -433,7 +440,7 @@ jobs:
 
   release:
     needs: build
-    if: always() && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/rel_')
+    if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/rel_')
     runs-on: ubuntu-latest
     permissions:
       contents: write

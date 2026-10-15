@@ -21,9 +21,9 @@ toolchain:
 # the 100-column yamllint limit.
 supported:
   - &common "adc:antenna_switch:atlc:atm3x_pwm:atm_vendor_drv:bluetooth:button0:button1:\
-    channel_sounding:entropy:factory_partition:flash:gpio:i2c:i2c_clock_stretching:i2s:\
-    nv_mem_protect:pin_pulldown:pwm:qspi_war:radio_hal_burst:sec_jrnl_otp_flash:\
-    sha2_multi_context:spi:trustzone_m:uart:watchdog"
+    entropy:factory_partition:flash:gpio:i2c:i2c_clock_stretching:i2s:nv_mem_protect:\
+    pin_pulldown:pwm:qspi_war:radio_hal_burst:sec_jrnl_otp_flash:sha2_multi_context:spi:\
+    trustzone_m:uart:watchdog"
 
 variants:
   ATMEVK-5205-NQK-2@normal/ATM5xxx-2:
@@ -58,6 +58,7 @@ variants:
   ATMEVK-5305-NBV-2@normal/ATM5xxx-2:
     supported:
       - *common
+      - channel_sounding
       - gcov_capable
       - ir
       - lis2dh
@@ -66,11 +67,13 @@ variants:
   ATMEVK-5305-NBV-2@mcuboot/ATM5xxx-2:
     supported:
       - *common
+      - channel_sounding
       - pdm
 
   ATMEVK-5305-NQK-2@normal/ATM5xxx-2:
     supported:
       - *common
+      - channel_sounding
       - esl
       - fast_lp
       - gcov_capable
@@ -81,12 +84,14 @@ variants:
   ATMEVK-5305-NQK-2@mcuboot/ATM5xxx-2:
     supported:
       - *common
+      - channel_sounding
       - esl
       - pdm
 
   ATMEVK-5305e-NQN-2@normal/ATM5xxx-2:
     supported:
       - *common
+      - channel_sounding
       - gcov_capable
       - ir
       - lis2dh
@@ -94,6 +99,7 @@ variants:
   ATMEVK-5305e-NQN-2@mcuboot/ATM5xxx-2:
     supported:
       - *common
+      - channel_sounding
       - harvesting
 
   # The mcuboot_bl targets build the bootloader image only. They never had a
