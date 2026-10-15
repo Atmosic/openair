@@ -11,8 +11,8 @@ Overview
 The ATM5/e Wireless SoC Series is part of the Atmosic family of extremely low-power Bluetooth® system-on-chip (SoC) solutions.
 The ATM5/e Series includes two sub-series: ATM53/e and ATM52.
 
-ATM53/e Series integrates a Bluetooth 6.0 compliant radio, ARM® Cortex® M33F application processor with ARM® TrustZone® enabled security features, and state-of-the-art power management to enable maximum lifetime in battery-operated devices.
-ATM53/e Series supports Bluetooth 6.0 Channel Sounding, and selected SKUs in the ATM53/e Series support Energy Harvesting.
+ATM53/e Series integrates a Bluetooth 6.3 compliant radio, ARM® Cortex® M33F application processor with ARM® TrustZone® enabled security features, and state-of-the-art power management to enable maximum lifetime in battery-operated devices.
+ATM53/e Series supports Bluetooth 6.3 Channel Sounding with IPT(Inline PCT Transfer), and selected SKUs in the ATM53/e Series support Energy Harvesting.
 
 ATM52 Series integrates a Bluetooth 5.4 compliant radio, ARM® Cortex® M33F application processor with ARM® TrustZone® enabled security features, and state-of-the-art power management to enable maximum lifetime in battery-operated devices.
 
@@ -30,7 +30,9 @@ SoC Part #          EVK Part #          Board List          On-chip             
                                         <BOARD>             Flash                         Harvesting
 ==================  ==================  ==================  ==================  ========  ==========
 ATM5305-2NC8QK      ATMEVK-5305-NQK-2   ATMEVK-5305-NQK-2   2048KB               QFN 5x5  N/A
+ATM5305-2NC8BV      ATMEVK-5305-NBV-2   ATMEVK-5305-NBV-2   2048KB               BGA 4x4  N/A
 ATM5205-2NC8QK      ATMEVK-5205-NQK-2   ATMEVK-5205-NQK-2   2048KB               QFN 5x5  N/A
+ATM5205-2NC8BV      ATMEVK-5205-NBV-2   ATMEVK-5205-NBV-2   2048KB               BGA 4x4  N/A
 ==================  ==================  ==================  ==================  ========  ==========
 
 ================
@@ -219,7 +221,7 @@ Note that developers cannot use ``CONFIG_BT_CTLR_*`` `flags`__ with the ATM5/e p
 .. _CONFIG_BT_CTLR_KCONFIGS: https://docs.zephyrproject.org/latest/kconfig.html#!%5ECONFIG_BT_CTLR
 __ CONFIG_BT_CTLR_KCONFIGS_
 
-Note that as the ATM52 series uses a Bluetooth 5.4 compliant radio, it does not support Bluetooth 6.0 Channel Sounding.
+Note that as the ATM52 series uses a Bluetooth 5.4 compliant radio, it does not support Bluetooth Channel Sounding.
 
 **************************
 Viewing the Console Output
