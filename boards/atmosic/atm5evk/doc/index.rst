@@ -12,7 +12,7 @@ The ATM5/e Wireless SoC Series is part of the Atmosic family of extremely low-po
 The ATM5/e Series includes two sub-series: ATM53/e and ATM52.
 
 ATM53/e Series integrates a Bluetooth 6.3 compliant radio, ARM® Cortex® M33F application processor with ARM® TrustZone® enabled security features, and state-of-the-art power management to enable maximum lifetime in battery-operated devices.
-ATM53/e Series supports Bluetooth 6.3 Channel Sounding with IPT(Inline PCT Transfer), and selected SKUs in the ATM53/e Series support Energy Harvesting.
+ATM53/e Series supports Bluetooth 6.3 Channel Sounding with IPT (Inline PCT Transfer), and selected SKUs in the ATM53/e Series support Energy Harvesting.
 
 ATM52 Series integrates a Bluetooth 5.4 compliant radio, ARM® Cortex® M33F application processor with ARM® TrustZone® enabled security features, and state-of-the-art power management to enable maximum lifetime in battery-operated devices.
 
