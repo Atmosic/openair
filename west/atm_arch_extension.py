@@ -16,6 +16,7 @@ from pathlib import Path
 import sys
 import ast
 import shutil
+import tempfile
 
 # pylint: disable=import-error,no-name-in-module
 from west.commands import WestCommand
@@ -137,15 +138,26 @@ class AtmIsp:
             sys.exit(1)
         # always re-generate atm_isp_python with current installed grpcio_tools
         # and protobuf
-        cmd_arg = [
-            "python",
-            "-m",
-            "grpc_tools.protoc",
-            f"--proto_path={tools_path}",
-            f"--python_out={atm_isp_python_path}",
-            atm_isp_proto,
-        ]
-        return self.exe_cmd(cmd_arg)
+        # generate into a private directory and move into place atomically so
+        # concurrent atm_isp runs never import a partially written module
+        tmp_dir = tempfile.mkdtemp(prefix=".gen-", dir=atm_isp_python_path)
+        try:
+            cmd_arg = [
+                "python",
+                "-m",
+                "grpc_tools.protoc",
+                f"--proto_path={tools_path}",
+                f"--python_out={tmp_dir}",
+                atm_isp_proto,
+            ]
+            self.exe_cmd(cmd_arg)
+            for name in os.listdir(tmp_dir):
+                os.replace(
+                    os.path.join(tmp_dir, name),
+                    os.path.join(atm_isp_python_path, name),
+                )
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     def decode_atm(self, input_file):
         """Function decode with atm file"""
